@@ -135,7 +135,7 @@ defmodule FriendsWeb.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <div id="friends-app" class="min-h-screen" phx-hook="FriendsApp">
+    <div id="friends-app" class="min-h-screen bg-neutral-950 text-white" phx-hook="FriendsApp">
         <%!-- Header --%>
         <header class="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-sm sticky top-0 z-40">
           <div class="max-w-6xl mx-auto px-4 py-3">
@@ -307,7 +307,7 @@ defmodule FriendsWeb.HomeLive do
             >
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="group relative aspect-square bg-neutral-900 overflow-hidden">
+                  <div id={dom_id} class="group relative aspect-square bg-neutral-900 overflow-hidden rounded-lg border border-neutral-800/80 shadow-md shadow-black/30 hover:border-neutral-700 transition">
                     <%= if item.thumbnail_data do %>
                       <img
                         src={item.thumbnail_data}
@@ -316,7 +316,7 @@ defmodule FriendsWeb.HomeLive do
                         loading="lazy"
                       />
                     <% else %>
-                      <div class="w-full h-full flex items-center justify-center text-neutral-700 text-xs">
+                      <div class="w-full h-full flex items-center justify-center text-neutral-700 text-xs animate-pulse bg-neutral-900">
                         loading...
                       </div>
                     <% end %>
@@ -351,7 +351,7 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 <% else %>
                   <%!-- Note card --%>
-                  <div id={dom_id} class="group relative bg-neutral-900 p-4 min-h-[120px] flex flex-col">
+                  <div id={dom_id} class="group relative bg-neutral-900 p-4 min-h-[120px] flex flex-col rounded-lg border border-neutral-800/80 shadow-md shadow-black/30 hover:border-neutral-700 transition">
                     <p class="text-sm text-neutral-300 flex-1 line-clamp-4">{item.content}</p>
                     <div class="flex items-center gap-2 text-xs mt-3 pt-3 border-t border-neutral-800">
                       <div
@@ -1207,8 +1207,8 @@ defmodule FriendsWeb.HomeLive do
 
     current =
       socket.streams.items
-      |> Enum.find_value(fn {_dom_id, item} ->
-        if item.id == photo_id, do: item, else: nil
+      |> Enum.find_value(fn {dom_id, item} ->
+        if item.id == photo_id, do: Map.put(item, :dom_id, dom_id), else: nil
       end)
 
     updated =
@@ -1224,9 +1224,18 @@ defmodule FriendsWeb.HomeLive do
        })
       |> Map.put(:thumbnail_data, thumbnail)
 
-    {:noreply,
-     socket
-     |> stream_insert(:items, updated, at: 0)}
+    items =
+      socket.streams.items
+      |> Enum.map(fn {dom_id, item} ->
+        if item.id == photo_id do
+          {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
+        else
+          {dom_id, item}
+        end
+      end)
+
+    {:noreply, stream(socket, :items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
+
   end
 
   # Settings modal events

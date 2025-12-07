@@ -145,17 +145,18 @@ const Hooks = {
     
     FriendsApp: {
         async mounted() {
-            const browserId = getBrowserId()
-            const fingerprint = generateFingerprint()
-            
+            this.browserId = getBrowserId()
+            this.fingerprint = generateFingerprint()
+
             // Initialize crypto identity
             const { isNew, publicKey } = await cryptoIdentity.init()
-            
+            this.publicKey = publicKey
+
             // Send identity to server (including public key)
             this.pushEvent("set_user_id", {
-                browser_id: browserId,
-                fingerprint: fingerprint,
-                public_key: publicKey,
+                browser_id: this.browserId,
+                fingerprint: this.fingerprint,
+                public_key: this.publicKey,
                 is_new_key: isNew
             })
             
@@ -175,6 +176,17 @@ const Hooks = {
             
             // Setup image optimization
             this.setupImageOptimization()
+        },
+        reconnected() {
+            // On LiveView reconnect, re-send identity so header shows the user immediately
+            if (this.browserId && this.fingerprint && this.publicKey) {
+                this.pushEvent("set_user_id", {
+                    browser_id: this.browserId,
+                    fingerprint: this.fingerprint,
+                    public_key: this.publicKey,
+                    is_new_key: false
+                })
+            }
         },
         
         setupImageOptimization() {
