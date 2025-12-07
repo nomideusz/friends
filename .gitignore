@@ -1,0 +1,27 @@
+# Dependencies
+/deps/
+/assets/node_modules/
+
+# Build
+/_build/
+/priv/static/assets/
+
+# Generated
+erl_crash.dump
+*.ez
+*.beam
+
+# Environment
+.env
+.env.local
+
+# Editor
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

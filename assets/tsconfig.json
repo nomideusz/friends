@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "target": "ES2017",
+    "module": "ES2020",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "types": ["svelte"]
+  },
+  "include": ["js/**/*", "svelte/**/*"]
+}
+
