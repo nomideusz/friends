@@ -22,7 +22,7 @@ defmodule FriendsWeb.Endpoint do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
-    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :friends
+    # plug Phoenix.Ecto.CheckRepoStatus, otp_app: :friends
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,
