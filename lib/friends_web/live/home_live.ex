@@ -233,11 +233,11 @@ defmodule FriendsWeb.HomeLive do
 
           <%!-- Actions --%>
           <div class="flex items-center gap-3 mb-6">
-            <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
+            <form id="upload-form" phx-change="validate" phx-submit="save">
               <label
                 for={@uploads.photo.ref}
                 class={[
-                  "px-4 py-2 text-sm cursor-pointer transition-all",
+                  "px-4 py-2 text-sm cursor-pointer transition-all min-w-[80px] text-center",
                   if(@uploading,
                     do: "bg-neutral-800 text-neutral-400",
                     else: "bg-white text-black hover:bg-neutral-200"
@@ -252,7 +252,7 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="open_note_modal"
-              class="px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer"
+              class="px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[60px] text-center"
             >
               note
             </button>
@@ -985,8 +985,14 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("validate", _params, socket), do: {:noreply, socket}
-  def handle_event("save", _params, socket), do: {:noreply, socket}
+  def handle_event("validate", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("save", _params, socket) do
+    IO.inspect("SAVE EVENT CALLED", label: "FORM_SUBMIT")
+    {:noreply, socket}
+  end
 
   def handle_event("cancel_upload", %{"ref" => ref}, socket) do
     {:noreply, cancel_upload(socket, :photo, ref)}
@@ -1199,44 +1205,41 @@ defmodule FriendsWeb.HomeLive do
 
   # Thumbnail from JS
   def handle_event("set_thumbnail", %{"photo_id" => photo_id, "thumbnail" => thumbnail}, socket) do
-    if socket.assigns.user_id && thumbnail do
-      Social.set_photo_thumbnail(photo_id, thumbnail, socket.assigns.user_id)
-    end
+    # Guard against bad payloads; quietly ignore to avoid crashing the view
+    cond do
+      is_nil(thumbnail) ->
+        {:noreply, socket}
 
-    photo_id = String.to_integer(photo_id)
+      true ->
+        try do
+          photo_id_int = normalize_photo_id(photo_id)
 
-    current =
-      socket.streams.items
-      |> Enum.find_value(fn {dom_id, item} ->
-        if item.id == photo_id, do: Map.put(item, :dom_id, dom_id), else: nil
-      end)
+          # Save to DB and broadcast
+          if socket.assigns.user_id && is_binary(thumbnail) do
+            Social.set_photo_thumbnail(photo_id_int, thumbnail, socket.assigns.user_id, socket.assigns.room.code)
+          end
 
-    updated =
-      (current || %{
-         id: photo_id,
-         type: :photo,
-         unique_id: "photo-#{photo_id}",
-         user_id: socket.assigns.user_id,
-         user_name: socket.assigns.user_name,
-         user_color: socket.assigns.user_color,
-         inserted_at: DateTime.utc_now(),
-         uploaded_at: DateTime.utc_now()
-       })
-      |> Map.put(:thumbnail_data, thumbnail)
+          # Update the stream so everyone (including sender) sees the thumbnail
+          updated_items =
+            Enum.map(socket.streams.items, fn {dom_id, item} ->
+              if item.id == photo_id_int do
+                {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
+              else
+                {dom_id, item}
+              end
+            end)
 
-    items =
-      socket.streams.items
-      |> Enum.map(fn {dom_id, item} ->
-        if item.id == photo_id do
-          {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
-        else
-          {dom_id, item}
+          {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
+        rescue
+          _e ->
+            {:noreply, socket}
         end
-      end)
-
-    {:noreply, stream(socket, :items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
-
+    end
   end
+
+  defp normalize_photo_id(photo_id) when is_integer(photo_id), do: photo_id
+  defp normalize_photo_id(photo_id) when is_binary(photo_id), do: String.to_integer(photo_id)
+  defp normalize_photo_id(photo_id), do: photo_id |> to_string() |> String.to_integer()
 
   # Settings modal events
   def handle_event("open_settings_modal", _params, socket) do
@@ -1521,7 +1524,11 @@ defmodule FriendsWeb.HomeLive do
            room.code
          ) do
       {:ok, photo} ->
-        photo_with_type = photo |> Map.put(:type, :photo) |> Map.put(:unique_id, "photo-#{photo.id}")
+        photo_with_type =
+          photo
+          |> Map.put(:type, :photo)
+          |> Map.put(:unique_id, "photo-#{photo.id}")
+          |> Map.put(:thumbnail_data, photo.thumbnail_data || photo.image_data)
 
         {:noreply,
          socket
@@ -1543,7 +1550,11 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:new_photo, photo}, socket) do
     if photo.user_id != socket.assigns.user_id do
-      photo_with_type = photo |> Map.put(:type, :photo) |> Map.put(:unique_id, "photo-#{photo.id}")
+      photo_with_type =
+        photo
+        |> Map.put(:type, :photo)
+        |> Map.put(:unique_id, "photo-#{photo.id}")
+        |> Map.put(:thumbnail_data, photo.thumbnail_data || photo.image_data)
 
       {:noreply,
        socket
@@ -1559,6 +1570,19 @@ defmodule FriendsWeb.HomeLive do
      socket
      |> assign(:item_count, max(0, socket.assigns.item_count - 1))
      |> stream_delete(:items, %{id: id})}
+  end
+
+  def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
+    # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
+    updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
+      if item.id == photo_id && is_nil(item.thumbnail_data) do
+        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
+      else
+        {dom_id, item}
+      end
+    end)
+
+    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
   end
 
   def handle_info({:new_note, note}, socket) do

@@ -232,11 +232,20 @@ defmodule Friends.Social do
     end
   end
 
-  def set_photo_thumbnail(photo_id, thumbnail_data, user_id)
+  def set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
       when is_integer(photo_id) and is_binary(thumbnail_data) do
-    Photo
-    |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
-    |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
+    result = Photo
+             |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
+             |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
+
+    case result do
+      {1, _} ->
+        # Successfully updated, broadcast the thumbnail update
+        broadcast(room_code, :photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data})
+        :ok
+      _ ->
+        :error
+    end
   end
 
   def update_photo_description(photo_id, description, user_id) do
