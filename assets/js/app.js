@@ -152,13 +152,20 @@ const Hooks = {
             const { isNew, publicKey } = await cryptoIdentity.init()
             this.publicKey = publicKey
 
-            // Send identity to server (including public key)
-            this.pushEvent("set_user_id", {
-                browser_id: this.browserId,
-                fingerprint: this.fingerprint,
-                public_key: this.publicKey,
-                is_new_key: isNew
-            })
+            // Send identity to server (including public key) with error handling
+            // Small delay to ensure LiveView is connected
+            setTimeout(() => {
+                try {
+                    this.pushEvent("set_user_id", {
+                        browser_id: this.browserId,
+                        fingerprint: this.fingerprint,
+                        public_key: this.publicKey,
+                        is_new_key: isNew
+                    })
+                } catch (error) {
+                    console.warn("Failed to send user identity, will retry on reconnect:", error)
+                }
+            }, 100)
             
             // Handle challenge-response authentication
             this.handleEvent("auth_challenge", async ({ challenge }) => {
@@ -180,12 +187,18 @@ const Hooks = {
         reconnected() {
             // On LiveView reconnect, re-send identity so header shows the user immediately
             if (this.browserId && this.fingerprint && this.publicKey) {
-                this.pushEvent("set_user_id", {
-                    browser_id: this.browserId,
-                    fingerprint: this.fingerprint,
-                    public_key: this.publicKey,
-                    is_new_key: false
-                })
+                setTimeout(() => {
+                    try {
+                        this.pushEvent("set_user_id", {
+                            browser_id: this.browserId,
+                            fingerprint: this.fingerprint,
+                            public_key: this.publicKey,
+                            is_new_key: false
+                        })
+                    } catch (error) {
+                        console.warn("Failed to resend user identity on reconnect:", error)
+                    }
+                }, 100)
             }
         },
         
@@ -200,11 +213,15 @@ const Hooks = {
             
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
-                    this.pushEvent("set_thumbnail", {
-                        photo_id: photo_id,
-                        thumbnail: this.pendingThumbnail
-                    })
-                    this.pendingThumbnail = null
+                    try {
+                        this.pushEvent("set_thumbnail", {
+                            photo_id: photo_id,
+                            thumbnail: this.pendingThumbnail
+                        })
+                        this.pendingThumbnail = null
+                    } catch (error) {
+                        console.warn("Failed to set thumbnail:", error)
+                    }
                 }
             })
             
