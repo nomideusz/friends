@@ -6,4 +6,3 @@ set -e
 
 # Start the app
 /app/bin/friends start
-
