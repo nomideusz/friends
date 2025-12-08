@@ -5,7 +5,7 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social.Presence
   require Logger
 
-  @max_items 50
+  @max_items 12
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
   def mount(%{"room" => room_code}, _session, socket) do
