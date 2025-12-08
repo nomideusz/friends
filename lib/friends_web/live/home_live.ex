@@ -4,6 +4,7 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social
   alias Friends.Social.Presence
   alias Friends.Repo
+  import Ecto.Query
   require Logger
 
   @max_items 20
