@@ -1223,11 +1223,11 @@ defmodule FriendsWeb.HomeLive do
           updated_items =
             Enum.map(socket.streams.items, fn {dom_id, item} ->
               if item.id == photo_id_int do
-          {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
-        else
-          {dom_id, item}
-        end
-      end)
+                {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
+              else
+                {dom_id, item}
+              end
+            end)
 
           {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
         rescue
@@ -1665,4 +1665,3 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 end
-
