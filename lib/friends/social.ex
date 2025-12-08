@@ -193,11 +193,26 @@ defmodule Friends.Social do
 
   # --- Photos ---
 
+  @photo_fields [
+    :id,
+    :user_id,
+    :user_color,
+    :user_name,
+    :thumbnail_data,
+    :description,
+    :uploaded_at,
+    :inserted_at,
+    :room_id,
+    :content_type,
+    :file_size
+  ]
+
   def list_photos(room_id, limit \\ 50) do
     Photo
     |> where([p], p.room_id == ^room_id)
     |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
+    |> select([p], map(p, ^@photo_fields))
     |> Repo.all()
   end
 
@@ -211,6 +226,7 @@ defmodule Friends.Social do
     |> where([p], p.user_id in ^friend_user_ids)
     |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
+    |> select([p], map(p, ^@photo_fields))
     |> Repo.all()
   end
 
@@ -224,8 +240,9 @@ defmodule Friends.Social do
 
     case result do
       {:ok, photo} ->
-        broadcast(room_code, :new_photo, photo)
-        {:ok, photo}
+        slim_photo = Map.take(photo, @photo_fields)
+        broadcast(room_code, :new_photo, slim_photo)
+        {:ok, slim_photo}
 
       error ->
         error
