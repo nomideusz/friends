@@ -193,11 +193,14 @@ defmodule Friends.Social do
 
   # --- Photos ---
 
-  def list_photos(room_id, limit \\ 50) do
+  def list_photos(room_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+
     Photo
     |> where([p], p.room_id == ^room_id)
     |> order_by([p], [desc: p.uploaded_at, desc: p.id])  # Add secondary sort for consistency
     |> limit(^limit)
+    |> offset(^offset_val)
     |> select([p], %{
       id: p.id,
       user_id: p.user_id,
@@ -321,11 +324,14 @@ defmodule Friends.Social do
 
   # --- Notes ---
 
-  def list_notes(room_id, limit \\ 50) do
+  def list_notes(room_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+
     Note
     |> where([n], n.room_id == ^room_id)
     |> order_by([n], desc: n.inserted_at)
     |> limit(^limit)
+    |> offset(^offset_val)
     |> Repo.all()
   end
 

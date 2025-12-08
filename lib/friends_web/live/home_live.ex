@@ -240,21 +240,27 @@ defmodule FriendsWeb.HomeLive do
 
           <%!-- Actions --%>
           <div class="flex items-center gap-3 mb-6">
-            <form id="upload-form" phx-change="validate" phx-submit="save">
-              <label
-                for={@uploads.photo.ref}
-                class={[
-                  "px-4 py-2 text-sm cursor-pointer transition-all min-w-[80px] text-center",
-                  if(@uploading,
-                    do: "bg-neutral-800 text-neutral-400",
-                    else: "bg-white text-black hover:bg-neutral-200"
-                  )
-                ]}
-              >
-                {if @uploading, do: "uploading...", else: "photo"}
-              </label>
-              <.live_file_input upload={@uploads.photo} class="sr-only" />
-            </form>
+            <%= if @current_user do %>
+              <form id="upload-form" phx-change="validate" phx-submit="save">
+                <label
+                  for={@uploads.photo.ref}
+                  class={[
+                    "px-4 py-2 text-sm cursor-pointer transition-all min-w-[80px] text-center",
+                    if(@uploading,
+                      do: "bg-neutral-800 text-neutral-400",
+                      else: "bg-white text-black hover:bg-neutral-200"
+                    )
+                  ]}
+                >
+                  {if @uploading, do: "uploading...", else: "photo"}
+                </label>
+                <.live_file_input upload={@uploads.photo} class="sr-only" />
+              </form>
+            <% else %>
+              <div class="px-4 py-2 text-sm bg-neutral-800 text-neutral-400 min-w-[80px] text-center cursor-not-allowed">
+                photo
+              </div>
+            <% end %>
 
             <button
               type="button"
@@ -1651,16 +1657,20 @@ defmodule FriendsWeb.HomeLive do
   # --- Progress Handler ---
 
   def handle_progress(:photo, entry, socket) when entry.done? do
-    [photo_result] =
-      consume_uploaded_entries(socket, :photo, fn %{path: path}, _entry ->
-        binary = File.read!(path)
-        base64 = Base.encode64(binary)
-        content_type = entry.client_type || "image/jpeg"
-        file_size = byte_size(binary)
-        {:ok, %{data_url: "data:#{content_type};base64,#{base64}", content_type: content_type, file_size: file_size}}
-      end)
+    # Don't allow uploads from anonymous users
+    if is_nil(socket.assigns.user_id) do
+      {:noreply, put_flash(socket, :error, "Please register to upload photos")}
+    else
+      [photo_result] =
+        consume_uploaded_entries(socket, :photo, fn %{path: path}, _entry ->
+          binary = File.read!(path)
+          base64 = Base.encode64(binary)
+          content_type = entry.client_type || "image/jpeg"
+          file_size = byte_size(binary)
+          {:ok, %{data_url: "data:#{content_type};base64,#{base64}", content_type: content_type, file_size: file_size}}
+        end)
 
-    room = socket.assigns.room
+      room = socket.assigns.room
 
     case Social.create_photo(
            %{
@@ -1690,6 +1700,7 @@ defmodule FriendsWeb.HomeLive do
 
       {:error, _} ->
         {:noreply, socket |> assign(:uploading, false) |> put_flash(:error, "failed")}
+      end
     end
   end
 
@@ -1768,16 +1779,16 @@ defmodule FriendsWeb.HomeLive do
 
     if current_count < @max_items do
       remaining = @max_items - current_count
-      photos = Social.list_photos(room.id, remaining)
-      notes = Social.list_notes(room.id, remaining)
+      photos = Social.list_photos(room.id, remaining, offset: 3)  # Skip first 3
+      notes = Social.list_notes(room.id, remaining, offset: 3)
       items = build_items(photos, notes)
 
-      # Insert remaining items
-      socket = Enum.reduce(items, socket, fn item, acc ->
-        stream_insert(acc, :items, item)
-      end)
-
-      {:noreply, assign(socket, :item_count, @max_items)}
+      # Replace the entire stream at once to avoid flickering
+      all_items = socket.assigns.streams.items ++ items
+      {:noreply,
+       socket
+       |> stream(:items, all_items, reset: true, dom_id: &("item-#{&1.unique_id}"))
+       |> assign(:item_count, length(all_items))}
     else
       {:noreply, socket}
     end
