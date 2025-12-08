@@ -43,5 +43,8 @@ COPY --from=build /app/_build/prod/rel/friends ./
 
 EXPOSE 4000
 
-CMD ["bin/friends", "start"]
+COPY rel/migrate_and_start.sh /app/migrate_and_start.sh
+RUN chmod +x /app/migrate_and_start.sh
+
+CMD ["/app/migrate_and_start.sh"]
 
