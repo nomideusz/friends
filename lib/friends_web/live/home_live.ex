@@ -7,7 +7,8 @@ defmodule FriendsWeb.HomeLive do
   import Ecto.Query
   require Logger
 
-  @max_items 5
+  @initial_batch 20
+  @max_items 200
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
   def mount(%{"room" => room_code}, _session, socket) do
@@ -27,9 +28,9 @@ defmodule FriendsWeb.HomeLive do
         r -> r
       end
 
-    # Load minimal data first for fast initial render
-    photos = Social.list_photos(room.id, 3)  # Load only 3 items initially
-    notes = Social.list_notes(room.id, 3)
+    # Load initial batch for fast render
+    photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+    notes = Social.list_notes(room.id, @initial_batch, offset: 0)
     items = build_items(photos, notes)
 
     # Subscribe when connected
@@ -39,9 +40,6 @@ defmodule FriendsWeb.HomeLive do
 
       # Request identity from client once socket is connected
       push_event(socket, "request_identity", %{})
-
-      # Load remaining items after initial mount for better performance
-      send(self(), :load_remaining_items)
     end
 
     socket =
@@ -58,6 +56,8 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:fingerprint, nil)
       |> assign(:viewers, [])
       |> assign(:item_count, length(items))
+      |> assign(:no_more_items, length(items) < @initial_batch)
+      |> assign(:loading_more, false)
       |> assign(:feed_mode, "room")
       |> assign(:show_room_modal, false)
       |> assign(:show_name_modal, false)
@@ -82,7 +82,6 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:room_access_denied, false)
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
-      |> assign(:remaining_loaded, false)
       |> stream(:items, items, dom_id: &("item-#{&1.unique_id}"))
       |> allow_upload(:photo,
         accept: ~w(.jpg .jpeg .png .gif .webp),
@@ -125,8 +124,8 @@ defmodule FriendsWeb.HomeLive do
         )
       end
 
-      photos = Social.list_photos(room.id, @max_items)
-      notes = Social.list_notes(room.id, @max_items)
+      photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+      notes = Social.list_notes(room.id, @initial_batch, offset: 0)
       items = build_items(photos, notes)
       viewers = Presence.list_users(room.code)
 
@@ -135,6 +134,8 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:room, room)
        |> assign(:page_title, room.name || room.code)
        |> assign(:item_count, length(items))
+       |> assign(:no_more_items, length(items) < @initial_batch)
+       |> assign(:loading_more, false)
        |> assign(:viewers, viewers)
        |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
     else
@@ -401,6 +402,21 @@ defmodule FriendsWeb.HomeLive do
                 <% end %>
               <% end %>
             </div>
+            <%= unless @no_more_items do %>
+              <div class="flex justify-center mt-6">
+                <button
+                  type="button"
+                  phx-click="load_more"
+                  class={[
+                    "px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px]",
+                    @loading_more && "opacity-60 cursor-wait"
+                  ]}
+                  disabled={@loading_more}
+                >
+                  <%= if @loading_more, do: "loading...", else: "show more" %>
+                </button>
+              </div>
+            <% end %>
             <% end %>
           <% end %>
         </main>
@@ -1592,13 +1608,16 @@ defmodule FriendsWeb.HomeLive do
       "room" ->
         # Load room content
         room = socket.assigns.room
-        photos = Social.list_photos(room.id, @max_items)
-        notes = Social.list_notes(room.id, @max_items)
+        photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+        notes = Social.list_notes(room.id, @initial_batch, offset: 0)
         items = build_items(photos, notes)
+        no_more = length(items) < @initial_batch
         
         {:noreply,
          socket
          |> assign(:item_count, length(items))
+         |> assign(:no_more_items, no_more)
+         |> assign(:loading_more, false)
          |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
       
       "friends" ->
@@ -1608,15 +1627,63 @@ defmodule FriendsWeb.HomeLive do
             {:noreply, put_flash(socket, :error, "register to see friends' content")}
           
           user ->
-            photos = Social.list_friends_photos(user.id, @max_items)
-            notes = Social.list_friends_notes(user.id, @max_items)
+            photos = Social.list_friends_photos(user.id, @initial_batch, offset: 0)
+            notes = Social.list_friends_notes(user.id, @initial_batch, offset: 0)
             items = build_items(photos, notes)
+            no_more = length(items) < @initial_batch
             
             {:noreply,
              socket
              |> assign(:item_count, length(items))
+             |> assign(:no_more_items, no_more)
+             |> assign(:loading_more, false)
              |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
         end
+    end
+  end
+
+  def handle_event("load_more", _params, socket) do
+    if socket.assigns.no_more_items || socket.assigns.loading_more do
+      {:noreply, socket}
+    else
+      batch = @initial_batch
+      offset = socket.assigns.item_count || 0
+      mode = socket.assigns.feed_mode
+
+      socket = assign(socket, :loading_more, true)
+
+      {items, no_more?} =
+        case mode do
+          "friends" ->
+            case socket.assigns.current_user do
+              nil -> {[], true}
+              user ->
+                photos = Social.list_friends_photos(user.id, batch, offset: offset)
+                notes = Social.list_friends_notes(user.id, batch, offset: offset)
+                items = build_items(photos, notes)
+                {items, length(items) < batch}
+            end
+
+          _ ->
+            room = socket.assigns.room
+            photos = Social.list_photos(room.id, batch, offset: offset)
+            notes = Social.list_notes(room.id, batch, offset: offset)
+            items = build_items(photos, notes)
+            {items, length(items) < batch}
+        end
+
+      new_count = offset + length(items)
+
+      socket =
+        Enum.reduce(items, socket, fn item, acc ->
+          stream_insert(acc, :items, item)
+        end)
+
+      {:noreply,
+       socket
+       |> assign(:item_count, new_count)
+       |> assign(:no_more_items, no_more?)
+       |> assign(:loading_more, false)}
     end
   end
 
@@ -1778,37 +1845,6 @@ defmodule FriendsWeb.HomeLive do
   def handle_info(%{event: "presence_diff", payload: _}, socket) do
     viewers = Presence.list_users(socket.assigns.room.code)
     {:noreply, assign(socket, :viewers, viewers)}
-  end
-
-  def handle_info(:load_remaining_items, socket) do
-    # Load remaining items after initial mount without crashing if streams aren't enumerable
-    # Use item_count assign instead of trying to measure LiveStream struct directly
-    current_count = socket.assigns.item_count || 0
-
-    cond do
-      socket.assigns.remaining_loaded ->
-        {:noreply, socket}
-
-      current_count >= @max_items ->
-        {:noreply, assign(socket, :remaining_loaded, true)}
-
-      true ->
-        room = socket.assigns.room
-        remaining = @max_items - current_count
-        photos = Social.list_photos(room.id, remaining, offset: current_count)
-        notes = Social.list_notes(room.id, remaining, offset: current_count)
-        items = build_items(photos, notes)
-
-        socket =
-          Enum.reduce(items, socket, fn item, acc ->
-            stream_insert(acc, :items, item)
-          end)
-
-        {:noreply,
-         socket
-         |> assign(:item_count, current_count + length(items))
-         |> assign(:remaining_loaded, true)}
-    end
   end
 
   # Ignore task failure messages we don't explicitly handle

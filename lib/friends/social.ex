@@ -222,13 +222,15 @@ defmodule Friends.Social do
   @doc """
   List photos from a user's friend network (trusted friends + people who trust them)
   """
-  def list_friends_photos(user_id, limit \\ 50) do
+  def list_friends_photos(user_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
     friend_user_ids = get_friend_network_ids(user_id)
 
     Photo
     |> where([p], p.user_id in ^friend_user_ids)
     |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
+    |> offset(^offset_val)
     |> select([p], %{
       id: p.id,
       user_id: p.user_id,
@@ -340,13 +342,15 @@ defmodule Friends.Social do
   @doc """
   List notes from a user's friend network
   """
-  def list_friends_notes(user_id, limit \\ 50) do
+  def list_friends_notes(user_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
     friend_user_ids = get_friend_network_ids(user_id)
     
     Note
     |> where([n], n.user_id in ^friend_user_ids)
     |> order_by([n], desc: n.inserted_at)
     |> limit(^limit)
+    |> offset(^offset_val)
     |> Repo.all()
   end
 
