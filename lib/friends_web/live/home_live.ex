@@ -7,7 +7,7 @@ defmodule FriendsWeb.HomeLive do
   import Ecto.Query
   require Logger
 
-  @max_items 20
+  @max_items 5
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
   def mount(%{"room" => room_code}, _session, socket) do
@@ -27,15 +27,18 @@ defmodule FriendsWeb.HomeLive do
         r -> r
       end
 
-    # Load data immediately for instant content
-    photos = Social.list_photos(room.id, @max_items)
-    notes = Social.list_notes(room.id, @max_items)
+    # Load minimal data first for fast initial render
+    photos = Social.list_photos(room.id, 3)  # Load only 3 items initially
+    notes = Social.list_notes(room.id, 3)
     items = build_items(photos, notes)
 
     # Subscribe when connected
     if connected?(socket) do
       Social.subscribe(room.code)
       Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
+
+      # Load remaining items after initial mount for better performance
+      send(self(), :load_remaining_items)
     end
 
     socket =
@@ -1756,6 +1759,28 @@ defmodule FriendsWeb.HomeLive do
   def handle_info(%{event: "presence_diff", payload: _}, socket) do
     viewers = Presence.list_users(socket.assigns.room.code)
     {:noreply, assign(socket, :viewers, viewers)}
+  end
+
+  def handle_info(:load_remaining_items, socket) do
+    # Load remaining items after initial mount
+    room = socket.assigns.room
+    current_count = length(socket.assigns.streams.items)
+
+    if current_count < @max_items do
+      remaining = @max_items - current_count
+      photos = Social.list_photos(room.id, remaining)
+      notes = Social.list_notes(room.id, remaining)
+      items = build_items(photos, notes)
+
+      # Insert remaining items
+      socket = Enum.reduce(items, socket, fn item, acc ->
+        stream_insert(acc, :items, item)
+      end)
+
+      {:noreply, assign(socket, :item_count, @max_items)}
+    else
+      {:noreply, socket}
+    end
   end
 
   # --- Helpers ---

@@ -196,7 +196,7 @@ defmodule Friends.Social do
   def list_photos(room_id, limit \\ 50) do
     Photo
     |> where([p], p.room_id == ^room_id)
-    |> order_by([p], desc: p.uploaded_at)
+    |> order_by([p], [desc: p.uploaded_at, desc: p.id])  # Add secondary sort for consistency
     |> limit(^limit)
     |> select([p], %{
       id: p.id,
