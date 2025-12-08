@@ -31,11 +31,23 @@ if config_env() == :prod do
 
   config :friends, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  allowed_origin =
-    case System.get_env("ORIGIN_CHECK") do
-      nil -> "https://#{host}"
-      "" -> "https://#{host}"
-      value -> value
+  origin_env = System.get_env("ORIGIN_CHECK")
+
+  check_origin =
+    case origin_env do
+      nil -> ["https://#{host}"]
+      "" -> ["https://#{host}"]
+      "false" -> false
+      "0" -> false
+      value ->
+        # allow comma-separated list; otherwise single origin
+        value
+        |> String.split(",", trim: true)
+        |> Enum.map(&String.trim/1)
+        |> case do
+          [single] -> [single]
+          list -> list
+        end
     end
 
   config :friends, FriendsWeb.Endpoint,
@@ -45,6 +57,6 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base,
-    check_origin: [allowed_origin]
+    check_origin: check_origin
 end
 
