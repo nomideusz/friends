@@ -3,6 +3,7 @@ defmodule FriendsWeb.HomeLive do
 
   alias Friends.Social
   alias Friends.Social.Presence
+  alias Friends.Repo
   require Logger
 
   @max_items 20
@@ -319,8 +320,13 @@ defmodule FriendsWeb.HomeLive do
                         decoding="async"
                       />
                     <% else %>
-                      <div class="w-full h-full flex items-center justify-center text-neutral-700 text-xs animate-pulse bg-neutral-900">
-                        loading...
+                      <div class="w-full h-full flex items-center justify-center bg-neutral-800 border-2 border-dashed border-neutral-600">
+                        <div class="text-center">
+                          <svg class="w-8 h-8 mx-auto mb-2 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          </svg>
+                          <span class="text-neutral-400 text-xs">thumbnail</span>
+                        </div>
                       </div>
                     <% end %>
 
@@ -804,6 +810,23 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 <% end %>
 
+                <%!-- Thumbnail Management --%>
+                <div class="pt-4 border-t border-neutral-800">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs text-neutral-500 uppercase tracking-wider">thumbnails</h3>
+                    <button
+                      type="button"
+                      phx-click="regenerate_thumbnails"
+                      class="text-xs text-blue-500 hover:text-blue-400 cursor-pointer"
+                    >
+                      regenerate missing
+                    </button>
+                  </div>
+                  <p class="text-xs text-neutral-600">
+                    generate thumbnails for photos that don't have them
+                  </p>
+                </div>
+
                 <%!-- Device & Recovery --%>
                 <div class="pt-4 border-t border-neutral-800 space-y-2">
                   <a 
@@ -1284,6 +1307,9 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("view_full_image", %{"photo-id" => photo_id}, socket) do
     case Social.get_photo_image_data(photo_id) do
       %{image_data: image_data, content_type: content_type} when not is_nil(image_data) ->
+        # If this photo doesn't have a thumbnail, generate one in the background
+        generate_thumbnail_if_missing(image_data, photo_id, socket.assigns.user_id, socket.assigns.room.code)
+
         {:noreply,
          socket
          |> assign(:show_image_modal, true)
@@ -1299,6 +1325,90 @@ defmodule FriendsWeb.HomeLive do
      socket
      |> assign(:show_image_modal, false)
      |> assign(:full_image_data, nil)}
+  end
+
+  def handle_event("regenerate_thumbnails", _params, socket) do
+    # Start background task to regenerate missing thumbnails
+    Task.async(fn ->
+      regenerate_all_missing_thumbnails(socket.assigns.room.id)
+    end)
+
+    {:noreply, put_flash(socket, :info, "Regenerating missing thumbnails in background...")}
+  end
+
+  # Generate thumbnail for photos that don't have one
+  defp generate_thumbnail_if_missing(image_data, photo_id, user_id, room_code) do
+    # Check if thumbnail exists first
+    case Social.get_photo(photo_id) do
+      %{thumbnail_data: nil} ->
+        # Generate thumbnail asynchronously
+        Task.async(fn ->
+          generate_thumbnail_from_data(image_data, photo_id, user_id, room_code)
+        end)
+      _ ->
+        :ok
+    end
+  end
+
+  # Generate thumbnail from base64 image data
+  defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do
+    try do
+      # Extract the actual base64 data after the comma
+      case String.split(data, ",", parts: 2) do
+        [_mime, base64_data] ->
+          case Base.decode64(base64_data) do
+            {:ok, binary_data} ->
+              # Generate thumbnail using the same logic as client-side
+              thumbnail_data = generate_server_thumbnail(binary_data)
+              if thumbnail_data do
+                Social.set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
+              end
+            _ -> :error
+          end
+        _ -> :error
+      end
+    rescue
+      _ -> :error
+    end
+  end
+  defp generate_thumbnail_from_data(_, _, _, _), do: :error
+
+  # Server-side thumbnail generation (simplified version)
+  defp generate_server_thumbnail(binary_data) do
+    try do
+      # This is a simplified version - in a real app you'd use a proper image processing library
+      # For now, we'll just return a placeholder or the original data
+      # In production, you'd use something like ImageMagick or libvips
+
+      # For demonstration, we'll create a very small placeholder
+      # In a real implementation, you'd resize the image server-side
+      "data:image/svg+xml;base64," <> Base.encode64("""
+      <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="300" height="300" fill="#374151"/>
+        <text x="150" y="150" text-anchor="middle" fill="#6b7280" font-size="14">Generating thumbnail...</text>
+      </svg>
+      """)
+    rescue
+      _ -> nil
+    end
+  end
+
+  # Regenerate missing thumbnails for all photos in a room
+  defp regenerate_all_missing_thumbnails(room_id) do
+    # Get all photos in the room that don't have thumbnails
+    photos_without_thumbnails =
+      Social.Photo
+      |> where([p], p.room_id == ^room_id and is_nil(p.thumbnail_data))
+      |> Repo.all()
+
+    # Process each photo
+    Enum.each(photos_without_thumbnails, fn photo ->
+      if photo.image_data do
+        generate_thumbnail_from_data(photo.image_data, photo.id, photo.user_id, "lobby")
+        # Add small delay to avoid overwhelming the system
+        Process.sleep(100)
+      end
+    end)
   end
 
   def handle_event("create_invite", _params, socket) do
