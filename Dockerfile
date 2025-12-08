@@ -1,50 +1,94 @@
-### Build stage
-FROM elixir:1.15.7-alpine AS build
+### Build stage (Debian + Node 20)
+# Use Debian instead of Alpine to avoid potential DNS / libc issues in production.
 
-ENV MIX_ENV=prod \
-    LANG=C.UTF-8
+ARG ELIXIR_VERSION=1.16.0
+ARG OTP_VERSION=26.2.1
+ARG DEBIAN_VERSION=bullseye-20231009-slim
 
-RUN apk add --no-cache build-base npm git
+ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
+ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
+
+FROM ${BUILDER_IMAGE} as build
+
+# Install build dependencies and Node.js 20.x (>=20.6.0)
+RUN apt-get update -y && apt-get install -y build-essential git curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update -y \
+    && apt-get install -y nodejs \
+    && echo "=== Node.js version ===" && node --version && npm --version \
+    && node -e "const v=process.versions.node.split('.'); if(+v[0]<20||(v[0]=='20'&&+v[1]<6)){console.error('Node 20.6+ required, got',process.versions.node);process.exit(1)}" \
+    && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /app
 
 # Install hex/rebar
 RUN mix local.hex --force && mix local.rebar --force
 
-# Prepare deps
+# Build env
+ENV MIX_ENV=prod
+
+# Deps
 COPY mix.exs mix.lock ./
-COPY config config
-RUN mix deps.get --only prod
+RUN mix deps.get --only $MIX_ENV
+RUN mkdir config
+COPY config/config.exs config/${MIX_ENV}.exs config/
+RUN mix deps.compile
+
+# Bust cache to ensure fresh code copy
+ADD https://www.google.com /time.now
+
+# Copy app
+COPY priv priv
+COPY assets assets
+COPY lib lib
 
 # Build assets
-COPY assets assets
-RUN npm --prefix assets install
+WORKDIR /app/assets
+RUN npm ci --prefer-offline --no-audit
+RUN node build.js --deploy
+
+# Tailwind (if configured via mix)
+WORKDIR /app
 RUN mix assets.deploy
 
-# Compile and build release
-COPY lib lib
-COPY priv priv
+# Compile
 RUN mix compile
+
+# Runtime config
+COPY config/runtime.exs config/
+
+# Digest & release
+RUN mix phx.digest
 RUN mix release
 
 ### Runtime stage
-FROM alpine:3.18
+FROM ${RUNNER_IMAGE}
 
-ENV MIX_ENV=prod \
-    LANG=C.UTF-8 \
+# Runtime deps
+RUN apt-get update -y && \
+    apt-get install -y libstdc++6 openssl libncurses5 locales ca-certificates curl && \
+    apt-get clean && rm -f /var/lib/apt/lists/*_*
+
+# Locale
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8 \
+    MIX_ENV=prod \
     PORT=4000 \
     PHX_SERVER=true
 
-RUN apk add --no-cache openssl ncurses-libs libstdc++ ca-certificates
-
 WORKDIR /app
 
+# Copy release
 COPY --from=build /app/_build/prod/rel/friends ./
 
-EXPOSE 4000
-
+# Copy migrate/start wrapper
 COPY rel/migrate_and_start.sh /app/migrate_and_start.sh
 RUN chmod +x /app/migrate_and_start.sh
 
+EXPOSE 4000
+
+# Run migrations then start
 CMD ["/app/migrate_and_start.sh"]
 
