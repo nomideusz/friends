@@ -193,40 +193,24 @@ defmodule Friends.Social do
 
   # --- Photos ---
 
-  @photo_fields [
-    :id,
-    :user_id,
-    :user_color,
-    :user_name,
-    :thumbnail_data,
-    :description,
-    :uploaded_at,
-    :inserted_at,
-    :room_id,
-    :content_type,
-    :file_size
-  ]
-
-  def list_photos(room_id, limit \\ 24) do
+  def list_photos(room_id, limit \\ 50) do
     Photo
     |> where([p], p.room_id == ^room_id)
-    |> order_by([p], desc: p.uploaded_at, desc: p.inserted_at)
+    |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
-    |> select([p], map(p, ^@photo_fields))
     |> Repo.all()
   end
 
   @doc """
   List photos from a user's friend network (trusted friends + people who trust them)
   """
-  def list_friends_photos(user_id, limit \\ 24) do
+  def list_friends_photos(user_id, limit \\ 50) do
     friend_user_ids = get_friend_network_ids(user_id)
     
     Photo
     |> where([p], p.user_id in ^friend_user_ids)
-    |> order_by([p], desc: p.uploaded_at, desc: p.inserted_at)
+    |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
-    |> select([p], map(p, ^@photo_fields))
     |> Repo.all()
   end
 
@@ -240,9 +224,8 @@ defmodule Friends.Social do
 
     case result do
       {:ok, photo} ->
-        slim_photo = Map.take(photo, @photo_fields)
-        broadcast(room_code, :new_photo, slim_photo)
-        {:ok, slim_photo}
+        broadcast(room_code, :new_photo, photo)
+        {:ok, photo}
 
       error ->
         error
@@ -252,8 +235,8 @@ defmodule Friends.Social do
   def set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
       when is_integer(photo_id) and is_binary(thumbnail_data) do
     result = Photo
-             |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
-             |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
+    |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
+    |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
 
     case result do
       {1, _} ->

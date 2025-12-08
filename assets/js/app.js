@@ -211,7 +211,7 @@ const Hooks = {
             fileInput.addEventListener('change', async (e) => {
                 const files = e.target.files
                 if (!files || files.length === 0) return
-
+                
                 const file = files[0]
                 
                 if (file.type.startsWith('image/') && file.type !== 'image/gif') {
@@ -219,7 +219,7 @@ const Hooks = {
                         generateThumbnail(file, 600),
                         optimizeImage(file, 1200)
                     ])
-
+                    
                     this.pendingThumbnail = thumbnail
                     
                     if (optimized.size < file.size) {

@@ -14,3 +14,4 @@ defmodule Friends.Repo.Migrations.SeedNomInvite do
   end
 end
 
+

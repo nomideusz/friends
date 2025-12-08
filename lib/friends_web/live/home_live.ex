@@ -1631,7 +1631,6 @@ defmodule FriendsWeb.HomeLive do
       p
       |> Map.put(:type, :photo)
       |> Map.put(:unique_id, "photo-#{p.id}")
-      |> Map.put(:thumbnail_data, Map.get(p, :thumbnail_data) || Map.get(p, :image_data))
     end)
     
     note_items = Enum.map(notes, fn n ->
