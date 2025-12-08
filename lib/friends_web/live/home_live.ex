@@ -1849,6 +1849,8 @@ defmodule FriendsWeb.HomeLive do
 
   # Ignore task failure messages we don't explicitly handle
   def handle_info({_ref, :error}, socket), do: {:noreply, socket}
+  # Ignore task DOWN messages (e.g., async thumbnail generation)
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, socket), do: {:noreply, socket}
 
   # --- Helpers ---
 
