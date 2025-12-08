@@ -1,5 +1,5 @@
 ### Build stage
-FROM hexpm/elixir:1.15.7-erlang-26.1.2-debian-bookworm-20231002 AS build
+FROM hexpm/elixir:1.15.7-erlang-26.1.2-debian-bookworm AS build
 
 ENV MIX_ENV=prod \
     LANG=C.UTF-8
