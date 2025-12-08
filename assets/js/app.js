@@ -152,9 +152,13 @@ const Hooks = {
             const { isNew, publicKey } = await cryptoIdentity.init()
             this.publicKey = publicKey
 
-            // Send identity to server (including public key) with error handling
-            // Retry mechanism to ensure LiveView is connected
-            this.sendUserIdentity(isNew, 0)
+            // Send identity once the socket is connected
+            this.pushEventWhenConnected("set_user_id", {
+                browser_id: this.browserId,
+                fingerprint: this.fingerprint,
+                public_key: this.publicKey,
+                is_new_key: isNew
+            })
             
             // Handle challenge-response authentication
             this.handleEvent("auth_challenge", async ({ challenge }) => {
@@ -176,49 +180,35 @@ const Hooks = {
         reconnected() {
             // On LiveView reconnect, re-send identity so header shows the user immediately
             if (this.browserId && this.fingerprint && this.publicKey) {
-                this.sendUserIdentity(false, 0)
-            }
-        },
-
-        sendUserIdentity(isNew, retryCount = 0) {
-            const maxRetries = 5
-            const baseDelay = 200
-
-            try {
-                this.pushEvent("set_user_id", {
+                this.pushEventWhenConnected("set_user_id", {
                     browser_id: this.browserId,
                     fingerprint: this.fingerprint,
                     public_key: this.publicKey,
-                    is_new_key: isNew
+                    is_new_key: false
                 })
-            } catch (error) {
-                if (retryCount < maxRetries) {
-                    console.warn(`Failed to send user identity (attempt ${retryCount + 1}/${maxRetries + 1}), retrying...`, error)
-                    const delay = baseDelay * Math.pow(2, retryCount) // Exponential backoff
-                    setTimeout(() => this.sendUserIdentity(isNew, retryCount + 1), delay)
-                } else {
-                    console.error("Failed to send user identity after all retries:", error)
-                }
             }
         },
 
-        sendThumbnailUpdate(photoId, thumbnail, retryCount = 0) {
-            const maxRetries = 3
-            const baseDelay = 300
+        pushEventWhenConnected(event, payload, retryCount = 0) {
+            const maxRetries = 8
+            const baseDelay = 150
 
-            try {
-                this.pushEvent("set_thumbnail", {
-                    photo_id: photoId,
-                    thumbnail: thumbnail
-                })
-            } catch (error) {
-                if (retryCount < maxRetries) {
-                    console.warn(`Failed to set thumbnail (attempt ${retryCount + 1}/${maxRetries + 1}), retrying...`, error)
-                    const delay = baseDelay * Math.pow(2, retryCount) // Exponential backoff
-                    setTimeout(() => this.sendThumbnailUpdate(photoId, thumbnail, retryCount + 1), delay)
-                } else {
-                    console.error("Failed to set thumbnail after all retries:", error)
+            if (this.isConnected && this.isConnected()) {
+                try {
+                    this.pushEvent(event, payload)
+                } catch (error) {
+                    if (retryCount < maxRetries) {
+                        const delay = baseDelay * Math.pow(2, retryCount)
+                        setTimeout(() => this.pushEventWhenConnected(event, payload, retryCount + 1), delay)
+                    } else {
+                        console.error(`Failed to push event '${event}' after retries:`, error)
+                    }
                 }
+            } else if (retryCount < maxRetries) {
+                const delay = baseDelay * Math.pow(2, retryCount)
+                setTimeout(() => this.pushEventWhenConnected(event, payload, retryCount + 1), delay)
+            } else {
+                console.error(`LiveView not connected, giving up on event '${event}'`)
             }
         },
         
@@ -233,7 +223,10 @@ const Hooks = {
             
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
-                    this.sendThumbnailUpdate(photo_id, this.pendingThumbnail, 0)
+                    this.pushEventWhenConnected("set_thumbnail", {
+                        photo_id: photo_id,
+                        thumbnail: this.pendingThumbnail
+                    })
                     this.pendingThumbnail = null
                 }
             })
