@@ -1736,15 +1736,20 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
     # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-    updated_items = Enum.map(socket.assigns.streams.items, fn {dom_id, item} ->
-      if item.id == photo_id && is_nil(item.thumbnail_data) do
-        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
-      else
-        {dom_id, item}
-      end
-    end)
+    case socket.assigns[:streams][:items] do
+      nil ->
+        {:noreply, socket}
+      items ->
+        updated_items = Enum.map(items, fn {dom_id, item} ->
+          if item.id == photo_id && is_nil(item.thumbnail_data) do
+            {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
+          else
+            {dom_id, item}
+          end
+        end)
 
-    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
+        {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
+    end
   end
 
   def handle_info({:new_note, note}, socket) do
@@ -1775,20 +1780,25 @@ defmodule FriendsWeb.HomeLive do
   def handle_info(:load_remaining_items, socket) do
     # Load remaining items after initial mount
     room = socket.assigns.room
-    current_count = length(socket.assigns.streams.items)
 
-    if current_count < @max_items do
+    # Safely check if streams exist and get current count
+    current_count = case socket.assigns[:streams][:items] do
+      nil -> 0
+      items -> length(items)
+    end
+
+    if current_count < @max_items and current_count > 0 do
       remaining = @max_items - current_count
-      photos = Social.list_photos(room.id, remaining, offset: 3)  # Skip first 3
-      notes = Social.list_notes(room.id, remaining, offset: 3)
+      photos = Social.list_photos(room.id, remaining, offset: current_count)
+      notes = Social.list_notes(room.id, remaining, offset: current_count)
       items = build_items(photos, notes)
 
-      # Replace the entire stream at once to avoid flickering
-      all_items = socket.assigns.streams.items ++ items
-      {:noreply,
-       socket
-       |> stream(:items, all_items, reset: true, dom_id: &("item-#{&1.unique_id}"))
-       |> assign(:item_count, length(all_items))}
+      # Insert remaining items without resetting the stream
+      socket = Enum.reduce(items, socket, fn item, acc ->
+        stream_insert(acc, :items, item)
+      end)
+
+      {:noreply, assign(socket, :item_count, current_count + length(items))}
     else
       {:noreply, socket}
     end
