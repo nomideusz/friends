@@ -1223,11 +1223,11 @@ defmodule FriendsWeb.HomeLive do
           updated_items =
             Enum.map(socket.streams.items, fn {dom_id, item} ->
               if item.id == photo_id_int do
-                {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
-              else
-                {dom_id, item}
-              end
-            end)
+          {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
+        else
+          {dom_id, item}
+        end
+      end)
 
           {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
         rescue
@@ -1573,22 +1573,16 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
-    # If streams are not yet initialized, skip safely
-    if Map.has_key?(socket, :streams) and match?(%{items: _}, socket.streams) do
-      # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-      updated_items =
-        Enum.map(socket.streams.items, fn {dom_id, item} ->
-          if item.id == photo_id && is_nil(item.thumbnail_data) do
-            {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
-          else
-            {dom_id, item}
-          end
-        end)
+    # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
+    updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
+      if item.id == photo_id && is_nil(item.thumbnail_data) do
+        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
+      else
+        {dom_id, item}
+      end
+    end)
 
-      {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
-    else
-      {:noreply, socket}
-    end
+    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
   end
 
   def handle_info({:new_note, note}, socket) do
