@@ -11,3 +11,4 @@ defmodule Friends.Repo.Migrations.AddPrivateAndOwnerToRooms do
   end
 end
 
+
