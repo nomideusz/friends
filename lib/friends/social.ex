@@ -207,10 +207,10 @@ defmodule Friends.Social do
     :file_size
   ]
 
-  def list_photos(room_id, limit \\ 50) do
+  def list_photos(room_id, limit \\ 24) do
     Photo
     |> where([p], p.room_id == ^room_id)
-    |> order_by([p], desc: p.uploaded_at)
+    |> order_by([p], desc: p.uploaded_at, desc: p.inserted_at)
     |> limit(^limit)
     |> select([p], map(p, ^@photo_fields))
     |> Repo.all()
@@ -219,12 +219,12 @@ defmodule Friends.Social do
   @doc """
   List photos from a user's friend network (trusted friends + people who trust them)
   """
-  def list_friends_photos(user_id, limit \\ 50) do
+  def list_friends_photos(user_id, limit \\ 24) do
     friend_user_ids = get_friend_network_ids(user_id)
     
     Photo
     |> where([p], p.user_id in ^friend_user_ids)
-    |> order_by([p], desc: p.uploaded_at)
+    |> order_by([p], desc: p.uploaded_at, desc: p.inserted_at)
     |> limit(^limit)
     |> select([p], map(p, ^@photo_fields))
     |> Repo.all()
