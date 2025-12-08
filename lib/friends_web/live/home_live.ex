@@ -82,6 +82,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:room_access_denied, false)
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
+      |> assign(:remaining_loaded, false)
       |> stream(:items, items, dom_id: &("item-#{&1.unique_id}"))
       |> allow_upload(:photo,
         accept: ~w(.jpg .jpeg .png .gif .webp),
@@ -1781,29 +1782,33 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_info(:load_remaining_items, socket) do
-    # Load remaining items after initial mount
-    room = socket.assigns.room
+    # Load remaining items after initial mount without crashing if streams aren't enumerable
+    # Use item_count assign instead of trying to measure LiveStream struct directly
+    current_count = socket.assigns.item_count || 0
 
-    # Safely check if streams exist and get current count
-    current_count = case socket.assigns[:streams][:items] do
-      nil -> 0
-      items -> length(items)
-    end
+    cond do
+      socket.assigns.remaining_loaded ->
+        {:noreply, socket}
 
-    if current_count < @max_items and current_count > 0 do
-      remaining = @max_items - current_count
-      photos = Social.list_photos(room.id, remaining, offset: current_count)
-      notes = Social.list_notes(room.id, remaining, offset: current_count)
-      items = build_items(photos, notes)
+      current_count >= @max_items ->
+        {:noreply, assign(socket, :remaining_loaded, true)}
 
-      # Insert remaining items without resetting the stream
-      socket = Enum.reduce(items, socket, fn item, acc ->
-        stream_insert(acc, :items, item)
-      end)
+      true ->
+        room = socket.assigns.room
+        remaining = @max_items - current_count
+        photos = Social.list_photos(room.id, remaining, offset: current_count)
+        notes = Social.list_notes(room.id, remaining, offset: current_count)
+        items = build_items(photos, notes)
 
-      {:noreply, assign(socket, :item_count, current_count + length(items))}
-    else
-      {:noreply, socket}
+        socket =
+          Enum.reduce(items, socket, fn item, acc ->
+            stream_insert(acc, :items, item)
+          end)
+
+        {:noreply,
+         socket
+         |> assign(:item_count, current_count + length(items))
+         |> assign(:remaining_loaded, true)}
     end
   end
 
