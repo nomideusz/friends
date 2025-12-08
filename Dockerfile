@@ -1,12 +1,10 @@
 ### Build stage
-FROM hexpm/elixir:1.15.7-erlang-26.1.2-debian-bookworm AS build
+FROM hexpm/elixir:1.15.7-erlang-26.1.2-alpine-3.18 AS build
 
 ENV MIX_ENV=prod \
     LANG=C.UTF-8
 
-RUN apt-get update && \
-    apt-get install -y build-essential npm git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache build-base npm git
 
 WORKDIR /app
 
@@ -30,16 +28,14 @@ RUN mix compile
 RUN mix release
 
 ### Runtime stage
-FROM debian:bookworm-slim
+FROM alpine:3.18
 
 ENV MIX_ENV=prod \
     LANG=C.UTF-8 \
     PORT=4000 \
     PHX_SERVER=true
 
-RUN apt-get update && \
-    apt-get install -y openssl libssl3 ca-certificates && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache openssl ncurses-libs libstdc++ ca-certificates
 
 WORKDIR /app
 
