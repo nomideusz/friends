@@ -54,7 +54,7 @@ function getBrowserId() {
 }
 
 // Generate thumbnail from image file
-function generateThumbnail(file, maxSize = 600) {
+function generateThumbnail(file, maxSize = 300) {
     return new Promise(resolve => {
         if (!file.type.startsWith('image/') || file.type === 'image/gif') {
             resolve(null)
@@ -82,7 +82,7 @@ function generateThumbnail(file, maxSize = 600) {
             ctx.imageSmoothingQuality = 'high'
             ctx.drawImage(img, 0, 0, width, height)
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
             URL.revokeObjectURL(img.src)
             resolve(dataUrl)
         }

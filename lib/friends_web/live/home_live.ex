@@ -5,7 +5,7 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social.Presence
   require Logger
 
-  @max_items 50
+  @max_items 20
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
   def mount(%{"room" => room_code}, _session, socket) do
@@ -316,6 +316,7 @@ defmodule FriendsWeb.HomeLive do
                         alt=""
                         class="w-full h-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
                     <% else %>
                       <div class="w-full h-full flex items-center justify-center text-neutral-700 text-xs animate-pulse bg-neutral-900">
