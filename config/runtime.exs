@@ -31,12 +31,20 @@ if config_env() == :prod do
 
   config :friends, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  allowed_origin =
+    case System.get_env("ORIGIN_CHECK") do
+      nil -> "https://#{host}"
+      "" -> "https://#{host}"
+      value -> value
+    end
+
   config :friends, FriendsWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
       ip: {0, 0, 0, 0, 0, 0, 0, 0},
       port: port
     ],
-    secret_key_base: secret_key_base
+    secret_key_base: secret_key_base,
+    check_origin: [allowed_origin]
 end
 
