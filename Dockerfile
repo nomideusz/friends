@@ -1,5 +1,5 @@
 ### Build stage
-FROM hexpm/elixir:1.15.7-erlang-26.1.2-alpine-3.18 AS build
+FROM elixir:1.15.7-alpine AS build
 
 ENV MIX_ENV=prod \
     LANG=C.UTF-8
