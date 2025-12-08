@@ -198,6 +198,20 @@ defmodule Friends.Social do
     |> where([p], p.room_id == ^room_id)
     |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
+    |> select([p], %{
+      id: p.id,
+      user_id: p.user_id,
+      user_color: p.user_color,
+      user_name: p.user_name,
+      thumbnail_data: p.thumbnail_data,
+      content_type: p.content_type,
+      file_size: p.file_size,
+      description: p.description,
+      uploaded_at: p.uploaded_at,
+      room_id: p.room_id,
+      inserted_at: p.inserted_at,
+      updated_at: p.updated_at
+    })
     |> Repo.all()
   end
 
@@ -206,15 +220,39 @@ defmodule Friends.Social do
   """
   def list_friends_photos(user_id, limit \\ 50) do
     friend_user_ids = get_friend_network_ids(user_id)
-    
+
     Photo
     |> where([p], p.user_id in ^friend_user_ids)
     |> order_by([p], desc: p.uploaded_at)
     |> limit(^limit)
+    |> select([p], %{
+      id: p.id,
+      user_id: p.user_id,
+      user_color: p.user_color,
+      user_name: p.user_name,
+      thumbnail_data: p.thumbnail_data,
+      content_type: p.content_type,
+      file_size: p.file_size,
+      description: p.description,
+      uploaded_at: p.uploaded_at,
+      room_id: p.room_id,
+      inserted_at: p.inserted_at,
+      updated_at: p.updated_at
+    })
     |> Repo.all()
   end
 
   def get_photo(id), do: Repo.get(Photo, id)
+
+  @doc """
+  Get full-size image data for a photo (used for lazy loading full images)
+  """
+  def get_photo_image_data(id) do
+    Photo
+    |> where([p], p.id == ^id)
+    |> select([p], %{image_data: p.image_data, content_type: p.content_type})
+    |> Repo.one()
+  end
 
   def create_photo(attrs, room_code) do
     result =

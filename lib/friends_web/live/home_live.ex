@@ -72,6 +72,8 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:member_invite_results, [])
       |> assign(:user_private_rooms, [])
       |> assign(:room_access_denied, false)
+      |> assign(:show_image_modal, false)
+      |> assign(:full_image_data, nil)
       |> stream(:items, items, dom_id: &("item-#{&1.unique_id}"))
       |> allow_upload(:photo,
         accept: ~w(.jpg .jpeg .png .gif .webp),
@@ -307,7 +309,7 @@ defmodule FriendsWeb.HomeLive do
             >
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="group relative aspect-square bg-neutral-900 overflow-hidden rounded-lg border border-neutral-800/80 shadow-md shadow-black/30 hover:border-neutral-700 transition">
+                  <div id={dom_id} class="group relative aspect-square bg-neutral-900 overflow-hidden rounded-lg border border-neutral-800/80 shadow-md shadow-black/30 hover:border-neutral-700 transition cursor-pointer" phx-click="view_full_image" phx-value-photo-id={item.id}>
                     <%= if item.thumbnail_data do %>
                       <img
                         src={item.thumbnail_data}
@@ -825,6 +827,20 @@ defmodule FriendsWeb.HomeLive do
             </div>
           </div>
         <% end %>
+
+        <%!-- Image Modal --%>
+        <%= if @show_image_modal && @full_image_data do %>
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90" phx-click-away="close_image_modal">
+            <div class="relative max-w-4xl max-h-[90vh] flex items-center justify-center">
+              <button type="button" phx-click="close_image_modal" class="absolute -top-12 right-0 text-white hover:text-neutral-300 text-xl cursor-pointer">×</button>
+              <img
+                src={@full_image_data.data}
+                alt=""
+                class="max-w-full max-h-full object-contain"
+              />
+            </div>
+          </div>
+        <% end %>
     </div>
     """
   end
@@ -1255,13 +1271,33 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("close_settings_modal", _params, socket) do
-    {:noreply, 
-     socket 
+    {:noreply,
+     socket
      |> assign(:show_settings_modal, false)
      |> assign(:friend_search, "")
      |> assign(:friend_search_results, [])
      |> assign(:member_invite_search, "")
      |> assign(:member_invite_results, [])}
+  end
+
+  def handle_event("view_full_image", %{"photo-id" => photo_id}, socket) do
+    case Social.get_photo_image_data(photo_id) do
+      %{image_data: image_data, content_type: content_type} when not is_nil(image_data) ->
+        {:noreply,
+         socket
+         |> assign(:show_image_modal, true)
+         |> assign(:full_image_data, %{data: image_data, content_type: content_type})}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("close_image_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_image_modal, false)
+     |> assign(:full_image_data, nil)}
   end
 
   def handle_event("create_invite", _params, socket) do
