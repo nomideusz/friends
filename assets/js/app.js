@@ -153,19 +153,8 @@ const Hooks = {
             this.publicKey = publicKey
 
             // Send identity to server (including public key) with error handling
-            // Small delay to ensure LiveView is connected
-            setTimeout(() => {
-                try {
-                    this.pushEvent("set_user_id", {
-                        browser_id: this.browserId,
-                        fingerprint: this.fingerprint,
-                        public_key: this.publicKey,
-                        is_new_key: isNew
-                    })
-                } catch (error) {
-                    console.warn("Failed to send user identity, will retry on reconnect:", error)
-                }
-            }, 100)
+            // Retry mechanism to ensure LiveView is connected
+            this.sendUserIdentity(isNew, 0)
             
             // Handle challenge-response authentication
             this.handleEvent("auth_challenge", async ({ challenge }) => {
@@ -187,18 +176,49 @@ const Hooks = {
         reconnected() {
             // On LiveView reconnect, re-send identity so header shows the user immediately
             if (this.browserId && this.fingerprint && this.publicKey) {
-                setTimeout(() => {
-                    try {
-                        this.pushEvent("set_user_id", {
-                            browser_id: this.browserId,
-                            fingerprint: this.fingerprint,
-                            public_key: this.publicKey,
-                            is_new_key: false
-                        })
-                    } catch (error) {
-                        console.warn("Failed to resend user identity on reconnect:", error)
-                    }
-                }, 100)
+                this.sendUserIdentity(false, 0)
+            }
+        },
+
+        sendUserIdentity(isNew, retryCount = 0) {
+            const maxRetries = 5
+            const baseDelay = 200
+
+            try {
+                this.pushEvent("set_user_id", {
+                    browser_id: this.browserId,
+                    fingerprint: this.fingerprint,
+                    public_key: this.publicKey,
+                    is_new_key: isNew
+                })
+            } catch (error) {
+                if (retryCount < maxRetries) {
+                    console.warn(`Failed to send user identity (attempt ${retryCount + 1}/${maxRetries + 1}), retrying...`, error)
+                    const delay = baseDelay * Math.pow(2, retryCount) // Exponential backoff
+                    setTimeout(() => this.sendUserIdentity(isNew, retryCount + 1), delay)
+                } else {
+                    console.error("Failed to send user identity after all retries:", error)
+                }
+            }
+        },
+
+        sendThumbnailUpdate(photoId, thumbnail, retryCount = 0) {
+            const maxRetries = 3
+            const baseDelay = 300
+
+            try {
+                this.pushEvent("set_thumbnail", {
+                    photo_id: photoId,
+                    thumbnail: thumbnail
+                })
+            } catch (error) {
+                if (retryCount < maxRetries) {
+                    console.warn(`Failed to set thumbnail (attempt ${retryCount + 1}/${maxRetries + 1}), retrying...`, error)
+                    const delay = baseDelay * Math.pow(2, retryCount) // Exponential backoff
+                    setTimeout(() => this.sendThumbnailUpdate(photoId, thumbnail, retryCount + 1), delay)
+                } else {
+                    console.error("Failed to set thumbnail after all retries:", error)
+                }
             }
         },
         
@@ -213,15 +233,8 @@ const Hooks = {
             
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
-                    try {
-                        this.pushEvent("set_thumbnail", {
-                            photo_id: photo_id,
-                            thumbnail: this.pendingThumbnail
-                        })
-                        this.pendingThumbnail = null
-                    } catch (error) {
-                        console.warn("Failed to set thumbnail:", error)
-                    }
+                    this.sendThumbnailUpdate(photo_id, this.pendingThumbnail, 0)
+                    this.pendingThumbnail = null
                 }
             })
             
