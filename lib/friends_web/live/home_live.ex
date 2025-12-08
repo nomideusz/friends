@@ -1274,8 +1274,10 @@ defmodule FriendsWeb.HomeLive do
           end
 
           # Update the stream so everyone (including sender) sees the thumbnail
+          items = get_in(socket.assigns, [:streams, :items]) || []
+
           updated_items =
-            Enum.map(socket.streams.items, fn {dom_id, item} ->
+            Enum.map(items, fn {dom_id, item} ->
               if item.id == photo_id_int do
                 {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
               else
@@ -1740,20 +1742,17 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
     # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-    case socket.assigns[:streams][:items] do
-      nil ->
-        {:noreply, socket}
-      items ->
-        updated_items = Enum.map(items, fn {dom_id, item} ->
-          if item.id == photo_id && is_nil(item.thumbnail_data) do
-            {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
-          else
-            {dom_id, item}
-          end
-        end)
+    items = get_in(socket.assigns, [:streams, :items]) || []
 
-        {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
-    end
+    updated_items = Enum.map(items, fn {dom_id, item} ->
+      if item.id == photo_id && is_nil(item.thumbnail_data) do
+        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
+      else
+        {dom_id, item}
+      end
+    end)
+
+    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
   end
 
   def handle_info({:new_note, note}, socket) do
@@ -1811,6 +1810,9 @@ defmodule FriendsWeb.HomeLive do
          |> assign(:remaining_loaded, true)}
     end
   end
+
+  # Ignore task failure messages we don't explicitly handle
+  def handle_info({_ref, :error}, socket), do: {:noreply, socket}
 
   # --- Helpers ---
 
