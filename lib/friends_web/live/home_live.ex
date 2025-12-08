@@ -1574,15 +1574,23 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
     # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-    updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
-      if item.id == photo_id && is_nil(item.thumbnail_data) do
-        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
-      else
-        {dom_id, item}
-      end
-    end)
+    Logger.info("Received photo_thumbnail_updated for photo #{photo_id}")
+    if socket.streams && socket.streams.items do
+      Logger.info("Streams initialized, updating thumbnail")
+      updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
+        if item.id == photo_id && is_nil(item.thumbnail_data) do
+          Logger.info("Updating thumbnail for photo #{photo_id}")
+          {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
+        else
+          {dom_id, item}
+        end
+      end)
 
-    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
+      {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
+    else
+      Logger.warning("Received photo_thumbnail_updated but streams not initialized: streams=#{inspect(socket.streams)}")
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:new_note, note}, socket) do
