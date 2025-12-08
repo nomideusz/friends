@@ -312,8 +312,10 @@ defmodule FriendsWeb.HomeLive do
                       <img
                         src={item.thumbnail_data}
                         alt=""
-                        class="w-full h-full object-cover"
+                        class="w-full h-full object-cover transition-opacity duration-300"
                         loading="lazy"
+                        style="opacity: 0;"
+                        onload="this.style.opacity = '1';"
                       />
                     <% else %>
                       <div class="w-full h-full flex items-center justify-center text-neutral-700 text-xs animate-pulse bg-neutral-900">
