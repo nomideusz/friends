@@ -1611,7 +1611,7 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
     # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-    updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
+    updated_items = Enum.map(socket.assigns.streams.items, fn {dom_id, item} ->
       if item.id == photo_id && is_nil(item.thumbnail_data) do
         {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
       else
