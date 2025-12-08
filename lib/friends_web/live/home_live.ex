@@ -37,6 +37,9 @@ defmodule FriendsWeb.HomeLive do
       Social.subscribe(room.code)
       Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
 
+      # Request identity from client once socket is connected
+      push_event(socket, "request_identity", %{})
+
       # Load remaining items after initial mount for better performance
       send(self(), :load_remaining_items)
     end

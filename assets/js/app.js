@@ -151,14 +151,18 @@ const Hooks = {
             // Initialize crypto identity
             const { isNew, publicKey } = await cryptoIdentity.init()
             this.publicKey = publicKey
-
-            // Send identity once the socket is connected
-            this.pushEventWhenConnected("set_user_id", {
+            this.identityPayload = {
                 browser_id: this.browserId,
                 fingerprint: this.fingerprint,
                 public_key: this.publicKey,
                 is_new_key: isNew
-            })
+            }
+
+            // If already connected, send immediately
+            this.maybeSendIdentity()
+
+            // Server can request identity when it knows the socket is ready
+            this.handleEvent("request_identity", () => this.maybeSendIdentity())
             
             // Handle challenge-response authentication
             this.handleEvent("auth_challenge", async ({ challenge }) => {
@@ -179,36 +183,31 @@ const Hooks = {
         },
         reconnected() {
             // On LiveView reconnect, re-send identity so header shows the user immediately
-            if (this.browserId && this.fingerprint && this.publicKey) {
-                this.pushEventWhenConnected("set_user_id", {
-                    browser_id: this.browserId,
-                    fingerprint: this.fingerprint,
-                    public_key: this.publicKey,
-                    is_new_key: false
-                })
-            }
+            this.maybeSendIdentity()
         },
 
-        pushEventWhenConnected(event, payload, retryCount = 0) {
+        maybeSendIdentity(retryCount = 0) {
             const maxRetries = 8
             const baseDelay = 150
 
+            if (!this.identityPayload) return
+
             if (this.isConnected && this.isConnected()) {
                 try {
-                    this.pushEvent(event, payload)
+                    this.pushEvent("set_user_id", this.identityPayload)
                 } catch (error) {
                     if (retryCount < maxRetries) {
                         const delay = baseDelay * Math.pow(2, retryCount)
-                        setTimeout(() => this.pushEventWhenConnected(event, payload, retryCount + 1), delay)
+                        setTimeout(() => this.maybeSendIdentity(retryCount + 1), delay)
                     } else {
-                        console.error(`Failed to push event '${event}' after retries:`, error)
+                        console.error("Failed to send user identity after retries:", error)
                     }
                 }
             } else if (retryCount < maxRetries) {
                 const delay = baseDelay * Math.pow(2, retryCount)
-                setTimeout(() => this.pushEventWhenConnected(event, payload, retryCount + 1), delay)
+                setTimeout(() => this.maybeSendIdentity(retryCount + 1), delay)
             } else {
-                console.error(`LiveView not connected, giving up on event '${event}'`)
+                console.warn("LiveView not connected, giving up on sending identity for now")
             }
         },
         
