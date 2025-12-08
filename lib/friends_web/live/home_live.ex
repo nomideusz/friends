@@ -5,7 +5,7 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social.Presence
   require Logger
 
-  @max_items 12
+  @max_items 50
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
   def mount(%{"room" => room_code}, _session, socket) do
@@ -312,10 +312,8 @@ defmodule FriendsWeb.HomeLive do
                       <img
                         src={item.thumbnail_data}
                         alt=""
-                        class="w-full h-full object-cover transition-opacity duration-300"
+                        class="w-full h-full object-cover"
                         loading="lazy"
-                        style="opacity: 0;"
-                        onload="this.style.opacity = '1';"
                       />
                     <% else %>
                       <div class="w-full h-full flex items-center justify-center text-neutral-700 text-xs animate-pulse bg-neutral-900">
@@ -1576,23 +1574,15 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
     # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-    Logger.info("Received photo_thumbnail_updated for photo #{photo_id}")
-    if socket.streams && socket.streams.items do
-      Logger.info("Streams initialized, updating thumbnail")
-      updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
-        if item.id == photo_id && is_nil(item.thumbnail_data) do
-          Logger.info("Updating thumbnail for photo #{photo_id}")
-          {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
-        else
-          {dom_id, item}
-        end
-      end)
+    updated_items = Enum.map(socket.streams.items, fn {dom_id, item} ->
+      if item.id == photo_id && is_nil(item.thumbnail_data) do
+        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
+      else
+        {dom_id, item}
+      end
+    end)
 
-      {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
-    else
-      Logger.warning("Received photo_thumbnail_updated but streams not initialized: streams=#{inspect(socket.streams)}")
-      {:noreply, socket}
-    end
+    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
   end
 
   def handle_info({:new_note, note}, socket) do
@@ -1635,7 +1625,6 @@ defmodule FriendsWeb.HomeLive do
       p
       |> Map.put(:type, :photo)
       |> Map.put(:unique_id, "photo-#{p.id}")
-      |> Map.put(:thumbnail_data, p.thumbnail_data || p.image_data)
     end)
     
     note_items = Enum.map(notes, fn n ->
