@@ -187,27 +187,20 @@ const Hooks = {
         },
 
         maybeSendIdentity(retryCount = 0) {
-            const maxRetries = 8
-            const baseDelay = 150
+            const maxRetries = 10
+            const baseDelay = 300
 
             if (!this.identityPayload) return
 
-            if (this.isConnected && this.isConnected()) {
-                try {
-                    this.pushEvent("set_user_id", this.identityPayload)
-                } catch (error) {
-                    if (retryCount < maxRetries) {
-                        const delay = baseDelay * Math.pow(2, retryCount)
-                        setTimeout(() => this.maybeSendIdentity(retryCount + 1), delay)
-                    } else {
-                        console.error("Failed to send user identity after retries:", error)
-                    }
+            try {
+                this.pushEvent("set_user_id", this.identityPayload)
+            } catch (error) {
+                if (retryCount < maxRetries) {
+                    const delay = baseDelay * Math.pow(2, retryCount)
+                    setTimeout(() => this.maybeSendIdentity(retryCount + 1), delay)
+                } else {
+                    console.error("Failed to send user identity after retries:", error)
                 }
-            } else if (retryCount < maxRetries) {
-                const delay = baseDelay * Math.pow(2, retryCount)
-                setTimeout(() => this.maybeSendIdentity(retryCount + 1), delay)
-            } else {
-                console.warn("LiveView not connected, giving up on sending identity for now")
             }
         },
         
