@@ -235,8 +235,8 @@ defmodule Friends.Social do
   def set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
       when is_integer(photo_id) and is_binary(thumbnail_data) do
     result = Photo
-    |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
-    |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
+             |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
+             |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
 
     case result do
       {1, _} ->
@@ -884,4 +884,3 @@ defmodule Friends.Social do
     )
   end
 end
-
