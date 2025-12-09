@@ -427,7 +427,7 @@ defmodule FriendsWeb.HomeLive do
             >
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="photo-item group relative aspect-square glass overflow-hidden rounded-xl border border-white/5 hover:border-white/15 cursor-pointer" phx-click="view_full_image" phx-value-photo-id={item.id}>
+                  <div id={dom_id} class="photo-item group relative aspect-square glass overflow-hidden rounded-xl border border-white/5 hover:border-white/15 cursor-pointer" phx-click="view_full_image" phx-value-photo_id={item.id}>
                     <%= if item.thumbnail_data do %>
                       <img
                         src={item.thumbnail_data}
