@@ -1159,6 +1159,11 @@ defmodule FriendsWeb.HomeLive do
 
         {:noreply,
          socket
+         |> assign(:current_user, nil)
+         |> assign(:user_id, nil)
+         |> assign(:user_color, nil)
+         |> assign(:user_name, nil)
+         |> assign(:room_access_denied, true)
          |> assign(:pending_auth, %{user: user, challenge: challenge, public_key: public_key})
          |> assign(:browser_id, browser_id)
          |> assign(:fingerprint, fingerprint)
@@ -1231,6 +1236,13 @@ defmodule FriendsWeb.HomeLive do
           {:noreply,
            socket
            |> assign(:pending_auth, nil)
+           |> assign(:current_user, nil)
+           |> assign(:user_id, nil)
+           |> assign(:user_color, nil)
+           |> assign(:user_name, nil)
+           |> assign(:room_access_denied, true)
+           |> assign(:viewers, [])
+           |> assign(:photo_order, [])
            |> put_flash(:error, "authentication failed")}
         end
       
