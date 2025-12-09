@@ -17,6 +17,7 @@ erl_crash.dump
 
 # Editor
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
