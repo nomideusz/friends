@@ -5,7 +5,9 @@ defmodule FriendsWeb.Endpoint do
     store: :cookie,
     key: "_friends_key",
     signing_salt: "friends_salt",
-    same_site: "Lax"
+    same_site: "Strict",
+    http_only: true,
+    secure: Mix.env() == :prod
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

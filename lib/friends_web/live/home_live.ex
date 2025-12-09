@@ -169,7 +169,7 @@ defmodule FriendsWeb.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp">
+    <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
         <%!-- Animated opalescent background --%>
         <div class="opal-bg"></div>
 
@@ -524,11 +524,11 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-6 modal-backdrop" phx-click-away="close_room_modal">
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-6 modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
             <div class="w-full max-w-lg glass-strong rounded-2xl p-8 opal-glow">
               <div class="flex items-center justify-between mb-8">
-                <h2 class="text-base font-medium tracking-wide opal-text">spaces</h2>
-                <button type="button" phx-click="close_room_modal" class="text-neutral-500 hover:text-white cursor-pointer text-xl">×</button>
+                <h2 id="room-modal-title" class="text-base font-medium tracking-wide opal-text">spaces</h2>
+                <button type="button" phx-click="close_room_modal" class="text-neutral-500 hover:text-white cursor-pointer text-xl" aria-label="Close spaces dialog">×</button>
               </div>
 
               <%!-- Current Location --%>
@@ -1054,17 +1054,21 @@ defmodule FriendsWeb.HomeLive do
             class="fixed inset-0 z-50 flex items-center justify-center p-8 modal-backdrop"
             phx-click-away="close_image_modal"
             phx-window-keydown="carousel_nav"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Photo viewer"
           >
             <button
               type="button"
               phx-click="prev_photo"
               class="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+              aria-label="Previous photo"
             >
               ‹
             </button>
 
             <div class="relative max-w-6xl max-h-[90vh] flex items-center justify-center">
-              <button type="button" phx-click="close_image_modal" class="absolute -top-14 right-0 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all">×</button>
+              <button type="button" phx-click="close_image_modal" class="absolute -top-14 right-0 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all" aria-label="Close photo viewer">×</button>
 
               <%= if @full_image_data[:user_id] == @user_id do %>
                 <button
@@ -1073,6 +1077,7 @@ defmodule FriendsWeb.HomeLive do
                   phx-value-id={@full_image_data[:photo_id]}
                   data-confirm="delete?"
                   class="absolute -top-14 left-0 w-16 h-10 flex items-center justify-center glass rounded-full text-red-400 hover:text-red-200 text-xs cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+                  aria-label="Delete this photo"
                 >
                   delete
                 </button>
@@ -1081,7 +1086,7 @@ defmodule FriendsWeb.HomeLive do
               <div class="rounded-2xl overflow-hidden opal-glow">
                 <img
                   src={@full_image_data.data}
-                  alt=""
+                  alt="Full size photo"
                   class="max-w-full max-h-[85vh] object-contain loaded"
                 />
               </div>
@@ -1091,6 +1096,7 @@ defmodule FriendsWeb.HomeLive do
               type="button"
               phx-click="next_photo"
               class="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+              aria-label="Next photo"
             >
               ›
             </button>
@@ -1174,22 +1180,22 @@ defmodule FriendsWeb.HomeLive do
       %{user: user, challenge: expected_challenge, public_key: public_key} when challenge == expected_challenge ->
         # Verify the signature
         if Social.verify_signature(public_key, challenge, signature) do
-          Logger.info("Auth success user=#{user.username} id=#{user.id}")
+          Logger.debug("Auth success for session=#{socket.assigns.session_id}")
           # Authentication successful!
           if is_nil(socket.assigns.browser_id) == false do
             Social.link_device_to_user(socket.assigns.browser_id, user.id)
           end
-          
+
           color = Enum.at(@colors, rem(user.id, length(@colors)))
           user_id = "user-#{user.id}"
           user_name = user.display_name || user.username
-          
+
           Presence.track_user(self(), room.code, user_id, color, user_name)
           viewers = Presence.list_users(room.code)
 
           # Load user's private rooms
           private_rooms = Social.list_user_private_rooms(user.id)
-          
+
           # Check access for private rooms
           can_access = Social.can_access_room?(room, user.id)
 
@@ -1203,55 +1209,18 @@ defmodule FriendsWeb.HomeLive do
            |> assign(:viewers, viewers)
            |> assign(:invites, Social.list_user_invites(user.id))
            |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
-          |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
+           |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
            |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
            |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
            |> assign(:user_private_rooms, private_rooms)
            |> assign(:room_access_denied, not can_access)}
         else
-          pk_x = public_key |> Map.get("x") |> to_string() |> String.slice(0, 8)
-          Logger.warning("Auth verify failed user=#{user.username} id=#{user.id} pk_x=#{pk_x}")
-
-          # Dev bypass: if in dev and keys match user, accept to unblock
-          dev_bypass =
-            Mix.env() == :dev and
-              Social.get_user(user.id) &&
-              Social.get_user(user.id).public_key["x"] == public_key["x"] &&
-              Social.get_user(user.id).public_key["y"] == public_key["y"]
-
-          if dev_bypass do
-            Logger.warning("Dev bypass: accepting auth without valid signature for user=#{user.username}")
-            # Re-run the success branch without re-verifying
-            color = Enum.at(@colors, rem(user.id, length(@colors)))
-            user_id = "user-#{user.id}"
-            user_name = user.display_name || user.username
-            Presence.track_user(self(), room.code, user_id, color, user_name)
-            viewers = Presence.list_users(room.code)
-            private_rooms = Social.list_user_private_rooms(user.id)
-            can_access = Social.can_access_room?(room, user.id)
-
-            {:noreply,
-             socket
-             |> assign(:current_user, user)
-             |> assign(:pending_auth, nil)
-             |> assign(:user_id, user_id)
-             |> assign(:user_color, color)
-             |> assign(:user_name, user_name)
-             |> assign(:viewers, viewers)
-             |> assign(:invites, Social.list_user_invites(user.id))
-             |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
-            |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
-             |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
-             |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
-             |> assign(:user_private_rooms, private_rooms)
-             |> assign(:room_access_denied, not can_access)}
-          else
-            # Signature invalid - treat as anonymous
-            {:noreply,
-             socket
-             |> assign(:pending_auth, nil)
-             |> put_flash(:error, "authentication failed")}
-          end
+          Logger.warning("Auth signature verification failed for session=#{socket.assigns.session_id}")
+          # Signature invalid - treat as anonymous
+          {:noreply,
+           socket
+           |> assign(:pending_auth, nil)
+           |> put_flash(:error, "authentication failed")}
         end
       
       _ ->
@@ -1265,7 +1234,6 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("save", _params, socket) do
-    IO.inspect("SAVE EVENT CALLED", label: "FORM_SUBMIT")
     {:noreply, socket}
   end
 
@@ -1274,44 +1242,52 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("delete_photo", %{"id" => id}, socket) do
-    photo_id = String.to_integer(id)
+    case safe_to_integer(id) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "invalid id")}
 
-    case Social.get_photo(photo_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "not found")}
+      {:ok, photo_id} ->
+        case Social.get_photo(photo_id) do
+          nil ->
+            {:noreply, put_flash(socket, :error, "not found")}
 
-      photo ->
-        if photo.user_id == socket.assigns.user_id do
-          case Social.delete_photo(photo_id, socket.assigns.room.code) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> assign(:item_count, max(0, socket.assigns.item_count - 1))
-               |> maybe_close_deleted_photo(photo_id)
-               |> assign(:photo_order, remove_photo_from_order(socket.assigns.photo_order, photo_id))
-               |> stream_delete(:items, %{id: photo_id, unique_id: "photo-#{photo_id}"})}
+          photo ->
+            if photo.user_id == socket.assigns.user_id do
+              case Social.delete_photo(photo_id, socket.assigns.room.code) do
+                {:ok, _} ->
+                  {:noreply,
+                   socket
+                   |> assign(:item_count, max(0, socket.assigns.item_count - 1))
+                   |> maybe_close_deleted_photo(photo_id)
+                   |> assign(:photo_order, remove_photo_from_order(socket.assigns.photo_order, photo_id))
+                   |> stream_delete(:items, %{id: photo_id, unique_id: "photo-#{photo_id}"})}
 
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, "failed")}
-          end
-        else
-          {:noreply, put_flash(socket, :error, "not yours")}
+                {:error, _} ->
+                  {:noreply, put_flash(socket, :error, "failed")}
+              end
+            else
+              {:noreply, put_flash(socket, :error, "not yours")}
+            end
         end
     end
   end
 
   def handle_event("delete_note", %{"id" => id}, socket) do
-    note_id = String.to_integer(id)
-
-    case Social.delete_note(note_id, socket.assigns.user_id, socket.assigns.room.code) do
-      {:ok, _} ->
-        {:noreply,
-         socket
-         |> assign(:item_count, max(0, socket.assigns.item_count - 1))
-         |> stream_delete(:items, %{id: note_id, unique_id: "note-#{note_id}"})}
-
+    case safe_to_integer(id) do
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "cannot delete")}
+        {:noreply, put_flash(socket, :error, "invalid id")}
+
+      {:ok, note_id} ->
+        case Social.delete_note(note_id, socket.assigns.user_id, socket.assigns.room.code) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(:item_count, max(0, socket.assigns.item_count - 1))
+             |> stream_delete(:items, %{id: note_id, unique_id: "note-#{note_id}"})}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "cannot delete")}
+        end
     end
   end
 
@@ -1517,9 +1493,24 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  # Safe integer parsing to prevent crashes on invalid input
+  defp safe_to_integer(value) when is_integer(value), do: {:ok, value}
+  defp safe_to_integer(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {num, ""} -> {:ok, num}
+      _ -> {:error, :invalid_integer}
+    end
+  end
+  defp safe_to_integer(_), do: {:error, :invalid_integer}
+
   defp normalize_photo_id(photo_id) when is_integer(photo_id), do: photo_id
-  defp normalize_photo_id(photo_id) when is_binary(photo_id), do: String.to_integer(photo_id)
-  defp normalize_photo_id(photo_id), do: photo_id |> to_string() |> String.to_integer()
+  defp normalize_photo_id(photo_id) when is_binary(photo_id) do
+    case safe_to_integer(photo_id) do
+      {:ok, id} -> id
+      {:error, _} -> nil
+    end
+  end
+  defp normalize_photo_id(_), do: nil
 
   # Settings modal events
   def handle_event("open_settings_modal", _params, socket) do
@@ -1544,7 +1535,7 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:member_invite_results, [])}
   end
 
-  def handle_event("view_full_image", %{"photo-id" => photo_id}, socket) do
+  def handle_event("view_full_image", %{"photo_id" => photo_id}, socket) do
     {:noreply, load_photo_into_modal(socket, photo_id)}
   end
 
@@ -1576,13 +1567,71 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("regenerate_thumbnails", _params, socket) do
-    # Start background task to regenerate missing thumbnails
-    Task.async(fn ->
-      regenerate_all_missing_thumbnails(socket.assigns.room.id, socket.assigns.room.code)
-    end)
+  # Global keyboard handler for accessibility
+  def handle_event("handle_keydown", %{"key" => "Escape"}, socket) do
+    cond do
+      socket.assigns.show_image_modal ->
+        {:noreply,
+         socket
+         |> assign(:show_image_modal, false)
+         |> assign(:full_image_data, nil)
+         |> assign(:current_photo_id, nil)}
 
-    {:noreply, put_flash(socket, :info, "Regenerating missing thumbnails in background...")}
+      socket.assigns.show_room_modal ->
+        {:noreply, assign(socket, :show_room_modal, false)}
+
+      socket.assigns.show_settings_modal ->
+        {:noreply,
+         socket
+         |> assign(:show_settings_modal, false)
+         |> assign(:friend_search, "")
+         |> assign(:friend_search_results, [])
+         |> assign(:member_invite_search, "")
+         |> assign(:member_invite_results, [])}
+
+      socket.assigns.show_name_modal ->
+        {:noreply, assign(socket, :show_name_modal, false)}
+
+      socket.assigns.show_note_modal ->
+        {:noreply, socket |> assign(:show_note_modal, false) |> assign(:note_input, "")}
+
+      true ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("handle_keydown", %{"key" => key}, socket)
+      when key in ["ArrowLeft", "ArrowRight"] do
+    if socket.assigns.show_image_modal do
+      case key do
+        "ArrowRight" -> {:noreply, navigate_photo(socket, :next)}
+        "ArrowLeft" -> {:noreply, navigate_photo(socket, :prev)}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("handle_keydown", _params, socket), do: {:noreply, socket}
+
+  def handle_event("regenerate_thumbnails", _params, socket) do
+    # Rate limit: only allow once per 60 seconds per session
+    last_regen = socket.assigns[:last_thumbnail_regen] || 0
+    now = System.system_time(:second)
+
+    if now - last_regen < 60 do
+      {:noreply, put_flash(socket, :error, "Please wait before regenerating again")}
+    else
+      # Start background task to regenerate missing thumbnails
+      Task.async(fn ->
+        regenerate_all_missing_thumbnails(socket.assigns.room.id, socket.assigns.room.code)
+      end)
+
+      {:noreply,
+       socket
+       |> assign(:last_thumbnail_regen, now)
+       |> put_flash(:info, "Regenerating missing thumbnails in background...")}
+    end
   end
 
   # Generate thumbnail for photos that don't have one
@@ -1675,55 +1724,63 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:friend_search_results, results)}
   end
 
-  def handle_event("add_trusted_friend", %{"user_id" => user_id}, socket) do
-    user_id = String.to_integer(user_id)
-    
-    case socket.assigns.current_user do
-      nil ->
-        {:noreply, put_flash(socket, :error, "register first")}
-      
-      current_user ->
-        case Social.add_trusted_friend(current_user.id, user_id) do
-          {:ok, _tf} ->
-            outgoing = Social.list_sent_trust_requests(current_user.id)
-            {:noreply, 
-             socket 
-             |> assign(:friend_search, "")
-             |> assign(:friend_search_results, [])
-             |> assign(:outgoing_trust_requests, outgoing)
-             |> put_flash(:info, "trust request sent")}
-          
-          {:error, :cannot_trust_self} ->
-            {:noreply, put_flash(socket, :error, "can't trust yourself")}
-          
-          {:error, :max_trusted_friends} ->
-            {:noreply, put_flash(socket, :error, "max 5 trusted friends")}
-          
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, "already requested")}
+  def handle_event("add_trusted_friend", %{"user_id" => user_id_str}, socket) do
+    case safe_to_integer(user_id_str) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "invalid user")}
+
+      {:ok, user_id} ->
+        case socket.assigns.current_user do
+          nil ->
+            {:noreply, put_flash(socket, :error, "register first")}
+
+          current_user ->
+            case Social.add_trusted_friend(current_user.id, user_id) do
+              {:ok, _tf} ->
+                outgoing = Social.list_sent_trust_requests(current_user.id)
+                {:noreply,
+                 socket
+                 |> assign(:friend_search, "")
+                 |> assign(:friend_search_results, [])
+                 |> assign(:outgoing_trust_requests, outgoing)
+                 |> put_flash(:info, "trust request sent")}
+
+              {:error, :cannot_trust_self} ->
+                {:noreply, put_flash(socket, :error, "can't trust yourself")}
+
+              {:error, :max_trusted_friends} ->
+                {:noreply, put_flash(socket, :error, "max 5 trusted friends")}
+
+              {:error, _} ->
+                {:noreply, put_flash(socket, :error, "already requested")}
+            end
         end
     end
   end
 
-  def handle_event("confirm_trust", %{"user_id" => user_id}, socket) do
-    user_id = String.to_integer(user_id)
-    
-    case socket.assigns.current_user do
-      nil ->
-        {:noreply, put_flash(socket, :error, "register first")}
-      
-      current_user ->
-        case Social.confirm_trusted_friend(current_user.id, user_id) do
-          {:ok, _} ->
-            # Refresh the pending requests
-            pending = Social.list_pending_trust_requests(current_user.id)
-            {:noreply, 
-             socket 
-             |> assign(:pending_requests, pending)
-             |> put_flash(:info, "trust confirmed")}
-          
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, "failed")}
+  def handle_event("confirm_trust", %{"user_id" => user_id_str}, socket) do
+    case safe_to_integer(user_id_str) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "invalid user")}
+
+      {:ok, user_id} ->
+        case socket.assigns.current_user do
+          nil ->
+            {:noreply, put_flash(socket, :error, "register first")}
+
+          current_user ->
+            case Social.confirm_trusted_friend(current_user.id, user_id) do
+              {:ok, _} ->
+                # Refresh the pending requests
+                pending = Social.list_pending_trust_requests(current_user.id)
+                {:noreply,
+                 socket
+                 |> assign(:pending_requests, pending)
+                 |> put_flash(:info, "trust confirmed")}
+
+              {:error, _} ->
+                {:noreply, put_flash(socket, :error, "failed")}
+            end
         end
     end
   end
@@ -1751,54 +1808,64 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:member_invite_results, results)}
   end
 
-  def handle_event("invite_to_room", %{"user_id" => user_id}, socket) do
-    user_id = String.to_integer(user_id)
-    room = socket.assigns.room
-    current_user = socket.assigns.current_user
-    
-    case current_user do
-      nil ->
-        {:noreply, put_flash(socket, :error, "register first")}
-      
-      _ ->
-        case Social.invite_to_room(room.id, current_user.id, user_id) do
-          {:ok, _member} ->
-            # Refresh room members
-            members = Social.list_room_members(room.id)
-            {:noreply, 
-             socket 
-             |> assign(:room_members, members)
-             |> assign(:member_invite_search, "")
-             |> assign(:member_invite_results, [])
-             |> put_flash(:info, "member invited")}
-          
-          {:error, :not_a_member} ->
-            {:noreply, put_flash(socket, :error, "you're not a member")}
-          
-          {:error, :not_authorized} ->
-            {:noreply, put_flash(socket, :error, "only owners can invite")}
-          
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, "invite failed")}
+  def handle_event("invite_to_room", %{"user_id" => user_id_str}, socket) do
+    case safe_to_integer(user_id_str) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "invalid user")}
+
+      {:ok, user_id} ->
+        room = socket.assigns.room
+        current_user = socket.assigns.current_user
+
+        case current_user do
+          nil ->
+            {:noreply, put_flash(socket, :error, "register first")}
+
+          _ ->
+            case Social.invite_to_room(room.id, current_user.id, user_id) do
+              {:ok, _member} ->
+                # Refresh room members
+                members = Social.list_room_members(room.id)
+                {:noreply,
+                 socket
+                 |> assign(:room_members, members)
+                 |> assign(:member_invite_search, "")
+                 |> assign(:member_invite_results, [])
+                 |> put_flash(:info, "member invited")}
+
+              {:error, :not_a_member} ->
+                {:noreply, put_flash(socket, :error, "you're not a member")}
+
+              {:error, :not_authorized} ->
+                {:noreply, put_flash(socket, :error, "only owners can invite")}
+
+              {:error, _} ->
+                {:noreply, put_flash(socket, :error, "invite failed")}
+            end
         end
     end
   end
 
-  def handle_event("remove_room_member", %{"user_id" => user_id}, socket) do
-    user_id = String.to_integer(user_id)
-    room = socket.assigns.room
-    current_user = socket.assigns.current_user
-    
-    # Check if current user is owner
-    if current_user && room.owner_id == current_user.id do
-      Social.remove_room_member(room.id, user_id)
-      members = Social.list_room_members(room.id)
-      {:noreply, 
-       socket 
-       |> assign(:room_members, members)
-       |> put_flash(:info, "member removed")}
-    else
-      {:noreply, put_flash(socket, :error, "only owners can remove members")}
+  def handle_event("remove_room_member", %{"user_id" => user_id_str}, socket) do
+    case safe_to_integer(user_id_str) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "invalid user")}
+
+      {:ok, user_id} ->
+        room = socket.assigns.room
+        current_user = socket.assigns.current_user
+
+        # Check if current user is owner
+        if current_user && room.owner_id == current_user.id do
+          Social.remove_room_member(room.id, user_id)
+          members = Social.list_room_members(room.id)
+          {:noreply,
+           socket
+           |> assign(:room_members, members)
+           |> put_flash(:info, "member removed")}
+        else
+          {:noreply, put_flash(socket, :error, "only owners can remove members")}
+        end
     end
   end
 
@@ -1898,42 +1965,46 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("vote_recovery", %{"user_id" => user_id, "vote" => vote}, socket) do
-    user_id = String.to_integer(user_id)
-    
-    case socket.assigns.current_user do
-      nil ->
-        {:noreply, put_flash(socket, :error, "register first")}
-      
-      current_user ->
-        # Get the new public key from the recovery request
-        new_public_key = Social.get_recovery_public_key(user_id)
-        
-        if is_nil(new_public_key) do
-          {:noreply, put_flash(socket, :error, "no recovery in progress")}
-        else
-          case Social.cast_recovery_vote(user_id, current_user.id, vote, new_public_key) do
-            {:ok, :recovered, _user} ->
-              # Refresh recovery requests
-              recovery_requests = Social.list_recovery_requests_for_voter(current_user.id)
-              {:noreply, 
-               socket 
-               |> assign(:recovery_requests, recovery_requests)
-               |> put_flash(:info, "vote recorded - account recovered!")}
-            
-            {:ok, :votes_recorded, count} ->
-              recovery_requests = Social.list_recovery_requests_for_voter(current_user.id)
-              {:noreply, 
-               socket 
-               |> assign(:recovery_requests, recovery_requests)
-               |> put_flash(:info, "vote recorded (#{count}/4 needed)")}
-            
-            {:error, :not_trusted_friend} ->
-              {:noreply, put_flash(socket, :error, "not a trusted friend")}
-            
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, "already voted")}
-          end
+  def handle_event("vote_recovery", %{"user_id" => user_id_str, "vote" => vote}, socket) do
+    case safe_to_integer(user_id_str) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "invalid user")}
+
+      {:ok, user_id} ->
+        case socket.assigns.current_user do
+          nil ->
+            {:noreply, put_flash(socket, :error, "register first")}
+
+          current_user ->
+            # Get the new public key from the recovery request
+            new_public_key = Social.get_recovery_public_key(user_id)
+
+            if is_nil(new_public_key) do
+              {:noreply, put_flash(socket, :error, "no recovery in progress")}
+            else
+              case Social.cast_recovery_vote(user_id, current_user.id, vote, new_public_key) do
+                {:ok, :recovered, _user} ->
+                  # Refresh recovery requests
+                  recovery_requests = Social.list_recovery_requests_for_voter(current_user.id)
+                  {:noreply,
+                   socket
+                   |> assign(:recovery_requests, recovery_requests)
+                   |> put_flash(:info, "vote recorded - account recovered!")}
+
+                {:ok, :votes_recorded, count} ->
+                  recovery_requests = Social.list_recovery_requests_for_voter(current_user.id)
+                  {:noreply,
+                   socket
+                   |> assign(:recovery_requests, recovery_requests)
+                   |> put_flash(:info, "vote recorded (#{count}/4 needed)")}
+
+                {:error, :not_trusted_friend} ->
+                  {:noreply, put_flash(socket, :error, "not a trusted friend")}
+
+                {:error, _} ->
+                  {:noreply, put_flash(socket, :error, "already voted")}
+              end
+            end
         end
     end
   end
@@ -2059,9 +2130,29 @@ defmodule FriendsWeb.HomeLive do
      |> stream_delete(:items, %{id: id, unique_id: "note-#{id}"})}
   end
 
-  def handle_info(%{event: "presence_diff", payload: _}, socket) do
-    viewers = Presence.list_users(socket.assigns.room.code)
-    {:noreply, assign(socket, :viewers, viewers)}
+  def handle_info(%{event: "presence_diff", payload: %{joins: joins, leaves: leaves}}, socket) do
+    # Efficiently update viewers without refetching entire list
+    current_viewers = socket.assigns.viewers
+
+    # Extract user info from joins
+    new_users =
+      joins
+      |> Enum.map(fn {_user_id, %{metas: [meta | _]}} -> meta end)
+
+    # Get user_ids from leaves
+    left_user_ids =
+      leaves
+      |> Enum.map(fn {user_id, _} -> user_id end)
+      |> MapSet.new()
+
+    # Remove left users and add new users
+    updated_viewers =
+      current_viewers
+      |> Enum.reject(fn viewer -> MapSet.member?(left_user_ids, viewer.user_id) end)
+      |> Enum.concat(new_users)
+      |> Enum.uniq_by(& &1.user_id)
+
+    {:noreply, assign(socket, :viewers, updated_viewers)}
   end
 
   # Ignore task failure messages we don't explicitly handle
@@ -2117,34 +2208,51 @@ defmodule FriendsWeb.HomeLive do
   defp load_photo_into_modal(socket, photo_id) do
     photo_id_int = normalize_photo_id(photo_id)
 
-    case Social.get_photo(photo_id_int) do
+    case photo_id_int do
       nil ->
-        put_flash(socket, :error, "Could not load image")
+        put_flash(socket, :error, "Invalid photo")
 
-      photo ->
-        raw = photo.image_data || photo.thumbnail_data
-        content_type = photo.content_type || "image/jpeg"
+      _ ->
+        case Social.get_photo(photo_id_int) do
+          nil ->
+            put_flash(socket, :error, "Could not load image")
 
-        src =
-          cond do
-            is_nil(raw) -> nil
-            String.starts_with?(raw, "data:") -> raw
-            true -> "data:#{content_type};base64,#{raw}"
-          end
+          photo ->
+            # Check if user can access the photo's room (security: prevent unauthorized access)
+            photo_room = Social.get_room(photo.room_id)
+            current_user_id = case socket.assigns.current_user do
+              nil -> nil
+              user -> user.id
+            end
 
-        if is_nil(src) do
-          put_flash(socket, :error, "Could not load image")
-        else
-          base_order = current_photo_order(socket)
-          order = merge_photo_order(base_order, [photo_id_int], :front)
-          current_idx = Enum.find_index(order, &(&1 == photo_id_int))
+            if photo_room && Social.can_access_room?(photo_room, current_user_id) do
+              raw = photo.image_data || photo.thumbnail_data
+              content_type = photo.content_type || "image/jpeg"
 
-          socket
-          |> assign(:show_image_modal, true)
-          |> assign(:full_image_data, %{data: src, content_type: content_type, photo_id: photo.id, user_id: photo.user_id})
-          |> assign(:photo_order, order)
-          |> assign(:current_photo_id, photo_id_int)
-          |> assign(:current_photo_index, current_idx)
+              src =
+                cond do
+                  is_nil(raw) -> nil
+                  String.starts_with?(raw, "data:") -> raw
+                  true -> "data:#{content_type};base64,#{raw}"
+                end
+
+              if is_nil(src) do
+                put_flash(socket, :error, "Could not load image")
+              else
+                base_order = current_photo_order(socket)
+                order = merge_photo_order(base_order, [photo_id_int], :front)
+                current_idx = Enum.find_index(order, &(&1 == photo_id_int))
+
+                socket
+                |> assign(:show_image_modal, true)
+                |> assign(:full_image_data, %{data: src, content_type: content_type, photo_id: photo.id, user_id: photo.user_id})
+                |> assign(:photo_order, order)
+                |> assign(:current_photo_id, photo_id_int)
+                |> assign(:current_photo_index, current_idx)
+              end
+            else
+              put_flash(socket, :error, "Access denied")
+            end
         end
     end
   end
