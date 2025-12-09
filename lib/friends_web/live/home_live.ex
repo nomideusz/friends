@@ -43,7 +43,7 @@ defmodule FriendsWeb.HomeLive do
     can_access = Social.can_access_room?(room, session_user && session_user.id)
 
     # Load initial batch only if access is allowed
-    {photos, notes, items} =
+    {_photos, _notes, items} =
       if can_access do
         photos = Social.list_photos(room.id, @initial_batch, offset: 0)
         notes = Social.list_notes(room.id, @initial_batch, offset: 0)
@@ -150,7 +150,7 @@ defmodule FriendsWeb.HomeLive do
         end
       end
 
-      {photos, notes, items} =
+      {_photos, _notes, items} =
         if can_access do
           photos = Social.list_photos(room.id, @initial_batch, offset: 0)
           notes = Social.list_notes(room.id, @initial_batch, offset: 0)
@@ -2252,6 +2252,16 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  defp ensure_photo_in_order(order, id) do
+    order = order || []
+
+    cond do
+      is_nil(id) -> order
+      Enum.member?(order, id) -> order
+      true -> order ++ [id]
+    end
+  end
+
   defp remove_photo_from_order(order, id) do
     order = order || []
     normalized = normalize_photo_id(id)
@@ -2304,7 +2314,7 @@ defmodule FriendsWeb.HomeLive do
                 put_flash(socket, :error, "Could not load image")
               else
                 base_order = current_photo_order(socket)
-                order = merge_photo_order(base_order, [photo_id_int], :front)
+                order = ensure_photo_in_order(base_order, photo_id_int)
                 current_idx = Enum.find_index(order, &(&1 == photo_id_int))
 
                 socket
@@ -2323,7 +2333,7 @@ defmodule FriendsWeb.HomeLive do
 
   defp navigate_photo(socket, direction) do
     base_order = current_photo_order(socket)
-    order = merge_photo_order(base_order, [socket.assigns.current_photo_id], :front)
+    order = ensure_photo_in_order(base_order, socket.assigns.current_photo_id)
     current = socket.assigns.current_photo_id
 
     cond do
