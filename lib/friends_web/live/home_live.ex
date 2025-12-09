@@ -2160,17 +2160,9 @@ defmodule FriendsWeb.HomeLive do
   end
 
   defp current_photo_order(socket) do
-    stream_items = socket.assigns.streams[:items]
-
-    cond do
-      match?(%Phoenix.LiveView.LiveStream{}, stream_items) ->
-        for {_dom_id, item} <- stream_items, Map.get(item, :type) == :photo, do: item.id
-
-      is_list(socket.assigns[:photo_order]) ->
-        socket.assigns.photo_order
-
-      true ->
-        []
+    case socket.assigns[:photo_order] do
+      list when is_list(list) -> list
+      _ -> []
     end
   end
 
