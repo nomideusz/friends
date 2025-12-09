@@ -189,6 +189,14 @@ const Hooks = {
                 }
             })
 
+            // Handle session token for authenticated requests
+            this.handleEvent("set_session_token", ({ token }) => {
+                if (token) {
+                    // 30-day session token cookie
+                    document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
+                }
+            })
+
             // Handle photo_uploaded event - send pending thumbnail
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
