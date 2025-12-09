@@ -3,7 +3,7 @@
 #     mix run priv/repo/seeds.exs
 #
 
-# Create default lobby room if it doesn't exist
+# Create the public square room if it doesn't exist
 alias Friends.Social
 
 Social.get_or_create_lobby()

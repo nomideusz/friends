@@ -176,6 +176,17 @@ const Hooks = {
             // Handle registration success
             this.handleEvent("registration_complete", ({ user }) => {
                 console.log("Registration complete:", user)
+                // Set cookie for fast initial render on next page load
+                if (user && user.id) {
+                    document.cookie = `friends_user_id=${user.id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                }
+            })
+
+            // Handle user cookie set (for instant username display on reload)
+            this.handleEvent("set_user_cookie", ({ user_id }) => {
+                if (user_id) {
+                    document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                }
             })
 
             // Handle photo_uploaded event - send pending thumbnail
@@ -288,6 +299,8 @@ const Hooks = {
             this.handleEvent("clear_identity", async () => {
                 await cryptoIdentity.clear()
                 localStorage.removeItem('friends_browser_id')
+                // Clear user cookie
+                document.cookie = 'friends_user_id=; path=/; max-age=0'
                 alert("Identity cleared. Refreshing page...")
                 window.location.reload()
             })

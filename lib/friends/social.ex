@@ -30,7 +30,11 @@ defmodule Friends.Social do
 
   # --- Rooms ---
 
-  def get_or_create_lobby do
+  @doc """
+  Get or create the public square - the main public room.
+  Uses code "lobby" for URL compatibility but displays as "public square".
+  """
+  def get_or_create_public_square do
     case Repo.get_by(Room, code: "lobby") do
       nil ->
         {:ok, room} = create_room(%{code: "lobby", name: "public square"})
@@ -47,6 +51,9 @@ defmodule Friends.Social do
         end
     end
   end
+
+  # Alias for backwards compatibility
+  defdelegate get_or_create_lobby(), to: __MODULE__, as: :get_or_create_public_square
 
   def get_room_by_code(code) do
     Repo.get_by(Room, code: code)
