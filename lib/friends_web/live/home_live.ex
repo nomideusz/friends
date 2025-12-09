@@ -27,11 +27,6 @@ defmodule FriendsWeb.HomeLive do
         r -> r
       end
 
-    # Load initial batch for fast render
-    photos = Social.list_photos(room.id, @initial_batch, offset: 0)
-    notes = Social.list_notes(room.id, @initial_batch, offset: 0)
-    items = build_items(photos, notes)
-
     # Try to get user from session for immediate display (before socket connects)
     {session_user, session_user_id, session_user_color, session_user_name} =
       case session["user_id"] do
@@ -45,8 +40,20 @@ defmodule FriendsWeb.HomeLive do
           end
       end
 
+    can_access = Social.can_access_room?(room, session_user && session_user.id)
+
+    # Load initial batch only if access is allowed
+    {photos, notes, items} =
+      if can_access do
+        photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+        notes = Social.list_notes(room.id, @initial_batch, offset: 0)
+        {photos, notes, build_items(photos, notes)}
+      else
+        {[], [], []}
+      end
+
     # Subscribe when connected
-    if connected?(socket) do
+    if connected?(socket) and can_access do
       Social.subscribe(room.code)
       Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
 
@@ -71,7 +78,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:fingerprint, nil)
       |> assign(:viewers, [])
       |> assign(:item_count, length(items))
-      |> assign(:no_more_items, length(items) < @initial_batch)
+      |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
       |> assign(:loading_more, false)
       |> assign(:feed_mode, "room")
       |> assign(:show_room_modal, false)
@@ -96,19 +103,13 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:member_invite_results, [])
       |> assign(:user_private_rooms, [])
       |> assign(:public_rooms, [])
-      |> assign(:room_access_denied, false)
+      |> assign(:room_access_denied, not can_access)
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
-      |> assign(:photo_order, photo_ids(items))
+      |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
       |> assign(:current_photo_id, nil)
       |> stream(:items, items, dom_id: &("item-#{&1.unique_id}"))
-      |> allow_upload(:photo,
-        accept: ~w(.jpg .jpeg .png .gif .webp),
-        max_entries: 1,
-        max_file_size: 10_000_000,
-        auto_upload: true,
-        progress: &handle_progress/3
-      )
+      |> maybe_allow_upload(can_access)
 
     socket = maybe_bootstrap_identity(socket, get_connect_params(socket))
 
@@ -132,33 +133,44 @@ defmodule FriendsWeb.HomeLive do
           r -> r
         end
 
-      Social.subscribe(room.code)
-      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
+      can_access = Social.can_access_room?(room, current_user_id(socket))
 
-      if socket.assigns.user_id do
-        Presence.track_user(
-          self(),
-          room.code,
-          socket.assigns.user_id,
-          socket.assigns.user_color,
-          socket.assigns.user_name
-        )
+      if can_access do
+        Social.subscribe(room.code)
+        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
+
+        if socket.assigns.user_id do
+          Presence.track_user(
+            self(),
+            room.code,
+            socket.assigns.user_id,
+            socket.assigns.user_color,
+            socket.assigns.user_name
+          )
+        end
       end
 
-      photos = Social.list_photos(room.id, @initial_batch, offset: 0)
-      notes = Social.list_notes(room.id, @initial_batch, offset: 0)
-      items = build_items(photos, notes)
-      viewers = Presence.list_users(room.code)
+      {photos, notes, items} =
+        if can_access do
+          photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+          notes = Social.list_notes(room.id, @initial_batch, offset: 0)
+          {photos, notes, build_items(photos, notes)}
+        else
+          {[], [], []}
+        end
+
+      viewers = if can_access, do: Presence.list_users(room.code), else: []
 
       {:noreply,
        socket
        |> assign(:room, room)
        |> assign(:page_title, room.name || room.code)
        |> assign(:item_count, length(items))
-       |> assign(:no_more_items, length(items) < @initial_batch)
+       |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
        |> assign(:loading_more, false)
        |> assign(:viewers, viewers)
-        |> assign(:photo_order, photo_ids(items))
+       |> assign(:room_access_denied, not can_access)
+       |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
        |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
     else
       {:noreply, socket}
@@ -1143,34 +1155,15 @@ defmodule FriendsWeb.HomeLive do
          |> assign(:room_access_denied, not can_access)}
       
       user ->
-        # Found user - for dev/unlock, accept immediately and track presence
-        color = Enum.at(@colors, rem(user.id, length(@colors)))
-        user_id = "user-#{user.id}"
-        user_name = user.display_name || user.username
-
-        Presence.track_user(self(), room.code, user_id, color, user_name)
-        viewers = Presence.list_users(room.code)
-        private_rooms = Social.list_user_private_rooms(user.id)
-        can_access = Social.can_access_room?(room, user.id)
+        # Found user - require challenge/response before elevating session
+        challenge = Social.generate_auth_challenge()
 
         {:noreply,
          socket
-         |> assign(:current_user, user)
-         |> assign(:pending_auth, nil)
-         |> assign(:user_id, user_id)
-         |> assign(:user_color, color)
-         |> assign(:user_name, user_name)
+         |> assign(:pending_auth, %{user: user, challenge: challenge, public_key: public_key})
          |> assign(:browser_id, browser_id)
          |> assign(:fingerprint, fingerprint)
-         |> assign(:viewers, viewers)
-         |> assign(:invites, Social.list_user_invites(user.id))
-         |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
-         |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
-         |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
-         |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
-         |> assign(:user_private_rooms, private_rooms)
-         |> assign(:room_access_denied, not can_access)
-         |> push_event("set_user_cookie", %{user_id: user.id})}
+         |> push_event("auth_challenge", %{challenge: challenge})}
     end
   end
 
@@ -1187,6 +1180,7 @@ defmodule FriendsWeb.HomeLive do
             Social.link_device_to_user(socket.assigns.browser_id, user.id)
           end
 
+          session_token = Phoenix.Token.sign(FriendsWeb.Endpoint, "user_session", user.id)
           color = Enum.at(@colors, rem(user.id, length(@colors)))
           user_id = "user-#{user.id}"
           user_name = user.display_name || user.username
@@ -1200,6 +1194,16 @@ defmodule FriendsWeb.HomeLive do
           # Check access for private rooms
           can_access = Social.can_access_room?(room, user.id)
 
+          {items, photo_order} =
+            if can_access do
+              photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+              notes = Social.list_notes(room.id, @initial_batch, offset: 0)
+              items = build_items(photos, notes)
+              {items, photo_ids(items)}
+            else
+              {[], []}
+            end
+
           {:noreply,
            socket
            |> assign(:current_user, user)
@@ -1207,14 +1211,21 @@ defmodule FriendsWeb.HomeLive do
            |> assign(:user_id, user_id)
            |> assign(:user_color, color)
            |> assign(:user_name, user_name)
+           |> assign(:browser_id, socket.assigns.browser_id)
+           |> assign(:fingerprint, socket.assigns.fingerprint)
            |> assign(:viewers, viewers)
+           |> assign(:item_count, length(items))
+           |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
            |> assign(:invites, Social.list_user_invites(user.id))
            |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
            |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
            |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
            |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
            |> assign(:user_private_rooms, private_rooms)
-           |> assign(:room_access_denied, not can_access)}
+           |> assign(:room_access_denied, not can_access)
+           |> assign(:photo_order, photo_order)
+           |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))
+           |> push_event("set_session_token", %{token: session_token})}
         else
           Logger.warning("Auth signature verification failed for session=#{socket.assigns.session_id}")
           # Signature invalid - treat as anonymous
@@ -1920,7 +1931,10 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("load_more", _params, socket) do
-    if socket.assigns.no_more_items || socket.assigns.loading_more do
+    if socket.assigns.room_access_denied do
+      {:noreply, socket}
+    else
+      if socket.assigns.no_more_items || socket.assigns.loading_more do
       {:noreply, socket}
     else
       batch = @initial_batch
@@ -1963,6 +1977,7 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:no_more_items, no_more?)
        |> assign(:loading_more, false)
        |> assign(:photo_order, new_photo_order)}
+    end
     end
   end
 
@@ -2203,6 +2218,21 @@ defmodule FriendsWeb.HomeLive do
     <<r, g, b, _::binary>> = hash
     "rgb(#{rem(r, 156) + 100}, #{rem(g, 156) + 100}, #{rem(b, 156) + 100})"
   end
+
+  defp current_user_id(%{assigns: %{current_user: %{id: id}}}), do: id
+  defp current_user_id(_), do: nil
+
+  defp maybe_allow_upload(socket, true) do
+    allow_upload(socket, :photo,
+      accept: ~w(.jpg .jpeg .png .gif .webp),
+      max_entries: 1,
+      max_file_size: 10_000_000,
+      auto_upload: true,
+      progress: &handle_progress/3
+    )
+  end
+
+  defp maybe_allow_upload(socket, _), do: socket
 
   defp photo_ids(items) do
     items
