@@ -215,7 +215,7 @@ const Hooks = {
             
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
-                    this.pushEventWhenConnected("set_thumbnail", {
+                    this.pushEvent("set_thumbnail", {
                         photo_id: photo_id,
                         thumbnail: this.pendingThumbnail
                     })
