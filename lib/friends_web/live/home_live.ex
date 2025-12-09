@@ -1772,7 +1772,7 @@ defmodule FriendsWeb.HomeLive do
           photo
           |> Map.put(:type, :photo)
           |> Map.put(:unique_id, "photo-#{photo.id}")
-          |> Map.put(:thumbnail_data, photo.thumbnail_data || photo.image_data)
+          |> Map.put(:thumbnail_data, photo.thumbnail_data)
 
         {:noreply,
          socket
@@ -1799,7 +1799,7 @@ defmodule FriendsWeb.HomeLive do
         photo
         |> Map.put(:type, :photo)
         |> Map.put(:unique_id, "photo-#{photo.id}")
-        |> Map.put(:thumbnail_data, photo.thumbnail_data || photo.image_data)
+        |> Map.put(:thumbnail_data, photo.thumbnail_data)
 
       {:noreply,
        socket

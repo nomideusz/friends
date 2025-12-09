@@ -206,8 +206,7 @@ defmodule Friends.Social do
       user_id: p.user_id,
       user_color: p.user_color,
       user_name: p.user_name,
-      # fallback to full image data if thumbnail missing so UI is not blank
-      thumbnail_data: fragment("COALESCE(?, ?)", p.thumbnail_data, p.image_data),
+      thumbnail_data: p.thumbnail_data,
       content_type: p.content_type,
       file_size: p.file_size,
       description: p.description,
@@ -236,8 +235,7 @@ defmodule Friends.Social do
       user_id: p.user_id,
       user_color: p.user_color,
       user_name: p.user_name,
-      # fallback to full image data if thumbnail missing so UI is not blank
-      thumbnail_data: fragment("COALESCE(?, ?)", p.thumbnail_data, p.image_data),
+      thumbnail_data: p.thumbnail_data,
       content_type: p.content_type,
       file_size: p.file_size,
       description: p.description,
