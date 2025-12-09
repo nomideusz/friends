@@ -1278,36 +1278,36 @@ defmodule FriendsWeb.HomeLive do
   # Thumbnail from JS
   def handle_event("set_thumbnail", %{"photo_id" => photo_id, "thumbnail" => thumbnail}, socket) do
     # Guard against bad payloads; quietly ignore to avoid crashing the view
-    cond do
-      is_nil(thumbnail) ->
-        {:noreply, socket}
+    if is_nil(thumbnail) do
+      {:noreply, socket}
+    else
+      try do
+        photo_id_int = normalize_photo_id(photo_id)
 
-      true ->
-        try do
-          photo_id_int = normalize_photo_id(photo_id)
-
-          # Save to DB and broadcast
-          if socket.assigns.user_id && is_binary(thumbnail) do
-            Social.set_photo_thumbnail(photo_id_int, thumbnail, socket.assigns.user_id, socket.assigns.room.code)
-          end
-
-          # Update the stream so everyone (including sender) sees the thumbnail
-          items = get_in(socket.assigns, [:streams, :items]) || []
-
-          updated_items =
-            Enum.map(items, fn {dom_id, item} ->
-              if item.id == photo_id_int do
-                {dom_id, Map.put(item, :thumbnail_data, thumbnail)}
-              else
-                {dom_id, item}
-              end
-            end)
-
-          {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
-        rescue
-          _e ->
-            {:noreply, socket}
+        # Save to DB and broadcast to other clients
+        if socket.assigns.user_id && is_binary(thumbnail) do
+          Social.set_photo_thumbnail(photo_id_int, thumbnail, socket.assigns.user_id, socket.assigns.room.code)
         end
+
+        # Update the stream for this client immediately using stream_insert
+        case Social.get_photo(photo_id_int) do
+          nil ->
+            {:noreply, socket}
+
+          photo ->
+            photo_with_type =
+              photo
+              |> Map.from_struct()
+              |> Map.put(:type, :photo)
+              |> Map.put(:unique_id, "photo-#{photo.id}")
+              |> Map.put(:thumbnail_data, thumbnail)
+
+            {:noreply, stream_insert(socket, :items, photo_with_type)}
+        end
+      rescue
+        _e ->
+          {:noreply, socket}
+      end
     end
   end
 
@@ -1816,18 +1816,21 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
-    # Update thumbnail only if the photo doesn't already have one (prevents overwriting local updates)
-    items = get_in(socket.assigns, [:streams, :items]) || []
+    # Update the stream with the new thumbnail using stream_insert
+    case Social.get_photo(photo_id) do
+      nil ->
+        {:noreply, socket}
 
-    updated_items = Enum.map(items, fn {dom_id, item} ->
-      if item.id == photo_id && is_nil(item.thumbnail_data) do
-        {dom_id, Map.put(item, :thumbnail_data, thumbnail_data)}
-      else
-        {dom_id, item}
-      end
-    end)
+      photo ->
+        photo_with_type =
+          photo
+          |> Map.from_struct()
+          |> Map.put(:type, :photo)
+          |> Map.put(:unique_id, "photo-#{photo.id}")
+          |> Map.put(:thumbnail_data, thumbnail_data)
 
-    {:noreply, stream(socket, :items, updated_items, dom_id: &("item-#{&1.unique_id}"))}
+        {:noreply, stream_insert(socket, :items, photo_with_type)}
+    end
   end
 
   def handle_info({:new_note, note}, socket) do
