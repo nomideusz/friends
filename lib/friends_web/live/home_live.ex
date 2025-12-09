@@ -151,38 +151,41 @@ defmodule FriendsWeb.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <div id="friends-app" class="min-h-screen bg-neutral-950 text-white" phx-hook="FriendsApp">
+    <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp">
+        <%!-- Animated opalescent background --%>
+        <div class="opal-bg"></div>
+
         <%!-- Header --%>
-        <header class="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-sm sticky top-0 z-40">
-          <div class="max-w-6xl mx-auto px-4 py-3">
-            <div class="flex items-center justify-between gap-4">
+        <header class="glass-strong border-b border-white/5 sticky top-0 z-40">
+          <div class="max-w-[1600px] mx-auto px-8 py-4">
+            <div class="flex items-center justify-between gap-6">
               <%!-- Space selector --%>
               <button
                 type="button"
                 phx-click="open_room_modal"
-                class="flex items-center gap-2 text-sm hover:text-white transition-colors cursor-pointer"
+                class="flex items-center gap-3 text-base hover:text-white transition-all cursor-pointer group"
               >
                 <%= if @room.is_private do %>
-                  <span class="text-green-500">🔒</span>
+                  <span class="text-emerald-400 text-lg">🔒</span>
                 <% else %>
-                  <span class="text-blue-400">◉</span>
+                  <div class="w-3 h-3 rounded-full bg-blue-400 presence-dot"></div>
                 <% end %>
-                <span class="font-medium">{@room.name || @room.code}</span>
-                <span class="text-neutral-600 text-xs">▼</span>
+                <span class="font-medium tracking-wide">{@room.name || @room.code}</span>
+                <span class="text-neutral-500 text-sm group-hover:text-neutral-300 transition-colors">▼</span>
               </button>
 
               <%!-- Identity + Viewers --%>
-              <div class="flex items-center gap-4">
-                <%!-- Viewers --%>
-                <div class="flex items-center gap-1">
+              <div class="flex items-center gap-6">
+                <%!-- Viewers with opal glow --%>
+                <div class="flex items-center gap-2">
                   <%= for {viewer, idx} <- Enum.with_index(Enum.take(@viewers, 5)) do %>
                     <div
-                      class="w-2 h-2 rounded-full"
-                      style={"background-color: #{viewer.user_color}; opacity: #{1 - idx * 0.15}"}
+                      class="w-2.5 h-2.5 rounded-full presence-dot"
+                      style={"background-color: #{viewer.user_color}; opacity: #{1 - idx * 0.12}"}
                       title={viewer.user_name || "anonymous"}
                     />
                   <% end %>
-                  <span class="text-xs text-neutral-600 ml-1">{length(@viewers)}</span>
+                  <span class="text-sm text-neutral-500 ml-2">{length(@viewers)} here</span>
                 </div>
 
                 <%!-- User identity --%>
@@ -190,19 +193,19 @@ defmodule FriendsWeb.HomeLive do
                   <button
                     type="button"
                     phx-click="open_settings_modal"
-                    class="flex items-center gap-2 text-sm hover:text-white transition-colors cursor-pointer"
+                    class="flex items-center gap-3 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20"
                   >
                     <div
-                      class="w-3 h-3 rounded-full ring-2 ring-green-500/50"
+                      class="w-3 h-3 rounded-full presence-dot"
                       style={"background-color: #{@user_color || "#666"}"}
                     />
-                    <span class="text-neutral-300">@{@current_user.username}</span>
+                    <span class="text-neutral-200">@{@current_user.username}</span>
                   </button>
                 <% else %>
-                  <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-4">
                     <a
                       href="/link"
-                      class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
+                      class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-all px-4 py-2 rounded-full glass border border-white/5 hover:border-white/15"
                       title="Import identity from another device"
                     >
                       <span>📱</span>
@@ -210,10 +213,10 @@ defmodule FriendsWeb.HomeLive do
                     </a>
                     <a
                       href="/register"
-                      class="flex items-center gap-2 text-sm text-amber-500 hover:text-amber-400 transition-colors"
+                      class="flex items-center gap-2 text-sm px-4 py-2 rounded-full btn-opal"
                     >
-                      <div class="w-3 h-3 rounded-full bg-amber-500/30 ring-1 ring-amber-500/50" />
-                      <span>register</span>
+                      <div class="w-2.5 h-2.5 rounded-full bg-violet-400 presence-dot" />
+                      <span class="opal-text font-medium">register</span>
                     </a>
                   </div>
                 <% end %>
@@ -222,19 +225,19 @@ defmodule FriendsWeb.HomeLive do
           </div>
         </header>
 
-        <%!-- Main content --%>
-        <main class="max-w-6xl mx-auto px-4 py-6">
+        <%!-- Main content - wider and more spacious --%>
+        <main class="max-w-[1600px] mx-auto px-8 py-10">
           <%!-- Feed Mode Toggle --%>
-          <div class="flex items-center gap-2 mb-4">
+          <div class="flex items-center gap-3 mb-8">
             <button
               type="button"
               phx-click="switch_feed"
               phx-value-mode="room"
               class={[
-                "px-3 py-1 text-xs rounded-full transition-colors cursor-pointer",
+                "px-5 py-2 text-sm rounded-full transition-all cursor-pointer",
                 if(@feed_mode == "room",
-                  do: "bg-white text-black",
-                  else: "text-neutral-500 hover:text-white"
+                  do: "glass border border-white/20 text-white opal-glow-subtle",
+                  else: "text-neutral-500 hover:text-white border border-transparent"
                 )
               ]}
             >
@@ -246,10 +249,10 @@ defmodule FriendsWeb.HomeLive do
                 phx-click="switch_feed"
                 phx-value-mode="friends"
                 class={[
-                  "px-3 py-1 text-xs rounded-full transition-colors cursor-pointer",
+                  "px-5 py-2 text-sm rounded-full transition-all cursor-pointer",
                   if(@feed_mode == "friends",
-                    do: "bg-green-500 text-black",
-                    else: "text-neutral-500 hover:text-green-400"
+                    do: "btn-opal",
+                    else: "text-neutral-500 hover:text-white border border-transparent"
                   )
                 ]}
               >
@@ -260,7 +263,7 @@ defmodule FriendsWeb.HomeLive do
 
           <%!-- Network Info (when in network mode) --%>
           <%= if @feed_mode == "friends" && @current_user do %>
-            <div class="mb-6 p-4 bg-neutral-900/50 border border-neutral-800">
+            <div class="mb-10 p-6 glass rounded-2xl border border-white/5 opal-glow-subtle">
               <div class="flex items-center justify-between mb-3">
                 <div class="text-xs text-neutral-500">your trust network</div>
                 <button
@@ -300,35 +303,35 @@ defmodule FriendsWeb.HomeLive do
           <% end %>
 
           <%!-- Actions --%>
-          <div class="flex items-center gap-3 mb-6">
+          <div class="flex items-center gap-4 mb-10">
             <%= if @current_user do %>
               <form id="upload-form" phx-change="validate" phx-submit="save">
                 <label
                   for={@uploads.photo.ref}
                   class={[
-                    "px-4 py-2 text-sm cursor-pointer transition-all min-w-[80px] text-center",
+                    "px-6 py-3 text-sm cursor-pointer transition-all rounded-xl inline-block",
                     if(@uploading,
-                      do: "bg-neutral-800 text-neutral-400",
-                      else: "bg-white text-black hover:bg-neutral-200"
+                      do: "glass border border-white/10 text-neutral-400",
+                      else: "btn-opal"
                     )
                   ]}
                 >
-                  {if @uploading, do: "uploading...", else: "photo"}
+                  {if @uploading, do: "uploading...", else: "share photo"}
                 </label>
                 <.live_file_input upload={@uploads.photo} class="sr-only" />
               </form>
             <% else %>
-              <div class="px-4 py-2 text-sm bg-neutral-800 text-neutral-400 min-w-[80px] text-center cursor-not-allowed">
-                photo
+              <div class="px-6 py-3 text-sm glass border border-white/5 text-neutral-500 rounded-xl cursor-not-allowed">
+                share photo
               </div>
             <% end %>
 
             <button
               type="button"
               phx-click="open_note_modal"
-              class="px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[60px] text-center"
+              class="px-6 py-3 text-sm glass border border-white/10 text-neutral-300 hover:border-white/20 hover:text-white transition-all cursor-pointer rounded-xl"
             >
-              note
+              write note
             </button>
 
             <div class="flex-1" />
@@ -382,11 +385,11 @@ defmodule FriendsWeb.HomeLive do
               id="items-grid"
               phx-update="stream"
               phx-hook="PhotoGrid"
-              class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+              class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4"
             >
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="group relative aspect-square bg-neutral-900 overflow-hidden rounded-lg border border-neutral-800/80 shadow-md shadow-black/30 hover:border-neutral-700 transition cursor-pointer" phx-click="view_full_image" phx-value-photo-id={item.id}>
+                  <div id={dom_id} class="photo-item group relative aspect-square glass overflow-hidden rounded-xl border border-white/5 hover:border-white/15 cursor-pointer" phx-click="view_full_image" phx-value-photo-id={item.id}>
                     <%= if item.thumbnail_data do %>
                       <img
                         src={item.thumbnail_data}
@@ -483,15 +486,15 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90" phx-click-away="close_room_modal">
-            <div class="w-full max-w-md bg-neutral-950 border border-neutral-800 p-6">
-              <div class="flex items-center justify-between mb-6">
-                <h2 class="text-sm font-medium tracking-wide">spaces</h2>
-                <button type="button" phx-click="close_room_modal" class="text-neutral-500 hover:text-white cursor-pointer">×</button>
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-6 modal-backdrop" phx-click-away="close_room_modal">
+            <div class="w-full max-w-lg glass-strong rounded-2xl p-8 opal-glow">
+              <div class="flex items-center justify-between mb-8">
+                <h2 class="text-base font-medium tracking-wide opal-text">spaces</h2>
+                <button type="button" phx-click="close_room_modal" class="text-neutral-500 hover:text-white cursor-pointer text-xl">×</button>
               </div>
 
               <%!-- Current Location --%>
-              <div class="mb-6 p-3 bg-neutral-900 border border-neutral-800">
+              <div class="mb-8 p-4 glass rounded-xl border border-white/10">
                 <div class="text-xs text-neutral-500 mb-1">you are here</div>
                 <div class="flex items-center gap-2">
                   <%= if @room.is_private do %>
@@ -988,14 +991,16 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Image Modal --%>
         <%= if @show_image_modal && @full_image_data do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90" phx-click-away="close_image_modal">
-            <div class="relative max-w-4xl max-h-[90vh] flex items-center justify-center">
-              <button type="button" phx-click="close_image_modal" class="absolute -top-12 right-0 text-white hover:text-neutral-300 text-xl cursor-pointer">×</button>
-              <img
-                src={@full_image_data.data}
-                alt=""
-                class="max-w-full max-h-full object-contain loaded"
-              />
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-8 modal-backdrop" phx-click-away="close_image_modal">
+            <div class="relative max-w-6xl max-h-[90vh] flex items-center justify-center">
+              <button type="button" phx-click="close_image_modal" class="absolute -top-14 right-0 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all">×</button>
+              <div class="rounded-2xl overflow-hidden opal-glow">
+                <img
+                  src={@full_image_data.data}
+                  alt=""
+                  class="max-w-full max-h-[85vh] object-contain loaded"
+                />
+              </div>
             </div>
           </div>
         <% end %>
