@@ -2121,7 +2121,7 @@ defmodule FriendsWeb.HomeLive do
         if is_nil(src) do
           put_flash(socket, :error, "Could not load image")
         else
-          order = merge_photo_order(current_photo_order(socket), [photo_id_int], :front)
+          order = merge_photo_order(socket.assigns.photo_order || [], [photo_id_int], :front)
           current_idx = Enum.find_index(order, &(&1 == photo_id_int))
 
           socket
@@ -2135,7 +2135,7 @@ defmodule FriendsWeb.HomeLive do
   end
 
   defp navigate_photo(socket, direction) do
-    order = merge_photo_order(current_photo_order(socket), [socket.assigns.current_photo_id], :front)
+    order = merge_photo_order(socket.assigns.photo_order || [], [socket.assigns.current_photo_id], :front)
     current = socket.assigns.current_photo_id
 
     cond do
@@ -2157,21 +2157,7 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  defp current_photo_order(socket) do
-    stream_items = socket.assigns.streams[:items] || []
-
-    ids =
-      stream_items
-      |> Enum.map(fn {_dom_id, item} -> item end)
-      |> Enum.filter(&(Map.get(&1, :type) == :photo))
-      |> Enum.map(& &1.id)
-
-    cond do
-      ids != [] -> ids
-      is_list(socket.assigns[:photo_order]) -> socket.assigns.photo_order
-      true -> []
-    end
-  end
+  # NOTE: photo_order is maintained via merges on inserts/deletes.
 
   defp maybe_bootstrap_identity(%{assigns: %{user_id: user_id}} = socket, _params) when not is_nil(user_id),
     do: socket
