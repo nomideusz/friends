@@ -1,4 +1,4 @@
-*defmodule FriendsWeb.HomeLive do
+defmodule FriendsWeb.HomeLive do
   use FriendsWeb, :live_view
 
   alias Friends.Social

@@ -161,7 +161,7 @@
   bind:this={mapContainer} 
   class="w-full h-[500px] bg-neutral-900"
   class:cursor-crosshair={addingPlace}
-/>
+></div>
 
 <style>
   :global(.gm-style-iw) {
