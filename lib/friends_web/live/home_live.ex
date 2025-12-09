@@ -10,20 +10,20 @@ defmodule FriendsWeb.HomeLive do
   @initial_batch 20
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
-  def mount(%{"room" => room_code}, _session, socket) do
-    mount_room(socket, room_code)
+  def mount(%{"room" => room_code}, session, socket) do
+    mount_room(socket, room_code, session)
   end
 
-  def mount(_params, _session, socket) do
-    mount_room(socket, "lobby")
+  def mount(_params, session, socket) do
+    mount_room(socket, "lobby", session)
   end
 
-  defp mount_room(socket, room_code) do
+  defp mount_room(socket, room_code, session) do
     session_id = generate_session_id()
 
     room =
       case Social.get_room_by_code(room_code) do
-        nil -> Social.get_or_create_lobby()
+        nil -> Social.get_or_create_public_square()
         r -> r
       end
 
@@ -31,6 +31,19 @@ defmodule FriendsWeb.HomeLive do
     photos = Social.list_photos(room.id, @initial_batch, offset: 0)
     notes = Social.list_notes(room.id, @initial_batch, offset: 0)
     items = build_items(photos, notes)
+
+    # Try to get user from session for immediate display (before socket connects)
+    {session_user, session_user_id, session_user_color, session_user_name} =
+      case session["user_id"] do
+        nil -> {nil, nil, nil, nil}
+        user_id ->
+          case Social.get_user(user_id) do
+            nil -> {nil, nil, nil, nil}
+            user ->
+              color = Enum.at(@colors, rem(user.id, length(@colors)))
+              {user, "user-#{user.id}", color, user.display_name || user.username}
+          end
+      end
 
     # Subscribe when connected
     if connected?(socket) do
@@ -49,11 +62,11 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:session_id, session_id)
       |> assign(:room, room)
       |> assign(:page_title, room.name || room.code)
-      |> assign(:current_user, nil)
+      |> assign(:current_user, session_user)
       |> assign(:pending_auth, nil)
-      |> assign(:user_id, nil)
-      |> assign(:user_color, nil)
-      |> assign(:user_name, nil)
+      |> assign(:user_id, session_user_id)
+      |> assign(:user_color, session_user_color)
+      |> assign(:user_name, session_user_name)
       |> assign(:browser_id, nil)
       |> assign(:fingerprint, nil)
       |> assign(:viewers, [])
@@ -115,7 +128,7 @@ defmodule FriendsWeb.HomeLive do
 
       room =
         case Social.get_room_by_code(room_code) do
-          nil -> Social.get_or_create_lobby()
+          nil -> Social.get_or_create_public_square()
           r -> r
         end
 
@@ -536,7 +549,7 @@ defmodule FriendsWeb.HomeLive do
               <%= if @room.code != "lobby" do %>
                 <button
                   type="button"
-                  phx-click="go_to_lobby"
+                  phx-click="go_to_public_square"
                   class="w-full mb-4 p-3 bg-blue-500/10 border border-blue-500/30 text-left hover:bg-blue-500/20 transition-colors cursor-pointer"
                 >
                   <div class="flex items-center gap-2">
@@ -1149,7 +1162,8 @@ defmodule FriendsWeb.HomeLive do
          |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
          |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
          |> assign(:user_private_rooms, private_rooms)
-         |> assign(:room_access_denied, not can_access)}
+         |> assign(:room_access_denied, not can_access)
+         |> push_event("set_user_cookie", %{user_id: user.id})}
     end
   end
 
@@ -1378,7 +1392,7 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("go_to_lobby", _params, socket) do
+  def handle_event("go_to_public_square", _params, socket) do
     {:noreply,
      socket
      |> assign(:show_room_modal, false)

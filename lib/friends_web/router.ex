@@ -8,6 +8,7 @@ defmodule FriendsWeb.Router do
     plug :put_root_layout, html: {FriendsWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug FriendsWeb.Plugs.UserSession
   end
 
   pipeline :api do
