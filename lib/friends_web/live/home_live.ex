@@ -281,9 +281,9 @@ defmodule FriendsWeb.HomeLive do
                     <div class="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded-full">
                       <div
                         class="w-2 h-2 rounded-full"
-                        style={"background-color: #{friend.user.color || "#666"}"}
+                        style={"background-color: #{friend.trusted_user.color || "#666"}"}
                       />
-                      <span class="text-xs text-neutral-300">@{friend.user.username}</span>
+                      <span class="text-xs text-neutral-300">@{friend.trusted_user.username}</span>
                     </div>
                   <% end %>
                   <%= if length(@trusted_friends) > 10 do %>

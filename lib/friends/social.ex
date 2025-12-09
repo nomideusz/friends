@@ -37,8 +37,8 @@ defmodule Friends.Social do
         room
 
       room ->
-        # Update name if it's the old "Lobby" name
-        if room.name == "Lobby" do
+        # Always ensure name is "public square"
+        if room.name != "public square" do
           room
           |> Room.changeset(%{name: "public square"})
           |> Repo.update!()

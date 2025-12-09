@@ -163,22 +163,38 @@ const Hooks = {
 
             // Server can request identity when it knows the socket is ready
             this.handleEvent("request_identity", () => this.maybeSendIdentity())
-            
+
             // Handle challenge-response authentication
             this.handleEvent("auth_challenge", async ({ challenge }) => {
                 const signature = await cryptoIdentity.sign(challenge)
-                this.pushEvent("auth_response", { 
+                this.pushEvent("auth_response", {
                     signature,
-                    challenge 
+                    challenge
                 })
             })
-            
+
             // Handle registration success
             this.handleEvent("registration_complete", ({ user }) => {
                 console.log("Registration complete:", user)
             })
-            
-            // Setup image optimization
+
+            // Handle photo_uploaded event - send pending thumbnail
+            this.handleEvent("photo_uploaded", ({ photo_id }) => {
+                if (this.pendingThumbnail && photo_id) {
+                    this.pushEvent("set_thumbnail", {
+                        photo_id: photo_id,
+                        thumbnail: this.pendingThumbnail
+                    })
+                    this.pendingThumbnail = null
+                }
+            })
+
+            // Setup image optimization (may need to retry after DOM updates)
+            this.pendingThumbnail = null
+            this.setupImageOptimization()
+        },
+        updated() {
+            // Re-setup image optimization when DOM updates (e.g., after user auth)
             this.setupImageOptimization()
         },
         reconnected() {
@@ -207,36 +223,28 @@ const Hooks = {
         setupImageOptimization() {
             const form = this.el.querySelector('#upload-form')
             if (!form) return
-            
+
             const fileInput = form.querySelector('input[type="file"]')
             if (!fileInput) return
-            
-            this.pendingThumbnail = null
-            
-            this.handleEvent("photo_uploaded", ({ photo_id }) => {
-                if (this.pendingThumbnail && photo_id) {
-                    this.pushEvent("set_thumbnail", {
-                        photo_id: photo_id,
-                        thumbnail: this.pendingThumbnail
-                    })
-                    this.pendingThumbnail = null
-                }
-            })
-            
+
+            // Avoid setting up duplicate listeners
+            if (fileInput.dataset.optimized) return
+            fileInput.dataset.optimized = 'true'
+
             fileInput.addEventListener('change', async (e) => {
                 const files = e.target.files
                 if (!files || files.length === 0) return
-                
+
                 const file = files[0]
-                
+
                 if (file.type.startsWith('image/') && file.type !== 'image/gif') {
                     const [thumbnail, optimized] = await Promise.all([
                         generateThumbnail(file, 600),
                         optimizeImage(file, 1200)
                     ])
-                    
+
                     this.pendingThumbnail = thumbnail
-                    
+
                     if (optimized.size < file.size) {
                         const dt = new DataTransfer()
                         dt.items.add(optimized)
