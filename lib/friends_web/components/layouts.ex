@@ -4,8 +4,6 @@ defmodule FriendsWeb.Layouts do
   """
   use FriendsWeb, :html
 
-  import Phoenix.HTML
-
   embed_templates "layouts/*"
 
   @doc """

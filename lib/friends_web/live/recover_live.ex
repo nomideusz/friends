@@ -112,6 +112,11 @@ defmodule FriendsWeb.RecoverLive do
   end
 
   @impl true
+  def handle_event("go_back", _params, socket) do
+    {:noreply, assign(socket, :step, :username)}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div id="recover-app" class="min-h-screen flex items-center justify-center p-4" phx-hook="RecoverApp">
@@ -270,11 +275,6 @@ defmodule FriendsWeb.RecoverLive do
       </div>
     </div>
     """
-  end
-
-  @impl true
-  def handle_event("go_back", _params, socket) do
-    {:noreply, assign(socket, :step, :username)}
   end
 end
 

@@ -8,7 +8,6 @@ defmodule FriendsWeb.HomeLive do
   require Logger
 
   @initial_batch 20
-  @max_items 200
   @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
 
   def mount(%{"room" => room_code}, _session, socket) do
@@ -1573,19 +1572,6 @@ defmodule FriendsWeb.HomeLive do
   end
 
   # Generate thumbnail for photos that don't have one
-  defp generate_thumbnail_if_missing(image_data, photo_id, user_id, room_code) do
-    # Check if thumbnail exists first
-    case Social.get_photo(photo_id) do
-      %{thumbnail_data: nil} ->
-        # Generate thumbnail asynchronously
-        Task.async(fn ->
-          generate_thumbnail_from_data(image_data, photo_id, user_id, room_code)
-        end)
-      _ ->
-        :ok
-    end
-  end
-
   # Generate thumbnail from base64 image data
   defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do
     try do
@@ -1732,7 +1718,6 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("search_member_invite", %{"query" => query}, socket) do
     query = String.trim(query)
-    room = socket.assigns.room
     current_user = socket.assigns.current_user
     
     results = 

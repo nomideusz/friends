@@ -6,7 +6,6 @@ defmodule FriendsWeb.CoreComponents do
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
-  import FriendsWeb.Gettext
 
   @doc """
   Renders a simple button.

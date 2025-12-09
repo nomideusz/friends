@@ -45,6 +45,11 @@ defmodule FriendsWeb.RegisterLive do
   end
 
   @impl true
+  def handle_event("go_back", _params, socket) do
+    {:noreply, assign(socket, :step, :invite)}
+  end
+
+  @impl true
   def handle_event("update_invite_code", %{"invite_code" => code}, socket) do
     {:noreply, assign(socket, :invite_code, code)}
   end
@@ -275,11 +280,6 @@ defmodule FriendsWeb.RegisterLive do
       </div>
     </div>
     """
-  end
-
-  @impl true
-  def handle_event("go_back", _params, socket) do
-    {:noreply, assign(socket, :step, :invite)}
   end
 
   def handle_event("clear_identity", _params, socket) do

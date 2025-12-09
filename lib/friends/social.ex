@@ -6,7 +6,7 @@ defmodule Friends.Social do
 
   import Ecto.Query, warn: false
   alias Friends.Repo
-  alias Friends.Social.{Room, Photo, Note, Device, Presence, User, Invite, TrustedFriend, RecoveryVote, RoomMember}
+  alias Friends.Social.{Room, Photo, Note, Device, User, Invite, TrustedFriend, RecoveryVote, RoomMember}
 
   # --- PubSub ---
 
@@ -874,7 +874,7 @@ defmodule Friends.Social do
         })
         |> Repo.insert()
         |> case do
-          {:ok, vote} -> check_recovery_threshold(recovering_user_id, new_public_key)
+          {:ok, _vote} -> check_recovery_threshold(recovering_user_id, new_public_key)
           error -> error
         end
     end
