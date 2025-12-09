@@ -74,6 +74,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:uploading, false)
       |> assign(:invites, [])
       |> assign(:trusted_friends, [])
+      |> assign(:outgoing_trust_requests, [])
       |> assign(:pending_requests, [])
       |> assign(:friend_search, "")
       |> assign(:friend_search_results, [])
@@ -86,6 +87,8 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:room_access_denied, false)
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
+      |> assign(:photo_order, photo_ids(items))
+      |> assign(:current_photo_id, nil)
       |> stream(:items, items, dom_id: &("item-#{&1.unique_id}"))
       |> allow_upload(:photo,
         accept: ~w(.jpg .jpeg .png .gif .webp),
@@ -94,6 +97,8 @@ defmodule FriendsWeb.HomeLive do
         auto_upload: true,
         progress: &handle_progress/3
       )
+
+    socket = maybe_bootstrap_identity(socket, get_connect_params(socket))
 
     {:ok, socket}
   end
@@ -141,6 +146,7 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:no_more_items, length(items) < @initial_batch)
        |> assign(:loading_more, false)
        |> assign(:viewers, viewers)
+        |> assign(:photo_order, photo_ids(items))
        |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
     else
       {:noreply, socket}
@@ -274,17 +280,13 @@ defmodule FriendsWeb.HomeLive do
                   manage →
                 </button>
               </div>
-              <%= if @trusted_friends == [] do %>
-                <div class="text-sm text-neutral-600">
-                  no trusted connections yet. add friends in settings to see their activity here.
-                </div>
-              <% else %>
+              <%= if @trusted_friends != [] do %>
                 <div class="flex flex-wrap gap-2">
                   <%= for friend <- Enum.take(@trusted_friends, 10) do %>
                     <div class="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded-full">
                       <div
                         class="w-2 h-2 rounded-full"
-                        style={"background-color: #{friend.trusted_user.color || "#666"}"}
+                        style={"background-color: #{trusted_user_color(friend.trusted_user)}"}
                       />
                       <span class="text-xs text-neutral-300">@{friend.trusted_user.username}</span>
                     </div>
@@ -298,6 +300,30 @@ defmodule FriendsWeb.HomeLive do
                 <div class="mt-3 text-xs text-neutral-600">
                   showing activity from {length(@trusted_friends)} trusted connection<%= if length(@trusted_friends) != 1, do: "s" %>
                 </div>
+              <% else %>
+                <%= if @outgoing_trust_requests != [] do %>
+                  <div class="space-y-2">
+                    <div class="text-sm text-neutral-400">waiting for confirmation...</div>
+                    <div class="flex flex-wrap gap-2">
+                      <%= for req <- Enum.take(@outgoing_trust_requests, 10) do %>
+                        <div class="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded-full">
+                          <div
+                            class="w-2 h-2 rounded-full"
+                            style={"background-color: #{trusted_user_color(req.trusted_user)}"}
+                          />
+                          <span class="text-xs text-neutral-300">@{req.trusted_user.username}</span>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="text-xs text-neutral-600">
+                      they'll appear here after they confirm
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="text-sm text-neutral-600">
+                    no trusted connections yet. add friends in settings to see their activity here.
+                  </div>
+                <% end %>
               <% end %>
             </div>
           <% end %>
@@ -830,6 +856,27 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 <% end %>
 
+                <%!-- Sent Trust Requests (outgoing) --%>
+                <%= if @outgoing_trust_requests != [] do %>
+                  <div>
+                    <h3 class="text-xs text-neutral-500 uppercase tracking-wider mb-3">
+                      requests you sent
+                    </h3>
+                    <div class="space-y-2">
+                      <%= for req <- @outgoing_trust_requests do %>
+                        <div class="flex items-center gap-3 p-2 bg-neutral-950 rounded">
+                          <div
+                            class="w-6 h-6 rounded-full"
+                            style={"background-color: #{trusted_user_color(req.trusted_user)}"}
+                          />
+                          <span class="text-sm">@{req.trusted_user.username}</span>
+                          <span class="text-xs text-neutral-500 ml-auto">pending</span>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+
                 <%!-- Recovery Requests (Vote for friends) --%>
                 <%= if @recovery_requests != [] do %>
                   <div>
@@ -991,9 +1038,34 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Image Modal --%>
         <%= if @show_image_modal && @full_image_data do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-8 modal-backdrop" phx-click-away="close_image_modal">
+          <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-8 modal-backdrop"
+            phx-click-away="close_image_modal"
+            phx-window-keydown="carousel_nav"
+          >
+            <button
+              type="button"
+              phx-click="prev_photo"
+              class="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+            >
+              ‹
+            </button>
+
             <div class="relative max-w-6xl max-h-[90vh] flex items-center justify-center">
               <button type="button" phx-click="close_image_modal" class="absolute -top-14 right-0 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all">×</button>
+
+              <%= if @full_image_data[:user_id] == @user_id do %>
+                <button
+                  type="button"
+                  phx-click="delete_photo"
+                  phx-value-id={@full_image_data[:photo_id]}
+                  data-confirm="delete?"
+                  class="absolute -top-14 left-0 w-16 h-10 flex items-center justify-center glass rounded-full text-red-400 hover:text-red-200 text-xs cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+                >
+                  delete
+                </button>
+              <% end %>
+
               <div class="rounded-2xl overflow-hidden opal-glow">
                 <img
                   src={@full_image_data.data}
@@ -1002,6 +1074,14 @@ defmodule FriendsWeb.HomeLive do
                 />
               </div>
             </div>
+
+            <button
+              type="button"
+              phx-click="next_photo"
+              class="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+            >
+              ›
+            </button>
           </div>
         <% end %>
     </div>
@@ -1066,6 +1146,7 @@ defmodule FriendsWeb.HomeLive do
          |> assign(:viewers, viewers)
          |> assign(:invites, Social.list_user_invites(user.id))
          |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
+         |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
          |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
          |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
          |> assign(:user_private_rooms, private_rooms)
@@ -1109,6 +1190,7 @@ defmodule FriendsWeb.HomeLive do
            |> assign(:viewers, viewers)
            |> assign(:invites, Social.list_user_invites(user.id))
            |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
+          |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
            |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
            |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
            |> assign(:user_private_rooms, private_rooms)
@@ -1145,6 +1227,7 @@ defmodule FriendsWeb.HomeLive do
              |> assign(:viewers, viewers)
              |> assign(:invites, Social.list_user_invites(user.id))
              |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
+            |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
              |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
              |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
              |> assign(:user_private_rooms, private_rooms)
@@ -1191,6 +1274,8 @@ defmodule FriendsWeb.HomeLive do
               {:noreply,
                socket
                |> assign(:item_count, max(0, socket.assigns.item_count - 1))
+               |> maybe_close_deleted_photo(photo_id)
+               |> assign(:photo_order, remove_photo_from_order(socket.assigns.photo_order, photo_id))
                |> stream_delete(:items, %{id: photo_id})}
 
             {:error, _} ->
@@ -1447,36 +1532,35 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("view_full_image", %{"photo-id" => photo_id}, socket) do
-    case Social.get_photo_image_data(photo_id) do
-      %{image_data: image_data, thumbnail_data: thumb, content_type: content_type} ->
-        # Prefer full image, fallback to thumbnail
-        raw = image_data || thumb
-        src =
-          cond do
-            is_nil(raw) -> nil
-            String.starts_with?(raw, "data:") -> raw
-            true -> "data:#{content_type || "image/jpeg"};base64,#{raw}"
-          end
-
-        if is_nil(src) do
-          {:noreply, put_flash(socket, :error, "Could not load image")}
-        else
-          {:noreply,
-           socket
-           |> assign(:show_image_modal, true)
-           |> assign(:full_image_data, %{data: src, content_type: content_type || "image/jpeg"})}
-        end
-
-      _ ->
-        {:noreply, put_flash(socket, :error, "Could not load image")}
-    end
+    {:noreply, load_photo_into_modal(socket, photo_id)}
   end
 
   def handle_event("close_image_modal", _params, socket) do
     {:noreply,
      socket
      |> assign(:show_image_modal, false)
-     |> assign(:full_image_data, nil)}
+     |> assign(:full_image_data, nil)
+     |> assign(:current_photo_id, nil)}
+  end
+
+  def handle_event("next_photo", _params, socket) do
+    {:noreply, navigate_photo(socket, :next)}
+  end
+
+  def handle_event("prev_photo", _params, socket) do
+    {:noreply, navigate_photo(socket, :prev)}
+  end
+
+  def handle_event("carousel_nav", %{"key" => key}, socket) do
+    if socket.assigns.show_image_modal do
+      case key do
+        "ArrowRight" -> {:noreply, navigate_photo(socket, :next)}
+        "ArrowLeft" -> {:noreply, navigate_photo(socket, :prev)}
+        _ -> {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("regenerate_thumbnails", _params, socket) do
@@ -1601,10 +1685,12 @@ defmodule FriendsWeb.HomeLive do
       current_user ->
         case Social.add_trusted_friend(current_user.id, user_id) do
           {:ok, _tf} ->
+            outgoing = Social.list_sent_trust_requests(current_user.id)
             {:noreply, 
              socket 
              |> assign(:friend_search, "")
              |> assign(:friend_search_results, [])
+             |> assign(:outgoing_trust_requests, outgoing)
              |> put_flash(:info, "trust request sent")}
           
           {:error, :cannot_trust_self} ->
@@ -1734,6 +1820,7 @@ defmodule FriendsWeb.HomeLive do
          |> assign(:item_count, length(items))
          |> assign(:no_more_items, no_more)
          |> assign(:loading_more, false)
+         |> assign(:photo_order, photo_ids(items))
          |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
       
       "friends" ->
@@ -1745,6 +1832,7 @@ defmodule FriendsWeb.HomeLive do
           user ->
             # Load trusted friends for the network display
             trusted_friends = Social.list_trusted_friends(user.id)
+            outgoing_trusts = Social.list_sent_trust_requests(user.id)
 
             photos = Social.list_friends_photos(user.id, @initial_batch, offset: 0)
             notes = Social.list_friends_notes(user.id, @initial_batch, offset: 0)
@@ -1754,9 +1842,11 @@ defmodule FriendsWeb.HomeLive do
             {:noreply,
              socket
              |> assign(:trusted_friends, trusted_friends)
+             |> assign(:outgoing_trust_requests, outgoing_trusts)
              |> assign(:item_count, length(items))
              |> assign(:no_more_items, no_more)
              |> assign(:loading_more, false)
+             |> assign(:photo_order, photo_ids(items))
              |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
         end
     end
@@ -1793,6 +1883,7 @@ defmodule FriendsWeb.HomeLive do
         end
 
       new_count = offset + length(items)
+      new_photo_order = merge_photo_order(socket.assigns.photo_order, photo_ids(items), :back)
 
       socket =
         Enum.reduce(items, socket, fn item, acc ->
@@ -1803,7 +1894,8 @@ defmodule FriendsWeb.HomeLive do
        socket
        |> assign(:item_count, new_count)
        |> assign(:no_more_items, no_more?)
-       |> assign(:loading_more, false)}
+       |> assign(:loading_more, false)
+       |> assign(:photo_order, new_photo_order)}
     end
   end
 
@@ -1888,6 +1980,7 @@ defmodule FriendsWeb.HomeLive do
          socket
          |> assign(:uploading, false)
          |> assign(:item_count, socket.assigns.item_count + 1)
+         |> assign(:photo_order, merge_photo_order(socket.assigns.photo_order, [photo.id], :front))
          |> stream_insert(:items, photo_with_type, at: 0)
          |> push_event("photo_uploaded", %{photo_id: photo.id})}
 
@@ -1914,6 +2007,7 @@ defmodule FriendsWeb.HomeLive do
       {:noreply,
        socket
        |> assign(:item_count, socket.assigns.item_count + 1)
+       |> assign(:photo_order, merge_photo_order(socket.assigns.photo_order, [photo.id], :front))
        |> stream_insert(:items, photo_with_type, at: 0)}
     else
       {:noreply, socket}
@@ -1924,6 +2018,7 @@ defmodule FriendsWeb.HomeLive do
     {:noreply,
      socket
      |> assign(:item_count, max(0, socket.assigns.item_count - 1))
+     |> assign(:photo_order, remove_photo_from_order(socket.assigns.photo_order, id))
      |> stream_delete(:items, %{id: id})}
   end
 
@@ -1984,6 +2079,162 @@ defmodule FriendsWeb.HomeLive do
     <<r, g, b, _::binary>> = hash
     "rgb(#{rem(r, 156) + 100}, #{rem(g, 156) + 100}, #{rem(b, 156) + 100})"
   end
+
+  defp photo_ids(items) do
+    items
+    |> Enum.filter(&(Map.get(&1, :type) == :photo))
+    |> Enum.map(& &1.id)
+  end
+
+  defp merge_photo_order(order, ids, position) do
+    order = order || []
+    ids = ids |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    remaining = Enum.reject(order, &(&1 in ids))
+
+    case position do
+      :front -> ids ++ remaining
+      :back -> remaining ++ ids
+      _ -> remaining
+    end
+  end
+
+  defp remove_photo_from_order(order, id) do
+    order = order || []
+    normalized = normalize_photo_id(id)
+    Enum.reject(order, &(&1 == normalized))
+  end
+
+  defp maybe_close_deleted_photo(socket, photo_id) do
+    if socket.assigns.current_photo_id == photo_id do
+      socket
+      |> assign(:show_image_modal, false)
+      |> assign(:full_image_data, nil)
+      |> assign(:current_photo_id, nil)
+    else
+      socket
+    end
+  end
+
+  defp load_photo_into_modal(socket, photo_id) do
+    photo_id_int = normalize_photo_id(photo_id)
+
+    case Social.get_photo(photo_id_int) do
+      nil ->
+        put_flash(socket, :error, "Could not load image")
+
+      photo ->
+        raw = photo.image_data || photo.thumbnail_data
+        content_type = photo.content_type || "image/jpeg"
+
+        src =
+          cond do
+            is_nil(raw) -> nil
+            String.starts_with?(raw, "data:") -> raw
+            true -> "data:#{content_type};base64,#{raw}"
+          end
+
+        if is_nil(src) do
+          put_flash(socket, :error, "Could not load image")
+        else
+          order = merge_photo_order(socket.assigns.photo_order, [photo_id_int], :front)
+          current_idx = Enum.find_index(order, &(&1 == photo_id_int))
+
+          socket
+          |> assign(:show_image_modal, true)
+          |> assign(:full_image_data, %{data: src, content_type: content_type, photo_id: photo.id, user_id: photo.user_id})
+          |> assign(:photo_order, order)
+          |> assign(:current_photo_id, photo_id_int)
+          |> assign(:current_photo_index, current_idx)
+        end
+    end
+  end
+
+  defp navigate_photo(socket, direction) do
+    order = socket.assigns.photo_order || []
+    current = socket.assigns.current_photo_id
+
+    cond do
+      current == nil -> socket
+      order == [] -> socket
+      true ->
+        idx = Enum.find_index(order, &(&1 == current)) || 0
+        len = length(order)
+
+        new_idx =
+          case direction do
+            :next -> rem(idx + 1, len)
+            :prev -> rem(idx - 1 + len, len)
+            _ -> idx
+          end
+
+        new_id = Enum.at(order, new_idx)
+        load_photo_into_modal(socket, new_id)
+    end
+  end
+
+  defp maybe_bootstrap_identity(%{assigns: %{user_id: user_id}} = socket, _params) when not is_nil(user_id),
+    do: socket
+
+  defp maybe_bootstrap_identity(socket, %{"browser_id" => browser_id} = params) do
+    room = socket.assigns.room
+    fingerprint = params["fingerprint"] || browser_id
+
+    with {:ok, device, _} <- Social.register_device(fingerprint, browser_id),
+         user_id when not is_nil(user_id) <- device.user_id,
+         user when not is_nil(user) <- Social.get_user(user_id) do
+      color = Enum.at(@colors, rem(user.id, length(@colors)))
+      tracked_user_id = "user-#{user.id}"
+      user_name = user.display_name || user.username
+
+      viewers =
+        if connected?(socket) do
+          Presence.track_user(self(), room.code, tracked_user_id, color, user_name)
+          Presence.list_users(room.code)
+        else
+          socket.assigns.viewers
+        end
+
+      private_rooms = if connected?(socket), do: Social.list_user_private_rooms(user.id), else: []
+
+      socket
+      |> assign(:current_user, user)
+      |> assign(:pending_auth, nil)
+      |> assign(:user_id, tracked_user_id)
+      |> assign(:user_color, color)
+      |> assign(:user_name, user_name)
+      |> assign(:browser_id, browser_id)
+      |> assign(:fingerprint, fingerprint)
+      |> assign(:viewers, viewers)
+      |> assign(:invites, Social.list_user_invites(user.id))
+      |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
+      |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
+      |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
+      |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
+      |> assign(:user_private_rooms, private_rooms)
+      |> assign(:room_access_denied, not Social.can_access_room?(room, user.id))
+    else
+      _ -> socket
+    end
+  end
+
+  defp maybe_bootstrap_identity(socket, _), do: socket
+
+  defp trusted_user_color(%{id: id}), do: color_from_user_id(id)
+  defp trusted_user_color(_), do: "#666"
+
+  defp color_from_user_id("user-" <> id_str) do
+    case Integer.parse(id_str) do
+      {int, ""} -> color_from_user_id(int)
+      _ -> generate_user_color(id_str)
+    end
+  end
+
+  defp color_from_user_id(user_id) when is_integer(user_id) do
+    Enum.at(@colors, rem(user_id, length(@colors)))
+  end
+
+  defp color_from_user_id(user_id) when is_binary(user_id), do: generate_user_color(user_id)
+  defp color_from_user_id(_), do: "#666"
 
   defp build_items(photos, notes) do
     photo_items = Enum.map(photos, fn p ->

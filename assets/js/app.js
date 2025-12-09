@@ -145,8 +145,8 @@ const Hooks = {
     
     FriendsApp: {
         async mounted() {
-            this.browserId = getBrowserId()
-            this.fingerprint = generateFingerprint()
+            this.browserId = bootstrapBrowserId
+            this.fingerprint = bootstrapFingerprint
 
             // Initialize crypto identity
             const { isNew, publicKey } = await cryptoIdentity.init()
@@ -398,11 +398,19 @@ const Hooks = {
     }
 }
 
+// Precompute lightweight identity signals for instant server bootstrap
+const bootstrapBrowserId = getBrowserId()
+const bootstrapFingerprint = generateFingerprint()
+
 // Setup LiveSocket
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
     hooks: Hooks,
-    params: {_csrf_token: csrfToken},
+    params: {
+        _csrf_token: csrfToken,
+        browser_id: bootstrapBrowserId,
+        fingerprint: bootstrapFingerprint
+    },
     reconnectAfterMs: tries => [100, 200, 500, 1000, 2000, 5000][tries - 1] || 5000,
     longPollFallbackMs: 2500
 })

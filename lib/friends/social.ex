@@ -817,6 +817,17 @@ defmodule Friends.Social do
   end
 
   @doc """
+  List pending trust requests the user has sent (outgoing).
+  """
+  def list_sent_trust_requests(user_id) do
+    Repo.all(
+      from tf in TrustedFriend,
+        where: tf.user_id == ^user_id and tf.status == "pending",
+        preload: [:trusted_user]
+    )
+  end
+
+  @doc """
   Count confirmed trusted friends
   """
   def count_trusted_friends(user_id) do
