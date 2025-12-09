@@ -2136,7 +2136,7 @@ defmodule FriendsWeb.HomeLive do
         if is_nil(src) do
           put_flash(socket, :error, "Could not load image")
         else
-          order = merge_photo_order(socket.assigns.photo_order, [photo_id_int], :front)
+          order = merge_photo_order(current_photo_order(socket), [photo_id_int], :front)
           current_idx = Enum.find_index(order, &(&1 == photo_id_int))
 
           socket
@@ -2150,7 +2150,7 @@ defmodule FriendsWeb.HomeLive do
   end
 
   defp navigate_photo(socket, direction) do
-    order = socket.assigns.photo_order || []
+    order = merge_photo_order(current_photo_order(socket), [socket.assigns.current_photo_id], :front)
     current = socket.assigns.current_photo_id
 
     cond do
@@ -2169,6 +2169,22 @@ defmodule FriendsWeb.HomeLive do
 
         new_id = Enum.at(order, new_idx)
         load_photo_into_modal(socket, new_id)
+    end
+  end
+
+  defp current_photo_order(socket) do
+    stream_items = socket.assigns.streams[:items] || []
+
+    ids =
+      stream_items
+      |> Enum.map(fn {_dom_id, item} -> item end)
+      |> Enum.filter(&(Map.get(&1, :type) == :photo))
+      |> Enum.map(& &1.id)
+
+    cond do
+      ids != [] -> ids
+      is_list(socket.assigns[:photo_order]) -> socket.assigns.photo_order
+      true -> []
     end
   end
 
