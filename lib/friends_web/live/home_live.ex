@@ -333,8 +333,7 @@ defmodule FriendsWeb.HomeLive do
                       <img
                         src={item.thumbnail_data}
                         alt=""
-                        class="w-full h-full object-cover"
-                        loading="lazy"
+                        class="w-full h-full object-cover loaded"
                         decoding="async"
                       />
                     <% else %>
