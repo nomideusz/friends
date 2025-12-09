@@ -1276,7 +1276,7 @@ defmodule FriendsWeb.HomeLive do
                |> assign(:item_count, max(0, socket.assigns.item_count - 1))
                |> maybe_close_deleted_photo(photo_id)
                |> assign(:photo_order, remove_photo_from_order(socket.assigns.photo_order, photo_id))
-               |> stream_delete(:items, %{id: photo_id})}
+               |> stream_delete(:items, %{id: photo_id, unique_id: "photo-#{photo_id}"})}
 
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "failed")}
@@ -1295,7 +1295,7 @@ defmodule FriendsWeb.HomeLive do
         {:noreply,
          socket
          |> assign(:item_count, max(0, socket.assigns.item_count - 1))
-         |> stream_delete(:items, %{id: note_id})}
+         |> stream_delete(:items, %{id: note_id, unique_id: "note-#{note_id}"})}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "cannot delete")}
@@ -2019,7 +2019,7 @@ defmodule FriendsWeb.HomeLive do
      socket
      |> assign(:item_count, max(0, socket.assigns.item_count - 1))
      |> assign(:photo_order, remove_photo_from_order(socket.assigns.photo_order, id))
-     |> stream_delete(:items, %{id: id})}
+     |> stream_delete(:items, %{id: id, unique_id: "photo-#{id}"})}
   end
 
   def handle_info({:photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data}}, socket) do
@@ -2057,7 +2057,7 @@ defmodule FriendsWeb.HomeLive do
     {:noreply,
      socket
      |> assign(:item_count, max(0, socket.assigns.item_count - 1))
-     |> stream_delete(:items, %{id: id})}
+     |> stream_delete(:items, %{id: id, unique_id: "note-#{id}"})}
   end
 
   def handle_info(%{event: "presence_diff", payload: _}, socket) do
