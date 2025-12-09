@@ -257,7 +257,7 @@ defmodule Friends.Social do
   def get_photo_image_data(id) do
     Photo
     |> where([p], p.id == ^id)
-    |> select([p], %{image_data: p.image_data, content_type: p.content_type})
+    |> select([p], %{image_data: p.image_data, thumbnail_data: p.thumbnail_data, content_type: p.content_type})
     |> Repo.one()
   end
 

@@ -1339,16 +1339,20 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("view_full_image", %{"photo-id" => photo_id}, socket) do
     case Social.get_photo_image_data(photo_id) do
       %{image_data: image_data, content_type: content_type} when not is_nil(image_data) ->
-        # If this photo doesn't have a thumbnail, generate one in the background
-        generate_thumbnail_if_missing(image_data, photo_id, socket.assigns.user_id, socket.assigns.room.code)
-
         {:noreply,
          socket
          |> assign(:show_image_modal, true)
          |> assign(:full_image_data, %{data: image_data, content_type: content_type})}
 
+      %{thumbnail_data: thumb} when is_binary(thumb) ->
+        # Fallback to thumbnail if full image missing
+        {:noreply,
+         socket
+         |> assign(:show_image_modal, true)
+         |> assign(:full_image_data, %{data: thumb, content_type: "image/jpeg"})}
+
       _ ->
-        {:noreply, socket}
+        {:noreply, put_flash(socket, :error, "Could not load image")}
     end
   end
 
