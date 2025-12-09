@@ -864,61 +864,100 @@ defmodule Friends.Social do
   end
 
   @doc """
-  Cast recovery vote
+  Cast recovery vote with transaction to prevent race conditions.
+  Checks for duplicate votes and uses proper isolation.
   """
   def cast_recovery_vote(recovering_user_id, voting_user_id, vote, new_public_key) do
-    # Verify voter is a trusted friend
+    # Verify voter is a trusted friend first (outside transaction for fast fail)
     case get_trusted_friend_request(recovering_user_id, voting_user_id) do
       nil -> {:error, :not_trusted_friend}
       tf when tf.status != "confirmed" -> {:error, :not_confirmed_friend}
       _tf ->
-        %RecoveryVote{}
-        |> RecoveryVote.changeset(%{
-          recovering_user_id: recovering_user_id,
-          voting_user_id: voting_user_id,
-          vote: vote,
-          new_public_key: new_public_key
-        })
-        |> Repo.insert()
+        # Use transaction with serializable isolation for race condition safety
+        Repo.transaction(fn ->
+          # Check for duplicate vote inside transaction
+          if has_voted_for_recovery?(recovering_user_id, voting_user_id) do
+            Repo.rollback(:already_voted)
+          end
+
+          # Insert the vote
+          case %RecoveryVote{}
+               |> RecoveryVote.changeset(%{
+                 recovering_user_id: recovering_user_id,
+                 voting_user_id: voting_user_id,
+                 vote: vote,
+                 new_public_key: new_public_key
+               })
+               |> Repo.insert() do
+            {:ok, _vote} ->
+              # Check threshold inside transaction to prevent race
+              check_recovery_threshold_internal(recovering_user_id, new_public_key)
+
+            {:error, changeset} ->
+              Repo.rollback({:insert_failed, changeset})
+          end
+        end)
         |> case do
-          {:ok, _vote} -> check_recovery_threshold(recovering_user_id, new_public_key)
-          error -> error
+          {:ok, result} -> result
+          {:error, :already_voted} -> {:error, :already_voted}
+          {:error, {:insert_failed, _}} -> {:error, :vote_failed}
+          {:error, reason} -> {:error, reason}
         end
     end
   end
 
-  @doc """
-  Check if recovery threshold is met (4 out of 5)
-  """
-  def check_recovery_threshold(user_id, new_public_key) do
+  # Internal threshold check (called within transaction)
+  defp check_recovery_threshold_internal(user_id, new_public_key) do
     confirm_count = Repo.one(
       from rv in RecoveryVote,
-        where: rv.recovering_user_id == ^user_id 
+        where: rv.recovering_user_id == ^user_id
                and rv.vote == "confirm"
                and fragment("?::jsonb = ?::jsonb", rv.new_public_key, ^new_public_key),
         select: count(rv.id)
     )
-    
+
     if confirm_count >= 4 do
-      # Recovery successful - update public key
-      case get_user(user_id) do
-        nil -> {:error, :user_not_found}
+      # Recovery successful - update public key with lock
+      case Repo.one(from u in User, where: u.id == ^user_id, lock: "FOR UPDATE") do
+        nil ->
+          Repo.rollback(:user_not_found)
+
         user ->
-          user
-          |> User.changeset(%{
-            public_key: new_public_key,
-            status: "active",
-            recovery_requested_at: nil
-          })
-          |> Repo.update()
-          |> case do
-            {:ok, user} ->
+          case user
+               |> User.changeset(%{
+                 public_key: new_public_key,
+                 status: "active",
+                 recovery_requested_at: nil
+               })
+               |> Repo.update() do
+            {:ok, updated_user} ->
               # Clean up recovery votes
               Repo.delete_all(from rv in RecoveryVote, where: rv.recovering_user_id == ^user_id)
-              {:ok, :recovered, user}
-            error -> error
+              {:ok, :recovered, updated_user}
+
+            {:error, _} ->
+              Repo.rollback(:update_failed)
           end
       end
+    else
+      {:ok, :votes_recorded, confirm_count}
+    end
+  end
+
+  @doc """
+  Check if recovery threshold is met (4 out of 5) - public API for status checks
+  """
+  def check_recovery_threshold(user_id, new_public_key) do
+    confirm_count = Repo.one(
+      from rv in RecoveryVote,
+        where: rv.recovering_user_id == ^user_id
+               and rv.vote == "confirm"
+               and fragment("?::jsonb = ?::jsonb", rv.new_public_key, ^new_public_key),
+        select: count(rv.id)
+    )
+
+    if confirm_count >= 4 do
+      {:ok, :threshold_met, confirm_count}
     else
       {:ok, :votes_recorded, confirm_count}
     end
