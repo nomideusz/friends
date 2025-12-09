@@ -74,8 +74,33 @@ defmodule FriendsWeb.Telemetry do
   end
 
   def dispatch_events do
-    :telemetry.execute([:vm, :memory], :erlang.memory(), %{})
-    :telemetry.execute([:vm, :total_run_queue_lengths], :erlang.statistics(:run_queue_lengths_all), %{})
+    memory =
+      :erlang.memory()
+      |> Enum.into(%{})
+
+    :telemetry.execute([:vm, :memory], memory, %{})
+
+    queue_lengths =
+      case :erlang.statistics(:total_run_queue_lengths_all) do
+        %{total: total, cpu: cpu, io: io} ->
+          %{total: total, cpu: cpu, io: io}
+
+        {total, cpu, io} ->
+          %{total: total, cpu: cpu, io: io}
+
+        [total | rest] when is_list(rest) ->
+          cpu = Enum.at(rest, 0) || total
+          io = Enum.at(rest, 1) || 0
+          %{total: total, cpu: cpu, io: io}
+
+        total when is_integer(total) ->
+          %{total: total, cpu: total, io: 0}
+
+        _ ->
+          %{total: 0, cpu: 0, io: 0}
+      end
+
+    :telemetry.execute([:vm, :total_run_queue_lengths], queue_lengths, %{})
   end
 end
 
