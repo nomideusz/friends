@@ -625,7 +625,7 @@ defmodule FriendsWeb.HomeLive do
                     placeholder="enter room code..."
                     class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
                   />
-                  <button type="submit" class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 cursor-pointer">
+                  <button type="submit" phx-disable-with="..." class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 cursor-pointer disabled:opacity-50">
                     go
                   </button>
                 </form>
@@ -639,7 +639,7 @@ defmodule FriendsWeb.HomeLive do
                     placeholder="create new space..."
                     class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
                   />
-                  <button type="submit" class="px-4 py-2 border border-neutral-700 text-neutral-300 text-sm hover:border-neutral-500 hover:text-white cursor-pointer">
+                  <button type="submit" phx-disable-with="..." class="px-4 py-2 border border-neutral-700 text-neutral-300 text-sm hover:border-neutral-500 hover:text-white cursor-pointer disabled:opacity-50">
                     +
                   </button>
                 </form>
@@ -819,7 +819,8 @@ defmodule FriendsWeb.HomeLive do
                             type="button"
                             phx-click="add_trusted_friend"
                             phx-value-user_id={user.id}
-                            class="text-xs text-green-500 hover:text-green-400 cursor-pointer"
+                            phx-disable-with="..."
+                            class="text-xs text-green-500 hover:text-green-400 cursor-pointer disabled:opacity-50"
                           >
                             + trust
                           </button>
@@ -2011,6 +2012,22 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Progress Handler ---
 
+  # Validate file content by checking magic bytes (file signature)
+  defp validate_image_content(binary) do
+    case binary do
+      # JPEG: starts with FF D8 FF
+      <<0xFF, 0xD8, 0xFF, _rest::binary>> -> {:ok, "image/jpeg"}
+      # PNG: starts with 89 50 4E 47 0D 0A 1A 0A
+      <<0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, _rest::binary>> -> {:ok, "image/png"}
+      # GIF: starts with GIF87a or GIF89a
+      <<"GIF87a", _rest::binary>> -> {:ok, "image/gif"}
+      <<"GIF89a", _rest::binary>> -> {:ok, "image/gif"}
+      # WebP: starts with RIFF....WEBP
+      <<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>> -> {:ok, "image/webp"}
+      _ -> {:error, :invalid_image}
+    end
+  end
+
   def handle_progress(:photo, entry, socket) when entry.done? do
     # Don't allow uploads from anonymous users
     if is_nil(socket.assigns.user_id) do
@@ -2019,43 +2036,60 @@ defmodule FriendsWeb.HomeLive do
       [photo_result] =
         consume_uploaded_entries(socket, :photo, fn %{path: path}, _entry ->
           binary = File.read!(path)
-          base64 = Base.encode64(binary)
-          content_type = entry.client_type || "image/jpeg"
-          file_size = byte_size(binary)
-          {:ok, %{data_url: "data:#{content_type};base64,#{base64}", content_type: content_type, file_size: file_size}}
+
+          # Validate actual file content, not just extension/client type
+          case validate_image_content(binary) do
+            {:ok, validated_type} ->
+              base64 = Base.encode64(binary)
+              file_size = byte_size(binary)
+              {:ok, %{data_url: "data:#{validated_type};base64,#{base64}", content_type: validated_type, file_size: file_size}}
+
+            {:error, :invalid_image} ->
+              {:ok, %{error: :invalid_image}}
+          end
         end)
 
-      room = socket.assigns.room
+      # Check if validation failed
+      case photo_result do
+        %{error: :invalid_image} ->
+          {:noreply,
+           socket
+           |> assign(:uploading, false)
+           |> put_flash(:error, "Invalid file type. Please upload a valid image (JPEG, PNG, GIF, or WebP).")}
 
-    case Social.create_photo(
-           %{
-             user_id: socket.assigns.user_id,
-             user_color: socket.assigns.user_color,
-             user_name: socket.assigns.user_name,
-             image_data: photo_result.data_url,
-             content_type: photo_result.content_type,
-             file_size: photo_result.file_size,
-             room_id: room.id
-           },
-           room.code
-         ) do
-      {:ok, photo} ->
-        photo_with_type =
-          photo
-          |> Map.put(:type, :photo)
-          |> Map.put(:unique_id, "photo-#{photo.id}")
-          |> Map.put(:thumbnail_data, photo.thumbnail_data)
+        %{data_url: _, content_type: _, file_size: _} = valid_result ->
+          room = socket.assigns.room
 
-        {:noreply,
-         socket
-         |> assign(:uploading, false)
-         |> assign(:item_count, socket.assigns.item_count + 1)
-         |> assign(:photo_order, merge_photo_order(socket.assigns.photo_order, [photo.id], :front))
-         |> stream_insert(:items, photo_with_type, at: 0)
-         |> push_event("photo_uploaded", %{photo_id: photo.id})}
+          case Social.create_photo(
+                 %{
+                   user_id: socket.assigns.user_id,
+                   user_color: socket.assigns.user_color,
+                   user_name: socket.assigns.user_name,
+                   image_data: valid_result.data_url,
+                   content_type: valid_result.content_type,
+                   file_size: valid_result.file_size,
+                   room_id: room.id
+                 },
+                 room.code
+               ) do
+            {:ok, photo} ->
+              photo_with_type =
+                photo
+                |> Map.put(:type, :photo)
+                |> Map.put(:unique_id, "photo-#{photo.id}")
+                |> Map.put(:thumbnail_data, photo.thumbnail_data)
 
-      {:error, _} ->
-        {:noreply, socket |> assign(:uploading, false) |> put_flash(:error, "failed")}
+              {:noreply,
+               socket
+               |> assign(:uploading, false)
+               |> assign(:item_count, socket.assigns.item_count + 1)
+               |> assign(:photo_order, merge_photo_order(socket.assigns.photo_order, [photo.id], :front))
+               |> stream_insert(:items, photo_with_type, at: 0)
+               |> push_event("photo_uploaded", %{photo_id: photo.id})}
+
+            {:error, _} ->
+              {:noreply, socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
+          end
       end
     end
   end
