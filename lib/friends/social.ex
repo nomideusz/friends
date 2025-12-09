@@ -33,11 +33,18 @@ defmodule Friends.Social do
   def get_or_create_lobby do
     case Repo.get_by(Room, code: "lobby") do
       nil ->
-        {:ok, room} = create_room(%{code: "lobby", name: "Lobby"})
+        {:ok, room} = create_room(%{code: "lobby", name: "public square"})
         room
 
       room ->
-        room
+        # Update name if it's the old "Lobby" name
+        if room.name == "Lobby" do
+          room
+          |> Room.changeset(%{name: "public square"})
+          |> Repo.update!()
+        else
+          room
+        end
     end
   end
 
@@ -164,6 +171,32 @@ defmodule Friends.Social do
         on: rm.room_id == r.id,
         where: rm.user_id == ^user_id and r.is_private == true,
         order_by: [desc: r.updated_at]
+    )
+  end
+
+  @doc """
+  List public rooms with activity counts, ordered by recent activity
+  """
+  def list_public_rooms(limit \\ 20) do
+    # Get rooms with photo/note counts and last activity
+    Repo.all(
+      from r in Room,
+        left_join: p in Photo,
+        on: p.room_id == r.id,
+        left_join: n in Note,
+        on: n.room_id == r.id,
+        where: r.is_private == false,
+        group_by: r.id,
+        order_by: [desc: fragment("GREATEST(MAX(?), MAX(?), ?)", p.inserted_at, n.inserted_at, r.inserted_at)],
+        limit: ^limit,
+        select: %{
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          photo_count: count(p.id, :distinct),
+          note_count: count(n.id, :distinct),
+          last_activity: fragment("GREATEST(MAX(?), MAX(?), ?)", p.inserted_at, n.inserted_at, r.inserted_at)
+        }
     )
   end
 
