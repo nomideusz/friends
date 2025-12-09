@@ -1338,18 +1338,24 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("view_full_image", %{"photo-id" => photo_id}, socket) do
     case Social.get_photo_image_data(photo_id) do
-      %{image_data: image_data, content_type: content_type} when not is_nil(image_data) ->
-        {:noreply,
-         socket
-         |> assign(:show_image_modal, true)
-         |> assign(:full_image_data, %{data: image_data, content_type: content_type})}
+      %{image_data: image_data, thumbnail_data: thumb, content_type: content_type} ->
+        # Prefer full image, fallback to thumbnail
+        raw = image_data || thumb
+        src =
+          cond do
+            is_nil(raw) -> nil
+            String.starts_with?(raw, "data:") -> raw
+            true -> "data:#{content_type || "image/jpeg"};base64,#{raw}"
+          end
 
-      %{thumbnail_data: thumb} when is_binary(thumb) ->
-        # Fallback to thumbnail if full image missing
-        {:noreply,
-         socket
-         |> assign(:show_image_modal, true)
-         |> assign(:full_image_data, %{data: thumb, content_type: "image/jpeg"})}
+        if is_nil(src) do
+          {:noreply, put_flash(socket, :error, "Could not load image")}
+        else
+          {:noreply,
+           socket
+           |> assign(:show_image_modal, true)
+           |> assign(:full_image_data, %{data: src, content_type: content_type || "image/jpeg"})}
+        end
 
       _ ->
         {:noreply, put_flash(socket, :error, "Could not load image")}
