@@ -1066,7 +1066,6 @@ defmodule FriendsWeb.HomeLive do
           <div
             class="fixed inset-0 z-50 flex items-center justify-center p-8 modal-backdrop"
             phx-click-away="close_image_modal"
-            phx-window-keydown="carousel_nav"
             role="dialog"
             aria-modal="true"
             aria-label="Photo viewer"
@@ -1565,18 +1564,6 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("prev_photo", _params, socket) do
     {:noreply, navigate_photo(socket, :prev)}
-  end
-
-  def handle_event("carousel_nav", %{"key" => key}, socket) do
-    if socket.assigns.show_image_modal do
-      case key do
-        "ArrowRight" -> {:noreply, navigate_photo(socket, :next)}
-        "ArrowLeft" -> {:noreply, navigate_photo(socket, :prev)}
-        _ -> {:noreply, socket}
-      end
-    else
-      {:noreply, socket}
-    end
   end
 
   # Global keyboard handler for accessibility
