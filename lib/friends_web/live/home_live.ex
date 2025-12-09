@@ -82,6 +82,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:member_invite_search, "")
       |> assign(:member_invite_results, [])
       |> assign(:user_private_rooms, [])
+      |> assign(:public_rooms, [])
       |> assign(:room_access_denied, false)
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
@@ -155,15 +156,16 @@ defmodule FriendsWeb.HomeLive do
         <header class="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-sm sticky top-0 z-40">
           <div class="max-w-6xl mx-auto px-4 py-3">
             <div class="flex items-center justify-between gap-4">
-              <%!-- Room selector --%>
+              <%!-- Space selector --%>
               <button
                 type="button"
                 phx-click="open_room_modal"
                 class="flex items-center gap-2 text-sm hover:text-white transition-colors cursor-pointer"
               >
-                <span class="text-neutral-500">room/</span>
                 <%= if @room.is_private do %>
                   <span class="text-green-500">🔒</span>
+                <% else %>
+                  <span class="text-blue-400">◉</span>
                 <% end %>
                 <span class="font-medium">{@room.name || @room.code}</span>
                 <span class="text-neutral-600 text-xs">▼</span>
@@ -236,7 +238,7 @@ defmodule FriendsWeb.HomeLive do
                 )
               ]}
             >
-              room
+              space
             </button>
             <%= if @current_user do %>
               <button
@@ -251,10 +253,51 @@ defmodule FriendsWeb.HomeLive do
                   )
                 ]}
               >
-                friends
+                network
               </button>
             <% end %>
           </div>
+
+          <%!-- Network Info (when in network mode) --%>
+          <%= if @feed_mode == "friends" && @current_user do %>
+            <div class="mb-6 p-4 bg-neutral-900/50 border border-neutral-800">
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-xs text-neutral-500">your trust network</div>
+                <button
+                  type="button"
+                  phx-click="open_settings_modal"
+                  class="text-xs text-green-500 hover:text-green-400 cursor-pointer"
+                >
+                  manage →
+                </button>
+              </div>
+              <%= if @trusted_friends == [] do %>
+                <div class="text-sm text-neutral-600">
+                  no trusted connections yet. add friends in settings to see their activity here.
+                </div>
+              <% else %>
+                <div class="flex flex-wrap gap-2">
+                  <%= for friend <- Enum.take(@trusted_friends, 10) do %>
+                    <div class="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded-full">
+                      <div
+                        class="w-2 h-2 rounded-full"
+                        style={"background-color: #{friend.user.color || "#666"}"}
+                      />
+                      <span class="text-xs text-neutral-300">@{friend.user.username}</span>
+                    </div>
+                  <% end %>
+                  <%= if length(@trusted_friends) > 10 do %>
+                    <div class="px-2 py-1 text-xs text-neutral-500">
+                      +{length(@trusted_friends) - 10} more
+                    </div>
+                  <% end %>
+                </div>
+                <div class="mt-3 text-xs text-neutral-600">
+                  showing activity from {length(@trusted_friends)} trusted connection<%= if length(@trusted_friends) != 1, do: "s" %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
 
           <%!-- Actions --%>
           <div class="flex items-center gap-3 mb-6">
@@ -326,8 +369,13 @@ defmodule FriendsWeb.HomeLive do
             <%!-- Content grid --%>
             <%= if @item_count == 0 do %>
               <div class="text-center py-20">
-                <p class="text-neutral-600 text-sm">nothing here yet</p>
-                <p class="text-neutral-700 text-xs mt-2">share a photo or note to get started</p>
+                <%= if @feed_mode == "friends" do %>
+                  <p class="text-neutral-600 text-sm">no activity from your network</p>
+                  <p class="text-neutral-700 text-xs mt-2">add trusted connections to see their photos and notes</p>
+                <% else %>
+                  <p class="text-neutral-600 text-sm">this space is empty</p>
+                  <p class="text-neutral-700 text-xs mt-2">share a photo or note to get started</p>
+                <% end %>
               </div>
             <% else %>
             <div
@@ -435,65 +483,76 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_room_modal">
-            <div class="w-full max-w-sm bg-neutral-900 border border-neutral-800 p-6">
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90" phx-click-away="close_room_modal">
+            <div class="w-full max-w-md bg-neutral-950 border border-neutral-800 p-6">
               <div class="flex items-center justify-between mb-6">
-                <h2 class="text-sm font-medium">rooms</h2>
+                <h2 class="text-sm font-medium tracking-wide">spaces</h2>
                 <button type="button" phx-click="close_room_modal" class="text-neutral-500 hover:text-white cursor-pointer">×</button>
               </div>
 
-              <div class="mb-6 text-xs text-neutral-600">
-                current: <span class="text-neutral-400">{@room.code}</span>
+              <%!-- Current Location --%>
+              <div class="mb-6 p-3 bg-neutral-900 border border-neutral-800">
+                <div class="text-xs text-neutral-500 mb-1">you are here</div>
+                <div class="flex items-center gap-2">
+                  <%= if @room.is_private do %>
+                    <span class="text-green-500">🔒</span>
+                  <% else %>
+                    <span class="text-blue-400">◉</span>
+                  <% end %>
+                  <span class="text-white font-medium">{@room.name || @room.code}</span>
+                  <span class="text-neutral-600 text-xs ml-auto">{length(@viewers)} here</span>
+                </div>
               </div>
 
-              <form phx-submit="join_room" class="mb-4">
-                <label class="block text-xs text-neutral-500 mb-2">join room</label>
-                <div class="flex gap-2">
-                  <input
-                    type="text"
-                    name="code"
-                    value={@join_code}
-                    phx-change="update_join_code"
-                    placeholder="room-code"
-                    class="flex-1 px-3 py-2 bg-neutral-950 border border-neutral-800 text-sm text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600"
-                  />
-                  <button type="submit" class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 cursor-pointer">
-                    go
-                  </button>
-                </div>
-              </form>
+              <%!-- Public Square (always first) --%>
+              <%= if @room.code != "lobby" do %>
+                <button
+                  type="button"
+                  phx-click="go_to_lobby"
+                  class="w-full mb-4 p-3 bg-blue-500/10 border border-blue-500/30 text-left hover:bg-blue-500/20 transition-colors cursor-pointer"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-blue-400">◉</span>
+                    <span class="text-blue-400 font-medium">public square</span>
+                    <span class="text-neutral-600 text-xs ml-auto">the commons</span>
+                  </div>
+                </button>
+              <% end %>
 
-              <form phx-submit="create_room" phx-change="update_room_form">
-                <label class="block text-xs text-neutral-500 mb-2">create new</label>
-                <div class="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    name="name"
-                    value={@new_room_name}
-                    placeholder="optional name"
-                    class="flex-1 px-3 py-2 bg-neutral-950 border border-neutral-800 text-sm text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600"
-                  />
-                  <button type="submit" class="px-4 py-2 border border-neutral-700 text-neutral-300 text-sm hover:border-neutral-500 hover:text-white cursor-pointer">
-                    create
-                  </button>
+              <%!-- Public Rooms Directory --%>
+              <%= if @public_rooms != [] do %>
+                <div class="mb-4">
+                  <div class="text-xs text-neutral-500 mb-2 flex items-center gap-2">
+                    <span>public spaces</span>
+                    <span class="flex-1 border-t border-neutral-800"></span>
+                  </div>
+                  <div class="space-y-1 max-h-40 overflow-y-auto">
+                    <%= for room <- @public_rooms do %>
+                      <%= if room.code != "lobby" && room.code != @room.code do %>
+                        <button
+                          type="button"
+                          phx-click="switch_room"
+                          phx-value-code={room.code}
+                          class="w-full text-left px-3 py-2 bg-neutral-900 hover:bg-neutral-800 transition-colors cursor-pointer"
+                        >
+                          <div class="flex items-center justify-between">
+                            <span class="text-neutral-300 text-sm">{room.name || room.code}</span>
+                            <span class="text-neutral-600 text-xs">{room.photo_count + room.note_count} items</span>
+                          </div>
+                        </button>
+                      <% end %>
+                    <% end %>
+                  </div>
                 </div>
-                <%= if @current_user do %>
-                  <label class="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      name="is_private" 
-                      checked={@create_private_room}
-                      class="accent-green-500"
-                    />
-                    <span>private room (invite only)</span>
-                  </label>
-                <% end %>
-              </form>
+              <% end %>
 
-              <%!-- User's Private Rooms --%>
+              <%!-- Private Rooms --%>
               <%= if @current_user && @user_private_rooms != [] do %>
-                <div class="mt-4 pt-4 border-t border-neutral-800">
-                  <label class="block text-xs text-neutral-500 mb-2">🔒 your private rooms</label>
+                <div class="mb-4">
+                  <div class="text-xs text-neutral-500 mb-2 flex items-center gap-2">
+                    <span>🔒 your private spaces</span>
+                    <span class="flex-1 border-t border-neutral-800"></span>
+                  </div>
                   <div class="space-y-1">
                     <%= for room <- @user_private_rooms do %>
                       <button
@@ -501,27 +560,60 @@ defmodule FriendsWeb.HomeLive do
                         phx-click="switch_room"
                         phx-value-code={room.code}
                         class={[
-                          "w-full text-left px-3 py-2 text-sm transition-colors cursor-pointer",
-                          room.code == @room.code && "bg-green-500/20 text-green-400",
-                          room.code != @room.code && "bg-neutral-950 text-neutral-300 hover:bg-neutral-800"
+                          "w-full text-left px-3 py-2 transition-colors cursor-pointer",
+                          room.code == @room.code && "bg-green-500/20 text-green-400 border border-green-500/30",
+                          room.code != @room.code && "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"
                         ]}
                       >
-                        <span class="text-green-500">🔒</span> {room.name || room.code}
+                        {room.name || room.code}
                       </button>
                     <% end %>
                   </div>
                 </div>
               <% end %>
 
-              <%= if @room.code != "lobby" do %>
-                <button
-                  type="button"
-                  phx-click="go_to_lobby"
-                  class="w-full mt-4 px-4 py-2 text-sm text-neutral-500 hover:text-white transition-colors cursor-pointer"
-                >
-                  back to lobby
-                </button>
-              <% end %>
+              <%!-- Actions --%>
+              <div class="pt-4 border-t border-neutral-800 space-y-3">
+                <%!-- Join by code --%>
+                <form phx-submit="join_room" class="flex gap-2">
+                  <input
+                    type="text"
+                    name="code"
+                    value={@join_code}
+                    phx-change="update_join_code"
+                    placeholder="enter room code..."
+                    class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+                  />
+                  <button type="submit" class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 cursor-pointer">
+                    go
+                  </button>
+                </form>
+
+                <%!-- Create new --%>
+                <form phx-submit="create_room" phx-change="update_room_form" class="flex gap-2">
+                  <input
+                    type="text"
+                    name="name"
+                    value={@new_room_name}
+                    placeholder="create new space..."
+                    class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+                  />
+                  <button type="submit" class="px-4 py-2 border border-neutral-700 text-neutral-300 text-sm hover:border-neutral-500 hover:text-white cursor-pointer">
+                    +
+                  </button>
+                </form>
+                <%= if @current_user do %>
+                  <label class="flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="is_private"
+                      checked={@create_private_room}
+                      class="accent-green-500"
+                    />
+                    <span>make it private (invite only)</span>
+                  </label>
+                <% end %>
+              </div>
             </div>
           </div>
         <% end %>
@@ -1122,7 +1214,8 @@ defmodule FriendsWeb.HomeLive do
 
   # Room events
   def handle_event("open_room_modal", _params, socket) do
-    {:noreply, assign(socket, :show_room_modal, true)}
+    public_rooms = Social.list_public_rooms(15)
+    {:noreply, socket |> assign(:show_room_modal, true) |> assign(:public_rooms, public_rooms)}
   end
 
   def handle_event("close_room_modal", _params, socket) do
@@ -1639,19 +1732,23 @@ defmodule FriendsWeb.HomeLive do
          |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
       
       "friends" ->
-        # Load friends content
+        # Load network content
         case socket.assigns.current_user do
           nil ->
-            {:noreply, put_flash(socket, :error, "register to see friends' content")}
-          
+            {:noreply, put_flash(socket, :error, "register to see your network")}
+
           user ->
+            # Load trusted friends for the network display
+            trusted_friends = Social.list_trusted_friends(user.id)
+
             photos = Social.list_friends_photos(user.id, @initial_batch, offset: 0)
             notes = Social.list_friends_notes(user.id, @initial_batch, offset: 0)
             items = build_items(photos, notes)
             no_more = length(items) < @initial_batch
-            
+
             {:noreply,
              socket
+             |> assign(:trusted_friends, trusted_friends)
              |> assign(:item_count, length(items))
              |> assign(:no_more_items, no_more)
              |> assign(:loading_more, false)
