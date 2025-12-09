@@ -197,13 +197,23 @@ defmodule FriendsWeb.HomeLive do
                     <span class="text-neutral-300">@{@current_user.username}</span>
                   </button>
                 <% else %>
-                  <a
-                    href="/register"
-                    class="flex items-center gap-2 text-sm text-amber-500 hover:text-amber-400 transition-colors"
-                  >
-                    <div class="w-3 h-3 rounded-full bg-amber-500/30 ring-1 ring-amber-500/50" />
-                    <span>register</span>
-                  </a>
+                  <div class="flex items-center gap-3">
+                    <a
+                      href="/link"
+                      class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors"
+                      title="Import identity from another device"
+                    >
+                      <span>📱</span>
+                      <span>link</span>
+                    </a>
+                    <a
+                      href="/register"
+                      class="flex items-center gap-2 text-sm text-amber-500 hover:text-amber-400 transition-colors"
+                    >
+                      <div class="w-3 h-3 rounded-full bg-amber-500/30 ring-1 ring-amber-500/50" />
+                      <span>register</span>
+                    </a>
+                  </div>
                 <% end %>
               </div>
             </div>
