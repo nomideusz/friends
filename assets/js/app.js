@@ -315,7 +315,7 @@ const Hooks = {
                 const img = document.createElement('img')
                 img.src = qrData
                 img.alt = 'QR Code'
-                img.className = 'w-48 h-48'
+                img.className = 'w-48 h-48 loaded'
                 this.el.innerHTML = ''
                 this.el.appendChild(img)
             }
@@ -349,7 +349,7 @@ const Hooks = {
                             const img = document.createElement('img')
                             img.src = result.qrDataUrl
                             img.alt = 'QR Code'
-                            img.className = 'w-48 h-48'
+                            img.className = 'w-48 h-48 loaded'
                             container.innerHTML = ''
                             container.appendChild(img)
                             console.log("QR code rendered!")

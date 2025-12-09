@@ -893,7 +893,7 @@ defmodule FriendsWeb.HomeLive do
               <img
                 src={@full_image_data.data}
                 alt=""
-                class="max-w-full max-h-full object-contain"
+                class="max-w-full max-h-full object-contain loaded"
               />
             </div>
           </div>
