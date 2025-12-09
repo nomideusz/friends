@@ -1504,25 +1504,6 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  # Safe integer parsing to prevent crashes on invalid input
-  defp safe_to_integer(value) when is_integer(value), do: {:ok, value}
-  defp safe_to_integer(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {num, ""} -> {:ok, num}
-      _ -> {:error, :invalid_integer}
-    end
-  end
-  defp safe_to_integer(_), do: {:error, :invalid_integer}
-
-  defp normalize_photo_id(photo_id) when is_integer(photo_id), do: photo_id
-  defp normalize_photo_id(photo_id) when is_binary(photo_id) do
-    case safe_to_integer(photo_id) do
-      {:ok, id} -> id
-      {:error, _} -> nil
-    end
-  end
-  defp normalize_photo_id(_), do: nil
-
   # Settings modal events
   def handle_event("open_settings_modal", _params, socket) do
     room = socket.assigns.room
@@ -1631,64 +1612,6 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:last_thumbnail_regen, now)
        |> put_flash(:info, "Regenerating missing thumbnails in background...")}
     end
-  end
-
-  # Generate thumbnail for photos that don't have one
-  # Generate thumbnail from base64 image data
-  defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do
-    try do
-      # Extract the actual base64 data after the comma
-      case String.split(data, ",", parts: 2) do
-        [mime, base64_data] ->
-          case Base.decode64(base64_data) do
-            {:ok, binary_data} ->
-              # Try to generate a smaller thumbnail; fall back to original data URL
-              thumbnail_data =
-                generate_server_thumbnail(binary_data) ||
-                  "data:#{mime},#{base64_data}"
-
-              Social.set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
-            _ -> :error
-          end
-        _ -> :error
-      end
-    rescue
-      _ -> :error
-    end
-  end
-  defp generate_thumbnail_from_data(_, _, _, _), do: :error
-
-  # Server-side thumbnail generation (simplified version)
-  defp generate_server_thumbnail(binary_data) do
-    try do
-      # Placeholder for future server-side resizing; return nil so callers fall back to the source data
-      _ = byte_size(binary_data)
-      nil
-    rescue
-      _ -> nil
-    end
-  end
-
-  # Regenerate missing thumbnails for all photos in a room
-  defp regenerate_all_missing_thumbnails(room_id, room_code) do
-    # Get all photos in the room that don't have thumbnails
-    photos_without_thumbnails =
-      Social.Photo
-      |> where(
-        [p],
-        p.room_id == ^room_id and
-          (is_nil(p.thumbnail_data) or ilike(p.thumbnail_data, ^"data:image/svg+xml%"))
-      )
-      |> Repo.all()
-
-    # Process each photo
-    Enum.each(photos_without_thumbnails, fn photo ->
-      if photo.image_data do
-        generate_thumbnail_from_data(photo.image_data, photo.id, photo.user_id, room_code)
-        # Add small delay to avoid overwhelming the system
-        Process.sleep(100)
-      end
-    end)
   end
 
   def handle_event("create_invite", _params, socket) do
@@ -2030,6 +1953,69 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  # Generate thumbnail for photos that don't have one
+  # Generate thumbnail from base64 image data
+  defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do
+    try do
+      # Extract the actual base64 data after the comma
+      case String.split(data, ",", parts: 2) do
+        [mime, base64_data] ->
+          case Base.decode64(base64_data) do
+            {:ok, binary_data} ->
+              # Try to generate a smaller thumbnail; fall back to original data URL
+              thumbnail_data =
+                generate_server_thumbnail(binary_data) ||
+                  "data:#{mime},#{base64_data}"
+
+              Social.set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
+
+            _ ->
+              :error
+          end
+
+        _ ->
+          :error
+      end
+    rescue
+      _ -> :error
+    end
+  end
+
+  defp generate_thumbnail_from_data(_, _, _, _), do: :error
+
+  # Server-side thumbnail generation (simplified version)
+  defp generate_server_thumbnail(binary_data) do
+    try do
+      # Placeholder for future server-side resizing; return nil so callers fall back to the source data
+      _ = byte_size(binary_data)
+      nil
+    rescue
+      _ -> nil
+    end
+  end
+
+  # Regenerate missing thumbnails for all photos in a room
+  defp regenerate_all_missing_thumbnails(room_id, room_code) do
+    # Get all photos in the room that don't have thumbnails
+    photos_without_thumbnails =
+      Social.Photo
+      |> where(
+        [p],
+        p.room_id == ^room_id and
+          (is_nil(p.thumbnail_data) or ilike(p.thumbnail_data, ^"data:image/svg+xml%"))
+      )
+      |> Repo.all()
+
+    # Process each photo
+    Enum.each(photos_without_thumbnails, fn photo ->
+      if photo.image_data do
+        generate_thumbnail_from_data(photo.image_data, photo.id, photo.user_id, room_code)
+        # Add small delay to avoid overwhelming the system
+        Process.sleep(100)
+      end
+    end)
+  end
+
   def handle_progress(:photo, entry, socket) when entry.done? do
     # Don't allow uploads from anonymous users
     if is_nil(socket.assigns.user_id) do
@@ -2248,6 +2234,29 @@ defmodule FriendsWeb.HomeLive do
       true -> order ++ [id]
     end
   end
+
+  # Safe integer parsing to prevent crashes on invalid input
+  defp safe_to_integer(value) when is_integer(value), do: {:ok, value}
+
+  defp safe_to_integer(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {num, ""} -> {:ok, num}
+      _ -> {:error, :invalid_integer}
+    end
+  end
+
+  defp safe_to_integer(_), do: {:error, :invalid_integer}
+
+  defp normalize_photo_id(photo_id) when is_integer(photo_id), do: photo_id
+
+  defp normalize_photo_id(photo_id) when is_binary(photo_id) do
+    case safe_to_integer(photo_id) do
+      {:ok, id} -> id
+      {:error, _} -> nil
+    end
+  end
+
+  defp normalize_photo_id(_), do: nil
 
   defp remove_photo_from_order(order, id) do
     order = order || []

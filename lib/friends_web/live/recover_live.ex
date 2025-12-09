@@ -95,15 +95,17 @@ defmodule FriendsWeb.RecoverLive do
     if recovery_status.can_recover do
       # Recovery successful - update public key
       new_public_key = socket.assigns.new_public_key
-      
+
       case Social.check_recovery_threshold(user.id, new_public_key) do
-        {:ok, :recovered, updated_user} ->
+        {:ok, :threshold_met, _count} ->
+          updated_user = Social.get_user(user.id)
+
           {:noreply,
            socket
            |> assign(:step, :complete)
            |> assign(:user, updated_user)}
-        
-        _ ->
+
+        {:ok, :votes_recorded, _count} ->
           {:noreply, assign(socket, :recovery_status, recovery_status)}
       end
     else

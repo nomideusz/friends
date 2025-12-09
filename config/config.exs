@@ -14,15 +14,6 @@ config :friends, FriendsWeb.Endpoint,
   pubsub_server: Friends.PubSub,
   live_view: [signing_salt: "friends_live_salt"]
 
-config :esbuild,
-  version: "0.17.11",
-  friends: [
-    args:
-      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
-    cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-  ]
-
 config :tailwind,
   version: "4.0.0",
   friends: [
