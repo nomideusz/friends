@@ -321,11 +321,32 @@ const Hooks = {
     RegisterApp: {
         async mounted() {
             // Initialize crypto identity and send public key to server
-            const { isNew, publicKey } = await cryptoIdentity.init()
+            try {
+                console.log('[RegisterApp] Initializing crypto identity...')
+                const result = await cryptoIdentity.init()
 
-            this.pushEvent("set_public_key", {
-                public_key: publicKey
-            })
+                if (!result || !result.publicKey) {
+                    console.error('[RegisterApp] init() returned invalid result:', result)
+                    this.pushEvent("crypto_init_failed", {
+                        error: "Failed to initialize cryptographic identity"
+                    })
+                    return
+                }
+
+                console.log('[RegisterApp] Crypto initialized, public key:', result.publicKey.x?.substring(0, 10) + '...')
+
+                this.pushEvent("set_public_key", {
+                    public_key: result.publicKey
+                })
+
+                console.log('[RegisterApp] Public key sent to server')
+            } catch (error) {
+                console.error('[RegisterApp] Error initializing crypto:', error)
+                this.pushEvent("crypto_init_failed", {
+                    error: error.message || "Unknown error during initialization"
+                })
+                return
+            }
 
             // Handle registration success
             this.handleEvent("registration_complete", ({ user }) => {

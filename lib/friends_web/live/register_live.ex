@@ -11,6 +11,7 @@ defmodule FriendsWeb.RegisterLive do
      |> assign(:username, "")
      |> assign(:display_name, "")
      |> assign(:public_key, nil)
+     |> assign(:crypto_ready, false)
      |> assign(:error, nil)
      |> assign(:username_available, nil)
      |> assign(:checking_username, false)}
@@ -23,7 +24,19 @@ defmodule FriendsWeb.RegisterLive do
 
   @impl true
   def handle_event("set_public_key", %{"public_key" => public_key}, socket) do
-    {:noreply, assign(socket, :public_key, public_key)}
+    {:noreply,
+     socket
+     |> assign(:public_key, public_key)
+     |> assign(:crypto_ready, true)
+     |> assign(:error, nil)}
+  end
+
+  @impl true
+  def handle_event("crypto_init_failed", %{"error" => error}, socket) do
+    {:noreply,
+     socket
+     |> assign(:crypto_ready, false)
+     |> assign(:error, "Crypto initialization failed: #{error}. Please try refreshing the page.")}
   end
 
   @impl true
@@ -170,6 +183,9 @@ defmodule FriendsWeb.RegisterLive do
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">friends</h1>
               <p class="text-neutral-500 text-sm">a network that requires friends</p>
+              <%= if not @crypto_ready do %>
+                <p class="text-amber-600 text-xs mt-2">initializing crypto...</p>
+              <% end %>
             </div>
 
             <form phx-submit="check_invite" class="space-y-4">
@@ -262,13 +278,20 @@ defmodule FriendsWeb.RegisterLive do
                 <p class="text-red-500 text-xs">{@error}</p>
               <% end %>
 
-              <button
-                type="submit"
-                disabled={@username_available != true}
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                create account
-              </button>
+              <%= if not @crypto_ready do %>
+                <div class="w-full px-4 py-3 bg-neutral-800 text-neutral-500 text-center">
+                  initializing crypto...
+                </div>
+              <% else %>
+                <button
+                  type="submit"
+                  disabled={@username_available != true}
+                  class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  phx-disable-with="creating..."
+                >
+                  create account
+                </button>
+              <% end %>
             </form>
 
             <button
