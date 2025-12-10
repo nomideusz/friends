@@ -205,6 +205,22 @@ const Hooks = {
                 }
             })
 
+            // Handle sign out
+            this.handleEvent("sign_out", async () => {
+                // Clear crypto identity
+                await cryptoIdentity.clear()
+
+                // Clear browser ID
+                localStorage.removeItem('friends_browser_id')
+
+                // Clear cookies
+                document.cookie = 'friends_user_id=; path=/; max-age=0'
+                document.cookie = 'friends_session_token=; path=/; max-age=0'
+
+                // Refresh page to show logged out state
+                window.location.href = '/'
+            })
+
             // Handle photo_uploaded event - send pending thumbnail
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
@@ -515,30 +531,59 @@ const Hooks = {
             // Show register button
             registerBtn.classList.remove('hidden')
 
-            // Handle registration
+            // Handle challenge response from server
+            this.handleEvent("webauthn_challenge_generated", async ({ options }) => {
+                try {
+                    console.log('[WebAuthn] Challenge received, creating credential...')
+
+                    // Create credential with the challenge from server
+                    const credential = await registerCredential(options)
+
+                    console.log('[WebAuthn] Credential created, sending to server...')
+
+                    // Send credential back to server for verification
+                    this.pushEvent("register_webauthn_credential", {
+                        credential: credential
+                    })
+                } catch (error) {
+                    console.error('[WebAuthn] Registration failed:', error)
+                    registerBtn.disabled = false
+                    registerBtn.textContent = 'Register Hardware Key'
+
+                    if (error.name === 'NotAllowedError') {
+                        alert('Registration cancelled or not allowed')
+                    } else {
+                        alert('Registration failed: ' + error.message)
+                    }
+                }
+            })
+
+            // Handle registration complete
+            this.handleEvent("webauthn_registration_complete", () => {
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+                console.log('[WebAuthn] Registration complete!')
+            })
+
+            // Handle registration failed
+            this.handleEvent("webauthn_registration_failed", () => {
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+            })
+
+            // Handle register button click
             registerBtn.onclick = async () => {
                 try {
                     registerBtn.disabled = true
-                    registerBtn.textContent = 'Registering...'
+                    registerBtn.textContent = 'Preparing...'
 
-                    // In a real implementation, we'd get these options from the server
-                    // For now, we'll show a message that this feature is ready for backend integration
-                    alert(
-                        'WebAuthn is supported and ready!\n\n' +
-                        'To complete this feature, we need to:\n' +
-                        '1. Add server-side WebAuthn credential storage\n' +
-                        '2. Implement challenge generation\n' +
-                        '3. Verify attestations\n\n' +
-                        'The client-side code is ready to go!'
-                    )
-
-                    registerBtn.disabled = false
-                    registerBtn.textContent = 'Register Hardware Key'
+                    // Request challenge from server
+                    this.pushEvent("request_webauthn_challenge", {})
                 } catch (error) {
-                    console.error('WebAuthn registration failed:', error)
-                    alert('Registration failed: ' + error.message)
+                    console.error('[WebAuthn] Failed to request challenge:', error)
                     registerBtn.disabled = false
                     registerBtn.textContent = 'Register Hardware Key'
+                    alert('Failed to start registration: ' + error.message)
                 }
             }
         }

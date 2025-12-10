@@ -1104,6 +1104,15 @@ defmodule FriendsWeb.HomeLive do
                   <p class="text-xs text-neutral-600 mt-2">
                     your crypto key is stored in this browser
                   </p>
+
+                  <button
+                    type="button"
+                    phx-click="sign_out"
+                    class="flex items-center gap-2 text-xs text-red-500/70 hover:text-red-400 cursor-pointer mt-4"
+                  >
+                    <span>🚪</span>
+                    <span>sign out (clears local keys)</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1670,6 +1679,14 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:friend_search_results, [])
      |> assign(:member_invite_search, "")
      |> assign(:member_invite_results, [])}
+  end
+
+  def handle_event("sign_out", _params, socket) do
+    # Push event to client to clear crypto identity
+    {:noreply,
+     socket
+     |> push_event("sign_out", %{})
+     |> put_flash(:info, "Signing out...")}
   end
 
   def handle_event("view_full_image", %{"photo_id" => photo_id}, socket) do
