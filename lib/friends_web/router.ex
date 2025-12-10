@@ -23,6 +23,7 @@ defmodule FriendsWeb.Router do
     live "/recover", RecoverLive, :index
     live "/link", LinkDeviceLive, :index
     live "/devices", DevicesLive, :index
+    live "/graph", GraphLive, :index
     live "/r/:room", HomeLive, :room
   end
 
