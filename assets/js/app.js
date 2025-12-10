@@ -615,6 +615,39 @@ const Hooks = {
             // Lock body scrolling when modal opens
             document.body.style.overflow = 'hidden'
 
+            // Handle image loading state
+            const img = this.el.querySelector('img')
+            if (img) {
+                // Show loading state initially
+                img.style.opacity = '0'
+
+                // Create and add loading spinner
+                const spinner = document.createElement('div')
+                spinner.className = 'absolute inset-0 flex items-center justify-center'
+                spinner.innerHTML = '<div class="spinner"></div>'
+                spinner.id = 'photo-loading-spinner'
+                img.parentElement.appendChild(spinner)
+
+                // Handle image load
+                const handleLoad = () => {
+                    img.style.transition = 'opacity 0.3s ease-in-out'
+                    img.style.opacity = '1'
+                    spinner.remove()
+                }
+
+                // Handle image error
+                const handleError = () => {
+                    spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+                }
+
+                if (img.complete) {
+                    handleLoad()
+                } else {
+                    img.addEventListener('load', handleLoad, { once: true })
+                    img.addEventListener('error', handleError, { once: true })
+                }
+            }
+
             // Add touch swipe gesture support
             let touchStartX = 0
             let touchEndX = 0
@@ -672,6 +705,47 @@ const Hooks = {
 
             // Store for cleanup
             this.handleKeyDown = handleKeyDown
+        },
+
+        updated() {
+            // Handle loading state when photo changes (prev/next navigation)
+            const img = this.el.querySelector('img')
+            if (img) {
+                // Remove old spinner if it exists
+                const oldSpinner = this.el.querySelector('#photo-loading-spinner')
+                if (oldSpinner) {
+                    oldSpinner.remove()
+                }
+
+                // Show loading state initially
+                img.style.opacity = '0'
+
+                // Create and add loading spinner
+                const spinner = document.createElement('div')
+                spinner.className = 'absolute inset-0 flex items-center justify-center'
+                spinner.innerHTML = '<div class="spinner"></div>'
+                spinner.id = 'photo-loading-spinner'
+                img.parentElement.appendChild(spinner)
+
+                // Handle image load
+                const handleLoad = () => {
+                    img.style.transition = 'opacity 0.3s ease-in-out'
+                    img.style.opacity = '1'
+                    spinner.remove()
+                }
+
+                // Handle image error
+                const handleError = () => {
+                    spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+                }
+
+                if (img.complete) {
+                    handleLoad()
+                } else {
+                    img.addEventListener('load', handleLoad, { once: true })
+                    img.addEventListener('error', handleError, { once: true })
+                }
+            }
         },
 
         destroyed() {

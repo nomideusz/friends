@@ -1151,11 +1151,11 @@ defmodule FriendsWeb.HomeLive do
                 </button>
               <% end %>
 
-              <div class="rounded-2xl overflow-hidden opal-glow touch-none">
+              <div class="relative rounded-2xl overflow-hidden opal-glow touch-none">
                 <img
                   src={@full_image_data.data}
                   alt="Full size photo"
-                  class="max-w-full max-h-[85vh] object-contain loaded"
+                  class="max-w-full max-h-[85vh] object-contain"
                 />
               </div>
             </div>
