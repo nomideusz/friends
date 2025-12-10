@@ -9,12 +9,15 @@ defmodule FriendsWeb.DevicesLive do
     if user_id do
       user = Social.get_user(user_id)
       devices = Social.list_user_devices(user_id)
+      webauthn_credentials = Social.list_webauthn_credentials(user_id)
 
       {:ok,
        socket
        |> assign(:current_user, user)
        |> assign(:devices, devices)
-       |> assign(:show_export, false)}
+       |> assign(:webauthn_credentials, webauthn_credentials)
+       |> assign(:show_export, false)
+       |> assign(:webauthn_challenge, nil)}
     else
       {:ok,
        socket
@@ -75,6 +78,64 @@ defmodule FriendsWeb.DevicesLive do
   @impl true
   def handle_event("hide_export", _params, socket) do
     {:noreply, assign(socket, :show_export, false)}
+  end
+
+  @impl true
+  def handle_event("request_webauthn_challenge", _params, socket) do
+    user = socket.assigns.current_user
+    challenge_options = Social.generate_webauthn_registration_challenge(user)
+
+    {:noreply,
+     socket
+     |> assign(:webauthn_challenge, challenge_options.challenge)
+     |> push_event("webauthn_challenge_generated", %{options: challenge_options})}
+  end
+
+  @impl true
+  def handle_event("register_webauthn_credential", %{"credential" => credential_data}, socket) do
+    user_id = socket.assigns.current_user.id
+
+    case Social.verify_and_store_webauthn_credential(user_id, credential_data) do
+      {:ok, _credential} ->
+        webauthn_credentials = Social.list_webauthn_credentials(user_id)
+
+        {:noreply,
+         socket
+         |> assign(:webauthn_credentials, webauthn_credentials)
+         |> assign(:webauthn_challenge, nil)
+         |> put_flash(:info, "Hardware key registered successfully")
+         |> push_event("webauthn_registration_complete", %{})}
+
+      {:error, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to register hardware key")
+         |> push_event("webauthn_registration_failed", %{})}
+    end
+  end
+
+  @impl true
+  def handle_event("delete_webauthn_credential", %{"credential_id" => credential_id_b64}, socket) do
+    user_id = socket.assigns.current_user.id
+
+    case Base.url_decode64(credential_id_b64, padding: false) do
+      {:ok, credential_id} ->
+        case Social.delete_webauthn_credential(user_id, credential_id) do
+          {:ok, _} ->
+            webauthn_credentials = Social.list_webauthn_credentials(user_id)
+
+            {:noreply,
+             socket
+             |> assign(:webauthn_credentials, webauthn_credentials)
+             |> put_flash(:info, "Hardware key removed")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to remove hardware key")}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid credential ID")}
+    end
   end
 
   @impl true
@@ -143,6 +204,33 @@ defmodule FriendsWeb.DevicesLive do
               </div>
             <% end %>
           </div>
+
+          <%!-- Registered Hardware Keys --%>
+          <%= if not Enum.empty?(@webauthn_credentials) do %>
+            <div class="p-6 bg-neutral-900 border border-neutral-800">
+              <h2 class="text-lg font-medium text-white mb-4">Registered Hardware Keys</h2>
+              <div class="space-y-3">
+                <%= for cred <- @webauthn_credentials do %>
+                  <div class="flex items-center justify-between p-3 bg-neutral-950 border border-neutral-800">
+                    <div>
+                      <p class="text-sm text-white">{cred.name || "Hardware Key"}</p>
+                      <p class="text-xs text-neutral-500 mt-1">
+                        Last used: {format_datetime(cred.last_used_at)}
+                      </p>
+                    </div>
+                    <button
+                      phx-click="delete_webauthn_credential"
+                      phx-value-credential_id={Base.url_encode64(cred.credential_id, padding: false)}
+                      data-confirm="Remove this hardware key?"
+                      class="px-3 py-1 text-xs border border-red-800 hover:border-red-700 text-red-500 hover:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
         </div>
 
         <div class="bg-neutral-900 border border-neutral-800">

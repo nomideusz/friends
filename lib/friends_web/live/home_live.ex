@@ -1104,6 +1104,15 @@ defmodule FriendsWeb.HomeLive do
                   <p class="text-xs text-neutral-600 mt-2">
                     your crypto key is stored in this browser
                   </p>
+
+                  <button
+                    type="button"
+                    phx-click="sign_out"
+                    class="flex items-center gap-2 text-xs text-red-500/70 hover:text-red-400 cursor-pointer mt-4"
+                  >
+                    <span>🚪</span>
+                    <span>sign out (clears local keys)</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1113,6 +1122,8 @@ defmodule FriendsWeb.HomeLive do
         <%!-- Image Modal --%>
         <%= if @show_image_modal && @full_image_data do %>
           <div
+            id="photo-modal"
+            phx-hook="PhotoModal"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 modal-backdrop"
             phx-click-away="close_image_modal"
             role="dialog"
@@ -1122,14 +1133,14 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="prev_photo"
-              class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+              class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
               aria-label="Previous photo"
             >
               ‹
             </button>
 
             <div class="relative max-w-6xl max-h-[90vh] flex items-center justify-center">
-              <button type="button" phx-click="close_image_modal" class="absolute -top-12 sm:-top-14 right-0 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all" aria-label="Close photo viewer">×</button>
+              <button type="button" phx-click="close_image_modal" class="absolute -top-12 sm:-top-14 right-0 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10" aria-label="Close photo viewer">×</button>
 
               <%= if @full_image_data[:user_id] == @user_id do %>
                 <button
@@ -1137,14 +1148,14 @@ defmodule FriendsWeb.HomeLive do
                   phx-click="delete_photo"
                   phx-value-id={@full_image_data[:photo_id]}
                   data-confirm="delete?"
-                  class="absolute -top-12 sm:-top-14 left-0 w-16 h-11 flex items-center justify-center glass rounded-full text-red-400 hover:text-red-200 text-xs cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+                  class="absolute -top-12 sm:-top-14 left-0 w-16 h-11 flex items-center justify-center glass rounded-full text-red-400 hover:text-red-200 text-xs cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
                   aria-label="Delete this photo"
                 >
                   delete
                 </button>
               <% end %>
 
-              <div class="rounded-2xl overflow-hidden opal-glow">
+              <div class="rounded-2xl overflow-hidden opal-glow touch-none">
                 <img
                   src={@full_image_data.data}
                   alt="Full size photo"
@@ -1156,7 +1167,7 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="next_photo"
-              class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+              class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
               aria-label="Next photo"
             >
               ›
@@ -1670,6 +1681,14 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:friend_search_results, [])
      |> assign(:member_invite_search, "")
      |> assign(:member_invite_results, [])}
+  end
+
+  def handle_event("sign_out", _params, socket) do
+    # Push event to client to clear crypto identity
+    {:noreply,
+     socket
+     |> push_event("sign_out", %{})
+     |> put_flash(:info, "Signing out...")}
   end
 
   def handle_event("view_full_image", %{"photo_id" => photo_id}, socket) do

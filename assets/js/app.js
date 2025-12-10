@@ -205,6 +205,22 @@ const Hooks = {
                 }
             })
 
+            // Handle sign out
+            this.handleEvent("sign_out", async () => {
+                // Clear crypto identity
+                await cryptoIdentity.clear()
+
+                // Clear browser ID
+                localStorage.removeItem('friends_browser_id')
+
+                // Clear cookies
+                document.cookie = 'friends_user_id=; path=/; max-age=0'
+                document.cookie = 'friends_session_token=; path=/; max-age=0'
+
+                // Refresh page to show logged out state
+                window.location.href = '/'
+            })
+
             // Handle photo_uploaded event - send pending thumbnail
             this.handleEvent("photo_uploaded", ({ photo_id }) => {
                 if (this.pendingThumbnail && photo_id) {
@@ -515,31 +531,135 @@ const Hooks = {
             // Show register button
             registerBtn.classList.remove('hidden')
 
-            // Handle registration
+            // Handle challenge response from server
+            this.handleEvent("webauthn_challenge_generated", async ({ options }) => {
+                try {
+                    console.log('[WebAuthn] Challenge received, creating credential...')
+
+                    // Create credential with the challenge from server
+                    const credential = await registerCredential(options)
+
+                    console.log('[WebAuthn] Credential created, sending to server...')
+
+                    // Send credential back to server for verification
+                    this.pushEvent("register_webauthn_credential", {
+                        credential: credential
+                    })
+                } catch (error) {
+                    console.error('[WebAuthn] Registration failed:', error)
+                    registerBtn.disabled = false
+                    registerBtn.textContent = 'Register Hardware Key'
+
+                    if (error.name === 'NotAllowedError') {
+                        alert('Registration cancelled or not allowed')
+                    } else {
+                        alert('Registration failed: ' + error.message)
+                    }
+                }
+            })
+
+            // Handle registration complete
+            this.handleEvent("webauthn_registration_complete", () => {
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+                console.log('[WebAuthn] Registration complete!')
+            })
+
+            // Handle registration failed
+            this.handleEvent("webauthn_registration_failed", () => {
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+            })
+
+            // Handle register button click
             registerBtn.onclick = async () => {
                 try {
                     registerBtn.disabled = true
-                    registerBtn.textContent = 'Registering...'
+                    registerBtn.textContent = 'Preparing...'
 
-                    // In a real implementation, we'd get these options from the server
-                    // For now, we'll show a message that this feature is ready for backend integration
-                    alert(
-                        'WebAuthn is supported and ready!\n\n' +
-                        'To complete this feature, we need to:\n' +
-                        '1. Add server-side WebAuthn credential storage\n' +
-                        '2. Implement challenge generation\n' +
-                        '3. Verify attestations\n\n' +
-                        'The client-side code is ready to go!'
-                    )
-
-                    registerBtn.disabled = false
-                    registerBtn.textContent = 'Register Hardware Key'
+                    // Request challenge from server
+                    this.pushEvent("request_webauthn_challenge", {})
                 } catch (error) {
-                    console.error('WebAuthn registration failed:', error)
-                    alert('Registration failed: ' + error.message)
+                    console.error('[WebAuthn] Failed to request challenge:', error)
                     registerBtn.disabled = false
                     registerBtn.textContent = 'Register Hardware Key'
+                    alert('Failed to start registration: ' + error.message)
                 }
+            }
+        }
+    },
+
+    PhotoModal: {
+        mounted() {
+            // Lock body scrolling when modal opens
+            document.body.style.overflow = 'hidden'
+
+            // Add touch swipe gesture support
+            let touchStartX = 0
+            let touchEndX = 0
+            let touchStartY = 0
+            let touchEndY = 0
+
+            const handleTouchStart = (e) => {
+                touchStartX = e.changedTouches[0].screenX
+                touchStartY = e.changedTouches[0].screenY
+            }
+
+            const handleTouchEnd = (e) => {
+                touchEndX = e.changedTouches[0].screenX
+                touchEndY = e.changedTouches[0].screenY
+                handleGesture()
+            }
+
+            const handleGesture = () => {
+                const diffX = touchEndX - touchStartX
+                const diffY = touchEndY - touchStartY
+
+                // Only trigger if horizontal swipe is dominant
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    // Minimum swipe distance (50px)
+                    if (Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                            // Swipe right - previous photo
+                            this.pushEvent("prev_photo", {})
+                        } else {
+                            // Swipe left - next photo
+                            this.pushEvent("next_photo", {})
+                        }
+                    }
+                }
+            }
+
+            // Add keyboard navigation
+            const handleKeyDown = (e) => {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault()
+                    this.pushEvent("prev_photo", {})
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault()
+                    this.pushEvent("next_photo", {})
+                } else if (e.key === 'Escape') {
+                    e.preventDefault()
+                    this.pushEvent("close_image_modal", {})
+                }
+            }
+
+            // Attach listeners
+            this.el.addEventListener('touchstart', handleTouchStart, { passive: true })
+            this.el.addEventListener('touchend', handleTouchEnd, { passive: true })
+            document.addEventListener('keydown', handleKeyDown)
+
+            // Store for cleanup
+            this.handleKeyDown = handleKeyDown
+        },
+
+        destroyed() {
+            // Unlock body scrolling when modal closes
+            document.body.style.overflow = ''
+
+            // Remove keyboard listener
+            if (this.handleKeyDown) {
+                document.removeEventListener('keydown', this.handleKeyDown)
             }
         }
     }
