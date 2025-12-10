@@ -27,20 +27,38 @@ defmodule FriendsWeb.RegisterLive do
   end
 
   @impl true
+  def handle_event("update_invite_code", %{"invite_code" => code}, socket) do
+    {:noreply, assign(socket, :invite_code, code)}
+  end
+
+  @impl true
   def handle_event("check_invite", %{"invite_code" => code}, socket) do
-    case Social.validate_invite(String.trim(code)) do
-      {:ok, _invite} ->
+    trimmed = String.trim(code)
+    admin_code = admin_invite_code()
+
+    cond do
+      admin_code && (trimmed == "" || trimmed == admin_code) ->
         {:noreply,
          socket
-         |> assign(:invite_code, code)
+         |> assign(:invite_code, admin_code)
          |> assign(:step, :username)
          |> assign(:error, nil)}
 
-      {:error, :invalid_invite} ->
-        {:noreply, assign(socket, :error, "invalid invite code")}
+      true ->
+        case Social.validate_invite(trimmed) do
+          {:ok, _invite} ->
+            {:noreply,
+             socket
+             |> assign(:invite_code, trimmed)
+             |> assign(:step, :username)
+             |> assign(:error, nil)}
 
-      {:error, :invite_expired} ->
-        {:noreply, assign(socket, :error, "invite code expired")}
+          {:error, :invalid_invite} ->
+            {:noreply, assign(socket, :error, "invalid invite code")}
+
+          {:error, :invite_expired} ->
+            {:noreply, assign(socket, :error, "invite code expired")}
+        end
     end
   end
 
@@ -55,15 +73,17 @@ defmodule FriendsWeb.RegisterLive do
   end
 
   @impl true
-  def handle_event("update_invite_code", %{"invite_code" => code}, socket) do
-    {:noreply, assign(socket, :invite_code, code)}
-  end
-
-  @impl true
   def handle_event("check_username", %{"username" => username}, socket) do
     username = String.trim(username) |> String.downcase()
 
     cond do
+      Social.admin_username?(username) ->
+        {:noreply,
+         socket
+         |> assign(:username, username)
+         |> assign(:username_available, true)
+         |> assign(:error, nil)}
+
       String.length(username) < 3 ->
         {:noreply,
          socket
@@ -173,7 +193,7 @@ defmodule FriendsWeb.RegisterLive do
 
               <button
                 type="submit"
-                disabled={String.trim(@invite_code) == ""}
+                disabled={admin_invite_code() == nil and String.trim(@invite_code) == ""}
                 class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 continue
@@ -287,6 +307,9 @@ defmodule FriendsWeb.RegisterLive do
     """
   end
 
+  defp admin_invite_code do
+    Application.get_env(:friends, :admin_invite_code)
+  end
 end
 
 

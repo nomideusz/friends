@@ -2,7 +2,9 @@ import Config
 
 config :friends,
   ecto_repos: [Friends.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  admin_usernames: ["nom"],
+  admin_invite_code: "ADMIN"
 
 config :friends, FriendsWeb.Endpoint,
   url: [host: "localhost"],

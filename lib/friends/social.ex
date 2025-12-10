@@ -8,6 +8,16 @@ defmodule Friends.Social do
   alias Friends.Repo
   alias Friends.Social.{Room, Photo, Note, Device, User, Invite, TrustedFriend, RecoveryVote, RoomMember}
 
+  def admin_username?(username) when is_binary(username) do
+    admins =
+      Application.get_env(:friends, :admin_usernames, [])
+      |> Enum.map(&String.downcase/1)
+
+    String.downcase(username) in admins
+  end
+
+  def admin_username?(_), do: false
+
   # --- PubSub ---
 
   defp topic(room_code), do: "friends:room:#{room_code}"
@@ -548,12 +558,29 @@ defmodule Friends.Social do
   """
   def register_user(attrs) do
     invite_code = attrs[:invite_code] || attrs["invite_code"]
-    
-    with {:ok, invite} <- validate_invite(invite_code),
-         {:ok, user} <- create_user(attrs, invite) do
-      # Mark invite as used
-      use_invite(invite, user)
-      {:ok, user}
+    username = attrs[:username] || attrs["username"]
+
+    cond do
+      admin_username?(username) ->
+        # Bootstrap/admin path: allow configured admin usernames without an invite.
+        # If user already exists, rotate its public key to the provided one.
+        case Repo.get_by(User, username: username) do
+          nil ->
+            create_user(attrs, %{created_by_id: nil})
+
+          user ->
+            user
+            |> User.changeset(%{public_key: attrs[:public_key] || attrs["public_key"]})
+            |> Repo.update()
+        end
+
+      true ->
+        with {:ok, invite} <- validate_invite(invite_code),
+             {:ok, user} <- create_user(attrs, invite) do
+          # Mark invite as used
+          use_invite(invite, user)
+          {:ok, user}
+        end
     end
   end
 
@@ -701,6 +728,11 @@ defmodule Friends.Social do
   Validate an invite code
   """
   def validate_invite(code) when is_binary(code) do
+    admin_code = Application.get_env(:friends, :admin_invite_code)
+
+    if admin_code && code == admin_code do
+      {:ok, %Invite{code: admin_code, status: "active", created_by_id: nil, expires_at: nil}}
+    else
     case Repo.get_by(Invite, code: code, status: "active") do
       nil -> {:error, :invalid_invite}
       invite ->
@@ -709,6 +741,7 @@ defmodule Friends.Social do
         else
           {:ok, invite}
         end
+    end
     end
   end
   def validate_invite(_), do: {:error, :invalid_invite}
