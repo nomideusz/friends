@@ -799,6 +799,22 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 </div>
 
+                <%!-- Quick Links --%>
+                <div class="flex gap-2">
+                  <a
+                    href="/devices"
+                    class="flex-1 px-4 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                  >
+                    🔐 Devices & Backup
+                  </a>
+                  <a
+                    href="/link"
+                    class="flex-1 px-4 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                  >
+                    📱 Link Device
+                  </a>
+                </div>
+
                 <%!-- Invite Codes --%>
                 <div>
                   <div class="flex items-center justify-between mb-3">
@@ -1271,9 +1287,14 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("auth_response", %{"signature" => signature, "challenge" => challenge}, socket) do
+  def handle_event("auth_response", params, socket) do
+    %{"signature" => signature, "challenge" => challenge} = params
+    device_fingerprint = params["device_fingerprint"]
+    device_name = params["device_name"]
+    key_fingerprint = params["key_fingerprint"]
+
     room = socket.assigns.room
-    
+
     case socket.assigns[:pending_auth] do
       %{user: user, challenge: expected_challenge, public_key: public_key} when challenge == expected_challenge ->
         signature_valid? = Social.verify_signature(public_key, challenge, signature)
@@ -1289,6 +1310,12 @@ defmodule FriendsWeb.HomeLive do
 
           if is_nil(socket.assigns.browser_id) == false do
             Social.link_device_to_user(socket.assigns.browser_id, user.id)
+          end
+
+          # Register device attestation
+          if device_fingerprint && device_name && key_fingerprint do
+            Social.register_user_device(user.id, device_fingerprint, device_name, key_fingerprint)
+            Logger.debug("Registered device: #{device_name} (#{String.slice(device_fingerprint, 0..7)}...)")
           end
 
           session_token = Phoenix.Token.sign(FriendsWeb.Endpoint, "user_session", user.id)
