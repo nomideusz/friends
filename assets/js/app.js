@@ -149,26 +149,22 @@ const Hooks = {
 
     FriendGraph: {
         mounted() {
-            const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
-            const friends = JSON.parse(this.el.dataset.friends || '[]')
+            const graphData = JSON.parse(this.el.dataset.graph || 'null')
 
             this.component = new FriendGraph({
                 target: this.el,
                 props: {
-                    currentUser,
-                    friends,
+                    graphData,
                     live: this
                 }
             })
         },
         updated() {
             if (this.component) {
-                const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
-                const friends = JSON.parse(this.el.dataset.friends || '[]')
+                const graphData = JSON.parse(this.el.dataset.graph || 'null')
 
                 this.component.$set({
-                    currentUser,
-                    friends
+                    graphData
                 })
             }
         },

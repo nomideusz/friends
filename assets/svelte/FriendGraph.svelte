@@ -3,9 +3,8 @@
   import { Network } from 'vis-network'
   import { DataSet } from 'vis-data'
 
-  // Props from Phoenix LiveView
-  export let currentUser = null
-  export let friends = []
+  // Props from Phoenix LiveView (new structure)
+  export let graphData = null
   export let live = null
 
   let container
@@ -13,7 +12,17 @@
   let nodesDataSet = null
   let edgesDataSet = null
 
-  // Network options for a beautiful social graph
+  // Edge colors by type
+  const edgeColors = {
+    trusted: '#60a5fa',      // blue - I trust them
+    trusts_me: '#a78bfa',    // purple - they trust me
+    mutual: '#ffffff',       // white - mutual trust
+    pending_outgoing: '#fbbf24', // yellow - pending I sent
+    pending_incoming: '#fbbf24', // yellow - pending they sent
+    invited: '#f472b6'       // pink - invite relationship
+  }
+
+  // Network options
   const options = {
     nodes: {
       shape: 'dot',
@@ -34,11 +43,6 @@
     },
     edges: {
       width: 2,
-      color: {
-        color: 'rgba(255,255,255,0.3)',
-        highlight: 'rgba(255,255,255,0.8)',
-        hover: 'rgba(255,255,255,0.6)'
-      },
       smooth: {
         type: 'continuous',
         roundness: 0.5
@@ -78,71 +82,89 @@
   }
 
   function buildGraphData() {
+    if (!graphData) return { nodes: [], edges: [] }
+
     const nodes = []
     const edges = []
 
-    // Add current user as the central node
-    if (currentUser) {
-      nodes.push({
-        id: currentUser.id,
-        label: currentUser.display_name || currentUser.username,
-        color: {
-          background: currentUser.color || '#ffffff',
-          border: '#ffffff',
-          highlight: {
-            background: currentUser.color || '#ffffff',
-            border: '#ffffff'
-          },
-          hover: {
-            background: currentUser.color || '#ffffff',
-            border: '#ffffff'
-          }
-        },
-        size: 35, // Larger size for current user
-        font: {
-          size: 16,
-          bold: true
-        },
-        title: `@${currentUser.username}` // Tooltip
-      })
-    }
+    // Track which edges are mutual
+    const mutualPairs = new Set()
 
-    // Add friends as nodes
-    friends.forEach(friend => {
+    // Find mutual relationships
+    graphData.edges.forEach(edge => {
+      if (edge.type === 'trusted') {
+        // Check if there's a reverse trusts_me edge
+        const hasMutual = graphData.edges.some(e =>
+          e.type === 'trusts_me' && e.from === edge.to && e.to === edge.from
+        )
+        if (hasMutual) {
+          mutualPairs.add(`${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`)
+        }
+      }
+    })
+
+    // Build nodes
+    graphData.nodes.forEach(node => {
+      const isSelf = node.type === 'self'
       nodes.push({
-        id: friend.id,
-        label: friend.display_name || friend.username,
+        id: node.id,
+        label: node.display_name || node.username,
         color: {
-          background: friend.color || '#888888',
-          border: 'rgba(255,255,255,0.5)',
+          background: node.color || '#888888',
+          border: isSelf ? '#ffffff' : 'rgba(255,255,255,0.5)',
           highlight: {
-            background: friend.color || '#888888',
+            background: node.color || '#888888',
             border: '#ffffff'
           },
           hover: {
-            background: friend.color || '#888888',
+            background: node.color || '#888888',
             border: 'rgba(255,255,255,0.8)'
           }
         },
-        title: `@${friend.username}`, // Tooltip
-        size: 25
+        title: `@${node.username}`,
+        size: isSelf ? 35 : 25,
+        font: isSelf ? { size: 16, bold: true, color: '#ffffff' } : { size: 14, color: '#ffffff' }
       })
+    })
 
-      // Create edge from current user to friend
-      if (currentUser) {
-        edges.push({
-          from: currentUser.id,
-          to: friend.id,
-          id: `${currentUser.id}-${friend.id}`
-        })
+    // Build edges
+    graphData.edges.forEach((edge, index) => {
+      const pairKey = `${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`
+      const isMutual = mutualPairs.has(pairKey) && (edge.type === 'trusted' || edge.type === 'trusts_me')
+
+      // Skip trusts_me edges for mutual relationships (we'll use the trusted edge)
+      if (edge.type === 'trusts_me' && mutualPairs.has(pairKey)) {
+        return
       }
+
+      const isPending = edge.type === 'pending_outgoing' || edge.type === 'pending_incoming'
+      const color = isMutual ? edgeColors.mutual : edgeColors[edge.type] || 'rgba(255,255,255,0.3)'
+
+      edges.push({
+        id: `edge-${index}`,
+        from: edge.from,
+        to: edge.to,
+        color: {
+          color: color,
+          highlight: '#ffffff',
+          hover: color
+        },
+        dashes: isPending ? [5, 5] : false,
+        width: isMutual ? 3 : 2,
+        arrows: isMutual ? undefined : {
+          to: {
+            enabled: true,
+            scaleFactor: 0.5
+          }
+        }
+      })
     })
 
     return { nodes, edges }
   }
 
   function initNetwork() {
-    if (!container) return
+    if (!container || !graphData) return
 
     const { nodes, edges } = buildGraphData()
 
@@ -160,7 +182,8 @@
     network.on('click', params => {
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0]
-        if (live && nodeId !== currentUser?.id) {
+        const currentUserId = graphData?.current_user?.id
+        if (live && nodeId !== currentUserId) {
           live.pushEvent('node_clicked', { user_id: nodeId })
         }
       }
@@ -202,22 +225,16 @@
     const currentNodeIds = nodesDataSet.getIds()
     const newNodeIds = nodes.map(n => n.id)
 
-    // Remove nodes that no longer exist
     const nodesToRemove = currentNodeIds.filter(id => !newNodeIds.includes(id))
     nodesDataSet.remove(nodesToRemove)
-
-    // Add or update nodes
     nodesDataSet.update(nodes)
 
     // Update edges
     const currentEdgeIds = edgesDataSet.getIds()
     const newEdgeIds = edges.map(e => e.id)
 
-    // Remove edges that no longer exist
     const edgesToRemove = currentEdgeIds.filter(id => !newEdgeIds.includes(id))
     edgesDataSet.remove(edgesToRemove)
-
-    // Add or update edges
     edgesDataSet.update(edges)
   }
 
@@ -232,8 +249,8 @@
     }
   })
 
-  // Reactive updates when friends change
-  $: if (container && (friends || currentUser)) {
+  // Reactive updates when graphData changes
+  $: if (container && graphData) {
     updateNetwork()
   }
 </script>
@@ -244,7 +261,6 @@
 ></div>
 
 <style>
-  /* Ensure the container takes full height */
   div {
     position: relative;
   }
