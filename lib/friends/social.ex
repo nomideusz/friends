@@ -645,8 +645,9 @@ defmodule Friends.Social do
             Logger.info("Public key point size: #{byte_size(public_key_point)} bytes")
 
             # Create the EC key structure for Erlang crypto
-            ec_key = {:ECPoint, public_key_point, {:namedCurve, :secp256r1}}
-            Logger.info("EC key structure created: #{inspect(ec_key)}")
+            # Format: [public_key_point, curve_params]
+            ec_public_key = [public_key_point, :secp256r1]
+            Logger.info("EC key structure created for curve secp256r1")
 
             # WebCrypto ECDSA may return raw (r||s) 64 bytes or DER. Handle both.
             der_signature =
@@ -662,7 +663,7 @@ defmodule Friends.Social do
               end
 
             Logger.info("About to call crypto.verify with challenge length: #{String.length(challenge)}, signature size: #{byte_size(der_signature)}")
-            result = :crypto.verify(:ecdsa, :sha256, challenge, der_signature, [ec_key])
+            result = :crypto.verify(:ecdsa, :sha256, challenge, der_signature, ec_public_key)
             Logger.info("Signature verification result: #{inspect(result)}")
             result
           else
