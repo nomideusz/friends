@@ -822,7 +822,8 @@ defmodule FriendsWeb.HomeLive do
                     <button
                       type="button"
                       phx-click="create_invite"
-                      class="text-xs text-neutral-400 hover:text-white cursor-pointer"
+                      phx-disable-with="creating..."
+                      class="text-xs text-neutral-400 hover:text-white cursor-pointer disabled:opacity-50"
                     >
                       + new invite
                     </button>
@@ -920,7 +921,8 @@ defmodule FriendsWeb.HomeLive do
                             type="button"
                             phx-click="confirm_trust"
                             phx-value-user_id={req.user_id}
-                            class="text-xs text-amber-500 hover:text-amber-400 cursor-pointer"
+                            phx-disable-with="confirming..."
+                            class="text-xs text-amber-500 hover:text-amber-400 cursor-pointer disabled:opacity-50"
                           >
                             confirm
                           </button>
@@ -973,7 +975,8 @@ defmodule FriendsWeb.HomeLive do
                               phx-click="vote_recovery"
                               phx-value-user_id={req.id}
                               phx-value-vote="confirm"
-                              class="px-3 py-1 bg-green-500 text-black text-xs font-medium hover:bg-green-400 cursor-pointer"
+                              phx-disable-with="voting..."
+                              class="px-3 py-1 bg-green-500 text-black text-xs font-medium hover:bg-green-400 cursor-pointer disabled:opacity-60"
                             >
                               confirm
                             </button>
@@ -982,7 +985,8 @@ defmodule FriendsWeb.HomeLive do
                               phx-click="vote_recovery"
                               phx-value-user_id={req.id}
                               phx-value-vote="deny"
-                              class="px-3 py-1 border border-neutral-600 text-neutral-400 text-xs hover:border-red-500 hover:text-red-500 cursor-pointer"
+                              phx-disable-with="voting..."
+                              class="px-3 py-1 border border-neutral-600 text-neutral-400 text-xs hover:border-red-500 hover:text-red-500 cursor-pointer disabled:opacity-60"
                             >
                               deny
                             </button>
@@ -1026,7 +1030,8 @@ defmodule FriendsWeb.HomeLive do
                               type="button"
                               phx-click="invite_to_room"
                               phx-value-user_id={user.id}
-                              class="text-xs text-green-500 hover:text-green-400 cursor-pointer"
+                              phx-disable-with="inviting..."
+                              class="text-xs text-green-500 hover:text-green-400 cursor-pointer disabled:opacity-50"
                             >
                               + invite
                             </button>
@@ -1075,7 +1080,8 @@ defmodule FriendsWeb.HomeLive do
                     <button
                       type="button"
                       phx-click="regenerate_thumbnails"
-                      class="text-xs text-blue-500 hover:text-blue-400 cursor-pointer"
+                      phx-disable-with="regenerating..."
+                      class="text-xs text-blue-500 hover:text-blue-400 cursor-pointer disabled:opacity-50"
                     >
                       regenerate missing
                     </button>
