@@ -298,11 +298,20 @@ const Hooks = {
         async mounted() {
             // Initialize crypto identity and send public key to server
             const { isNew, publicKey } = await cryptoIdentity.init()
-            
+
             this.pushEvent("set_public_key", {
                 public_key: publicKey
             })
-            
+
+            // Handle registration success
+            this.handleEvent("registration_complete", ({ user }) => {
+                console.log("Registration complete:", user)
+                // Set cookie for fast initial render on next page load
+                if (user && user.id) {
+                    document.cookie = `friends_user_id=${user.id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                }
+            })
+
             // Handle clear identity request
             this.handleEvent("clear_identity", async () => {
                 await cryptoIdentity.clear()

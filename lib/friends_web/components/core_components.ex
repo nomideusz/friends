@@ -22,7 +22,7 @@ defmodule FriendsWeb.CoreComponents do
       class={[
         "px-4 py-2 text-sm font-medium transition-colors",
         "bg-white text-black hover:bg-neutral-200",
-        "disabled:opacity-40 disabled:cursor-not-allowed",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
         @class
       ]}
       {@rest}
@@ -47,7 +47,7 @@ defmodule FriendsWeb.CoreComponents do
       class={[
         "px-4 py-2 text-sm font-medium transition-colors",
         "border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white",
-        "disabled:opacity-40 disabled:cursor-not-allowed",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
         @class
       ]}
       {@rest}
