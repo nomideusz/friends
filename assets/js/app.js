@@ -5,13 +5,14 @@ import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 import {getHooks} from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
+import FriendGraph from "../svelte/FriendGraph.svelte"
 import { cryptoIdentity } from "./crypto-identity"
 import { deviceLinkManager } from "./device-link"
 import { deviceAttestation } from "./device-attestation"
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential } from "./webauthn"
 import QRCode from "qrcode"
 
-const Components = { FriendsMap }
+const Components = { FriendsMap, FriendGraph }
 
 // Generate device fingerprint - hardware characteristics that are consistent across browsers
 function generateFingerprint() {
@@ -145,7 +146,39 @@ function optimizeImage(file, maxSize = 1200) {
 // Hooks
 const Hooks = {
     ...getHooks(Components),
-    
+
+    FriendGraph: {
+        mounted() {
+            const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
+            const friends = JSON.parse(this.el.dataset.friends || '[]')
+
+            this.component = new FriendGraph({
+                target: this.el,
+                props: {
+                    currentUser,
+                    friends,
+                    live: this
+                }
+            })
+        },
+        updated() {
+            if (this.component) {
+                const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
+                const friends = JSON.parse(this.el.dataset.friends || '[]')
+
+                this.component.$set({
+                    currentUser,
+                    friends
+                })
+            }
+        },
+        destroyed() {
+            if (this.component) {
+                this.component.$destroy()
+            }
+        }
+    },
+
     FriendsApp: {
         async mounted() {
             this.browserId = bootstrapBrowserId

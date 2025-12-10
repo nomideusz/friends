@@ -790,18 +790,24 @@ defmodule FriendsWeb.HomeLive do
                 </div>
 
                 <%!-- Quick Links --%>
-                <div class="flex gap-2">
+                <div class="grid grid-cols-3 gap-2">
+                  <a
+                    href="/graph"
+                    class="px-3 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                  >
+                    🕸️ Graph
+                  </a>
                   <a
                     href="/devices"
-                    class="flex-1 px-4 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                    class="px-3 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
                   >
-                    🔐 Devices & Backup
+                    🔐 Devices
                   </a>
                   <a
                     href="/link"
-                    class="flex-1 px-4 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                    class="px-3 py-3 text-center text-sm bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-neutral-300 hover:text-white transition-colors"
                   >
-                    📱 Link Device
+                    📱 Link
                   </a>
                 </div>
 

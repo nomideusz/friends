@@ -13,7 +13,9 @@
     "phoenix_html": "file:../deps/phoenix_html",
     "phoenix_live_view": "file:../deps/phoenix_live_view",
     "qrcode": "^1.5.4",
-    "svelte": "^5.45.6"
+    "svelte": "^5.45.6",
+    "vis-data": "^8.0.3",
+    "vis-network": "^10.0.2"
   },
   "devDependencies": {
     "esbuild": "^0.17.0",
