@@ -1197,13 +1197,17 @@ defmodule Friends.Social do
   Returns challenge options for the client
   """
   def generate_webauthn_registration_challenge(user) do
+    require Logger
     challenge = :crypto.strong_rand_bytes(32)
+    rp_id = get_rp_id()
+
+    Logger.info("Generating WebAuthn challenge for user #{user.username}, RPID: #{rp_id}")
 
     %{
       challenge: Base.url_encode64(challenge, padding: false),
       rp: %{
         name: "Friends",
-        id: get_rp_id()
+        id: rp_id
       },
       user: %{
         id: Base.url_encode64("user-#{user.id}", padding: false),
