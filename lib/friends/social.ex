@@ -618,36 +618,62 @@ defmodule Friends.Social do
   Returns true if the signature is valid.
   """
   def verify_signature(public_key, challenge, signature_base64) when is_map(public_key) do
+    require Logger
+
     try do
+      Logger.debug("Verifying signature - public_key x: #{inspect(public_key["x"])}, challenge length: #{String.length(challenge)}, signature length: #{String.length(signature_base64)}")
+
       # Decode the signature from base64
-      {:ok, signature_bin} = Base.decode64(signature_base64)
+      case Base.decode64(signature_base64) do
+        {:ok, signature_bin} ->
+          Logger.debug("Signature decoded: #{byte_size(signature_bin)} bytes")
 
-      # The public key is in JWK format (base64url x/y)
-      {:ok, x} = Base.url_decode64(public_key["x"], padding: false)
-      {:ok, y} = Base.url_decode64(public_key["y"], padding: false)
+          # The public key is in JWK format (base64url x/y)
+          with {:ok, x} <- Base.url_decode64(public_key["x"], padding: false),
+               {:ok, y} <- Base.url_decode64(public_key["y"], padding: false) do
 
-      # Create the EC public key point (uncompressed format: 04 || x || y)
-      public_key_point = <<4>> <> x <> y
+            Logger.debug("Public key decoded: x=#{byte_size(x)} bytes, y=#{byte_size(y)} bytes")
 
-      # Create the EC key structure for Erlang crypto
-      ec_key = {:ECPoint, public_key_point, {:namedCurve, :secp256r1}}
+            # Create the EC public key point (uncompressed format: 04 || x || y)
+            public_key_point = <<4>> <> x <> y
 
-      # WebCrypto ECDSA may return raw (r||s) 64 bytes or DER. Handle both.
-      der_signature =
-        case byte_size(signature_bin) do
-          64 ->
-            <<r::binary-size(32), s::binary-size(32)>> = signature_bin
-            encode_der_signature(r, s)
+            # Create the EC key structure for Erlang crypto
+            ec_key = {:ECPoint, public_key_point, {:namedCurve, :secp256r1}}
 
-          _ ->
-            signature_bin
-        end
+            # WebCrypto ECDSA may return raw (r||s) 64 bytes or DER. Handle both.
+            der_signature =
+              case byte_size(signature_bin) do
+                64 ->
+                  Logger.debug("Converting raw 64-byte signature to DER format")
+                  <<r::binary-size(32), s::binary-size(32)>> = signature_bin
+                  encode_der_signature(r, s)
 
-      :crypto.verify(:ecdsa, :sha256, challenge, der_signature, [ec_key])
+                size ->
+                  Logger.debug("Using signature as-is (#{size} bytes, assuming DER)")
+                  signature_bin
+              end
+
+            result = :crypto.verify(:ecdsa, :sha256, challenge, der_signature, [ec_key])
+            Logger.debug("Signature verification result: #{inspect(result)}")
+            result
+          else
+            error ->
+              Logger.warning("Failed to decode public key: #{inspect(error)}")
+              false
+          end
+
+        :error ->
+          Logger.warning("Failed to decode signature from base64")
+          false
+      end
     rescue
-      _ -> false
+      e ->
+        Logger.error("Exception in verify_signature: #{inspect(e)}")
+        false
     catch
-      _, _ -> false
+      kind, reason ->
+        Logger.error("Caught in verify_signature: #{inspect(kind)}, #{inspect(reason)}")
+        false
     end
   end
 

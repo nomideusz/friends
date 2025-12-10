@@ -132,17 +132,26 @@ function getFromLocalStorage() {
 
 // Sign a challenge/message with private key
 async function signMessage(privateKey, message) {
+    console.log('[Crypto] Signing message:', message.substring(0, 20) + '... (length: ' + message.length + ')')
+
     const encoder = new TextEncoder()
     const data = encoder.encode(message)
-    
+
+    console.log('[Crypto] Encoded data bytes:', data.byteLength)
+
     const signature = await crypto.subtle.sign(
         { name: 'ECDSA', hash: 'SHA-256' },
         privateKey,
         data
     )
-    
+
+    console.log('[Crypto] Signature bytes:', signature.byteLength)
+
     // Convert to base64 for transmission
-    return btoa(String.fromCharCode(...new Uint8Array(signature)))
+    const base64Sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    console.log('[Crypto] Base64 signature length:', base64Sig.length)
+
+    return base64Sig
 }
 
 // Verify a signature (for testing/debugging)
@@ -176,54 +185,69 @@ class CryptoIdentity {
      * @returns {Object} { isNew: boolean, publicKey: JWK }
      */
     async init() {
+        console.log('[Crypto] init() called, initialized:', this.initialized)
+
         if (this.initialized) {
+            console.log('[Crypto] Already initialized, returning cached key')
             return { isNew: false, publicKey: this.publicKeyJwk }
         }
-        
+
         // Try to load from IndexedDB first
+        console.log('[Crypto] Attempting to load from IndexedDB...')
         let stored = await getFromIndexedDB()
-        
+
         // Fallback to localStorage
         if (!stored) {
+            console.log('[Crypto] No keys in IndexedDB, trying localStorage...')
             stored = getFromLocalStorage()
         }
-        
+
         if (stored && stored.privateKey && stored.publicKey) {
+            console.log('[Crypto] Found stored keys, restoring identity')
+            console.log('[Crypto] Public key x:', stored.publicKey.x?.substring(0, 10) + '...')
+
             // Restore existing identity
             try {
                 this.privateKey = await importPrivateKey(stored.privateKey)
                 this.publicKey = await importPublicKey(stored.publicKey)
                 this.publicKeyJwk = stored.publicKey
                 this.initialized = true
-                
+
                 // Ensure IndexedDB has the latest
                 await storeInIndexedDB({
                     privateKey: stored.privateKey,
                     publicKey: stored.publicKey
                 })
-                
+
+                console.log('[Crypto] Successfully restored existing identity')
                 return { isNew: false, publicKey: this.publicKeyJwk }
             } catch (e) {
-                console.warn('Failed to restore keys, generating new:', e)
+                console.error('[Crypto] Failed to restore keys, generating new:', e)
             }
+        } else {
+            console.log('[Crypto] No stored keys found')
         }
-        
+
         // Generate new identity
+        console.log('[Crypto] Generating new identity...')
         const keyPair = await generateKeyPair()
         this.privateKey = keyPair.privateKey
         this.publicKey = keyPair.publicKey
-        
+
         const privateKeyJwk = await exportPrivateKey(this.privateKey)
         this.publicKeyJwk = await exportPublicKey(this.publicKey)
-        
+
+        console.log('[Crypto] New public key x:', this.publicKeyJwk.x?.substring(0, 10) + '...')
+
         // Store in both IndexedDB and localStorage
         await storeInIndexedDB({
             privateKey: privateKeyJwk,
             publicKey: this.publicKeyJwk
         })
         backupToLocalStorage(privateKeyJwk, this.publicKeyJwk)
-        
+
         this.initialized = true
+        console.log('[Crypto] Generated and stored new identity')
         return { isNew: true, publicKey: this.publicKeyJwk }
     }
     
