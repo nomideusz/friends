@@ -1080,4 +1080,101 @@ defmodule Friends.Social do
         select: rv.new_public_key
     )
   end
+
+  # --- User Devices (Device Attestation) ---
+
+  alias Friends.Social.UserDevice
+
+  @doc """
+  Register or update a device for a user
+  """
+  def register_user_device(user_id, device_fingerprint, device_name, public_key_fingerprint) do
+    now = DateTime.utc_now()
+
+    case Repo.get_by(UserDevice, user_id: user_id, device_fingerprint: device_fingerprint) do
+      nil ->
+        # New device
+        %UserDevice{}
+        |> UserDevice.changeset(%{
+          user_id: user_id,
+          device_fingerprint: device_fingerprint,
+          device_name: device_name,
+          public_key_fingerprint: public_key_fingerprint,
+          first_seen_at: now,
+          last_seen_at: now,
+          trusted: true
+        })
+        |> Repo.insert()
+
+      device ->
+        # Update existing device
+        device
+        |> UserDevice.changeset(%{
+          device_name: device_name,
+          public_key_fingerprint: public_key_fingerprint,
+          last_seen_at: now
+        })
+        |> Repo.update()
+    end
+  end
+
+  @doc """
+  List all devices for a user
+  """
+  def list_user_devices(user_id) do
+    Repo.all(
+      from d in UserDevice,
+        where: d.user_id == ^user_id and d.revoked == false,
+        order_by: [desc: d.last_seen_at]
+    )
+  end
+
+  @doc """
+  Revoke a device
+  """
+  def revoke_user_device(user_id, device_id) do
+    case Repo.get(UserDevice, device_id) do
+      nil ->
+        {:error, :not_found}
+
+      device ->
+        if device.user_id == user_id do
+          device
+          |> UserDevice.changeset(%{revoked: true, trusted: false})
+          |> Repo.update()
+        else
+          {:error, :unauthorized}
+        end
+    end
+  end
+
+  @doc """
+  Mark a device as trusted/untrusted
+  """
+  def update_device_trust(user_id, device_id, trusted) do
+    case Repo.get(UserDevice, device_id) do
+      nil ->
+        {:error, :not_found}
+
+      device ->
+        if device.user_id == user_id do
+          device
+          |> UserDevice.changeset(%{trusted: trusted})
+          |> Repo.update()
+        else
+          {:error, :unauthorized}
+        end
+    end
+  end
+
+  @doc """
+  Count trusted devices for a user
+  """
+  def count_trusted_devices(user_id) do
+    Repo.one(
+      from d in UserDevice,
+        where: d.user_id == ^user_id and d.trusted == true and d.revoked == false,
+        select: count(d.id)
+    )
+  end
 end

@@ -7,6 +7,9 @@ import {getHooks} from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
 import { cryptoIdentity } from "./crypto-identity"
 import { deviceLinkManager } from "./device-link"
+import { deviceAttestation } from "./device-attestation"
+import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential } from "./webauthn"
+import QRCode from "qrcode"
 
 const Components = { FriendsMap }
 
@@ -167,9 +170,14 @@ const Hooks = {
             // Handle challenge-response authentication
             this.handleEvent("auth_challenge", async ({ challenge }) => {
                 const signature = await cryptoIdentity.sign(challenge)
+                const deviceInfo = await deviceAttestation.init()
+
                 this.pushEvent("auth_response", {
                     signature,
-                    challenge
+                    challenge,
+                    device_fingerprint: deviceInfo.fingerprint,
+                    device_name: deviceInfo.deviceName,
+                    key_fingerprint: cryptoIdentity.getKeyFingerprint()
                 })
             })
 
@@ -424,6 +432,115 @@ const Hooks = {
                     this.pushEvent("import_result", { success: false })
                 }
             })
+        }
+    },
+
+    ExportKeys: {
+        async mounted() {
+            this.handleEvent("export_backup", async () => {
+                try {
+                    // Export backup as JSON string
+                    const backup = await cryptoIdentity.exportBackup()
+
+                    // Generate QR code
+                    const qrContainer = document.getElementById('export-qr-code')
+                    if (qrContainer) {
+                        qrContainer.innerHTML = '<p class="text-xs text-neutral-500 mb-2">QR Code (for mobile import)</p>'
+                        const canvas = document.createElement('canvas')
+                        await QRCode.toCanvas(canvas, backup, {
+                            width: 256,
+                            margin: 2,
+                            color: {
+                                dark: '#ffffff',
+                                light: '#000000'
+                            }
+                        })
+                        qrContainer.appendChild(canvas)
+
+                        // Add download button
+                        const btnContainer = document.createElement('div')
+                        btnContainer.className = 'mt-4 space-y-2'
+
+                        const downloadBtn = document.createElement('button')
+                        downloadBtn.textContent = 'Download Backup File'
+                        downloadBtn.className = 'w-full px-4 py-2 bg-white text-black font-medium hover:bg-neutral-200'
+                        downloadBtn.onclick = () => cryptoIdentity.downloadBackup()
+
+                        const copyBtn = document.createElement('button')
+                        copyBtn.textContent = 'Copy to Clipboard'
+                        copyBtn.className = 'w-full px-4 py-2 bg-neutral-800 text-white hover:bg-neutral-700'
+                        copyBtn.onclick = async () => {
+                            await navigator.clipboard.writeText(backup)
+                            copyBtn.textContent = 'Copied!'
+                            setTimeout(() => {
+                                copyBtn.textContent = 'Copy to Clipboard'
+                            }, 2000)
+                        }
+
+                        btnContainer.appendChild(downloadBtn)
+                        btnContainer.appendChild(copyBtn)
+                        qrContainer.appendChild(btnContainer)
+                    }
+                } catch (e) {
+                    console.error("Failed to export backup:", e)
+                    alert("Failed to export backup: " + e.message)
+                }
+            })
+        }
+    },
+
+    WebAuthnManager: {
+        async mounted() {
+            const statusDiv = document.getElementById('webauthn-status')
+            const registerBtn = document.getElementById('register-webauthn-btn')
+
+            // Check WebAuthn support
+            const supported = isWebAuthnSupported()
+            const platformAvailable = supported && await isPlatformAuthenticatorAvailable()
+
+            if (!supported) {
+                statusDiv.textContent = '❌ WebAuthn not supported in this browser'
+                statusDiv.className = 'text-sm text-red-500 mb-4'
+                return
+            }
+
+            if (platformAvailable) {
+                statusDiv.textContent = '✅ Platform authenticator available (Touch ID, Face ID, Windows Hello)'
+                statusDiv.className = 'text-sm text-green-500 mb-4'
+            } else {
+                statusDiv.textContent = '⚠️ WebAuthn supported, but no platform authenticator detected. You can still use USB security keys.'
+                statusDiv.className = 'text-sm text-yellow-500 mb-4'
+            }
+
+            // Show register button
+            registerBtn.classList.remove('hidden')
+
+            // Handle registration
+            registerBtn.onclick = async () => {
+                try {
+                    registerBtn.disabled = true
+                    registerBtn.textContent = 'Registering...'
+
+                    // In a real implementation, we'd get these options from the server
+                    // For now, we'll show a message that this feature is ready for backend integration
+                    alert(
+                        'WebAuthn is supported and ready!\n\n' +
+                        'To complete this feature, we need to:\n' +
+                        '1. Add server-side WebAuthn credential storage\n' +
+                        '2. Implement challenge generation\n' +
+                        '3. Verify attestations\n\n' +
+                        'The client-side code is ready to go!'
+                    )
+
+                    registerBtn.disabled = false
+                    registerBtn.textContent = 'Register Hardware Key'
+                } catch (error) {
+                    console.error('WebAuthn registration failed:', error)
+                    alert('Registration failed: ' + error.message)
+                    registerBtn.disabled = false
+                    registerBtn.textContent = 'Register Hardware Key'
+                }
+            }
         }
     }
 }

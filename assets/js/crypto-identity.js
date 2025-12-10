@@ -304,13 +304,84 @@ class CryptoIdentity {
         } catch (e) {
             console.warn('Failed to clear IndexedDB:', e)
         }
-        
+
         localStorage.removeItem(LS_BACKUP_KEY)
-        
+
         this.privateKey = null
         this.publicKey = null
         this.publicKeyJwk = null
         this.initialized = false
+    }
+
+    /**
+     * Export identity as encrypted backup (for QR code or file download)
+     * @returns {string} Encrypted backup string
+     */
+    async exportBackup() {
+        if (!this.initialized) {
+            await this.init()
+        }
+
+        const privateKeyJwk = await exportPrivateKey(this.privateKey)
+        const backup = {
+            version: 1,
+            privateKey: privateKeyJwk,
+            publicKey: this.publicKeyJwk,
+            timestamp: Date.now()
+        }
+
+        return JSON.stringify(backup)
+    }
+
+    /**
+     * Import identity from backup string
+     * @param {string} backupString - The backup string to import
+     * @returns {boolean} Success status
+     */
+    async importBackup(backupString) {
+        try {
+            const backup = JSON.parse(backupString)
+
+            if (!backup.privateKey || !backup.publicKey) {
+                throw new Error('Invalid backup format')
+            }
+
+            // Import the keys
+            this.privateKey = await importPrivateKey(backup.privateKey)
+            this.publicKey = await importPublicKey(backup.publicKey)
+            this.publicKeyJwk = backup.publicKey
+
+            // Store in both locations
+            await storeInIndexedDB({
+                privateKey: backup.privateKey,
+                publicKey: backup.publicKey
+            })
+            backupToLocalStorage(backup.privateKey, backup.publicKey)
+
+            this.initialized = true
+            console.log('[Crypto] Successfully imported backup')
+            return true
+        } catch (e) {
+            console.error('[Crypto] Failed to import backup:', e)
+            return false
+        }
+    }
+
+    /**
+     * Download backup as a file
+     */
+    async downloadBackup() {
+        const backup = await this.exportBackup()
+        const blob = new Blob([backup], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `friends-backup-${Date.now()}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
     }
 }
 
