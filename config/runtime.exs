@@ -58,5 +58,12 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base,
     check_origin: check_origin
+
+  # WebAuthn Relying Party ID - must match the domain
+  # For "friends.zaur.app", we can use either "zaur.app" or "friends.zaur.app"
+  # Using the full subdomain is more specific and secure
+  webauthn_rp_id = System.get_env("WEBAUTHN_RP_ID") || host
+
+  config :friends, :webauthn_rp_id, webauthn_rp_id
 end
 

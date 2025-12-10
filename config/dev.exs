@@ -43,3 +43,6 @@ config :phoenix_live_view,
   debug_heex_annotations: true,
   enable_expensive_runtime_checks: true
 
+# WebAuthn RPID for development
+config :friends, :webauthn_rp_id, "localhost"
+
