@@ -1296,7 +1296,7 @@ defmodule FriendsWeb.HomeLive do
            |> assign(:user_name, nil)
            |> assign(:auth_status, :pending)
            |> assign(:room_access_denied, true)
-           |> assign(:pending_auth, %{user: user, challenge: challenge, public_key: public_key})
+           |> assign(:pending_auth, %{user: user, challenge: challenge, public_key: user.public_key})
            |> assign(:browser_id, browser_id)
            |> assign(:fingerprint, fingerprint)
            |> push_event("auth_challenge", %{challenge: challenge})}
