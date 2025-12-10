@@ -80,7 +80,6 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:viewers, [])
       |> assign(:item_count, length(items))
       |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
-      |> assign(:loading_more, false)
       |> assign(:feed_mode, "room")
       |> assign(:show_room_modal, false)
       |> assign(:show_name_modal, false)
@@ -168,7 +167,6 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:page_title, room.name || room.code)
        |> assign(:item_count, length(items))
        |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
-       |> assign(:loading_more, false)
        |> assign(:viewers, viewers)
        |> assign(:room_access_denied, not can_access)
        |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
@@ -548,18 +546,10 @@ defmodule FriendsWeb.HomeLive do
                 <button
                   type="button"
                   phx-click="load_more"
-                  class={[
-                    "px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px] flex items-center justify-center gap-2",
-                    @loading_more && "opacity-60 cursor-wait"
-                  ]}
-                  disabled={@loading_more}
+                  phx-disable-with="loading..."
+                  class="px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px]"
                 >
-                  <%= if @loading_more do %>
-                    <span class="spinner"></span>
-                    <span>loading</span>
-                  <% else %>
-                    show more
-                  <% end %>
+                  show more
                 </button>
               </div>
             <% end %>
@@ -1977,7 +1967,6 @@ defmodule FriendsWeb.HomeLive do
          socket
          |> assign(:item_count, length(items))
          |> assign(:no_more_items, no_more)
-         |> assign(:loading_more, false)
          |> assign(:photo_order, photo_ids(items))
          |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
       
@@ -2003,7 +1992,6 @@ defmodule FriendsWeb.HomeLive do
              |> assign(:outgoing_trust_requests, outgoing_trusts)
              |> assign(:item_count, length(items))
              |> assign(:no_more_items, no_more)
-             |> assign(:loading_more, false)
              |> assign(:photo_order, photo_ids(items))
              |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
         end
@@ -2014,14 +2002,12 @@ defmodule FriendsWeb.HomeLive do
     if socket.assigns.room_access_denied do
       {:noreply, socket}
     else
-      if socket.assigns.no_more_items || socket.assigns.loading_more do
-      {:noreply, socket}
-    else
-      batch = @initial_batch
-      offset = socket.assigns.item_count || 0
-      mode = socket.assigns.feed_mode
-
-      socket = assign(socket, :loading_more, true)
+      if socket.assigns.no_more_items do
+        {:noreply, socket}
+      else
+        batch = @initial_batch
+        offset = socket.assigns.item_count || 0
+        mode = socket.assigns.feed_mode
 
       {items, no_more?} =
         case mode do
@@ -2051,13 +2037,12 @@ defmodule FriendsWeb.HomeLive do
           stream_insert(acc, :items, item)
         end)
 
-      {:noreply,
-       socket
-       |> assign(:item_count, new_count)
-       |> assign(:no_more_items, no_more?)
-       |> assign(:loading_more, false)
-       |> assign(:photo_order, new_photo_order)}
-    end
+        {:noreply,
+         socket
+         |> assign(:item_count, new_count)
+         |> assign(:no_more_items, no_more?)
+         |> assign(:photo_order, new_photo_order)}
+      end
     end
   end
 
