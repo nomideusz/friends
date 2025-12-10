@@ -621,7 +621,8 @@ defmodule Friends.Social do
     require Logger
 
     try do
-      Logger.debug("Verifying signature - public_key x: #{inspect(public_key["x"])}, challenge length: #{String.length(challenge)}, signature length: #{String.length(signature_base64)}")
+      Logger.info("Verifying signature - public_key keys: #{inspect(Map.keys(public_key))}")
+      Logger.info("Public key full: #{inspect(public_key)}")
 
       # Decode the signature from base64
       case Base.decode64(signature_base64) do
@@ -629,8 +630,13 @@ defmodule Friends.Social do
           Logger.debug("Signature decoded: #{byte_size(signature_bin)} bytes")
 
           # The public key is in JWK format (base64url x/y)
-          with {:ok, x} <- Base.url_decode64(public_key["x"], padding: false),
-               {:ok, y} <- Base.url_decode64(public_key["y"], padding: false) do
+          x_val = public_key["x"]
+          y_val = public_key["y"]
+
+          Logger.info("Attempting to decode: x=#{inspect(x_val)}, y=#{inspect(y_val)}")
+
+          with {:ok, x} <- Base.url_decode64(x_val, padding: false),
+               {:ok, y} <- Base.url_decode64(y_val, padding: false) do
 
             Logger.debug("Public key decoded: x=#{byte_size(x)} bytes, y=#{byte_size(y)} bytes")
 
