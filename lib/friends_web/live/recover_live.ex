@@ -152,7 +152,7 @@ defmodule FriendsWeb.RecoverLive do
               <button
                 type="submit"
                 disabled={String.trim(@username) == ""}
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 find account
               </button>

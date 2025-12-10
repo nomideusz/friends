@@ -269,6 +269,22 @@ input:focus, textarea:focus {
   box-shadow: 0 0 20px rgba(130, 177, 255, 0.1);
 }
 
+/* Accessible text links - WCAG compliant */
+a.text-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Focus visible states for keyboard navigation */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--opal-azure);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* Progress bar - opal gradient */
 #topbar {
   position: fixed;
@@ -343,6 +359,50 @@ input:focus, textarea:focus {
   100% {
     background-position: -200% 0;
   }
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.spinner-lg {
+  width: 1.5em;
+  height: 1.5em;
+  border-width: 3px;
+}
+
+/* Pulsing dot animation for loading states */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.loading-dots::after {
+  content: '...';
+  display: inline-block;
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
 /* Photo loading state */

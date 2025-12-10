@@ -194,7 +194,7 @@ defmodule FriendsWeb.RegisterLive do
               <button
                 type="submit"
                 disabled={admin_invite_code() == nil and String.trim(@invite_code) == ""}
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 continue
               </button>
@@ -265,7 +265,7 @@ defmodule FriendsWeb.RegisterLive do
               <button
                 type="submit"
                 disabled={@username_available != true}
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 create account
               </button>

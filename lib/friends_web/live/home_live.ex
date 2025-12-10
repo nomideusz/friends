@@ -188,7 +188,7 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Header --%>
         <header class="glass-strong border-b border-white/5 sticky top-0 z-40">
-          <div class="max-w-[1600px] mx-auto px-8 py-4">
+          <div class="max-w-[1600px] mx-auto px-4 sm:px-8 py-4">
             <div class="flex items-center justify-between gap-6">
               <%!-- Space selector --%>
               <button
@@ -349,8 +349,16 @@ defmodule FriendsWeb.HomeLive do
                     </div>
                   </div>
                 <% else %>
-                  <div class="text-sm text-neutral-600">
-                    no trusted connections yet. add friends in settings to see their activity here.
+                  <div class="flex items-center gap-3 p-4 bg-neutral-900/50 border border-neutral-800 rounded-lg">
+                    <div class="text-neutral-600">
+                      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                      </svg>
+                    </div>
+                    <div class="flex-1">
+                      <p class="text-sm text-neutral-500 font-medium">no trusted connections yet</p>
+                      <p class="text-xs text-neutral-600 mt-0.5">add friends in settings to see their activity</p>
+                    </div>
                   </div>
                 <% end %>
               <% end %>
@@ -364,14 +372,19 @@ defmodule FriendsWeb.HomeLive do
                 <label
                   for={@uploads.photo.ref}
                   class={[
-                    "px-6 py-3 text-sm cursor-pointer transition-all rounded-xl inline-block",
+                    "px-6 py-3 text-sm cursor-pointer transition-all rounded-xl inline-flex items-center justify-center gap-2",
                     if(@uploading,
-                      do: "glass border border-white/10 text-neutral-400",
+                      do: "glass border border-white/10 text-neutral-400 cursor-wait",
                       else: "btn-opal"
                     )
                   ]}
                 >
-                  {if @uploading, do: "uploading...", else: "share photo"}
+                  <%= if @uploading do %>
+                    <span class="spinner"></span>
+                    <span>uploading</span>
+                  <% else %>
+                    share photo
+                  <% end %>
                 </label>
                 <.live_file_input upload={@uploads.photo} class="sr-only" />
               </form>
@@ -428,11 +441,21 @@ defmodule FriendsWeb.HomeLive do
             <%= if @item_count == 0 do %>
               <div class="text-center py-20">
                 <%= if @feed_mode == "friends" do %>
-                  <p class="text-neutral-600 text-sm">no activity from your network</p>
-                  <p class="text-neutral-700 text-xs mt-2">add trusted connections to see their photos and notes</p>
+                  <div class="mb-4 opacity-40">
+                    <svg class="w-16 h-16 mx-auto text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                  </div>
+                  <p class="text-neutral-500 text-base font-medium mb-2">no activity from your network</p>
+                  <p class="text-neutral-600 text-sm">add trusted connections to see their photos and notes</p>
                 <% else %>
-                  <p class="text-neutral-600 text-sm">this space is empty</p>
-                  <p class="text-neutral-700 text-xs mt-2">share a photo or note to get started</p>
+                  <div class="mb-4 opacity-40">
+                    <svg class="w-16 h-16 mx-auto text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                  </div>
+                  <p class="text-neutral-500 text-base font-medium mb-2">this space is empty</p>
+                  <p class="text-neutral-600 text-sm">share a photo or note to get started</p>
                 <% end %>
               </div>
             <% else %>
@@ -453,12 +476,12 @@ defmodule FriendsWeb.HomeLive do
                         decoding="async"
                       />
                     <% else %>
-                      <div class="w-full h-full flex items-center justify-center bg-neutral-800 border-2 border-dashed border-neutral-600">
+                      <div class="w-full h-full flex items-center justify-center bg-neutral-800 skeleton border-2 border-dashed border-neutral-600">
                         <div class="text-center">
                           <svg class="w-8 h-8 mx-auto mb-2 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                           </svg>
-                          <span class="text-neutral-400 text-xs">thumbnail</span>
+                          <span class="text-neutral-400 text-xs">loading</span>
                         </div>
                       </div>
                     <% end %>
@@ -526,12 +549,17 @@ defmodule FriendsWeb.HomeLive do
                   type="button"
                   phx-click="load_more"
                   class={[
-                    "px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px]",
+                    "px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px] flex items-center justify-center gap-2",
                     @loading_more && "opacity-60 cursor-wait"
                   ]}
                   disabled={@loading_more}
                 >
-                  <%= if @loading_more, do: "loading...", else: "show more" %>
+                  <%= if @loading_more do %>
+                    <span class="spinner"></span>
+                    <span>loading</span>
+                  <% else %>
+                    show more
+                  <% end %>
                 </button>
               </div>
             <% end %>
@@ -541,11 +569,11 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-6 modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
-            <div class="w-full max-w-lg glass-strong rounded-2xl p-8 opal-glow">
-              <div class="flex items-center justify-between mb-8">
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
+            <div class="w-full max-w-lg mx-4 glass-strong rounded-2xl p-4 sm:p-6 md:p-8 opal-glow">
+              <div class="flex items-center justify-between mb-6 sm:mb-8">
                 <h2 id="room-modal-title" class="text-base font-medium tracking-wide opal-text">spaces</h2>
-                <button type="button" phx-click="close_room_modal" class="text-neutral-500 hover:text-white cursor-pointer text-xl" aria-label="Close spaces dialog">×</button>
+                <button type="button" phx-click="close_room_modal" class="w-11 h-11 flex items-center justify-center text-neutral-500 hover:text-white cursor-pointer text-2xl transition-colors" aria-label="Close spaces dialog">×</button>
               </div>
 
               <%!-- Current Location --%>
@@ -721,10 +749,10 @@ defmodule FriendsWeb.HomeLive do
         <%!-- Note Modal --%>
         <%= if @show_note_modal do %>
           <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_note_modal">
-            <div class="w-full max-w-md bg-neutral-900 border border-neutral-800 p-6">
-              <div class="flex items-center justify-between mb-6">
+            <div class="w-full max-w-md mx-4 bg-neutral-900 border border-neutral-800 p-4 sm:p-6">
+              <div class="flex items-center justify-between mb-4 sm:mb-6">
                 <h2 class="text-sm font-medium">new note</h2>
-                <button type="button" phx-click="close_note_modal" class="text-neutral-500 hover:text-white cursor-pointer">×</button>
+                <button type="button" phx-click="close_note_modal" class="w-11 h-11 flex items-center justify-center text-neutral-500 hover:text-white cursor-pointer text-2xl transition-colors" aria-label="Close note dialog">×</button>
               </div>
 
               <form phx-submit="save_note" phx-change="update_note">
@@ -742,7 +770,7 @@ defmodule FriendsWeb.HomeLive do
                   <button
                     type="submit"
                     disabled={String.trim(@note_input) == ""}
-                    class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     share
                   </button>
@@ -755,13 +783,13 @@ defmodule FriendsWeb.HomeLive do
         <%!-- Settings Modal --%>
         <%= if @show_settings_modal && @current_user do %>
           <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_settings_modal">
-            <div class="w-full max-w-lg bg-neutral-900 border border-neutral-800 max-h-[80vh] overflow-hidden flex flex-col">
-              <div class="flex items-center justify-between p-4 border-b border-neutral-800">
+            <div class="w-full max-w-lg mx-4 bg-neutral-900 border border-neutral-800 max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col rounded-xl">
+              <div class="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-800">
                 <h2 class="text-sm font-medium">@{@current_user.username}</h2>
-                <button type="button" phx-click="close_settings_modal" class="text-neutral-500 hover:text-white cursor-pointer">×</button>
+                <button type="button" phx-click="close_settings_modal" class="w-11 h-11 flex items-center justify-center text-neutral-500 hover:text-white cursor-pointer text-2xl transition-colors" aria-label="Close settings dialog">×</button>
               </div>
 
-              <div class="flex-1 overflow-y-auto p-4 space-y-6">
+              <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                 <%!-- Profile Info --%>
                 <div class="flex items-center gap-4">
                   <div class="w-12 h-12 rounded-full ring-2 ring-green-500/50" style={"background-color: #{@user_color}"} />
@@ -1043,16 +1071,16 @@ defmodule FriendsWeb.HomeLive do
 
                 <%!-- Device & Recovery --%>
                 <div class="pt-4 border-t border-neutral-800 space-y-2">
-                  <a 
-                    href="/link" 
-                    class="flex items-center gap-2 text-xs text-neutral-400 hover:text-white"
+                  <a
+                    href="/link"
+                    class="flex items-center gap-2 text-xs text-neutral-400 hover:text-white text-link transition-colors"
                   >
                     <span>📱</span>
                     <span>link another device</span>
                   </a>
-                  <a 
-                    href="/recover" 
-                    class="flex items-center gap-2 text-xs text-amber-500/70 hover:text-amber-400"
+                  <a
+                    href="/recover"
+                    class="flex items-center gap-2 text-xs text-amber-500/70 hover:text-amber-400 text-link transition-colors"
                   >
                     <span>🔑</span>
                     <span>lost your key? start recovery</span>
@@ -1069,7 +1097,7 @@ defmodule FriendsWeb.HomeLive do
         <%!-- Image Modal --%>
         <%= if @show_image_modal && @full_image_data do %>
           <div
-            class="fixed inset-0 z-50 flex items-center justify-center p-8 modal-backdrop"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 modal-backdrop"
             phx-click-away="close_image_modal"
             role="dialog"
             aria-modal="true"
@@ -1078,14 +1106,14 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="prev_photo"
-              class="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+              class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
               aria-label="Previous photo"
             >
               ‹
             </button>
 
             <div class="relative max-w-6xl max-h-[90vh] flex items-center justify-center">
-              <button type="button" phx-click="close_image_modal" class="absolute -top-14 right-0 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all" aria-label="Close photo viewer">×</button>
+              <button type="button" phx-click="close_image_modal" class="absolute -top-12 sm:-top-14 right-0 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all" aria-label="Close photo viewer">×</button>
 
               <%= if @full_image_data[:user_id] == @user_id do %>
                 <button
@@ -1093,7 +1121,7 @@ defmodule FriendsWeb.HomeLive do
                   phx-click="delete_photo"
                   phx-value-id={@full_image_data[:photo_id]}
                   data-confirm="delete?"
-                  class="absolute -top-14 left-0 w-16 h-10 flex items-center justify-center glass rounded-full text-red-400 hover:text-red-200 text-xs cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+                  class="absolute -top-12 sm:-top-14 left-0 w-16 h-11 flex items-center justify-center glass rounded-full text-red-400 hover:text-red-200 text-xs cursor-pointer border border-white/10 hover:border-white/20 transition-all"
                   aria-label="Delete this photo"
                 >
                   delete
@@ -1112,7 +1140,7 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="next_photo"
-              class="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
+              class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all"
               aria-label="Next photo"
             >
               ›
