@@ -638,13 +638,15 @@ defmodule Friends.Social do
           with {:ok, x} <- Base.url_decode64(x_val, padding: false),
                {:ok, y} <- Base.url_decode64(y_val, padding: false) do
 
-            Logger.debug("Public key decoded: x=#{byte_size(x)} bytes, y=#{byte_size(y)} bytes")
+            Logger.info("Public key decoded successfully: x=#{byte_size(x)} bytes, y=#{byte_size(y)} bytes")
 
             # Create the EC public key point (uncompressed format: 04 || x || y)
             public_key_point = <<4>> <> x <> y
+            Logger.info("Public key point size: #{byte_size(public_key_point)} bytes")
 
             # Create the EC key structure for Erlang crypto
             ec_key = {:ECPoint, public_key_point, {:namedCurve, :secp256r1}}
+            Logger.info("EC key structure created: #{inspect(ec_key)}")
 
             # WebCrypto ECDSA may return raw (r||s) 64 bytes or DER. Handle both.
             der_signature =
@@ -659,8 +661,9 @@ defmodule Friends.Social do
                   signature_bin
               end
 
+            Logger.info("About to call crypto.verify with challenge length: #{String.length(challenge)}, signature size: #{byte_size(der_signature)}")
             result = :crypto.verify(:ecdsa, :sha256, challenge, der_signature, [ec_key])
-            Logger.debug("Signature verification result: #{inspect(result)}")
+            Logger.info("Signature verification result: #{inspect(result)}")
             result
           else
             error ->
