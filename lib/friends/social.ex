@@ -577,8 +577,8 @@ defmodule Friends.Social do
       true ->
         with {:ok, invite} <- validate_invite(invite_code),
              {:ok, user} <- create_user(attrs, invite) do
-          # Mark invite as used
-          use_invite(invite, user)
+          # Mark invite as used (skip for admin invite which has no ID)
+          if invite.id, do: use_invite(invite, user)
           {:ok, user}
         end
     end
