@@ -6,6 +6,7 @@ import topbar from "../vendor/topbar"
 import {getHooks} from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
+import { mount, unmount } from 'svelte'
 import { cryptoIdentity } from "./crypto-identity"
 import { deviceLinkManager } from "./device-link"
 import { deviceAttestation } from "./device-attestation"
@@ -151,7 +152,8 @@ const Hooks = {
         mounted() {
             const graphData = JSON.parse(this.el.dataset.graph || 'null')
 
-            this.component = new FriendGraph({
+            // Svelte 5 uses mount() instead of new Component()
+            this.component = mount(FriendGraph, {
                 target: this.el,
                 props: {
                     graphData,
@@ -160,17 +162,22 @@ const Hooks = {
             })
         },
         updated() {
+            // Svelte 5: remount component with new props
             if (this.component) {
-                const graphData = JSON.parse(this.el.dataset.graph || 'null')
-
-                this.component.$set({
-                    graphData
-                })
+                unmount(this.component)
             }
+            const graphData = JSON.parse(this.el.dataset.graph || 'null')
+            this.component = mount(FriendGraph, {
+                target: this.el,
+                props: {
+                    graphData,
+                    live: this
+                }
+            })
         },
         destroyed() {
             if (this.component) {
-                this.component.$destroy()
+                unmount(this.component)
             }
         }
     },
