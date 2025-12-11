@@ -94,8 +94,9 @@ defmodule FriendsWeb.DevicesLive do
   @impl true
   def handle_event("register_webauthn_credential", %{"credential" => credential_data}, socket) do
     user_id = socket.assigns.current_user.id
+    challenge = socket.assigns.webauthn_challenge
 
-    case Social.verify_and_store_webauthn_credential(user_id, credential_data) do
+    case Social.verify_and_store_webauthn_credential(user_id, credential_data, challenge) do
       {:ok, _credential} ->
         webauthn_credentials = Social.list_webauthn_credentials(user_id)
 

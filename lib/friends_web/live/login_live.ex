@@ -51,7 +51,7 @@ defmodule FriendsWeb.LoginLive do
   @impl true
   def handle_event("webauthn_login_response", %{"credential" => credential_data}, socket) do
     user = socket.assigns.user
-    challenge = socket.assigns.webauthn_challenge["challenge"]
+    challenge = socket.assigns.webauthn_challenge.challenge
 
     case Social.verify_webauthn_assertion(user.id, credential_data, challenge) do
       {:ok, _credential} ->
