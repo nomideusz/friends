@@ -1192,186 +1192,66 @@ defmodule Friends.Social do
 
   alias Friends.Social.WebAuthnCredential
 
+  # --- WebAuthn Functions (delegated to Friends.WebAuthn) ---
+  # These delegate to the proper WebAuthn implementation module
+
   @doc """
-  Generate a WebAuthn registration challenge
-  Returns challenge options for the client
+  Generate a WebAuthn registration challenge for a user.
   """
-  def generate_webauthn_registration_challenge(user) do
-    require Logger
-    challenge = :crypto.strong_rand_bytes(32)
-    rp_id = get_rp_id()
+  defdelegate generate_webauthn_registration_challenge(user), to: Friends.WebAuthn, as: :generate_registration_challenge
 
-    Logger.info("Generating WebAuthn challenge for user #{user.username}, RPID: #{rp_id}")
+  @doc """
+  Generate a WebAuthn authentication challenge for a user.
+  """
+  defdelegate generate_webauthn_authentication_challenge(user), to: Friends.WebAuthn, as: :generate_authentication_challenge
 
-    %{
-      challenge: Base.url_encode64(challenge, padding: false),
-      rp: %{
-        name: "Friends",
-        id: rp_id
-      },
-      user: %{
-        id: Base.url_encode64("user-#{user.id}", padding: false),
-        name: user.username,
-        displayName: user.display_name || user.username
-      },
-      pubKeyCredParams: [
-        %{type: "public-key", alg: -7},  # ES256
-        %{type: "public-key", alg: -257} # RS256
-      ],
-      timeout: 60000,
-      attestation: "none",
-      authenticatorSelection: %{
-        authenticatorAttachment: "platform",
-        requireResidentKey: false,
-        userVerification: "preferred"
-      }
+  @doc """
+  Verify a WebAuthn registration response and store the credential.
+  """
+  def verify_and_store_webauthn_credential(user_id, credential_data, challenge, name \\ nil) do
+    attestation_response = %{
+      "clientDataJSON" => credential_data["response"]["clientDataJSON"],
+      "attestationObject" => credential_data["response"]["attestationObject"],
+      "id" => credential_data["rawId"],
+      "transports" => credential_data["transports"] || []
     }
-  end
 
-  @doc """
-  Generate a WebAuthn authentication challenge
-  """
-  def generate_webauthn_authentication_challenge(user) do
-    challenge = :crypto.strong_rand_bytes(32)
-
-    credentials = list_webauthn_credentials(user.id)
-
-    %{
-      challenge: Base.url_encode64(challenge, padding: false),
-      timeout: 60000,
-      rpId: get_rp_id(),
-      userVerification: "preferred",
-      allowCredentials: Enum.map(credentials, fn cred ->
-        %{
-          type: "public-key",
-          id: Base.url_encode64(cred.credential_id, padding: false),
-          transports: cred.transports
-        }
-      end)
-    }
-  end
-
-  @doc """
-  Register a WebAuthn credential
-  For simplicity, we're doing basic validation.
-  In production, you'd want to use a proper WebAuthn library like wax or webauthn_ex
-  """
-  def register_webauthn_credential(user_id, attrs) do
-    %WebAuthnCredential{}
-    |> WebAuthnCredential.changeset(Map.put(attrs, :user_id, user_id))
-    |> Repo.insert()
-  end
-
-  @doc """
-  Verify and store a WebAuthn credential
-  This is a simplified version - in production use a proper WebAuthn library
-  """
-  def verify_and_store_webauthn_credential(user_id, credential_data, name \\ nil) do
-    # Decode the credential ID and public key
-    # Note: This is simplified. Real implementation should:
-    # 1. Verify the attestation object
-    # 2. Extract and validate the public key
-    # 3. Verify the signature
-    # 4. Check the RP ID hash
-
-    with {:ok, credential_id} <- Base.url_decode64(credential_data["rawId"], padding: false),
-         {:ok, public_key} <- extract_public_key(credential_data) do
-
-      attrs = %{
-        user_id: user_id,
-        credential_id: credential_id,
-        public_key: public_key,
-        sign_count: 0,
-        transports: credential_data["transports"] || [],
-        name: name || "Hardware Key",
-        last_used_at: DateTime.utc_now()
-      }
-
-      %WebAuthnCredential{}
-      |> WebAuthnCredential.changeset(attrs)
-      |> Repo.insert()
-    else
-      _ -> {:error, :invalid_credential}
+    case Friends.WebAuthn.verify_registration(attestation_response, challenge, user_id) do
+      {:ok, cred_data} ->
+        Friends.WebAuthn.store_credential(cred_data, name)
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   @doc """
-  Verify a WebAuthn authentication assertion
-  This is simplified - production should use a proper WebAuthn library
+  Verify a WebAuthn authentication assertion.
   """
   def verify_webauthn_assertion(user_id, assertion_data, challenge) do
-    with {:ok, credential_id} <- Base.url_decode64(assertion_data["rawId"], padding: false),
-         credential <- get_webauthn_credential(user_id, credential_id),
-         true <- credential != nil,
-         true <- verify_webauthn_signature(credential, assertion_data, challenge) do
+    assertion_response = %{
+      "clientDataJSON" => assertion_data["response"]["clientDataJSON"],
+      "authenticatorData" => assertion_data["response"]["authenticatorData"],
+      "signature" => assertion_data["response"]["signature"],
+      "id" => assertion_data["rawId"]
+    }
 
-      # Update sign count and last used
-      credential
-      |> WebAuthnCredential.changeset(%{
-        sign_count: credential.sign_count + 1,
-        last_used_at: DateTime.utc_now()
-      })
-      |> Repo.update()
-
-      {:ok, credential}
-    else
-      _ -> {:error, :invalid_assertion}
-    end
+    Friends.WebAuthn.verify_authentication(assertion_response, challenge, user_id)
   end
 
   @doc """
-  List WebAuthn credentials for a user
+  List WebAuthn credentials for a user.
   """
-  def list_webauthn_credentials(user_id) do
-    Repo.all(
-      from c in WebAuthnCredential,
-        where: c.user_id == ^user_id,
-        order_by: [desc: c.last_used_at]
-    )
-  end
+  defdelegate list_webauthn_credentials(user_id), to: Friends.WebAuthn, as: :list_credentials
 
   @doc """
-  Get a specific WebAuthn credential
-  """
-  def get_webauthn_credential(user_id, credential_id) do
-    Repo.get_by(WebAuthnCredential, user_id: user_id, credential_id: credential_id)
-  end
-
-  @doc """
-  Delete a WebAuthn credential
+  Delete a WebAuthn credential.
   """
   def delete_webauthn_credential(user_id, credential_id) do
-    case get_webauthn_credential(user_id, credential_id) do
-      nil -> {:error, :not_found}
-      credential -> Repo.delete(credential)
-    end
+    Friends.WebAuthn.delete_credential(user_id, credential_id)
   end
 
-  # Private helper functions for WebAuthn
-
-  defp get_rp_id do
-    # In production, this should be your domain (e.g., "friends.app")
-    # For development, it might be "localhost"
-    Application.get_env(:friends, :webauthn_rp_id, "localhost")
-  end
-
-  defp extract_public_key(credential_data) do
-    # This is a placeholder - real implementation needs to:
-    # 1. Decode the attestation object
-    # 2. Parse the CBOR structure
-    # 3. Extract the COSE public key
-    # 4. Convert to raw format
-    # For now, we'll store a placeholder
-    {:ok, :crypto.strong_rand_bytes(65)} # Placeholder for actual key extraction
-  end
-
-  defp verify_webauthn_signature(_credential, _assertion_data, _challenge) do
-    # This is a placeholder - real implementation needs to:
-    # 1. Reconstruct the signed data
-    # 2. Verify the signature using the stored public key
-    # 3. Verify the RP ID hash
-    # 4. Verify the challenge
-    # 5. Check the sign count
-    true # Placeholder - always succeeds for demo
-  end
+  @doc """
+  Check if a user has WebAuthn credentials registered.
+  """
+  defdelegate has_webauthn_credentials?(user_id), to: Friends.WebAuthn, as: :has_credentials?
 end

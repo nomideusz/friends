@@ -41,7 +41,9 @@ defmodule Friends.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:live_svelte, "~> 0.16.0"}
+      {:live_svelte, "~> 0.16.0"},
+      # WebAuthn/FIDO2 support
+      {:cbor, "~> 1.0"}
     ]
   end
 
