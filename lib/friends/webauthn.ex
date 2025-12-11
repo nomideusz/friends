@@ -12,6 +12,7 @@ defmodule Friends.WebAuthn do
   alias Friends.Repo
   alias Friends.Social.WebAuthnCredential
   import Ecto.Query
+  import Bitwise
 
   # Challenge expiry time in seconds (5 minutes)
   @challenge_timeout 300
