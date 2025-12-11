@@ -75,8 +75,7 @@ defmodule Friends.WebAuthn do
       attestation: "none",  # We don't need attestation for this use case
       excludeCredentials: exclude_credentials,
       authenticatorSelection: %{
-        authenticatorAttachment: "cross-platform",  # Allow any authenticator
-        residentKey: "discouraged",
+        residentKey: "preferred",
         userVerification: "preferred"
       }
     }
