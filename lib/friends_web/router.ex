@@ -19,6 +19,7 @@ defmodule FriendsWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive, :index
+    live "/login", LoginLive, :index
     live "/register", RegisterLive, :index
     live "/recover", RecoverLive, :index
     live "/link", LinkDeviceLive, :index

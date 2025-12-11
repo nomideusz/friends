@@ -234,7 +234,15 @@ defmodule FriendsWeb.HomeLive do
                       <span class="text-neutral-200">@{@current_user.username}</span>
                     </button>
                   <% else %>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
+                      <a
+                        href="/login"
+                        class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-all px-4 py-2 rounded-full glass border border-white/5 hover:border-white/15"
+                        title="Login with hardware key"
+                      >
+                        <span>🔐</span>
+                        <span>login</span>
+                      </a>
                       <a
                         href="/link"
                         class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-all px-4 py-2 rounded-full glass border border-white/5 hover:border-white/15"
