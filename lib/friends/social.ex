@@ -433,6 +433,35 @@ defmodule Friends.Social do
   end
 
   @doc """
+  List photos by a specific user (across all rooms)
+  """
+  def list_user_photos(user_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+    user_id_str = if is_integer(user_id), do: "user-#{user_id}", else: user_id
+
+    Photo
+    |> where([p], p.user_id == ^user_id_str)
+    |> order_by([p], desc: p.uploaded_at)
+    |> limit(^limit)
+    |> offset(^offset_val)
+    |> select([p], %{
+      id: p.id,
+      user_id: p.user_id,
+      user_color: p.user_color,
+      user_name: p.user_name,
+      thumbnail_data: p.thumbnail_data,
+      content_type: p.content_type,
+      file_size: p.file_size,
+      description: p.description,
+      uploaded_at: p.uploaded_at,
+      room_id: p.room_id,
+      inserted_at: p.inserted_at,
+      updated_at: p.updated_at
+    })
+    |> Repo.all()
+  end
+
+  @doc """
   List public photos (from public rooms only)
   """
   def list_public_photos(limit \\ 50, opts \\ []) do
@@ -469,6 +498,21 @@ defmodule Friends.Social do
     Note
     |> join(:inner, [n], r in Room, on: n.room_id == r.id and r.is_private == false)
     |> order_by([n, _r], desc: n.inserted_at)
+    |> limit(^limit)
+    |> offset(^offset_val)
+    |> Repo.all()
+  end
+
+  @doc """
+  List notes by a specific user (across all rooms)
+  """
+  def list_user_notes(user_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+    user_id_str = if is_integer(user_id), do: "user-#{user_id}", else: user_id
+
+    Note
+    |> where([n], n.user_id == ^user_id_str)
+    |> order_by([n], desc: n.inserted_at)
     |> limit(^limit)
     |> offset(^offset_val)
     |> Repo.all()

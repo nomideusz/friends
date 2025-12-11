@@ -86,7 +86,10 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:show_name_modal, false)
       |> assign(:show_note_modal, false)
       |> assign(:show_settings_modal, false)
+      |> assign(:show_settings_modal, false)
+      |> assign(:show_network_modal, false)
       |> assign(:settings_tab, "profile")
+      |> assign(:network_tab, "friends")
       |> assign(:note_input, "")
       |> assign(:join_code, "")
       |> assign(:new_room_name, "")
@@ -227,6 +230,19 @@ defmodule FriendsWeb.HomeLive do
                   <%= if @current_user do %>
                     <button
                       type="button"
+                      phx-click="open_network_modal"
+                      class="flex items-center gap-2 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20 relative"
+                    >
+                      <span>👥</span>
+                      <span class="hidden sm:inline">Network</span>
+                      <%= if length(@pending_requests) > 0 do %>
+                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-black text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {length(@pending_requests)}
+                        </span>
+                      <% end %>
+                    </button>
+                    <button
+                      type="button"
                       phx-click="open_settings_modal"
                       class="flex items-center gap-3 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20"
                     >
@@ -272,77 +288,75 @@ defmodule FriendsWeb.HomeLive do
         <%!-- Main content - wider and more spacious --%>
         <main class="max-w-[1600px] mx-auto px-8 py-10">
           <%!-- Combined nav (pill style) --%>
-          <% room_label = if @room.code == "lobby", do: "public square", else: (@room.name || @room.code) %>
+          <% room_label = if @room.code == "lobby", do: "Public Square", else: (@room.name || @room.code) %>
 
-          <%!-- Single nav row (pills + optional lobby link) --%>
-          <div class="flex items-center gap-3 mb-3 flex-wrap">
+          <%!-- Simplified Feed Source Selector --%>
+          <div class="flex items-center gap-1 p-1 bg-neutral-900/80 border border-white/5 rounded-full w-fit mb-6 backdrop-blur-md">
+            <%!-- 0. Public Square Link (if not in lobby) --%>
             <%= if @room.code != "lobby" do %>
-              <.link navigate={~p"/r/lobby"} class="px-4 py-2 text-sm rounded-full border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-600 cursor-pointer">
-                public square
+              <.link navigate={~p"/r/lobby"} class="px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 text-neutral-500 hover:text-white hover:bg-neutral-800 cursor-pointer">
+                <span>🏙️</span>
+                <span>Public Square</span>
               </.link>
+              <div class="w-px h-4 bg-white/5 mx-1"></div>
             <% end %>
+            <%!-- 1. Current Space --%>
             <button
               type="button"
-              phx-click="switch_feed"
-              phx-value-mode="room"
+              phx-click="set_feed_view"
+              phx-value-view="room"
               class={[
-                "px-5 py-2 text-sm rounded-full transition-all cursor-pointer",
+                "px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer",
                 if(@feed_mode == "room",
-                  do: "glass border border-white/20 text-white opal-glow-subtle",
-                  else: "text-neutral-500 hover:text-white border border-transparent"
+                  do: "bg-neutral-800 text-white shadow-sm ring-1 ring-white/10",
+                  else: "text-neutral-500 hover:text-neutral-300"
                 )
               ]}
-              title={room_label}
             >
-              <span class="inline-flex items-center gap-2 truncate max-w-[240px]">
-                <span>space feed ·</span>
-                <span class="text-neutral-400 truncate">{room_label}</span>
-              </span>
+              <span>📍</span>
+              <span>{room_label}</span>
             </button>
+
             <%= if @current_user do %>
+              <div class="w-px h-4 bg-white/5 mx-1"></div>
+
+              <%!-- 2. Friends (Trusted) --%>
               <button
                 type="button"
-                phx-click="switch_feed"
-                phx-value-mode="friends"
+                phx-click="set_feed_view"
+                phx-value-view="friends"
                 class={[
-                  "px-5 py-2 text-sm rounded-full transition-all cursor-pointer",
-                  if(@feed_mode == "friends",
-                    do: "btn-opal",
-                    else: "text-neutral-500 hover:text-white border border-transparent"
+                  "px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer",
+                  if(@feed_mode == "friends" && @network_filter == "trusted",
+                    do: "bg-neutral-800 text-white shadow-sm ring-1 ring-white/10",
+                    else: "text-neutral-500 hover:text-neutral-300"
                   )
                 ]}
               >
-                network feed
+                <span>👥</span>
+                <span>Trusted</span>
+              </button>
+
+
+
+              <%!-- 4. Me (My Posts) --%>
+              <button
+                type="button"
+                phx-click="set_feed_view"
+                phx-value-view="me"
+                class={[
+                  "px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer",
+                  if(@feed_mode == "friends" && @network_filter == "me",
+                    do: "bg-neutral-800 text-white shadow-sm ring-1 ring-white/10",
+                    else: "text-neutral-500 hover:text-neutral-300"
+                  )
+                ]}
+              >
+                <span>👤</span>
+                <span>Me</span>
               </button>
             <% end %>
           </div>
-
-          <%= if @current_user && @feed_mode == "friends" do %>
-            <div class="inline-flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-full px-2 py-1 mb-4">
-              <button
-                type="button"
-                phx-click="set_network_filter"
-                phx-value-filter="trusted"
-                class={[
-                  "px-2 py-1 text-[11px] rounded-full cursor-pointer",
-                  @network_filter == "trusted" && "bg-white text-black"
-                ]}
-              >
-                trusted only
-              </button>
-              <button
-                type="button"
-                phx-click="set_network_filter"
-                phx-value-filter="all"
-                class={[
-                  "px-2 py-1 text-[11px] rounded-full cursor-pointer",
-                  @network_filter == "all" && "bg-white text-black"
-                ]}
-              >
-                all connections
-              </button>
-            </div>
-          <% end %>
 
           <%!-- Network Info (when in network mode) --%>
           <%= if @feed_mode == "friends" && @current_user do %>
@@ -351,7 +365,7 @@ defmodule FriendsWeb.HomeLive do
                 <div class="text-xs text-neutral-500">your trust network</div>
                 <button
                   type="button"
-                  phx-click="open_settings_modal"
+                  phx-click="open_network_modal"
                   class="text-xs text-green-500 hover:text-green-400 cursor-pointer"
                 >
                   manage →
@@ -494,13 +508,23 @@ defmodule FriendsWeb.HomeLive do
             <%= if @item_count == 0 do %>
               <div class="text-center py-20">
                 <%= if @feed_mode == "friends" do %>
-                  <div class="mb-4 opacity-40">
-                    <svg class="w-16 h-16 mx-auto text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                  </div>
-                  <p class="text-neutral-500 text-base font-medium mb-2">no activity from your network</p>
-                  <p class="text-neutral-600 text-sm">add trusted connections to see their photos and notes</p>
+                  <%= if @network_filter == "me" do %>
+                    <div class="mb-4 opacity-40">
+                      <svg class="w-16 h-16 mx-auto text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                      </svg>
+                    </div>
+                    <p class="text-neutral-500 text-base font-medium mb-2">you haven't posted yet</p>
+                    <p class="text-neutral-600 text-sm">share a photo or note to see it here</p>
+                  <% else %>
+                    <div class="mb-4 opacity-40">
+                      <svg class="w-16 h-16 mx-auto text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                      </svg>
+                    </div>
+                    <p class="text-neutral-500 text-base font-medium mb-2">no activity from your network</p>
+                    <p class="text-neutral-600 text-sm">add trusted connections to see their photos and notes</p>
+                  <% end %>
                 <% else %>
                   <div class="mb-4 opacity-40">
                     <svg class="w-16 h-16 mx-auto text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -930,6 +954,279 @@ defmodule FriendsWeb.HomeLive do
           </div>
         <% end %>
 
+        <%!-- Network Modal --%>
+        <%= if @show_network_modal && @current_user do %>
+          <div id="network-modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" phx-click-away="close_network_modal" phx-hook="LockScroll">
+            <div class="w-full sm:max-w-md sm:mx-4 bg-neutral-950 sm:rounded-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col rounded-t-2xl sm:border sm:border-white/10">
+              <%!-- Header --%>
+              <div class="relative px-5 pt-5 pb-4 border-b border-white/5">
+                <button
+                  type="button"
+                  phx-click="close_network_modal"
+                  class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <div class="text-xl font-semibold text-white">Network</div>
+                <div class="text-sm text-neutral-500">Manage your trusted connections</div>
+
+                <%!-- Tab navigation --%>
+                <div class="flex gap-1 mt-6 -mb-4 relative">
+                  <button
+                    type="button"
+                    phx-click="switch_network_tab"
+                    phx-value-tab="friends"
+                    class={[
+                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative cursor-pointer",
+                      @network_tab == "friends" && "text-white bg-neutral-900",
+                      @network_tab != "friends" && "text-neutral-500 hover:text-neutral-300"
+                    ]}
+                  >
+                    Friends
+                    <%= if length(@pending_requests) > 0 do %>
+                      <span class="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-bold rounded-full flex items-center justify-center">
+                        {length(@pending_requests)}
+                      </span>
+                    <% end %>
+                  </button>
+                  <button
+                    type="button"
+                    phx-click="switch_network_tab"
+                    phx-value-tab="invites"
+                    class={[
+                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all cursor-pointer",
+                      @network_tab == "invites" && "text-white bg-neutral-900",
+                      @network_tab != "invites" && "text-neutral-500 hover:text-neutral-300"
+                    ]}
+                  >
+                    Invites
+                  </button>
+                </div>
+              </div>
+
+              <%!-- Content --%>
+              <div class="flex-1 overflow-y-auto bg-neutral-900">
+                <%!-- Friends Tab --%>
+                <%= if @network_tab == "friends" do %>
+                  <div class="p-5 space-y-5">
+                    <%!-- Pending requests (incoming) --%>
+                    <%= if @pending_requests != [] do %>
+                      <div>
+                        <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-3">
+                          Requests ({length(@pending_requests)})
+                        </div>
+                        <div class="space-y-2">
+                          <%= for req <- @pending_requests do %>
+                            <div class="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                              <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-amber-500/30" />
+                                <div>
+                                  <div class="text-sm font-medium text-white">@{req.user.username}</div>
+                                  <div class="text-xs text-amber-400/70">wants to trust you</div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                phx-click="confirm_trust"
+                                phx-value-user_id={req.user_id}
+                                phx-disable-with="..."
+                                class="px-4 py-2 text-xs font-semibold text-black bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
+                              >
+                                Accept
+                              </button>
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+
+                    <%!-- Trusted friends --%>
+                    <div>
+                      <div class="flex items-center justify-between mb-3">
+                        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                          Trusted ({length(@trusted_friends)}/5)
+                        </div>
+                        <div class="group relative flex items-center">
+                            <span class="cursor-help text-neutral-500 hover:text-neutral-300">ℹ️</span>
+                            <div class="absolute right-0 bottom-full mb-2 w-48 p-2 bg-black border border-neutral-800 text-xs text-neutral-300 rounded-lg hidden group-hover:block z-50">
+                                Trusted friends can help you recover your account if you lose your key.
+                            </div>
+                        </div>
+                      </div>
+
+                      <%!-- Search --%>
+                      <form phx-change="search_friends" class="mb-4">
+                        <div class="relative">
+                          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          <input
+                            type="text"
+                            name="query"
+                            value={@friend_search}
+                            placeholder="Search users to add..."
+                            autocomplete="off"
+                            phx-debounce="300"
+                            class="w-full pl-10 pr-4 py-3 bg-neutral-950 border border-white/5 rounded-xl text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/20 transition-colors"
+                          />
+                        </div>
+                      </form>
+
+                      <%!-- Search results --%>
+                      <%= if @friend_search_results != [] do %>
+                        <div class="space-y-2 mb-4">
+                          <%= for user <- @friend_search_results do %>
+                            <div class="flex items-center justify-between p-3 bg-neutral-950 rounded-xl border border-white/5">
+                              <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-neutral-800" />
+                                <span class="text-sm font-medium text-white">@{user.username}</span>
+                              </div>
+                              <button
+                                type="button"
+                                phx-click="add_trusted_friend"
+                                phx-value-user_id={user.id}
+                                phx-disable-with="..."
+                                class="px-4 py-2 text-xs font-semibold text-green-400 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-colors"
+                              >
+                                + Trust
+                              </button>
+                            </div>
+                          <% end %>
+                        </div>
+                      <% end %>
+
+                      <%!-- Current friends list --%>
+                      <div class="space-y-2">
+                        <%= if Enum.empty?(@trusted_friends) do %>
+                          <div class="text-center py-8">
+                            <div class="text-3xl mb-2">👥</div>
+                            <div class="text-sm text-neutral-500">No trusted friends yet</div>
+                            <div class="text-xs text-neutral-600 mt-1">Search above to add friends</div>
+                          </div>
+                        <% else %>
+                          <%= for tf <- @trusted_friends do %>
+                            <div class="flex items-center gap-3 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
+                              <div class="w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                              <div class="flex-1">
+                                <div class="text-sm font-medium text-white">@{tf.trusted_user.username}</div>
+                                <div class="text-xs text-green-500/70">Confirmed</div>
+                              </div>
+                            </div>
+                          <% end %>
+                        <% end %>
+                      </div>
+                    </div>
+
+                    <%!-- Outgoing requests --%>
+                    <%= if @outgoing_trust_requests != [] do %>
+                      <div>
+                        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
+                          Pending sent
+                        </div>
+                        <div class="space-y-2">
+                          <%= for req <- @outgoing_trust_requests do %>
+                            <div class="flex items-center gap-3 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
+                              <div
+                                class="w-9 h-9 rounded-full"
+                                style={"background-color: #{trusted_user_color(req.trusted_user)}33"}
+                              />
+                              <div class="flex-1">
+                                <div class="text-sm font-medium text-white">@{req.trusted_user.username}</div>
+                                <div class="text-xs text-neutral-500">Awaiting response</div>
+                              </div>
+                              <div class="w-2 h-2 rounded-full bg-neutral-600 animate-pulse" />
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <%!-- Invites Tab --%>
+                <%= if @network_tab == "invites" do %>
+                  <div class="p-5 space-y-5">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <div class="text-sm font-medium text-white">Invite Codes</div>
+                        <div class="text-xs text-neutral-500">Share to invite new users</div>
+                      </div>
+                      <button
+                        type="button"
+                        phx-click="create_invite"
+                        phx-disable-with="..."
+                        class="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-400 hover:to-blue-400 rounded-lg transition-all"
+                      >
+                        + New Invite
+                      </button>
+                    </div>
+
+                    <div class="space-y-2">
+                      <%= if Enum.empty?(@invites) do %>
+                        <div class="text-center py-12">
+                          <div class="text-4xl mb-3">🎟️</div>
+                          <div class="text-sm text-neutral-500">No invite codes yet</div>
+                          <div class="text-xs text-neutral-600 mt-1">Create one to invite friends</div>
+                        </div>
+                      <% else %>
+                        <%= for invite <- @invites do %>
+                          <div class={[
+                            "p-4 rounded-xl border transition-all",
+                            invite.status == "active" && "bg-neutral-950/50 border-white/5",
+                            invite.status == "used" && "bg-neutral-950/30 border-white/[0.02] opacity-60"
+                          ]}>
+                            <div class="flex items-center justify-between">
+                              <div class="flex items-center gap-3">
+                                <div class={[
+                                  "w-10 h-10 rounded-lg flex items-center justify-center text-lg",
+                                  invite.status == "active" && "bg-green-500/20",
+                                  invite.status == "used" && "bg-neutral-800"
+                                ]}>
+                                  <%= if invite.status == "active" do %>
+                                    🎟️
+                                  <% else %>
+                                    ✓
+                                  <% end %>
+                                </div>
+                                <div>
+                                  <code class="text-sm font-mono text-white">{invite.code}</code>
+                                  <div class={[
+                                    "text-xs mt-0.5",
+                                    invite.status == "active" && "text-green-500",
+                                    invite.status == "used" && "text-neutral-500"
+                                  ]}>
+                                    {invite.status}
+                                  </div>
+                                </div>
+                              </div>
+                              <%= if invite.status == "active" do %>
+                                <button
+                                  type="button"
+                                  onclick={"navigator.clipboard.writeText('#{invite.code}')"}
+                                  class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all"
+                                >
+                                  Copy
+                                </button>
+                              <% end %>
+                            </div>
+                          </div>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
         <%!-- Settings Modal - Redesigned --%>
         <%= if @show_settings_modal && @current_user do %>
           <div id="settings-modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" phx-click-away="close_settings_modal" phx-hook="LockScroll">
@@ -978,35 +1275,7 @@ defmodule FriendsWeb.HomeLive do
                   >
                     Profile
                   </button>
-                  <button
-                    type="button"
-                    phx-click="switch_settings_tab"
-                    phx-value-tab="friends"
-                    class={[
-                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative cursor-pointer",
-                      @settings_tab == "friends" && "text-white bg-neutral-900",
-                      @settings_tab != "friends" && "text-neutral-500 hover:text-neutral-300"
-                    ]}
-                  >
-                    Friends
-                    <%= if length(@pending_requests) > 0 do %>
-                      <span class="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-xs font-bold rounded-full flex items-center justify-center">
-                        {length(@pending_requests)}
-                      </span>
-                    <% end %>
-                  </button>
-                  <button
-                    type="button"
-                    phx-click="switch_settings_tab"
-                    phx-value-tab="invites"
-                    class={[
-                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all cursor-pointer",
-                      @settings_tab == "invites" && "text-white bg-neutral-900",
-                      @settings_tab != "invites" && "text-neutral-500 hover:text-neutral-300"
-                    ]}
-                  >
-                    Invites
-                  </button>
+
                   <%= if @room.is_private and @room.owner_id == @current_user.id do %>
                     <button
                       type="button"
@@ -1156,216 +1425,7 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 <% end %>
 
-                <%!-- Friends Tab --%>
-                <%= if @settings_tab == "friends" do %>
-                  <div class="p-5 space-y-5">
-                    <%!-- Pending requests (incoming) --%>
-                    <%= if @pending_requests != [] do %>
-                      <div>
-                        <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-3">
-                          Requests ({length(@pending_requests)})
-                        </div>
-                        <div class="space-y-2">
-                          <%= for req <- @pending_requests do %>
-                            <div class="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                              <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-full bg-amber-500/30" />
-                                <div>
-                                  <div class="text-sm font-medium text-white">@{req.user.username}</div>
-                                  <div class="text-xs text-amber-400/70">wants to trust you</div>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                phx-click="confirm_trust"
-                                phx-value-user_id={req.user_id}
-                                phx-disable-with="..."
-                                class="px-4 py-2 text-xs font-semibold text-black bg-amber-500 hover:bg-amber-400 rounded-lg transition-colors"
-                              >
-                                Accept
-                              </button>
-                            </div>
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
 
-                    <%!-- Trusted friends --%>
-                    <div>
-                      <div class="flex items-center justify-between mb-3">
-                        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                          Trusted ({length(@trusted_friends)}/5)
-                        </div>
-                      </div>
-                      <p class="text-xs text-neutral-600 mb-4">
-                        4 of 5 trusted friends can help recover your account
-                      </p>
-
-                      <%!-- Search --%>
-                      <form phx-change="search_friends" class="mb-4">
-                        <div class="relative">
-                          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                          <input
-                            type="text"
-                            name="query"
-                            value={@friend_search}
-                            placeholder="Search users to add..."
-                            autocomplete="off"
-                            phx-debounce="300"
-                            class="w-full pl-10 pr-4 py-3 bg-neutral-950 border border-white/5 rounded-xl text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/20 transition-colors"
-                          />
-                        </div>
-                      </form>
-
-                      <%!-- Search results --%>
-                      <%= if @friend_search_results != [] do %>
-                        <div class="space-y-2 mb-4">
-                          <%= for user <- @friend_search_results do %>
-                            <div class="flex items-center justify-between p-3 bg-neutral-950 rounded-xl border border-white/5">
-                              <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-full bg-neutral-800" />
-                                <span class="text-sm font-medium text-white">@{user.username}</span>
-                              </div>
-                              <button
-                                type="button"
-                                phx-click="add_trusted_friend"
-                                phx-value-user_id={user.id}
-                                phx-disable-with="..."
-                                class="px-4 py-2 text-xs font-semibold text-green-400 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-colors"
-                              >
-                                + Trust
-                              </button>
-                            </div>
-                          <% end %>
-                        </div>
-                      <% end %>
-
-                      <%!-- Current friends list --%>
-                      <div class="space-y-2">
-                        <%= if Enum.empty?(@trusted_friends) do %>
-                          <div class="text-center py-8">
-                            <div class="text-3xl mb-2">👥</div>
-                            <div class="text-sm text-neutral-500">No trusted friends yet</div>
-                            <div class="text-xs text-neutral-600 mt-1">Search above to add friends</div>
-                          </div>
-                        <% else %>
-                          <%= for tf <- @trusted_friends do %>
-                            <div class="flex items-center gap-3 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
-                              <div class="w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center">
-                                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                              </div>
-                              <div class="flex-1">
-                                <div class="text-sm font-medium text-white">@{tf.trusted_user.username}</div>
-                                <div class="text-xs text-green-500/70">Confirmed</div>
-                              </div>
-                            </div>
-                          <% end %>
-                        <% end %>
-                      </div>
-                    </div>
-
-                    <%!-- Outgoing requests --%>
-                    <%= if @outgoing_trust_requests != [] do %>
-                      <div>
-                        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
-                          Pending sent
-                        </div>
-                        <div class="space-y-2">
-                          <%= for req <- @outgoing_trust_requests do %>
-                            <div class="flex items-center gap-3 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
-                              <div
-                                class="w-9 h-9 rounded-full"
-                                style={"background-color: #{trusted_user_color(req.trusted_user)}33"}
-                              />
-                              <div class="flex-1">
-                                <div class="text-sm font-medium text-white">@{req.trusted_user.username}</div>
-                                <div class="text-xs text-neutral-500">Awaiting response</div>
-                              </div>
-                              <div class="w-2 h-2 rounded-full bg-neutral-600 animate-pulse" />
-                            </div>
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
-
-                <%!-- Invites Tab --%>
-                <%= if @settings_tab == "invites" do %>
-                  <div class="p-5 space-y-5">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <div class="text-sm font-medium text-white">Invite Codes</div>
-                        <div class="text-xs text-neutral-500">Share to invite new users</div>
-                      </div>
-                      <button
-                        type="button"
-                        phx-click="create_invite"
-                        phx-disable-with="..."
-                        class="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-violet-500 to-blue-500 hover:from-violet-400 hover:to-blue-400 rounded-lg transition-all"
-                      >
-                        + New Invite
-                      </button>
-                    </div>
-
-                    <div class="space-y-2">
-                      <%= if Enum.empty?(@invites) do %>
-                        <div class="text-center py-12">
-                          <div class="text-4xl mb-3">🎟️</div>
-                          <div class="text-sm text-neutral-500">No invite codes yet</div>
-                          <div class="text-xs text-neutral-600 mt-1">Create one to invite friends</div>
-                        </div>
-                      <% else %>
-                        <%= for invite <- @invites do %>
-                          <div class={[
-                            "p-4 rounded-xl border transition-all",
-                            invite.status == "active" && "bg-neutral-950/50 border-white/5",
-                            invite.status == "used" && "bg-neutral-950/30 border-white/[0.02] opacity-60"
-                          ]}>
-                            <div class="flex items-center justify-between">
-                              <div class="flex items-center gap-3">
-                                <div class={[
-                                  "w-10 h-10 rounded-lg flex items-center justify-center text-lg",
-                                  invite.status == "active" && "bg-green-500/20",
-                                  invite.status == "used" && "bg-neutral-800"
-                                ]}>
-                                  <%= if invite.status == "active" do %>
-                                    🎟️
-                                  <% else %>
-                                    ✓
-                                  <% end %>
-                                </div>
-                                <div>
-                                  <code class="text-sm font-mono text-white">{invite.code}</code>
-                                  <div class={[
-                                    "text-xs mt-0.5",
-                                    invite.status == "active" && "text-green-500",
-                                    invite.status == "used" && "text-neutral-500"
-                                  ]}>
-                                    {invite.status}
-                                  </div>
-                                </div>
-                              </div>
-                              <%= if invite.status == "active" do %>
-                                <button
-                                  type="button"
-                                  onclick={"navigator.clipboard.writeText('#{invite.code}')"}
-                                  class="px-3 py-1.5 text-xs text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all"
-                                >
-                                  Copy
-                                </button>
-                              <% end %>
-                            </div>
-                          </div>
-                        <% end %>
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
 
                 <%!-- Room Tab (only for private room owners) --%>
                 <%= if @settings_tab == "room" and @room.is_private and @room.owner_id == @current_user.id do %>
@@ -2129,10 +2189,29 @@ defmodule FriendsWeb.HomeLive do
      socket
      |> assign(:show_settings_modal, false)
      |> assign(:settings_tab, "profile")
-     |> assign(:friend_search, "")
-     |> assign(:friend_search_results, [])
      |> assign(:member_invite_search, "")
      |> assign(:member_invite_results, [])}
+  end
+
+  # Network modal events
+  def handle_event("open_network_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_network_modal, true)
+     |> assign(:network_tab, "friends")}
+  end
+
+  def handle_event("close_network_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_network_modal, false)
+     |> assign(:network_tab, "friends")
+     |> assign(:friend_search, "")
+     |> assign(:friend_search_results, [])}
+  end
+
+  def handle_event("switch_network_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, :network_tab, tab)}
   end
 
   def handle_event("sign_out", _params, socket) do
@@ -2180,10 +2259,15 @@ defmodule FriendsWeb.HomeLive do
         {:noreply,
          socket
          |> assign(:show_settings_modal, false)
-         |> assign(:friend_search, "")
-         |> assign(:friend_search_results, [])
          |> assign(:member_invite_search, "")
          |> assign(:member_invite_results, [])}
+
+      socket.assigns.show_network_modal ->
+        {:noreply,
+         socket
+         |> assign(:show_network_modal, false)
+         |> assign(:friend_search, "")
+         |> assign(:friend_search_results, [])}
 
       socket.assigns.show_name_modal ->
         {:noreply, assign(socket, :show_name_modal, false)}
@@ -2460,6 +2544,80 @@ defmodule FriendsWeb.HomeLive do
              |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
         end
     end
+  end
+
+  def handle_event("set_feed_view", %{"view" => view}, socket) do
+    # 1. Determine new state based on view selection
+    {new_mode, new_filter} =
+      case view do
+        "room" -> {"room", socket.assigns.network_filter}
+        "friends" -> {"friends", "trusted"}
+        "public" -> {"friends", "all"}
+        "me" -> {"friends", "me"}
+      end
+
+    socket =
+      socket
+      |> assign(:feed_mode, new_mode)
+      |> assign(:network_filter, new_filter)
+
+    # 2. Fetch content based on the new state
+    {items, no_more} =
+      case new_mode do
+        "room" ->
+          room = socket.assigns.room
+          photos = Social.list_photos(room.id, @initial_batch, offset: 0)
+          notes = Social.list_notes(room.id, @initial_batch, offset: 0)
+          items = build_items(photos, notes)
+          {items, length(items) < @initial_batch}
+
+        "friends" ->
+           case socket.assigns.current_user do
+             nil ->
+               {[], true}
+             user ->
+               trusted_friends = Social.list_trusted_friends(user.id)
+               outgoing_trusts = Social.list_sent_trust_requests(user.id)
+
+               {photos, notes} =
+                 case new_filter do
+                   "all" ->
+                     {Social.list_public_photos(@initial_batch, offset: 0),
+                      Social.list_public_notes(@initial_batch, offset: 0)}
+                   "me" ->
+                     {Social.list_user_photos(user.id, @initial_batch, offset: 0),
+                      Social.list_user_notes(user.id, @initial_batch, offset: 0)}
+                   _ ->
+                     {Social.list_friends_photos(user.id, @initial_batch, offset: 0),
+                      Social.list_friends_notes(user.id, @initial_batch, offset: 0)}
+                 end
+
+               items = build_items(photos, notes)
+
+               # We need to update side-assignments as well if we switched to friends mode
+               # Although usually these are only displayed if feed_mode == "friends", so we update them now
+               # to ensure they are fresh
+               {items, length(items) < @initial_batch}
+           end
+      end
+
+    # 3. Update updates trusted friends / requests if we are in friends mode
+    socket =
+      if new_mode == "friends" && socket.assigns.current_user do
+         user_id = socket.assigns.current_user.id
+         socket
+         |> assign(:trusted_friends, Social.list_trusted_friends(user_id))
+         |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user_id))
+      else
+        socket
+      end
+
+    {:noreply,
+     socket
+     |> assign(:item_count, length(items))
+     |> assign(:no_more_items, no_more)
+     |> assign(:photo_order, photo_ids(items))
+     |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
   end
 
   def handle_event("load_more", _params, socket) do
