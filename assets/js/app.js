@@ -10,7 +10,7 @@ import { mount, unmount } from 'svelte'
 import { cryptoIdentity } from "./crypto-identity"
 import { deviceLinkManager } from "./device-link"
 import { deviceAttestation } from "./device-attestation"
-import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential } from "./webauthn"
+import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
 import QRCode from "qrcode"
 
 const Components = { FriendsMap, FriendGraph }
@@ -643,6 +643,54 @@ const Hooks = {
                     alert('Failed to start registration: ' + error.message)
                 }
             }
+        }
+    },
+
+    WebAuthnLogin: {
+        async mounted() {
+            // Handle WebAuthn login challenge from server
+            this.handleEvent("webauthn_login_challenge", async ({ options }) => {
+                try {
+                    console.log('[WebAuthn Login] Challenge received, authenticating...')
+
+                    // Authenticate with credential
+                    const credential = await authenticateWithCredential(options)
+
+                    console.log('[WebAuthn Login] Authentication successful, sending to server...')
+
+                    // Send credential back to server for verification
+                    this.pushEvent("webauthn_login_response", {
+                        credential: credential
+                    })
+                } catch (error) {
+                    console.error('[WebAuthn Login] Authentication failed:', error)
+
+                    let errorMsg = error.message
+                    if (error.name === 'NotAllowedError') {
+                        errorMsg = 'Authentication cancelled or not allowed'
+                    } else if (error.name === 'InvalidStateError') {
+                        errorMsg = 'No matching credential found'
+                    }
+
+                    this.pushEvent("webauthn_login_error", { error: errorMsg })
+                }
+            })
+
+            // Handle successful login
+            this.handleEvent("login_success", ({ user_id, token }) => {
+                console.log('[WebAuthn Login] Login successful!')
+
+                // Set cookies for session
+                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                if (token) {
+                    document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
+                }
+
+                // Redirect to home
+                setTimeout(() => {
+                    window.location.href = '/'
+                }, 500)
+            })
         }
     },
 
