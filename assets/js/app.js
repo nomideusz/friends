@@ -7,9 +7,6 @@ import {getHooks} from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
 import { mount, unmount } from 'svelte'
-import { cryptoIdentity } from "./crypto-identity"
-import { deviceLinkManager } from "./device-link"
-import { deviceAttestation } from "./device-attestation"
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
 import * as messageEncryption from "./message-encryption"
 import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
@@ -189,44 +186,18 @@ const Hooks = {
             this.browserId = bootstrapBrowserId
             this.fingerprint = bootstrapFingerprint
 
-            // Initialize crypto identity
-            const { isNew, publicKey } = await cryptoIdentity.init()
-            this.publicKey = publicKey
+            // Simple identity payload - just device info, no crypto keys
+            // Authentication is handled via WebAuthn on the login page
             this.identityPayload = {
                 browser_id: this.browserId,
-                fingerprint: this.fingerprint,
-                public_key: this.publicKey,
-                is_new_key: isNew
+                fingerprint: this.fingerprint
             }
 
-            // If already connected, send immediately
+            // Send device identity for presence tracking
             this.maybeSendIdentity()
 
             // Server can request identity when it knows the socket is ready
             this.handleEvent("request_identity", () => this.maybeSendIdentity())
-
-            // Handle challenge-response authentication
-            this.handleEvent("auth_challenge", async ({ challenge }) => {
-                const signature = await cryptoIdentity.sign(challenge)
-                const deviceInfo = await deviceAttestation.init()
-
-                this.pushEvent("auth_response", {
-                    signature,
-                    challenge,
-                    device_fingerprint: deviceInfo.fingerprint,
-                    device_name: deviceInfo.deviceName,
-                    key_fingerprint: cryptoIdentity.getKeyFingerprint()
-                })
-            })
-
-            // Handle registration success
-            this.handleEvent("registration_complete", ({ user }) => {
-                console.log("Registration complete:", user)
-                // Set cookie for fast initial render on next page load
-                if (user && user.id) {
-                    document.cookie = `friends_user_id=${user.id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
-                }
-            })
 
             // Handle user cookie set (for instant username display on reload)
             this.handleEvent("set_user_cookie", ({ user_id }) => {
@@ -245,9 +216,6 @@ const Hooks = {
 
             // Handle sign out
             this.handleEvent("sign_out", async () => {
-                // Clear crypto identity
-                await cryptoIdentity.clear()
-
                 // Clear browser ID
                 localStorage.removeItem('friends_browser_id')
 
@@ -358,34 +326,10 @@ const Hooks = {
     
     RegisterApp: {
         async mounted() {
-            // Check WebAuthn availability first (don't hide on lack of platform auth)
+            // Check WebAuthn availability
             const webauthnAvailable = isWebAuthnSupported()
             console.log('[RegisterApp] WebAuthn available:', webauthnAvailable)
             this.pushEvent("webauthn_available", { available: webauthnAvailable })
-
-            // Initialize crypto identity and send public key to server
-            try {
-                console.log('[RegisterApp] Initializing crypto identity...')
-                const result = await cryptoIdentity.init()
-
-                if (!result || !result.publicKey) {
-                    console.error('[RegisterApp] init() returned invalid result:', result)
-                    this.pushEvent("crypto_init_failed", {
-                        error: "Failed to initialize cryptographic identity"
-                    })
-                } else {
-                    console.log('[RegisterApp] Crypto initialized, public key:', result.publicKey.x?.substring(0, 10) + '...')
-                    this.pushEvent("set_public_key", {
-                        public_key: result.publicKey
-                    })
-                    console.log('[RegisterApp] Public key sent to server')
-                }
-            } catch (error) {
-                console.error('[RegisterApp] Error initializing crypto:', error)
-                this.pushEvent("crypto_init_failed", {
-                    error: error.message || "Unknown error during initialization"
-                })
-            }
 
             // Handle WebAuthn registration challenge
             this.handleEvent("webauthn_register_challenge", async ({ options }) => {
@@ -412,31 +356,38 @@ const Hooks = {
                     document.cookie = `friends_user_id=${user.id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
                 }
             })
-
-            // Handle clear identity request
-            this.handleEvent("clear_identity", async () => {
-                await cryptoIdentity.clear()
-                localStorage.removeItem('friends_browser_id')
-                // Clear user cookie
-                document.cookie = 'friends_user_id=; path=/; max-age=0'
-                alert("Identity cleared. Refreshing page...")
-                window.location.reload()
-            })
         }
     },
     
     RecoverApp: {
         async mounted() {
-            // Listen for when user confirms recovery - then generate new key
-            this.handleEvent("generate_recovery_key", async () => {
-                // Clear existing identity and generate a new one for recovery
-                await cryptoIdentity.clear()
-                const { isNew, publicKey } = await cryptoIdentity.init()
-                
-                // Send the new public key to server
-                this.pushEvent("set_public_key", {
-                    public_key: publicKey
-                })
+            // Check WebAuthn availability
+            const webauthnAvailable = isWebAuthnSupported()
+            this.pushEvent("webauthn_available", { available: webauthnAvailable })
+
+            // Handle WebAuthn registration challenge for recovery
+            this.handleEvent("webauthn_recovery_challenge", async ({ options }) => {
+                try {
+                    console.log('[RecoverApp] WebAuthn challenge received, creating credential...')
+                    const credential = await registerCredential(options)
+                    console.log('[RecoverApp] WebAuthn credential created, sending to server...')
+                    this.pushEvent("webauthn_recovery_response", { credential })
+                } catch (error) {
+                    console.error('[RecoverApp] WebAuthn registration failed:', error)
+                    this.pushEvent("webauthn_recovery_error", {
+                        error: error.name === 'NotAllowedError'
+                            ? 'Registration cancelled'
+                            : error.message || 'Unknown error'
+                    })
+                }
+            })
+
+            // Handle recovery success
+            this.handleEvent("recovery_complete", ({ user }) => {
+                console.log("Recovery complete:", user)
+                if (user && user.id) {
+                    document.cookie = `friends_user_id=${user.id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                }
             })
         }
     },
@@ -463,66 +414,32 @@ const Hooks = {
     
     LinkDeviceApp: {
         async mounted() {
-            // Check if we have an identity to export
-            const hasIdentity = await cryptoIdentity.hasIdentity()
-            this.pushEvent("check_identity", { has_identity: hasIdentity })
-            
-            // Handle export request
-            this.handleEvent("generate_transfer_code", async () => {
+            // Check WebAuthn availability
+            const webauthnAvailable = isWebAuthnSupported()
+            this.pushEvent("webauthn_available", { available: webauthnAvailable })
+
+            // Handle WebAuthn registration challenge for linking a new device
+            this.handleEvent("webauthn_link_challenge", async ({ options }) => {
                 try {
-                    console.log("Generating transfer code...")
-                    const result = await deviceLinkManager.generateTransferCode()
-                    console.log("Transfer code generated:", result.pin, "QR length:", result.qrDataUrl?.length)
-                    
-                    // First push the text data
-                    this.pushEvent("transfer_code_generated", {
-                        pin: result.pin,
-                        code: result.code,
-                        qr_data_url: "pending"
-                    })
-                    
-                    // Then render QR directly into DOM after LiveView patches
-                    const renderQR = () => {
-                        const container = document.getElementById('qr-container')
-                        if (container && result.qrDataUrl) {
-                            const img = document.createElement('img')
-                            img.src = result.qrDataUrl
-                            img.alt = 'QR Code'
-                            img.className = 'w-48 h-48 loaded'
-                            container.innerHTML = ''
-                            container.appendChild(img)
-                            console.log("QR code rendered!")
-                        } else {
-                            console.log("Container not found, retrying...")
-                            setTimeout(renderQR, 200)
-                        }
-                    }
-                    setTimeout(renderQR, 300)
-                } catch (e) {
-                    console.error("Failed to generate transfer code:", e)
-                    this.pushEvent("transfer_code_generated", {
-                        pin: "ERROR",
-                        code: e.message,
-                        qr_data_url: null
+                    console.log('[LinkDeviceApp] WebAuthn challenge received, creating credential...')
+                    const credential = await registerCredential(options)
+                    console.log('[LinkDeviceApp] WebAuthn credential created, sending to server...')
+                    this.pushEvent("webauthn_link_response", { credential })
+                } catch (error) {
+                    console.error('[LinkDeviceApp] WebAuthn registration failed:', error)
+                    this.pushEvent("webauthn_link_error", {
+                        error: error.name === 'NotAllowedError'
+                            ? 'Registration cancelled'
+                            : error.message || 'Unknown error'
                     })
                 }
             })
-            
-            // Handle import request
-            this.handleEvent("import_identity", async ({ code, pin }) => {
-                try {
-                    const publicKey = await deviceLinkManager.importFromCode(code, pin)
-                    if (publicKey) {
-                        this.pushEvent("import_result", {
-                            success: true,
-                            public_key: publicKey
-                        })
-                    } else {
-                        this.pushEvent("import_result", { success: false })
-                    }
-                } catch (e) {
-                    console.error("Failed to import identity:", e)
-                    this.pushEvent("import_result", { success: false })
+
+            // Handle successful device linking
+            this.handleEvent("link_complete", ({ user }) => {
+                console.log("Device linked:", user)
+                if (user && user.id) {
+                    document.cookie = `friends_user_id=${user.id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
                 }
             })
         }
@@ -1001,59 +918,8 @@ const Hooks = {
         }
     },
 
-    ExportKeys: {
-        async mounted() {
-            this.handleEvent("export_backup", async () => {
-                try {
-                    // Export backup as JSON string
-                    const backup = await cryptoIdentity.exportBackup()
-
-                    // Generate QR code
-                    const qrContainer = document.getElementById('export-qr-code')
-                    if (qrContainer) {
-                        qrContainer.innerHTML = '<p class="text-xs text-neutral-500 mb-2">QR Code (for mobile import)</p>'
-                        const canvas = document.createElement('canvas')
-                        await QRCode.toCanvas(canvas, backup, {
-                            width: 256,
-                            margin: 2,
-                            color: {
-                                dark: '#ffffff',
-                                light: '#000000'
-                            }
-                        })
-                        qrContainer.appendChild(canvas)
-
-                        // Add download button
-                        const btnContainer = document.createElement('div')
-                        btnContainer.className = 'mt-4 space-y-2'
-
-                        const downloadBtn = document.createElement('button')
-                        downloadBtn.textContent = 'Download Backup File'
-                        downloadBtn.className = 'w-full px-4 py-2 bg-white text-black font-medium hover:bg-neutral-200'
-                        downloadBtn.onclick = () => cryptoIdentity.downloadBackup()
-
-                        const copyBtn = document.createElement('button')
-                        copyBtn.textContent = 'Copy to Clipboard'
-                        copyBtn.className = 'w-full px-4 py-2 bg-neutral-800 text-white hover:bg-neutral-700'
-                        copyBtn.onclick = async () => {
-                            await navigator.clipboard.writeText(backup)
-                            copyBtn.textContent = 'Copied!'
-                            setTimeout(() => {
-                                copyBtn.textContent = 'Copy to Clipboard'
-                            }, 2000)
-                        }
-
-                        btnContainer.appendChild(downloadBtn)
-                        btnContainer.appendChild(copyBtn)
-                        qrContainer.appendChild(btnContainer)
-                    }
-                } catch (e) {
-                    console.error("Failed to export backup:", e)
-                    alert("Failed to export backup: " + e.message)
-                }
-            })
-        }
-    },
+    // ExportKeys hook removed - WebAuthn passkeys are stored securely on your device
+    // and synced via your platform's passkey provider (iCloud Keychain, Google Password Manager, etc.)
 
     WebAuthnManager: {
         async mounted() {

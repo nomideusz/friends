@@ -31,7 +31,7 @@ defmodule FriendsWeb.LoginLive do
         credentials = Social.list_webauthn_credentials(user.id)
 
         if Enum.empty?(credentials) do
-          {:noreply, assign(socket, :error, "No hardware key registered for this account. Try using 'Link Device' instead.")}
+          {:noreply, assign(socket, :error, "No passkey registered for this account. Try account recovery or create a new account.")}
         else
           # Generate WebAuthn challenge
           challenge_options = Social.generate_webauthn_authentication_challenge(user)
@@ -79,7 +79,7 @@ defmodule FriendsWeb.LoginLive do
     {:noreply,
      socket
      |> assign(:step, :username)
-     |> assign(:error, "Hardware key error: #{error}")}
+     |> assign(:error, "Passkey error: #{error}")}
   end
 
   @impl true
@@ -100,7 +100,7 @@ defmodule FriendsWeb.LoginLive do
       <div class="w-full max-w-md relative z-10">
         <div class="text-center mb-8">
           <h1 class="text-3xl font-bold text-white mb-2">Login</h1>
-          <p class="text-neutral-400">Sign in with your hardware key</p>
+          <p class="text-neutral-400">Sign in with your passkey</p>
         </div>
 
         <div class="bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 p-6 space-y-6">
@@ -130,21 +130,18 @@ defmodule FriendsWeb.LoginLive do
                   type="submit"
                   class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 transition-colors"
                 >
-                  Continue with Hardware Key
+                  Continue with Passkey
                 </button>
               </form>
 
               <div class="text-center pt-4 border-t border-neutral-800">
                 <p class="text-sm text-neutral-500 mb-3">Other options</p>
                 <div class="space-y-2">
-                  <a href="/link" class="block text-sm text-neutral-400 hover:text-white transition-colors">
-                    📱 Link from another device
-                  </a>
                   <a href="/recover" class="block text-sm text-neutral-400 hover:text-white transition-colors">
-                    🔄 Recover account with trusted friends
+                    Recover account with trusted friends
                   </a>
                   <a href="/register" class="block text-sm text-neutral-400 hover:text-white transition-colors">
-                    ✨ Create new account
+                    Create new account
                   </a>
                 </div>
               </div>
@@ -152,13 +149,13 @@ defmodule FriendsWeb.LoginLive do
             <% :webauthn -> %>
               <div id="webauthn-login" phx-hook="WebAuthnLogin" class="text-center space-y-4">
                 <div class="text-6xl mb-4">🔐</div>
-                <h2 class="text-xl font-medium text-white">Authenticate with Hardware Key</h2>
+                <h2 class="text-xl font-medium text-white">Use Your Passkey</h2>
                 <p class="text-neutral-400">
-                  Please use your hardware key, fingerprint, or face recognition to sign in as <span class="text-white font-medium">@<%= @username %></span>
+                  Use your fingerprint, face, or security key to sign in as <span class="text-white font-medium">@<%= @username %></span>
                 </p>
 
                 <div class="pt-4">
-                  <div class="animate-pulse text-neutral-500">Waiting for authentication...</div>
+                  <div class="animate-pulse text-neutral-500">Waiting for passkey...</div>
                 </div>
 
                 <%= if @error do %>
