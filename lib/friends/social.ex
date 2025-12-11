@@ -554,7 +554,7 @@ defmodule Friends.Social do
 
   @doc """
   Register a new user with username and public key.
-  Requires a valid invite code.
+  Invite code is optional - if provided, creates mutual trust with inviter.
   """
   def register_user(attrs) do
     invite_code = attrs[:invite_code] || attrs["invite_code"]
@@ -574,14 +574,48 @@ defmodule Friends.Social do
             |> Repo.update()
         end
 
-      true ->
+      invite_code && invite_code != "" ->
+        # Registration with invite code - creates mutual trust with inviter
         with {:ok, invite} <- validate_invite(invite_code),
              {:ok, user} <- create_user(attrs, invite) do
           # Mark invite as used (skip for admin invite which has no ID)
           if invite.id, do: use_invite(invite, user)
+          # Create mutual trust between inviter and invitee
+          if invite.created_by_id do
+            create_mutual_trust(invite.created_by_id, user.id)
+          end
           {:ok, user}
         end
+
+      true ->
+        # Open registration without invite code
+        create_user(attrs, %{created_by_id: nil})
     end
+  end
+
+  # Create mutual trust between two users (for invite-based registration)
+  defp create_mutual_trust(user_a_id, user_b_id) do
+    now = DateTime.utc_now()
+
+    # A trusts B
+    %TrustedFriend{}
+    |> TrustedFriend.changeset(%{
+      user_id: user_a_id,
+      trusted_user_id: user_b_id,
+      status: "confirmed",
+      confirmed_at: now
+    })
+    |> Repo.insert(on_conflict: :nothing)
+
+    # B trusts A
+    %TrustedFriend{}
+    |> TrustedFriend.changeset(%{
+      user_id: user_b_id,
+      trusted_user_id: user_a_id,
+      status: "confirmed",
+      confirmed_at: now
+    })
+    |> Repo.insert(on_conflict: :nothing)
   end
 
   defp create_user(attrs, invite) do
@@ -854,12 +888,50 @@ defmodule Friends.Social do
     case get_trusted_friend_request(requester_id, user_id) do
       nil -> {:error, :not_found}
       tf ->
-        tf
+        # Confirm the incoming request
+        result = tf
         |> TrustedFriend.changeset(%{
           status: "confirmed",
           confirmed_at: DateTime.utc_now()
         })
         |> Repo.update()
+
+        # Also create reverse trust (confirmer trusts requester) if not exists
+        case result do
+          {:ok, _} ->
+            create_reverse_trust(user_id, requester_id)
+            result
+          error -> error
+        end
+    end
+  end
+
+  # Create reverse trust relationship (mutual trust on accept)
+  defp create_reverse_trust(user_id, trusted_user_id) do
+    case get_trusted_friend_request(user_id, trusted_user_id) do
+      nil ->
+        # Only create if under the limit
+        count = count_trusted_friends(user_id)
+        if count < 5 do
+          %TrustedFriend{}
+          |> TrustedFriend.changeset(%{
+            user_id: user_id,
+            trusted_user_id: trusted_user_id,
+            status: "confirmed",
+            confirmed_at: DateTime.utc_now()
+          })
+          |> Repo.insert()
+        end
+      existing ->
+        # If pending, confirm it
+        if existing.status == "pending" do
+          existing
+          |> TrustedFriend.changeset(%{
+            status: "confirmed",
+            confirmed_at: DateTime.utc_now()
+          })
+          |> Repo.update()
+        end
     end
   end
 
