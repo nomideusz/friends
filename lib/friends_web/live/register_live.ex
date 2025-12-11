@@ -10,10 +10,7 @@ defmodule FriendsWeb.RegisterLive do
      |> assign(:invite_code, "")
      |> assign(:username, "")
      |> assign(:display_name, "")
-     |> assign(:public_key, nil)
-     |> assign(:crypto_ready, false)
      |> assign(:webauthn_available, false)
-     |> assign(:auth_method, nil)
      |> assign(:webauthn_challenge, nil)
      |> assign(:error, nil)
      |> assign(:username_available, nil)
@@ -26,23 +23,6 @@ defmodule FriendsWeb.RegisterLive do
   end
 
   @impl true
-  def handle_event("set_public_key", %{"public_key" => public_key}, socket) do
-    {:noreply,
-     socket
-     |> assign(:public_key, public_key)
-     |> assign(:crypto_ready, true)
-     |> assign(:error, nil)}
-  end
-
-  @impl true
-  def handle_event("crypto_init_failed", %{"error" => error}, socket) do
-    {:noreply,
-     socket
-     |> assign(:crypto_ready, false)
-     |> assign(:error, "Crypto initialization failed: #{error}. Please try refreshing the page.")}
-  end
-
-  @impl true
   def handle_event("update_invite_code", %{"invite_code" => code}, socket) do
     {:noreply, assign(socket, :invite_code, String.trim(code))}
   end
@@ -50,11 +30,6 @@ defmodule FriendsWeb.RegisterLive do
   @impl true
   def handle_event("webauthn_available", %{"available" => available}, socket) do
     {:noreply, assign(socket, :webauthn_available, available)}
-  end
-
-  @impl true
-  def handle_event("choose_auth_method", %{"method" => method}, socket) do
-    {:noreply, assign(socket, :auth_method, method)}
   end
 
   @impl true
@@ -139,8 +114,8 @@ defmodule FriendsWeb.RegisterLive do
   def handle_event("webauthn_register_error", %{"error" => error}, socket) do
     message =
       case error do
-        "Registration cancelled" -> "WebAuthn was cancelled. You can retry or use Browser Key."
-        _ -> "WebAuthn error: #{error}"
+        "Registration cancelled" -> "Registration was cancelled. Please try again."
+        _ -> "Registration error: #{error}"
       end
 
     {:noreply, assign(socket, :error, message)}
@@ -148,11 +123,6 @@ defmodule FriendsWeb.RegisterLive do
 
   @impl true
   def handle_event("noop", _params, socket), do: {:noreply, socket}
-
-  @impl true
-  def handle_event("clear_identity", _params, socket) do
-    {:noreply, push_event(socket, "clear_identity", %{})}
-  end
 
   @impl true
   def handle_event("check_username", %{"username" => username}, socket) do
@@ -200,46 +170,6 @@ defmodule FriendsWeb.RegisterLive do
   @impl true
   def handle_event("update_display_name", %{"display_name" => name}, socket) do
     {:noreply, assign(socket, :display_name, name)}
-  end
-
-  @impl true
-  def handle_event("register", _params, socket) do
-    %{
-      username: username,
-      display_name: display_name,
-      public_key: public_key,
-      invite_code: invite_code
-    } = socket.assigns
-
-    if is_nil(public_key) do
-      {:noreply, assign(socket, :error, "crypto identity not ready, please refresh")}
-    else
-      attrs = %{
-        username: username,
-        display_name: if(display_name == "", do: nil, else: display_name),
-        public_key: public_key,
-        invite_code: invite_code
-      }
-
-      case Social.register_user(attrs) do
-        {:ok, user} ->
-          {:noreply,
-           socket
-           |> assign(:step, :complete)
-           |> assign(:user, user)
-           |> push_event("registration_complete", %{user: %{id: user.id, username: user.username}})}
-
-        {:error, :invalid_invite} ->
-          {:noreply, assign(socket, :error, "invite code is no longer valid")}
-
-        {:error, changeset} ->
-          error = 
-            changeset.errors
-            |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
-            |> Enum.join(", ")
-          {:noreply, assign(socket, :error, error)}
-      end
-    end
   end
 
   @impl true
@@ -314,56 +244,25 @@ defmodule FriendsWeb.RegisterLive do
               <% end %>
 
               <%= if @username_available == true do %>
-                <div>
-                  <label class="block text-xs text-neutral-500 mb-3">choose how to secure your account</label>
-                  <div class="space-y-2">
-                    <%!-- WebAuthn option --%>
-                    <%= if @webauthn_available do %>
-                      <button
-                        type="button"
-                        phx-click="start_webauthn_registration"
-                        class="w-full p-4 bg-neutral-900 border border-neutral-800 hover:border-green-600 text-left transition-colors cursor-pointer group"
-                      >
-                        <div class="flex items-center gap-3">
-                          <span class="text-2xl">🔐</span>
-                          <div>
-                            <div class="text-white font-medium group-hover:text-green-400 transition-colors">Hardware Key / Biometrics</div>
-                            <div class="text-xs text-neutral-500">Touch ID, Face ID, or security key (recommended)</div>
-                          </div>
-                        </div>
-                      </button>
-                    <% end %>
-
-                    <%!-- Browser crypto option --%>
-                    <%= if @crypto_ready do %>
-                      <form phx-submit="register">
-                        <button
-                          type="submit"
-                          class="w-full p-4 bg-neutral-900 border border-neutral-800 hover:border-blue-600 text-left transition-colors cursor-pointer group"
-                          phx-disable-with="creating..."
-                        >
-                          <div class="flex items-center gap-3">
-                            <span class="text-2xl">🔑</span>
-                            <div>
-                              <div class="text-white font-medium group-hover:text-blue-400 transition-colors">Browser Key</div>
-                              <div class="text-xs text-neutral-500">Key stored in this browser's storage</div>
-                            </div>
-                          </div>
-                        </button>
-                      </form>
-                    <% else %>
-                      <div class="w-full p-4 bg-neutral-900 border border-neutral-800 text-neutral-500">
-                        <div class="flex items-center gap-3">
-                          <span class="text-2xl opacity-50">🔑</span>
-                          <div>
-                            <div class="font-medium">Browser Key</div>
-                            <div class="text-xs">initializing crypto...</div>
-                          </div>
-                        </div>
-                      </div>
-                    <% end %>
+                <%= if @webauthn_available do %>
+                  <button
+                    type="button"
+                    phx-click="start_webauthn_registration"
+                    class="w-full p-4 bg-white text-black font-medium hover:bg-neutral-200 transition-colors cursor-pointer"
+                  >
+                    Create Account with Passkey
+                  </button>
+                  <p class="text-xs text-neutral-500 text-center">
+                    Uses Touch ID, Face ID, Windows Hello, or security key
+                  </p>
+                <% else %>
+                  <div class="w-full p-4 bg-neutral-900 border border-red-900 text-red-400 text-center">
+                    <p class="font-medium mb-1">Passkeys not available</p>
+                    <p class="text-xs text-neutral-500">
+                      Your browser doesn't support passkeys. Try using Chrome, Safari, or Edge on a device with biometrics.
+                    </p>
                   </div>
-                </div>
+                <% end %>
               <% else %>
                 <div class="w-full px-4 py-3 bg-neutral-800 text-neutral-500 text-center text-sm">
                   enter a valid username to continue
@@ -371,19 +270,17 @@ defmodule FriendsWeb.RegisterLive do
               <% end %>
             </div>
 
-            <button
-              type="button"
-              phx-click="clear_identity"
-              class="mt-6 w-full text-center text-xs text-amber-600/60 hover:text-amber-500 cursor-pointer"
-            >
-              trouble logging in? clear identity & start fresh
-            </button>
+            <div class="mt-6 text-center">
+              <a href="/login" class="text-xs text-neutral-500 hover:text-white transition-colors">
+                already have an account? login
+              </a>
+            </div>
 
           <% :complete -> %>
             <div class="text-center">
               <div class="text-4xl mb-4">✓</div>
               <h1 class="text-2xl font-medium text-white mb-2">welcome, {@user.username}</h1>
-              <p class="text-neutral-500 text-sm mb-8">your identity is secured</p>
+              <p class="text-neutral-500 text-sm mb-8">your passkey is set up</p>
 
               <a
                 href="/"
@@ -395,7 +292,8 @@ defmodule FriendsWeb.RegisterLive do
               <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800 text-left">
                 <p class="text-xs text-neutral-500 mb-2">next steps:</p>
                 <ul class="text-xs text-neutral-400 space-y-1">
-                  <li>• add 4-5 trusted friends for account recovery</li>
+                  <li>• add trusted friends for account recovery</li>
+                  <li>• register additional passkeys on other devices</li>
                   <li>• share your invite codes with friends</li>
                 </ul>
               </div>

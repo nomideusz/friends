@@ -70,7 +70,6 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:room, room)
       |> assign(:page_title, room.name || room.code)
       |> assign(:current_user, session_user)
-      |> assign(:pending_auth, nil)
       |> assign(:user_id, session_user_id)
       |> assign(:user_color, session_user_color)
       |> assign(:user_name, session_user_name)
@@ -1651,31 +1650,29 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Events ---
 
-  def handle_event("set_user_id", %{"browser_id" => browser_id, "fingerprint" => fingerprint} = params, socket) do
+  def handle_event("set_user_id", %{"browser_id" => browser_id, "fingerprint" => fingerprint}, socket) do
     room = socket.assigns.room
-    public_key = params["public_key"]
 
-    # Register device (for backward compatibility)
+    # Register device for tracking
     {:ok, device, _status} = Social.register_device(fingerprint, browser_id)
 
-    # Check if we have a registered user with this public key
-    case public_key && Social.get_user_by_public_key(public_key) do
+    # If user is already authenticated via session cookie (set during WebAuthn login),
+    # we just need to track presence. No additional client-side auth needed.
+    case socket.assigns.current_user do
       nil ->
-        # No registered user - use device identity
+        # No authenticated user - use anonymous device identity
         user_id = device.master_id
         user_color = generate_user_color(user_id)
         user_name = device.user_name
-        
+
         # Check access for private rooms (anonymous users can't access)
         can_access = Social.can_access_room?(room, nil)
-        
+
         Presence.track_user(self(), room.code, user_id, user_color, user_name)
         viewers = Presence.list_users(room.code)
 
         {:noreply,
          socket
-         |> assign(:current_user, nil)
-         |> assign(:pending_auth, nil)
          |> assign(:user_id, user_id)
          |> assign(:user_color, user_color)
          |> assign(:user_name, user_name)
@@ -1684,194 +1681,34 @@ defmodule FriendsWeb.HomeLive do
          |> assign(:fingerprint, fingerprint)
          |> assign(:viewers, viewers)
          |> assign(:room_access_denied, not can_access)}
-      
+
       user ->
-        # Admin users may bypass challenge to avoid UX flicker
-        if Social.admin_username?(user.username) do
-          can_access = Social.can_access_room?(room, user.id)
+        # User already authenticated via session cookie (WebAuthn login)
+        # Just link device and refresh presence
+        Social.link_device_to_user(browser_id, user.id)
 
-          if can_access do
-            Social.subscribe(room.code)
-            Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
+        user_id = "user-#{user.id}"
+        color = Enum.at(@colors, rem(user.id, length(@colors)))
+        user_name = user.display_name || user.username
 
-            if socket.assigns.user_id do
-              Presence.track_user(
-                self(),
-                room.code,
-                socket.assigns.user_id,
-                socket.assigns.user_color,
-                socket.assigns.user_name
-              )
-            end
-          end
+        can_access = Social.can_access_room?(room, user.id)
 
-          if socket.assigns.browser_id do
-            Social.link_device_to_user(socket.assigns.browser_id, user.id)
-          end
-
-          session_token = Phoenix.Token.sign(FriendsWeb.Endpoint, "user_session", user.id)
-          color = Enum.at(@colors, rem(user.id, length(@colors)))
-          user_id = "user-#{user.id}"
-          user_name = user.display_name || user.username
-          viewers = if can_access, do: Presence.list_users(room.code), else: []
-
-          {items, photo_order} =
-            if can_access do
-              photos = Social.list_photos(room.id, @initial_batch, offset: 0)
-              notes = Social.list_notes(room.id, @initial_batch, offset: 0)
-              items = build_items(photos, notes)
-              {items, photo_ids(items)}
-            else
-              {[], []}
-            end
-
-          {:noreply,
-           socket
-           |> assign(:current_user, user)
-           |> assign(:pending_auth, nil)
-           |> assign(:user_id, user_id)
-           |> assign(:user_color, color)
-           |> assign(:user_name, user_name)
-           |> assign(:auth_status, :authed)
-           |> assign(:browser_id, browser_id)
-           |> assign(:fingerprint, fingerprint)
-           |> assign(:viewers, viewers)
-           |> assign(:item_count, length(items))
-           |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
-           |> assign(:invites, Social.list_user_invites(user.id))
-           |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
-           |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
-           |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
-           |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
-           |> assign(:user_private_rooms, Social.list_user_rooms(user.id))
-           |> assign(:room_access_denied, not can_access)
-           |> assign(:photo_order, photo_order)
-           |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))
-           |> push_event("set_session_token", %{token: session_token})
-           |> push_event("set_user_cookie", %{user_id: user.id})}
-        else
-          # Require challenge/response before elevating session
-          challenge = Social.generate_auth_challenge()
-
-          {:noreply,
-           socket
-           |> assign(:current_user, nil)
-           |> assign(:user_id, nil)
-           |> assign(:user_color, nil)
-           |> assign(:user_name, nil)
-           |> assign(:auth_status, :pending)
-           |> assign(:room_access_denied, true)
-           |> assign(:pending_auth, %{user: user, challenge: challenge, public_key: user.public_key})
-           |> assign(:browser_id, browser_id)
-           |> assign(:fingerprint, fingerprint)
-           |> push_event("auth_challenge", %{challenge: challenge})}
+        if can_access do
+          Presence.track_user(self(), room.code, user_id, color, user_name)
         end
-    end
-  end
 
-  def handle_event("auth_response", params, socket) do
-    %{"signature" => signature, "challenge" => challenge} = params
-    device_fingerprint = params["device_fingerprint"]
-    device_name = params["device_name"]
-    key_fingerprint = params["key_fingerprint"]
+        viewers = if can_access, do: Presence.list_users(room.code), else: []
 
-    room = socket.assigns.room
-
-    case socket.assigns[:pending_auth] do
-      %{user: user, challenge: expected_challenge, public_key: public_key} when challenge == expected_challenge ->
-        signature_valid? = Social.verify_signature(public_key, challenge, signature)
-        admin_bypass? = Social.admin_username?(user.username)
-        allowed? = signature_valid? || admin_bypass?
-
-        if allowed? do
-          if admin_bypass? and not signature_valid? do
-            Logger.warning("Auth signature bypassed for admin user=#{user.username} session=#{socket.assigns.session_id}")
-          else
-            Logger.debug("Auth success for session=#{socket.assigns.session_id}")
-          end
-
-          if is_nil(socket.assigns.browser_id) == false do
-            Social.link_device_to_user(socket.assigns.browser_id, user.id)
-          end
-
-          # Register device attestation
-          if device_fingerprint && device_name && key_fingerprint do
-            Social.register_user_device(user.id, device_fingerprint, device_name, key_fingerprint)
-            Logger.debug("Registered device: #{device_name} (#{String.slice(device_fingerprint, 0..7)}...)")
-          end
-
-          session_token = Phoenix.Token.sign(FriendsWeb.Endpoint, "user_session", user.id)
-          color = Enum.at(@colors, rem(user.id, length(@colors)))
-          user_id = "user-#{user.id}"
-          user_name = user.display_name || user.username
-
-          private_rooms = Social.list_user_private_rooms(user.id)
-          can_access = Social.can_access_room?(room, user.id)
-
-          # Only track presence and subscribe if user has access
-          viewers =
-            if can_access do
-              Social.subscribe(room.code)
-              Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
-              Presence.track_user(self(), room.code, user_id, color, user_name)
-              Presence.list_users(room.code)
-            else
-              []
-            end
-
-          {items, photo_order} =
-            if can_access do
-              photos = Social.list_photos(room.id, @initial_batch, offset: 0)
-              notes = Social.list_notes(room.id, @initial_batch, offset: 0)
-              items = build_items(photos, notes)
-              {items, photo_ids(items)}
-            else
-              {[], []}
-            end
-
-          {:noreply,
-           socket
-           |> assign(:current_user, user)
-           |> assign(:pending_auth, nil)
-           |> assign(:user_id, user_id)
-           |> assign(:user_color, color)
-           |> assign(:user_name, user_name)
-           |> assign(:auth_status, :authed)
-           |> assign(:browser_id, socket.assigns.browser_id)
-           |> assign(:fingerprint, socket.assigns.fingerprint)
-           |> assign(:viewers, viewers)
-           |> assign(:item_count, length(items))
-           |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
-           |> assign(:invites, Social.list_user_invites(user.id))
-           |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
-           |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
-           |> assign(:pending_requests, Social.list_pending_trust_requests(user.id))
-           |> assign(:recovery_requests, Social.list_recovery_requests_for_voter(user.id))
-           |> assign(:user_private_rooms, private_rooms)
-           |> assign(:room_access_denied, not can_access)
-           |> assign(:photo_order, photo_order)
-           |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))
-           |> push_event("set_session_token", %{token: session_token})
-           |> push_event("set_user_cookie", %{user_id: user.id})}
-        else
-          Logger.warning("Auth signature verification failed for session=#{socket.assigns.session_id}")
-          {:noreply,
-           socket
-           |> assign(:pending_auth, nil)
-           |> assign(:current_user, nil)
-           |> assign(:user_id, nil)
-           |> assign(:user_color, nil)
-           |> assign(:user_name, nil)
-           |> assign(:auth_status, :anonymous)
-           |> assign(:room_access_denied, true)
-           |> assign(:viewers, [])
-           |> assign(:photo_order, [])
-           |> put_flash(:error, "authentication failed")}
-        end
-      
-      _ ->
-        # No pending auth or challenge mismatch
-        {:noreply, socket}
+        {:noreply,
+         socket
+         |> assign(:user_id, user_id)
+         |> assign(:user_color, color)
+         |> assign(:user_name, user_name)
+         |> assign(:auth_status, :authed)
+         |> assign(:browser_id, browser_id)
+         |> assign(:fingerprint, fingerprint)
+         |> assign(:viewers, viewers)
+         |> assign(:room_access_denied, not can_access)}
     end
   end
 
