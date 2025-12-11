@@ -11,6 +11,8 @@ import { cryptoIdentity } from "./crypto-identity"
 import { deviceLinkManager } from "./device-link"
 import { deviceAttestation } from "./device-attestation"
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
+import * as messageEncryption from "./message-encryption"
+import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
 import QRCode from "qrcode"
 
 const Components = { FriendsMap, FriendGraph }
@@ -534,6 +536,446 @@ const Hooks = {
         },
         destroyed() {
             document.body.style.overflow = this._original || ''
+        }
+    },
+
+    // Message encryption and sending hook
+    MessageEncryption: {
+        mounted() {
+            this.conversationId = parseInt(this.el.dataset.conversationId)
+            
+            // Handle send button click
+            const sendBtn = this.el.querySelector('#send-message-btn')
+            const input = this.el.querySelector('#message-input')
+            
+            if (sendBtn && input) {
+                sendBtn.addEventListener('click', async () => {
+                    const message = input.value.trim()
+                    if (!message) return
+                    
+                    try {
+                        const { encryptedContent, nonce } = await messageEncryption.encryptMessage(message, this.conversationId)
+                        this.pushEvent("send_message", {
+                            encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
+                            nonce: messageEncryption.arrayToBase64(nonce)
+                        })
+                        input.value = ''
+                    } catch (e) {
+                        console.error("Failed to encrypt message:", e)
+                    }
+                })
+                
+                // Enter key to send
+                input.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendBtn.click()
+                    }
+                })
+            }
+            
+            // Handle start/stop voice recording events
+            this.handleEvent("start_voice_recording", async () => {
+                this.voiceRecorder = new VoiceRecorder()
+                this.voiceRecorder.onStop = async (blob, durationMs) => {
+                    try {
+                        const { encryptedContent, nonce } = await messageEncryption.encryptVoiceNote(blob, this.conversationId)
+                        this.pushEvent("send_voice_note", {
+                            encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
+                            nonce: messageEncryption.arrayToBase64(nonce),
+                            duration_ms: durationMs
+                        })
+                    } catch (e) {
+                        console.error("Failed to encrypt voice note:", e)
+                    }
+                }
+                await this.voiceRecorder.start()
+            })
+            
+            this.handleEvent("stop_voice_recording", () => {
+                if (this.voiceRecorder) {
+                    this.voiceRecorder.stop()
+                }
+            })
+            
+            // Handle scroll to bottom event
+            this.handleEvent("scroll_to_bottom", () => {
+                const container = document.getElementById('messages-container')
+                if (container) {
+                    container.scrollTop = container.scrollHeight
+                }
+            })
+            
+            // Decrypt existing messages on mount
+            this.decryptVisibleMessages()
+        },
+        
+        updated() {
+            this.decryptVisibleMessages()
+        },
+        
+        decryptVisibleMessages() {
+            const messages = this.el.querySelectorAll('.decrypted-content')
+            messages.forEach(async (el) => {
+                if (el.dataset.decrypted) return
+                
+                const encrypted = el.dataset.encrypted
+                const nonce = el.dataset.nonce
+                
+                if (encrypted && nonce) {
+                    try {
+                        const encryptedData = messageEncryption.base64ToArray(encrypted)
+                        const nonceData = messageEncryption.base64ToArray(nonce)
+                        const decrypted = await messageEncryption.decryptMessage(encryptedData, nonceData, this.conversationId)
+                        el.textContent = decrypted
+                        el.dataset.decrypted = 'true'
+                    } catch (e) {
+                        console.error("Failed to decrypt message:", e)
+                        el.textContent = "[Unable to decrypt]"
+                    }
+                }
+            })
+        }
+    },
+
+    // Messages container scroll hook - also handles decryption
+    MessagesScroll: {
+        mounted() {
+            // Get conversation ID from the parent input area
+            const inputArea = document.getElementById('message-input-area')
+            this.conversationId = inputArea ? parseInt(inputArea.dataset.conversationId) : null
+            
+            // Scroll to bottom on mount
+            this.el.scrollTop = this.el.scrollHeight
+            
+            // Decrypt visible messages
+            this.decryptVisibleMessages()
+        },
+        updated() {
+            // Auto-scroll when new messages arrive (if already at bottom)
+            const isAtBottom = this.el.scrollHeight - this.el.scrollTop - this.el.clientHeight < 100
+            if (isAtBottom) {
+                this.el.scrollTop = this.el.scrollHeight
+            }
+            
+            // Decrypt any new messages
+            this.decryptVisibleMessages()
+        },
+        
+        async decryptVisibleMessages() {
+            if (!this.conversationId) {
+                console.warn("No conversation ID for decryption")
+                return
+            }
+            
+            const messages = this.el.querySelectorAll('.decrypted-content')
+            for (const el of messages) {
+                if (el.dataset.decrypted === 'true') continue
+                
+                const encrypted = el.dataset.encrypted
+                const nonce = el.dataset.nonce
+                
+                if (encrypted && nonce) {
+                    try {
+                        const encryptedData = messageEncryption.base64ToArray(encrypted)
+                        const nonceData = messageEncryption.base64ToArray(nonce)
+                        const decrypted = await messageEncryption.decryptMessage(encryptedData, nonceData, this.conversationId)
+                        el.textContent = decrypted
+                        el.dataset.decrypted = 'true'
+                    } catch (e) {
+                        console.error("Failed to decrypt message:", e)
+                        el.textContent = "[Unable to decrypt]"
+                        el.dataset.decrypted = 'true'  // Mark as processed to avoid retry loop
+                    }
+                }
+            }
+        }
+    },
+
+    // Voice message player hook
+    VoicePlayer: {
+        mounted() {
+            this.messageId = this.el.dataset.messageId
+            const playBtn = this.el.querySelector('.voice-play-btn')
+            const progressBar = this.el.querySelector('.voice-progress')
+            
+            // Get conversation ID from parent
+            const inputArea = document.getElementById('message-input-area')
+            this.conversationId = inputArea ? parseInt(inputArea.dataset.conversationId) : null
+            
+            // Get encrypted data from the message element in DOM
+            // We need to find the message data - it's passed as data attributes on the parent
+            const messageContainer = this.el.closest('[data-encrypted]') || this.el
+            this.encryptedData = messageContainer.dataset.encrypted
+            this.nonceData = messageContainer.dataset.nonce
+            
+            this.audio = null
+            this.isPlaying = false
+            
+            if (playBtn) {
+                playBtn.addEventListener('click', async () => {
+                    if (this.isPlaying && this.audio) {
+                        this.audio.pause()
+                        playBtn.textContent = '▶'
+                        this.isPlaying = false
+                    } else if (this.audio) {
+                        this.audio.play()
+                        playBtn.textContent = '⏸'
+                        this.isPlaying = true
+                    } else {
+                        // First play - need to decrypt and create player
+                        playBtn.textContent = '...'
+                        
+                        try {
+                            // Find the voice message element and get its encrypted content
+                            // The server sends the binary data that we need to fetch
+                            const msgEl = document.getElementById(`msg-${this.messageId}`)
+                            const encrypted = msgEl?.dataset.encrypted
+                            const nonce = msgEl?.dataset.nonce
+                            
+                            if (encrypted && nonce && this.conversationId) {
+                                const encryptedArray = messageEncryption.base64ToArray(encrypted)
+                                const nonceArray = messageEncryption.base64ToArray(nonce)
+                                
+                                const audioBlob = await messageEncryption.decryptVoiceNote(
+                                    encryptedArray, 
+                                    nonceArray, 
+                                    this.conversationId
+                                )
+                                
+                                if (audioBlob) {
+                                    this.audio = new Audio(URL.createObjectURL(audioBlob))
+                                    
+                                    this.audio.ontimeupdate = () => {
+                                        if (progressBar && this.audio.duration) {
+                                            const percent = (this.audio.currentTime / this.audio.duration) * 100
+                                            progressBar.style.width = `${percent}%`
+                                        }
+                                    }
+                                    
+                                    this.audio.onended = () => {
+                                        playBtn.textContent = '▶'
+                                        this.isPlaying = false
+                                        if (progressBar) progressBar.style.width = '0%'
+                                    }
+                                    
+                                    this.audio.play()
+                                    playBtn.textContent = '⏸'
+                                    this.isPlaying = true
+                                } else {
+                                    playBtn.textContent = '❌'
+                                }
+                            } else {
+                                console.warn("Missing encrypted data for voice message")
+                                playBtn.textContent = '❌'
+                            }
+                        } catch (e) {
+                            console.error("Failed to decrypt voice note:", e)
+                            playBtn.textContent = '❌'
+                        }
+                    }
+                })
+            }
+        },
+        destroyed() {
+            if (this.audio) {
+                this.audio.pause()
+                URL.revokeObjectURL(this.audio.src)
+            }
+        }
+    },
+
+    // Room chat scroll and decryption hook
+    RoomChatScroll: {
+        mounted() {
+            this.roomId = this.el.dataset.roomId
+            
+            // Scroll to bottom on mount
+            this.el.scrollTop = this.el.scrollHeight
+            
+            // Decrypt visible messages
+            this.decryptVisibleMessages()
+        },
+        updated() {
+            // Auto-scroll when new messages arrive
+            const isAtBottom = this.el.scrollHeight - this.el.scrollTop - this.el.clientHeight < 100
+            if (isAtBottom) {
+                this.el.scrollTop = this.el.scrollHeight
+            }
+            
+            // Decrypt any new messages
+            this.decryptVisibleMessages()
+        },
+        
+        async decryptVisibleMessages() {
+            if (!this.roomId) return
+            
+            const messages = this.el.querySelectorAll('.room-decrypted-content')
+            for (const el of messages) {
+                if (el.dataset.decrypted === 'true') continue
+                
+                const encrypted = el.dataset.encrypted
+                const nonce = el.dataset.nonce
+                
+                if (encrypted && nonce) {
+                    try {
+                        const encryptedData = messageEncryption.base64ToArray(encrypted)
+                        const nonceData = messageEncryption.base64ToArray(nonce)
+                        // Use room ID as the conversation ID for key derivation
+                        const decrypted = await messageEncryption.decryptMessage(encryptedData, nonceData, `room-${this.roomId}`)
+                        el.textContent = decrypted
+                        el.dataset.decrypted = 'true'
+                    } catch (e) {
+                        console.error("Failed to decrypt room message:", e)
+                        el.textContent = "[Unable to decrypt]"
+                        el.dataset.decrypted = 'true'
+                    }
+                }
+            }
+        }
+    },
+
+    // Room chat encryption hook for sending messages
+    RoomChatEncryption: {
+        mounted() {
+            this.roomId = this.el.dataset.roomId
+            this.voiceRecorder = null
+            
+            const sendBtn = this.el.querySelector('#send-room-message-btn')
+            const input = this.el.querySelector('#room-message-input')
+            
+            if (sendBtn && input) {
+                sendBtn.addEventListener('click', async () => {
+                    const message = input.value.trim()
+                    if (!message) return
+                    
+                    try {
+                        // Use room ID as the conversation ID for encryption
+                        const { encryptedContent, nonce } = await messageEncryption.encryptMessage(message, `room-${this.roomId}`)
+                        this.pushEvent("send_room_message", {
+                            encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
+                            nonce: messageEncryption.arrayToBase64(nonce)
+                        })
+                        input.value = ''
+                    } catch (e) {
+                        console.error("Failed to encrypt room message:", e)
+                    }
+                })
+                
+                // Enter key to send
+                input.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendBtn.click()
+                    }
+                })
+            }
+            
+            // Handle voice recording events from LiveView
+            this.handleEvent("start_room_voice_recording", async () => {
+                this.voiceRecorder = new VoiceRecorder()
+                this.voiceRecorder.onStop = async (blob, durationMs) => {
+                    try {
+                        const { encryptedContent, nonce } = await messageEncryption.encryptVoiceNote(blob, `room-${this.roomId}`)
+                        this.pushEvent("send_room_voice_note", {
+                            encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
+                            nonce: messageEncryption.arrayToBase64(nonce),
+                            duration_ms: durationMs
+                        })
+                    } catch (e) {
+                        console.error("Failed to encrypt room voice note:", e)
+                    }
+                }
+                await this.voiceRecorder.start()
+            })
+            
+            this.handleEvent("stop_room_voice_recording", () => {
+                if (this.voiceRecorder) {
+                    this.voiceRecorder.stop()
+                }
+            })
+        }
+    },
+
+    // Room voice player hook for space chat
+    RoomVoicePlayer: {
+        mounted() {
+            this.messageId = this.el.dataset.messageId
+            this.roomId = this.el.dataset.roomId
+            const playBtn = this.el.querySelector('.room-voice-play-btn')
+            const progressBar = this.el.querySelector('.room-voice-progress')
+            
+            this.audio = null
+            this.isPlaying = false
+            
+            if (playBtn) {
+                playBtn.addEventListener('click', async () => {
+                    if (this.isPlaying && this.audio) {
+                        this.audio.pause()
+                        playBtn.textContent = '▶'
+                        this.isPlaying = false
+                    } else if (this.audio) {
+                        this.audio.play()
+                        playBtn.textContent = '⏸'
+                        this.isPlaying = true
+                    } else {
+                        // First play - need to decrypt and create player
+                        playBtn.textContent = '...'
+                        
+                        try {
+                            const msgEl = document.getElementById(`room-msg-${this.messageId}`)
+                            const encrypted = msgEl?.dataset.encrypted
+                            const nonce = msgEl?.dataset.nonce
+                            
+                            if (encrypted && nonce && this.roomId) {
+                                const encryptedArray = messageEncryption.base64ToArray(encrypted)
+                                const nonceArray = messageEncryption.base64ToArray(nonce)
+                                
+                                const audioBlob = await messageEncryption.decryptVoiceNote(
+                                    encryptedArray, 
+                                    nonceArray, 
+                                    `room-${this.roomId}`
+                                )
+                                
+                                if (audioBlob) {
+                                    this.audio = new Audio(URL.createObjectURL(audioBlob))
+                                    
+                                    this.audio.ontimeupdate = () => {
+                                        if (progressBar && this.audio.duration) {
+                                            const percent = (this.audio.currentTime / this.audio.duration) * 100
+                                            progressBar.style.width = `${percent}%`
+                                        }
+                                    }
+                                    
+                                    this.audio.onended = () => {
+                                        playBtn.textContent = '▶'
+                                        this.isPlaying = false
+                                        if (progressBar) progressBar.style.width = '0%'
+                                    }
+                                    
+                                    this.audio.play()
+                                    playBtn.textContent = '⏸'
+                                    this.isPlaying = true
+                                } else {
+                                    playBtn.textContent = '❌'
+                                }
+                            } else {
+                                console.warn("Missing encrypted data for room voice message")
+                                playBtn.textContent = '❌'
+                            }
+                        } catch (e) {
+                            console.error("Failed to decrypt room voice note:", e)
+                            playBtn.textContent = '❌'
+                        }
+                    }
+                })
+            }
+        },
+        destroyed() {
+            if (this.audio) {
+                this.audio.pause()
+                URL.revokeObjectURL(this.audio.src)
+            }
         }
     },
 

@@ -15,6 +15,7 @@
 
   // Edge colors by type
   const edgeColors = {
+    friend: '#3b82f6',
     trusted: '#60a5fa',
     trusts_me: '#a78bfa',
     mutual: '#ffffff',
@@ -110,8 +111,15 @@
           highlight: { background: node.color || '#888888', border: '#ffffff' },
           hover: { background: node.color || '#888888', border: 'rgba(255,255,255,0.8)' }
         },
+        shadow: {
+          enabled: true,
+          color: node.color || '#888888', // Use node color for glow
+          size: 15, // Large glow
+          x: 0,
+          y: 0
+        },
         title: `@${node.username}`,
-        size: isSelf ? 35 : 25,
+        size: isSelf ? 16 : 10,
         font: isSelf ? { size: 16, bold: true, color: '#ffffff' } : { size: 14, color: '#ffffff' }
       })
     })
