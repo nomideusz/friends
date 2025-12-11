@@ -6,7 +6,7 @@ defmodule FriendsWeb.RegisterLive do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:step, :invite)
+     |> assign(:step, :username)
      |> assign(:invite_code, "")
      |> assign(:username, "")
      |> assign(:display_name, "")
@@ -44,48 +44,7 @@ defmodule FriendsWeb.RegisterLive do
 
   @impl true
   def handle_event("update_invite_code", %{"invite_code" => code}, socket) do
-    {:noreply, assign(socket, :invite_code, code)}
-  end
-
-  @impl true
-  def handle_event("check_invite", %{"invite_code" => code}, socket) do
-    trimmed = String.trim(code)
-    admin_code = admin_invite_code()
-
-    cond do
-      # Admin code or empty with admin code configured
-      admin_code && (trimmed == "" || trimmed == admin_code) ->
-        {:noreply,
-         socket
-         |> assign(:invite_code, admin_code)
-         |> assign(:step, :username)
-         |> assign(:error, nil)}
-
-      # Empty invite code - open registration
-      trimmed == "" ->
-        {:noreply,
-         socket
-         |> assign(:invite_code, "")
-         |> assign(:step, :username)
-         |> assign(:error, nil)}
-
-      # Validate provided invite code
-      true ->
-        case Social.validate_invite(trimmed) do
-          {:ok, _invite} ->
-            {:noreply,
-             socket
-             |> assign(:invite_code, trimmed)
-             |> assign(:step, :username)
-             |> assign(:error, nil)}
-
-          {:error, :invalid_invite} ->
-            {:noreply, assign(socket, :error, "invalid invite code")}
-
-          {:error, :invite_expired} ->
-            {:noreply, assign(socket, :error, "invite code expired")}
-        end
-    end
+    {:noreply, assign(socket, :invite_code, String.trim(code))}
   end
 
   @impl true
@@ -100,15 +59,27 @@ defmodule FriendsWeb.RegisterLive do
 
   @impl true
   def handle_event("start_webauthn_registration", _params, socket) do
-    # Generate a temporary user struct for challenge generation
     username = socket.assigns.username
-    temp_user = %{id: 0, username: username, display_name: socket.assigns.display_name}
-    challenge_options = Social.generate_webauthn_registration_challenge(temp_user)
+    display_name = socket.assigns.display_name
 
-    {:noreply,
-     socket
-     |> assign(:webauthn_challenge, challenge_options.challenge)
-     |> push_event("webauthn_register_challenge", %{options: challenge_options})}
+    cond do
+      is_nil(username) or username == "" ->
+        {:noreply, assign(socket, :error, "choose a username first")}
+
+      socket.assigns.username_available != true ->
+        {:noreply, assign(socket, :error, "username not available")}
+
+      true ->
+        # Generate a temporary user struct for challenge generation
+        temp_user = %{id: 0, username: username, display_name: display_name}
+        challenge_options = Social.generate_webauthn_registration_challenge(temp_user)
+
+        {:noreply,
+         socket
+         |> assign(:webauthn_challenge, challenge_options.challenge)
+         |> push_event("webauthn_register_challenge", %{options: challenge_options})
+         |> assign(:error, nil)}
+    end
   end
 
   @impl true
@@ -128,44 +99,55 @@ defmodule FriendsWeb.RegisterLive do
       invite_code: invite_code
     }
 
-    case Social.register_user(attrs) do
-      {:ok, user} ->
-        # Now register the WebAuthn credential for this user
-        case Social.verify_and_store_webauthn_credential(user.id, credential_data, challenge) do
-          {:ok, _credential} ->
-            {:noreply,
-             socket
-             |> assign(:step, :complete)
-             |> assign(:user, user)
-             |> push_event("registration_complete", %{user: %{id: user.id, username: user.username}})}
+    cond do
+      is_nil(credential_data) ->
+        {:noreply, assign(socket, :error, "WebAuthn response missing credential")}
 
-          {:error, reason} ->
-            # Rollback user creation on WebAuthn failure
-            Friends.Repo.delete(user)
-            {:noreply, assign(socket, :error, "WebAuthn registration failed: #{inspect(reason)}")}
+      is_nil(challenge) ->
+        {:noreply, assign(socket, :error, "WebAuthn challenge expired, try again")}
+
+      true ->
+        case Social.register_user(attrs) do
+          {:ok, user} ->
+            case Social.verify_and_store_webauthn_credential(user.id, credential_data, challenge) do
+              {:ok, _credential} ->
+                {:noreply,
+                 socket
+                 |> assign(:step, :complete)
+                 |> assign(:user, user)
+                 |> push_event("registration_complete", %{user: %{id: user.id, username: user.username}})}
+
+              {:error, reason} ->
+                Friends.Repo.delete(user)
+                {:noreply, assign(socket, :error, "WebAuthn registration failed: #{inspect(reason)}")}
+            end
+
+          {:error, :invalid_invite} ->
+            {:noreply, assign(socket, :error, "invite code is no longer valid")}
+
+          {:error, changeset} ->
+            error =
+              changeset.errors
+              |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
+              |> Enum.join(", ")
+            {:noreply, assign(socket, :error, error)}
         end
-
-      {:error, :invalid_invite} ->
-        {:noreply, assign(socket, :error, "invite code is no longer valid")}
-
-      {:error, changeset} ->
-        error =
-          changeset.errors
-          |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
-          |> Enum.join(", ")
-        {:noreply, assign(socket, :error, error)}
     end
   end
 
   @impl true
   def handle_event("webauthn_register_error", %{"error" => error}, socket) do
-    {:noreply, assign(socket, :error, "WebAuthn error: #{error}")}
+    message =
+      case error do
+        "Registration cancelled" -> "WebAuthn was cancelled. You can retry or use Browser Key."
+        _ -> "WebAuthn error: #{error}"
+      end
+
+    {:noreply, assign(socket, :error, message)}
   end
 
   @impl true
-  def handle_event("go_back", _params, socket) do
-    {:noreply, assign(socket, :step, :invite)}
-  end
+  def handle_event("noop", _params, socket), do: {:noreply, socket}
 
   @impl true
   def handle_event("clear_identity", _params, socket) do
@@ -266,80 +248,53 @@ defmodule FriendsWeb.RegisterLive do
     <div id="register-app" class="min-h-screen flex items-center justify-center p-4" phx-hook="RegisterApp">
       <div class="w-full max-w-md">
         <%= case @step do %>
-          <% :invite -> %>
+          <% :username -> %>
             <div class="text-center mb-8">
-              <h1 class="text-2xl font-medium text-white mb-2">friends</h1>
-              <p class="text-neutral-500 text-sm">a network that requires friends</p>
+              <h1 class="text-2xl font-medium text-white mb-2">join friends</h1>
+              <p class="text-neutral-500 text-sm">invite is optional; pick a username to continue</p>
             </div>
 
-            <form phx-submit="check_invite" class="space-y-4">
+            <div class="space-y-4">
               <div>
                 <label class="block text-xs text-neutral-500 mb-2">invite code (optional)</label>
                 <input
                   type="text"
                   name="invite_code"
                   value={@invite_code}
-                  phx-change="update_invite_code"
+                  phx-input="update_invite_code"
                   placeholder="word-word-123"
                   autocomplete="off"
-                  autofocus
                   class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 font-mono"
                 />
-                <p class="mt-1 text-xs text-neutral-600">have an invite? enter it for automatic trusted friend connection</p>
+                <p class="mt-1 text-xs text-neutral-600">enter an invite for automatic trusted friend connection</p>
               </div>
 
-              <%= if @error do %>
-                <p class="text-red-500 text-xs">{@error}</p>
-              <% end %>
-
-              <button
-                type="submit"
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 cursor-pointer"
-              >
-                continue
-              </button>
-            </form>
-
-            <button
-              type="button"
-              phx-click="clear_identity"
-              class="mt-8 text-center text-xs text-amber-600/50 hover:text-amber-500 cursor-pointer w-full"
-            >
-              trouble logging in? clear identity & start fresh
-            </button>
-
-          <% :username -> %>
-            <div class="text-center mb-8">
-              <h1 class="text-2xl font-medium text-white mb-2">choose your name</h1>
-              <p class="text-neutral-500 text-sm">this is how friends will find you</p>
-            </div>
-
-            <div class="space-y-4">
-              <div>
-                <label class="block text-xs text-neutral-500 mb-2">username</label>
-                <div class="relative">
-                  <input
-                    type="text"
-                    name="username"
-                    value={@username}
-                    phx-change="check_username"
-                    phx-debounce="300"
-                    placeholder="yourname"
-                    autocomplete="off"
-                    autofocus
-                    class={[
-                      "w-full px-4 py-3 bg-neutral-900 border text-white placeholder:text-neutral-700 focus:outline-none font-mono",
-                      @username_available == true && "border-green-600",
-                      @username_available == false && "border-red-600",
-                      @username_available == nil && "border-neutral-800 focus:border-neutral-600"
-                    ]}
-                  />
-                  <%= if @username_available == true do %>
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-xs">available</span>
-                  <% end %>
+              <form phx-change="check_username" phx-submit="noop" class="space-y-2">
+                <div>
+                  <label class="block text-xs text-neutral-500 mb-2">username</label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      name="username"
+                      value={@username}
+                      phx-debounce="300"
+                      placeholder="yourname"
+                      autocomplete="off"
+                      autofocus
+                      class={[
+                        "w-full px-4 py-3 bg-neutral-900 border text-white placeholder:text-neutral-700 focus:outline-none font-mono",
+                        @username_available == true && "border-green-600",
+                        @username_available == false && "border-red-600",
+                        @username_available == nil && "border-neutral-800 focus:border-neutral-600"
+                      ]}
+                    />
+                    <%= if @username_available == true do %>
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-xs">available</span>
+                    <% end %>
+                  </div>
+                  <p class="mt-1 text-xs text-neutral-600">3-20 characters, lowercase, numbers, underscores</p>
                 </div>
-                <p class="mt-1 text-xs text-neutral-600">3-20 characters, lowercase, numbers, underscores</p>
-              </div>
+              </form>
 
               <div>
                 <label class="block text-xs text-neutral-500 mb-2">display name (optional)</label>
@@ -347,7 +302,7 @@ defmodule FriendsWeb.RegisterLive do
                   type="text"
                   name="display_name"
                   value={@display_name}
-                  phx-change="update_display_name"
+                  phx-input="update_display_name"
                   placeholder="Your Name"
                   maxlength="50"
                   class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600"
@@ -418,10 +373,10 @@ defmodule FriendsWeb.RegisterLive do
 
             <button
               type="button"
-              phx-click="go_back"
-              class="mt-4 w-full text-center text-xs text-neutral-600 hover:text-white cursor-pointer"
+              phx-click="clear_identity"
+              class="mt-6 w-full text-center text-xs text-amber-600/60 hover:text-amber-500 cursor-pointer"
             >
-              ← back
+              trouble logging in? clear identity & start fresh
             </button>
 
           <% :complete -> %>
@@ -451,9 +406,7 @@ defmodule FriendsWeb.RegisterLive do
     """
   end
 
-  defp admin_invite_code do
-    Application.get_env(:friends, :admin_invite_code)
-  end
+  # Admin invite is unused in the current unified form; keep helper if needed later.
 end
 
 

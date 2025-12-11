@@ -210,7 +210,7 @@ defmodule Friends.WebAuthn do
 
   defp parse_attestation_object(attestation_object) do
     # CBOR decode the attestation object
-    case :cbor.decode(attestation_object) do
+    case CBOR.decode(attestation_object) do
       {:ok, %{"authData" => auth_data, "fmt" => _fmt, "attStmt" => _att_stmt}, _rest} ->
         parse_authenticator_data(auth_data)
       {:ok, decoded, _rest} when is_map(decoded) ->
@@ -276,7 +276,7 @@ defmodule Friends.WebAuthn do
       <<aaguid::binary-size(16), cred_id_len::16-big, rest::binary>> ->
         case rest do
           <<cred_id::binary-size(cred_id_len), cose_key_cbor::binary>> ->
-            case :cbor.decode(cose_key_cbor) do
+            case CBOR.decode(cose_key_cbor) do
               {:ok, cose_key, _rest} ->
                 {:ok, %{
                   aaguid: aaguid,

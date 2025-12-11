@@ -21,7 +21,7 @@ defmodule FriendsWeb.Layouts do
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> JS.hide(to: "#flash-#{@kind}")}
       role="alert"
       class={[
-        "fixed top-4 right-4 z-50 px-4 py-3 text-sm cursor-pointer",
+        "fixed top-4 right-4 z-[70] px-4 py-3 text-sm cursor-pointer",
         @kind == :info && "bg-neutral-900 text-white",
         @kind == :error && "bg-red-600 text-white"
       ]}

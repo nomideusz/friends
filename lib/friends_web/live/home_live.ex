@@ -74,6 +74,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:user_id, session_user_id)
       |> assign(:user_color, session_user_color)
       |> assign(:user_name, session_user_name)
+      |> assign(:room_invite_username, "")
       |> assign(:auth_status, if(session_user, do: :authed, else: :pending))
       |> assign(:browser_id, nil)
       |> assign(:fingerprint, nil)
@@ -104,6 +105,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:member_invite_results, [])
       |> assign(:user_private_rooms, [])
       |> assign(:public_rooms, [])
+      |> assign(:network_filter, "trusted")
       |> assign(:room_access_denied, not can_access)
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
@@ -269,8 +271,16 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Main content - wider and more spacious --%>
         <main class="max-w-[1600px] mx-auto px-8 py-10">
-          <%!-- Feed Mode Toggle --%>
-          <div class="flex items-center gap-3 mb-8">
+          <%!-- Combined nav (pill style) --%>
+          <% room_label = if @room.code == "lobby", do: "public square", else: (@room.name || @room.code) %>
+
+          <%!-- Single nav row (pills + optional lobby link) --%>
+          <div class="flex items-center gap-3 mb-3 flex-wrap">
+            <%= if @room.code != "lobby" do %>
+              <.link navigate={~p"/r/lobby"} class="px-4 py-2 text-sm rounded-full border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-600 cursor-pointer">
+                public square
+              </.link>
+            <% end %>
             <button
               type="button"
               phx-click="switch_feed"
@@ -282,8 +292,12 @@ defmodule FriendsWeb.HomeLive do
                   else: "text-neutral-500 hover:text-white border border-transparent"
                 )
               ]}
+              title={room_label}
             >
-              space
+              <span class="inline-flex items-center gap-2 truncate max-w-[240px]">
+                <span>space feed ·</span>
+                <span class="text-neutral-400 truncate">{room_label}</span>
+              </span>
             </button>
             <%= if @current_user do %>
               <button
@@ -298,10 +312,37 @@ defmodule FriendsWeb.HomeLive do
                   )
                 ]}
               >
-                network
+                network feed
               </button>
             <% end %>
           </div>
+
+          <%= if @current_user && @feed_mode == "friends" do %>
+            <div class="inline-flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-full px-2 py-1 mb-4">
+              <button
+                type="button"
+                phx-click="set_network_filter"
+                phx-value-filter="trusted"
+                class={[
+                  "px-2 py-1 text-[11px] rounded-full cursor-pointer",
+                  @network_filter == "trusted" && "bg-white text-black"
+                ]}
+              >
+                trusted only
+              </button>
+              <button
+                type="button"
+                phx-click="set_network_filter"
+                phx-value-filter="all"
+                class={[
+                  "px-2 py-1 text-[11px] rounded-full cursor-pointer",
+                  @network_filter == "all" && "bg-white text-black"
+                ]}
+              >
+                all connections
+              </button>
+            </div>
+          <% end %>
 
           <%!-- Network Info (when in network mode) --%>
           <%= if @feed_mode == "friends" && @current_user do %>
@@ -573,12 +614,12 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
+          <div id="room-modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title" phx-hook="LockScroll">
             <div class="w-full sm:max-w-md sm:mx-4 bg-neutral-900 sm:rounded-2xl rounded-t-2xl border-t sm:border border-neutral-800 shadow-2xl max-h-[85vh] flex flex-col">
               <%!-- Header --%>
               <div class="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
                 <h2 id="room-modal-title" class="text-lg font-semibold text-white">Spaces</h2>
-                <button type="button" phx-click="close_room_modal" class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all" aria-label="Close">
+                <button type="button" phx-click="close_room_modal" class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all cursor-pointer" aria-label="Close">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -588,7 +629,7 @@ defmodule FriendsWeb.HomeLive do
               <%!-- Content - scrollable --%>
               <div class="flex-1 overflow-y-auto p-4 space-y-4">
                 <%!-- Current Location --%>
-                <div class="p-4 bg-neutral-800/50 rounded-xl">
+                <div class="p-4 bg-neutral-800/50 rounded-xl cursor-pointer">
                   <div class="text-xs text-neutral-500 uppercase tracking-wider mb-2">Current space</div>
                   <div class="flex items-center gap-3">
                     <div class={[
@@ -609,12 +650,78 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 </div>
 
+                <%= if @room.is_private && @current_user do %>
+                  <div class="p-4 bg-neutral-800/50 rounded-xl space-y-3">
+                    <div class="text-xs text-neutral-500 uppercase tracking-wider">Invite people</div>
+                    <p class="text-sm text-neutral-300">Share this code or link so trusted people can join your private space.</p>
+                    <div class="space-y-2">
+                      <div class="flex gap-2">
+                        <input
+                          type="text"
+                          value={@room.code}
+                          readonly
+                          class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white font-mono cursor-text select-all"
+                        />
+                        <button
+                          id="copy-room-code"
+                          type="button"
+                          phx-hook="CopyToClipboard"
+                          data-copy={@room.code}
+                          class="px-3 py-2 bg-neutral-200 text-black text-sm rounded-lg hover:bg-white transition-colors cursor-pointer"
+                        >
+                          Copy code
+                        </button>
+                      </div>
+                      <div class="flex gap-2">
+                        <input
+                          type="text"
+                          value={url(~p"/r/#{@room.code}")}
+                          readonly
+                          class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white font-mono cursor-text select-all"
+                        />
+                        <button
+                          id="copy-room-link"
+                          type="button"
+                          phx-hook="CopyToClipboard"
+                          data-copy={url(~p"/r/#{@room.code}")}
+                          class="px-3 py-2 bg-neutral-200 text-black text-sm rounded-lg hover:bg-white transition-colors cursor-pointer"
+                        >
+                          Copy link
+                        </button>
+                      </div>
+                    </div>
+                    <p class="text-xs text-neutral-500">Only members can access private spaces. Share wisely.</p>
+
+                    <%= if @room.owner_id == @current_user.id do %>
+                      <div class="pt-2 space-y-2">
+                        <div class="text-xs text-neutral-500 uppercase tracking-wider">Add member by username</div>
+                        <form phx-submit="add_room_member" phx-change="update_room_invite_username" class="flex gap-2">
+                          <input
+                            type="text"
+                            name="username"
+                            value={@room_invite_username}
+                            placeholder="friend_username"
+                            class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-sm text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600"
+                          />
+                          <button
+                            type="submit"
+                            class="px-3 py-2 bg-white text-black text-sm rounded-lg hover:bg-neutral-200 transition-colors cursor-pointer"
+                            phx-disable-with="adding..."
+                          >
+                            Add
+                          </button>
+                        </form>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
                 <%!-- Quick Navigation --%>
                 <%= if @room.code != "lobby" do %>
                   <button
                     type="button"
                     phx-click="go_to_public_square"
-                    class="w-full p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-left hover:bg-blue-500/20 hover:border-blue-500/30 transition-all group"
+                    class="w-full p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-left hover:bg-blue-500/20 hover:border-blue-500/30 transition-all group cursor-pointer"
                   >
                     <div class="flex items-center gap-3">
                       <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -642,7 +749,7 @@ defmodule FriendsWeb.HomeLive do
                           phx-click="switch_room"
                           phx-value-code={room.code}
                           class={[
-                            "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3",
+                            "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 cursor-pointer",
                             room.code == @room.code && "bg-green-500/20 border border-green-500/30 ring-1 ring-green-500/20",
                             room.code != @room.code && "bg-neutral-800/50 hover:bg-neutral-800 border border-transparent"
                           ]}
@@ -678,7 +785,7 @@ defmodule FriendsWeb.HomeLive do
                             type="button"
                             phx-click="switch_room"
                             phx-value-code={room.code}
-                            class="w-full p-3 rounded-xl text-left bg-neutral-800/50 hover:bg-neutral-800 transition-all flex items-center gap-3 border border-transparent"
+                            class="w-full p-3 rounded-xl text-left bg-neutral-800/50 hover:bg-neutral-800 transition-all flex items-center gap-3 border border-transparent cursor-pointer"
                           >
                             <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
                               <span class="text-sm">🌐</span>
@@ -707,39 +814,41 @@ defmodule FriendsWeb.HomeLive do
                     placeholder="Enter room code..."
                     class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                   />
-                  <button type="submit" phx-disable-with="..." class="px-5 py-3 bg-white text-black text-sm font-medium rounded-xl hover:bg-neutral-200 transition-colors disabled:opacity-50">
+                  <button type="submit" phx-disable-with="..." class="w-24 px-5 py-3 bg-white text-black text-sm font-medium rounded-xl hover:bg-neutral-200 transition-colors disabled:opacity-50 cursor-pointer">
                     Join
                   </button>
                 </form>
 
                 <%!-- Create new --%>
-                <form phx-submit="create_room" phx-change="update_room_form" class="flex gap-2">
-                  <input
-                    type="text"
-                    name="name"
-                    value={@new_room_name}
-                    placeholder="Create new space..."
-                    class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
-                  />
-                  <button type="submit" phx-disable-with="..." class="px-5 py-3 border border-neutral-600 text-neutral-300 text-sm font-medium rounded-xl hover:border-neutral-500 hover:text-white hover:bg-neutral-800 transition-all disabled:opacity-50">
-                    Create
-                  </button>
-                </form>
-
-                <%= if @current_user do %>
-                  <label class="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-xl cursor-pointer hover:bg-neutral-800 transition-colors">
+                <form phx-submit="create_room" phx-change="update_room_form" class="space-y-2">
+                  <div class="flex gap-2">
                     <input
-                      type="checkbox"
-                      name="is_private"
-                      checked={@create_private_room}
-                      class="w-5 h-5 rounded border-neutral-600 bg-neutral-700 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+                      type="text"
+                      name="name"
+                      value={@new_room_name}
+                      placeholder="Create new space..."
+                      class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                     />
-                    <div>
-                      <div class="text-sm text-neutral-300">Make it private</div>
-                      <div class="text-xs text-neutral-500">Only invited members can access</div>
-                    </div>
-                  </label>
-                <% end %>
+                    <button type="submit" phx-disable-with="..." class="w-24 px-5 py-3 border border-neutral-600 text-neutral-300 text-sm font-medium rounded-xl hover:border-neutral-500 hover:text-white hover:bg-neutral-800 transition-all disabled:opacity-50 cursor-pointer">
+                      Create
+                    </button>
+                  </div>
+
+                  <%= if @current_user do %>
+                    <label class="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-xl cursor-pointer hover:bg-neutral-800 transition-colors">
+                      <input
+                        type="checkbox"
+                        name="is_private"
+                        checked={@create_private_room}
+                        class="w-5 h-5 rounded border-neutral-600 bg-neutral-700 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+                      />
+                      <div>
+                        <div class="text-sm text-neutral-300">Make it private</div>
+                        <div class="text-xs text-neutral-500">Only invited members can access</div>
+                      </div>
+                    </label>
+                  <% end %>
+                </form>
               </div>
             </div>
           </div>
@@ -789,7 +898,7 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Note Modal --%>
         <%= if @show_note_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_note_modal">
+          <div id="note-modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_note_modal" phx-hook="LockScroll">
             <div class="w-full max-w-md mx-4 bg-neutral-900 border border-neutral-800 p-4 sm:p-6">
               <div class="flex items-center justify-between mb-4 sm:mb-6">
                 <h2 class="text-sm font-medium">new note</h2>
@@ -823,7 +932,7 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Settings Modal - Redesigned --%>
         <%= if @show_settings_modal && @current_user do %>
-          <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" phx-click-away="close_settings_modal">
+          <div id="settings-modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm" phx-click-away="close_settings_modal" phx-hook="LockScroll">
             <div class="w-full sm:max-w-md sm:mx-4 bg-neutral-950 sm:rounded-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col rounded-t-2xl sm:border sm:border-white/10">
               <%!-- Header with profile --%>
               <div class="relative px-5 pt-5 pb-4 border-b border-white/5">
@@ -831,7 +940,7 @@ defmodule FriendsWeb.HomeLive do
                 <button
                   type="button"
                   phx-click="close_settings_modal"
-                  class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-white rounded-full hover:bg-white/10 transition-all"
+                  class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-neutral-500 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -862,7 +971,7 @@ defmodule FriendsWeb.HomeLive do
                     phx-click="switch_settings_tab"
                     phx-value-tab="profile"
                     class={[
-                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative",
+                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative cursor-pointer",
                       @settings_tab == "profile" && "text-white bg-neutral-900",
                       @settings_tab != "profile" && "text-neutral-500 hover:text-neutral-300"
                     ]}
@@ -874,7 +983,7 @@ defmodule FriendsWeb.HomeLive do
                     phx-click="switch_settings_tab"
                     phx-value-tab="friends"
                     class={[
-                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative",
+                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all relative cursor-pointer",
                       @settings_tab == "friends" && "text-white bg-neutral-900",
                       @settings_tab != "friends" && "text-neutral-500 hover:text-neutral-300"
                     ]}
@@ -891,7 +1000,7 @@ defmodule FriendsWeb.HomeLive do
                     phx-click="switch_settings_tab"
                     phx-value-tab="invites"
                     class={[
-                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all",
+                      "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all cursor-pointer",
                       @settings_tab == "invites" && "text-white bg-neutral-900",
                       @settings_tab != "invites" && "text-neutral-500 hover:text-neutral-300"
                     ]}
@@ -904,7 +1013,7 @@ defmodule FriendsWeb.HomeLive do
                       phx-click="switch_settings_tab"
                       phx-value-tab="room"
                       class={[
-                        "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all",
+                        "px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all cursor-pointer",
                         @settings_tab == "room" && "text-white bg-neutral-900",
                         @settings_tab != "room" && "text-neutral-500 hover:text-neutral-300"
                       ]}
@@ -1741,6 +1850,82 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:create_private_room, is_private)}
   end
 
+  def handle_event("update_room_invite_username", %{"username" => username}, socket) do
+    {:noreply, assign(socket, :room_invite_username, username)}
+  end
+
+  def handle_event("add_room_member", %{"username" => username}, socket) do
+    room = socket.assigns.room
+    owner_id = socket.assigns.current_user && socket.assigns.current_user.id
+
+    cond do
+      is_nil(owner_id) ->
+        {:noreply, put_flash(socket, :error, "login to invite")}
+
+      room.owner_id != owner_id or not room.is_private ->
+        {:noreply, put_flash(socket, :error, "only owners can invite to private spaces")}
+
+      true ->
+        user = Social.get_user_by_username(username)
+
+        cond do
+          is_nil(user) ->
+            {:noreply, put_flash(socket, :error, "user not found")}
+
+          Social.can_access_room?(room, user.id) ->
+            {:noreply, put_flash(socket, :info, "@#{user.username} is already a member")}
+
+          true ->
+            case Social.add_room_member(room.id, user.id, "member", owner_id) do
+              {:ok, _member} ->
+                {:noreply,
+                 socket
+                 |> put_flash(:info, "@#{user.username} added to space")
+                 |> assign(:room_invite_username, "")}
+
+              {:error, _} ->
+                {:noreply, put_flash(socket, :error, "failed to add user")}
+            end
+        end
+    end
+  end
+
+  def handle_event("set_network_filter", %{"filter" => filter}, socket)
+      when filter in ["trusted", "all"] do
+    socket = assign(socket, :network_filter, filter)
+
+    if socket.assigns.feed_mode == "friends" do
+      case socket.assigns.current_user do
+        nil ->
+          {:noreply, put_flash(socket, :error, "register to see your network")}
+
+        user ->
+          {photos, notes} =
+            case filter do
+              "all" ->
+                {Social.list_public_photos(@initial_batch, offset: 0),
+                 Social.list_public_notes(@initial_batch, offset: 0)}
+
+              _ ->
+                {Social.list_friends_photos(user.id, @initial_batch, offset: 0),
+                 Social.list_friends_notes(user.id, @initial_batch, offset: 0)}
+            end
+
+          items = build_items(photos, notes)
+          no_more = length(items) < @initial_batch
+
+          {:noreply,
+           socket
+           |> assign(:item_count, length(items))
+           |> assign(:no_more_items, no_more)
+           |> assign(:photo_order, photo_ids(items))
+           |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("join_room", %{"code" => code}, socket) do
     code = code |> String.trim() |> String.downcase() |> String.replace(~r/[^a-z0-9-]/, "")
 
@@ -2252,8 +2437,16 @@ defmodule FriendsWeb.HomeLive do
             trusted_friends = Social.list_trusted_friends(user.id)
             outgoing_trusts = Social.list_sent_trust_requests(user.id)
 
-            photos = Social.list_friends_photos(user.id, @initial_batch, offset: 0)
-            notes = Social.list_friends_notes(user.id, @initial_batch, offset: 0)
+            {photos, notes} =
+              case socket.assigns.network_filter do
+                "all" ->
+                  {Social.list_public_photos(@initial_batch, offset: 0),
+                   Social.list_public_notes(@initial_batch, offset: 0)}
+
+                _ ->
+                  {Social.list_friends_photos(user.id, @initial_batch, offset: 0),
+                   Social.list_friends_notes(user.id, @initial_batch, offset: 0)}
+              end
             items = build_items(photos, notes)
             no_more = length(items) < @initial_batch
 
@@ -2286,8 +2479,16 @@ defmodule FriendsWeb.HomeLive do
             case socket.assigns.current_user do
               nil -> {[], true}
               user ->
-                photos = Social.list_friends_photos(user.id, batch, offset: offset)
-                notes = Social.list_friends_notes(user.id, batch, offset: offset)
+                {photos, notes} =
+                  case socket.assigns.network_filter do
+                    "all" ->
+                      {Social.list_public_photos(batch, offset: offset),
+                       Social.list_public_notes(batch, offset: offset)}
+
+                    _ ->
+                      {Social.list_friends_photos(user.id, batch, offset: offset),
+                       Social.list_friends_notes(user.id, batch, offset: offset)}
+                  end
                 items = build_items(photos, notes)
                 {items, length(items) < batch}
             end

@@ -356,8 +356,8 @@ const Hooks = {
     
     RegisterApp: {
         async mounted() {
-            // Check WebAuthn availability first
-            const webauthnAvailable = isWebAuthnSupported() && await isPlatformAuthenticatorAvailable()
+            // Check WebAuthn availability first (don't hide on lack of platform auth)
+            const webauthnAvailable = isWebAuthnSupported()
             console.log('[RegisterApp] WebAuthn available:', webauthnAvailable)
             this.pushEvent("webauthn_available", { available: webauthnAvailable })
 
@@ -523,6 +523,39 @@ const Hooks = {
                     this.pushEvent("import_result", { success: false })
                 }
             })
+        }
+    },
+
+    // Locks body scroll while a modal overlay is mounted
+    LockScroll: {
+        mounted() {
+            this._original = document.body.style.overflow
+            document.body.style.overflow = 'hidden'
+        },
+        destroyed() {
+            document.body.style.overflow = this._original || ''
+        }
+    },
+
+    CopyToClipboard: {
+        mounted() {
+            this.handleClick = async (event) => {
+                event.preventDefault()
+                const text = this.el.dataset.copy || this.el.getAttribute('data-copy')
+                if (!text) return
+                try {
+                    await navigator.clipboard.writeText(text)
+                    console.log('[CopyToClipboard] copied', text)
+                } catch (e) {
+                    console.error('[CopyToClipboard] failed to copy', e)
+                }
+            }
+            this.el.addEventListener('click', this.handleClick)
+        },
+        destroyed() {
+            if (this.handleClick) {
+                this.el.removeEventListener('click', this.handleClick)
+            }
         }
     },
 

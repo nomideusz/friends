@@ -432,6 +432,48 @@ defmodule Friends.Social do
     friend_ids
   end
 
+  @doc """
+  List public photos (from public rooms only)
+  """
+  def list_public_photos(limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+
+    Photo
+    |> join(:inner, [p], r in Room, on: p.room_id == r.id and r.is_private == false)
+    |> order_by([p, _r], desc: p.uploaded_at)
+    |> limit(^limit)
+    |> offset(^offset_val)
+    |> select([p, _r], %{
+      id: p.id,
+      user_id: p.user_id,
+      user_color: p.user_color,
+      user_name: p.user_name,
+      thumbnail_data: p.thumbnail_data,
+      content_type: p.content_type,
+      file_size: p.file_size,
+      description: p.description,
+      uploaded_at: p.uploaded_at,
+      room_id: p.room_id,
+      inserted_at: p.inserted_at,
+      updated_at: p.updated_at
+    })
+    |> Repo.all()
+  end
+
+  @doc """
+  List public notes (from public rooms only)
+  """
+  def list_public_notes(limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+
+    Note
+    |> join(:inner, [n], r in Room, on: n.room_id == r.id and r.is_private == false)
+    |> order_by([n, _r], desc: n.inserted_at)
+    |> limit(^limit)
+    |> offset(^offset_val)
+    |> Repo.all()
+  end
+
   def get_note(id), do: Repo.get(Note, id)
 
   def create_note(attrs, room_code) do
@@ -1261,8 +1303,6 @@ defmodule Friends.Social do
   end
 
   # --- WebAuthn (Hardware Keys / Biometrics) ---
-
-  alias Friends.Social.WebAuthnCredential
 
   # --- WebAuthn Functions (delegated to Friends.WebAuthn) ---
   # These delegate to the proper WebAuthn implementation module

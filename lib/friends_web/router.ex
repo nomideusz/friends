@@ -18,6 +18,8 @@ defmodule FriendsWeb.Router do
   scope "/", FriendsWeb do
     pipe_through :browser
 
+    get "/r/public-square", RedirectController, :public_square
+
     live "/", HomeLive, :index
     live "/login", LoginLive, :index
     live "/register", RegisterLive, :index

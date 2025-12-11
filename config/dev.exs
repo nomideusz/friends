@@ -45,4 +45,6 @@ config :phoenix_live_view,
 
 # WebAuthn RPID for development
 config :friends, :webauthn_rp_id, "localhost"
+# WebAuthn origin for dev server (matches Bandit on port 4001)
+config :friends, :webauthn_origin, "http://localhost:4001"
 
