@@ -12,6 +12,9 @@ defmodule FriendsWeb.RegisterLive do
      |> assign(:display_name, "")
      |> assign(:public_key, nil)
      |> assign(:crypto_ready, false)
+     |> assign(:webauthn_available, false)
+     |> assign(:auth_method, nil)
+     |> assign(:webauthn_challenge, nil)
      |> assign(:error, nil)
      |> assign(:username_available, nil)
      |> assign(:checking_username, false)}
@@ -50,6 +53,7 @@ defmodule FriendsWeb.RegisterLive do
     admin_code = admin_invite_code()
 
     cond do
+      # Admin code or empty with admin code configured
       admin_code && (trimmed == "" || trimmed == admin_code) ->
         {:noreply,
          socket
@@ -57,6 +61,15 @@ defmodule FriendsWeb.RegisterLive do
          |> assign(:step, :username)
          |> assign(:error, nil)}
 
+      # Empty invite code - open registration
+      trimmed == "" ->
+        {:noreply,
+         socket
+         |> assign(:invite_code, "")
+         |> assign(:step, :username)
+         |> assign(:error, nil)}
+
+      # Validate provided invite code
       true ->
         case Social.validate_invite(trimmed) do
           {:ok, _invite} ->
@@ -73,6 +86,80 @@ defmodule FriendsWeb.RegisterLive do
             {:noreply, assign(socket, :error, "invite code expired")}
         end
     end
+  end
+
+  @impl true
+  def handle_event("webauthn_available", %{"available" => available}, socket) do
+    {:noreply, assign(socket, :webauthn_available, available)}
+  end
+
+  @impl true
+  def handle_event("choose_auth_method", %{"method" => method}, socket) do
+    {:noreply, assign(socket, :auth_method, method)}
+  end
+
+  @impl true
+  def handle_event("start_webauthn_registration", _params, socket) do
+    # Generate a temporary user struct for challenge generation
+    username = socket.assigns.username
+    temp_user = %{id: 0, username: username, display_name: socket.assigns.display_name}
+    challenge_options = Social.generate_webauthn_registration_challenge(temp_user)
+
+    {:noreply,
+     socket
+     |> assign(:webauthn_challenge, challenge_options.challenge)
+     |> push_event("webauthn_register_challenge", %{options: challenge_options})}
+  end
+
+  @impl true
+  def handle_event("webauthn_register_response", %{"credential" => credential_data}, socket) do
+    %{
+      username: username,
+      display_name: display_name,
+      invite_code: invite_code,
+      webauthn_challenge: challenge
+    } = socket.assigns
+
+    # Create user without public_key (WebAuthn-only user)
+    attrs = %{
+      username: username,
+      display_name: if(display_name == "", do: nil, else: display_name),
+      public_key: nil,
+      invite_code: invite_code
+    }
+
+    case Social.register_user(attrs) do
+      {:ok, user} ->
+        # Now register the WebAuthn credential for this user
+        case Social.verify_and_store_webauthn_credential(user.id, credential_data, challenge) do
+          {:ok, _credential} ->
+            {:noreply,
+             socket
+             |> assign(:step, :complete)
+             |> assign(:user, user)
+             |> push_event("registration_complete", %{user: %{id: user.id, username: user.username}})}
+
+          {:error, reason} ->
+            # Rollback user creation on WebAuthn failure
+            Friends.Repo.delete(user)
+            {:noreply, assign(socket, :error, "WebAuthn registration failed: #{inspect(reason)}")}
+        end
+
+      {:error, :invalid_invite} ->
+        {:noreply, assign(socket, :error, "invite code is no longer valid")}
+
+      {:error, changeset} ->
+        error =
+          changeset.errors
+          |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
+          |> Enum.join(", ")
+        {:noreply, assign(socket, :error, error)}
+    end
+  end
+
+  @impl true
+  def handle_event("webauthn_register_error", %{"error" => error}, socket) do
+    {:noreply, assign(socket, :error, "WebAuthn error: #{error}")}
   end
 
   @impl true
@@ -183,14 +270,11 @@ defmodule FriendsWeb.RegisterLive do
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">friends</h1>
               <p class="text-neutral-500 text-sm">a network that requires friends</p>
-              <%= if not @crypto_ready do %>
-                <p class="text-amber-600 text-xs mt-2">initializing crypto...</p>
-              <% end %>
             </div>
 
             <form phx-submit="check_invite" class="space-y-4">
               <div>
-                <label class="block text-xs text-neutral-500 mb-2">invite code</label>
+                <label class="block text-xs text-neutral-500 mb-2">invite code (optional)</label>
                 <input
                   type="text"
                   name="invite_code"
@@ -201,6 +285,7 @@ defmodule FriendsWeb.RegisterLive do
                   autofocus
                   class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 font-mono"
                 />
+                <p class="mt-1 text-xs text-neutral-600">have an invite? enter it for automatic trusted friend connection</p>
               </div>
 
               <%= if @error do %>
@@ -209,21 +294,16 @@ defmodule FriendsWeb.RegisterLive do
 
               <button
                 type="submit"
-                disabled={admin_invite_code() == nil and String.trim(@invite_code) == ""}
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 cursor-pointer"
               >
                 continue
               </button>
             </form>
 
-            <p class="mt-8 text-center text-xs text-neutral-600">
-              no invite? ask a friend who's already here
-            </p>
-
-            <button 
+            <button
               type="button"
               phx-click="clear_identity"
-              class="mt-4 text-center text-xs text-amber-600/50 hover:text-amber-500 cursor-pointer w-full"
+              class="mt-8 text-center text-xs text-amber-600/50 hover:text-amber-500 cursor-pointer w-full"
             >
               trouble logging in? clear identity & start fresh
             </button>
@@ -234,7 +314,7 @@ defmodule FriendsWeb.RegisterLive do
               <p class="text-neutral-500 text-sm">this is how friends will find you</p>
             </div>
 
-            <form phx-submit="register" class="space-y-4">
+            <div class="space-y-4">
               <div>
                 <label class="block text-xs text-neutral-500 mb-2">username</label>
                 <div class="relative">
@@ -278,21 +358,63 @@ defmodule FriendsWeb.RegisterLive do
                 <p class="text-red-500 text-xs">{@error}</p>
               <% end %>
 
-              <%= if not @crypto_ready do %>
-                <div class="w-full px-4 py-3 bg-neutral-800 text-neutral-500 text-center">
-                  initializing crypto...
+              <%= if @username_available == true do %>
+                <div>
+                  <label class="block text-xs text-neutral-500 mb-3">choose how to secure your account</label>
+                  <div class="space-y-2">
+                    <%!-- WebAuthn option --%>
+                    <%= if @webauthn_available do %>
+                      <button
+                        type="button"
+                        phx-click="start_webauthn_registration"
+                        class="w-full p-4 bg-neutral-900 border border-neutral-800 hover:border-green-600 text-left transition-colors cursor-pointer group"
+                      >
+                        <div class="flex items-center gap-3">
+                          <span class="text-2xl">🔐</span>
+                          <div>
+                            <div class="text-white font-medium group-hover:text-green-400 transition-colors">Hardware Key / Biometrics</div>
+                            <div class="text-xs text-neutral-500">Touch ID, Face ID, or security key (recommended)</div>
+                          </div>
+                        </div>
+                      </button>
+                    <% end %>
+
+                    <%!-- Browser crypto option --%>
+                    <%= if @crypto_ready do %>
+                      <form phx-submit="register">
+                        <button
+                          type="submit"
+                          class="w-full p-4 bg-neutral-900 border border-neutral-800 hover:border-blue-600 text-left transition-colors cursor-pointer group"
+                          phx-disable-with="creating..."
+                        >
+                          <div class="flex items-center gap-3">
+                            <span class="text-2xl">🔑</span>
+                            <div>
+                              <div class="text-white font-medium group-hover:text-blue-400 transition-colors">Browser Key</div>
+                              <div class="text-xs text-neutral-500">Key stored in this browser's storage</div>
+                            </div>
+                          </div>
+                        </button>
+                      </form>
+                    <% else %>
+                      <div class="w-full p-4 bg-neutral-900 border border-neutral-800 text-neutral-500">
+                        <div class="flex items-center gap-3">
+                          <span class="text-2xl opacity-50">🔑</span>
+                          <div>
+                            <div class="font-medium">Browser Key</div>
+                            <div class="text-xs">initializing crypto...</div>
+                          </div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
                 </div>
               <% else %>
-                <button
-                  type="submit"
-                  disabled={@username_available != true}
-                  class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  phx-disable-with="creating..."
-                >
-                  create account
-                </button>
+                <div class="w-full px-4 py-3 bg-neutral-800 text-neutral-500 text-center text-sm">
+                  enter a valid username to continue
+                </div>
               <% end %>
-            </form>
+            </div>
 
             <button
               type="button"
@@ -306,7 +428,7 @@ defmodule FriendsWeb.RegisterLive do
             <div class="text-center">
               <div class="text-4xl mb-4">✓</div>
               <h1 class="text-2xl font-medium text-white mb-2">welcome, {@user.username}</h1>
-              <p class="text-neutral-500 text-sm mb-8">your identity is secured by cryptography</p>
+              <p class="text-neutral-500 text-sm mb-8">your identity is secured</p>
 
               <a
                 href="/"
@@ -320,7 +442,6 @@ defmodule FriendsWeb.RegisterLive do
                 <ul class="text-xs text-neutral-400 space-y-1">
                   <li>• add 4-5 trusted friends for account recovery</li>
                   <li>• share your invite codes with friends</li>
-                  <li>• your key is stored in this browser</li>
                 </ul>
               </div>
             </div>

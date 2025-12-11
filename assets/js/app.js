@@ -356,6 +356,11 @@ const Hooks = {
     
     RegisterApp: {
         async mounted() {
+            // Check WebAuthn availability first
+            const webauthnAvailable = isWebAuthnSupported() && await isPlatformAuthenticatorAvailable()
+            console.log('[RegisterApp] WebAuthn available:', webauthnAvailable)
+            this.pushEvent("webauthn_available", { available: webauthnAvailable })
+
             // Initialize crypto identity and send public key to server
             try {
                 console.log('[RegisterApp] Initializing crypto identity...')
@@ -366,23 +371,36 @@ const Hooks = {
                     this.pushEvent("crypto_init_failed", {
                         error: "Failed to initialize cryptographic identity"
                     })
-                    return
+                } else {
+                    console.log('[RegisterApp] Crypto initialized, public key:', result.publicKey.x?.substring(0, 10) + '...')
+                    this.pushEvent("set_public_key", {
+                        public_key: result.publicKey
+                    })
+                    console.log('[RegisterApp] Public key sent to server')
                 }
-
-                console.log('[RegisterApp] Crypto initialized, public key:', result.publicKey.x?.substring(0, 10) + '...')
-
-                this.pushEvent("set_public_key", {
-                    public_key: result.publicKey
-                })
-
-                console.log('[RegisterApp] Public key sent to server')
             } catch (error) {
                 console.error('[RegisterApp] Error initializing crypto:', error)
                 this.pushEvent("crypto_init_failed", {
                     error: error.message || "Unknown error during initialization"
                 })
-                return
             }
+
+            // Handle WebAuthn registration challenge
+            this.handleEvent("webauthn_register_challenge", async ({ options }) => {
+                try {
+                    console.log('[RegisterApp] WebAuthn challenge received, creating credential...')
+                    const credential = await registerCredential(options)
+                    console.log('[RegisterApp] WebAuthn credential created, sending to server...')
+                    this.pushEvent("webauthn_register_response", { credential })
+                } catch (error) {
+                    console.error('[RegisterApp] WebAuthn registration failed:', error)
+                    this.pushEvent("webauthn_register_error", {
+                        error: error.name === 'NotAllowedError'
+                            ? 'Registration cancelled'
+                            : error.message || 'Unknown error'
+                    })
+                }
+            })
 
             // Handle registration success
             this.handleEvent("registration_complete", ({ user }) => {
