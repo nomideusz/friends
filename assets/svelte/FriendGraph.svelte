@@ -1,9 +1,9 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
   import { Network } from 'vis-network'
   import { DataSet } from 'vis-data'
 
-  // Props from Phoenix LiveView (new structure)
+  // Props from Phoenix LiveView
   export let graphData = null
   export let live = null
 
@@ -11,15 +11,16 @@
   let network = null
   let nodesDataSet = null
   let edgesDataSet = null
+  let error = null
 
   // Edge colors by type
   const edgeColors = {
-    trusted: '#60a5fa',      // blue - I trust them
-    trusts_me: '#a78bfa',    // purple - they trust me
-    mutual: '#ffffff',       // white - mutual trust
-    pending_outgoing: '#fbbf24', // yellow - pending I sent
-    pending_incoming: '#fbbf24', // yellow - pending they sent
-    invited: '#f472b6'       // pink - invite relationship
+    trusted: '#60a5fa',
+    trusts_me: '#a78bfa',
+    mutual: '#ffffff',
+    pending_outgoing: '#fbbf24',
+    pending_incoming: '#fbbf24',
+    invited: '#f472b6'
   }
 
   // Network options
@@ -36,9 +37,7 @@
       shadow: {
         enabled: true,
         color: 'rgba(0,0,0,0.5)',
-        size: 10,
-        x: 0,
-        y: 0
+        size: 10
       }
     },
     edges: {
@@ -75,33 +74,29 @@
       hideEdgesOnDrag: true,
       zoomView: true,
       dragView: true
-    },
-    layout: {
-      improvedLayout: true
     }
   }
 
   function buildGraphData() {
-    if (!graphData) return { nodes: [], edges: [] }
+    if (!graphData || !graphData.nodes) return { nodes: [], edges: [] }
 
     const nodes = []
     const edges = []
-
-    // Track which edges are mutual
     const mutualPairs = new Set()
 
     // Find mutual relationships
-    graphData.edges.forEach(edge => {
-      if (edge.type === 'trusted') {
-        // Check if there's a reverse trusts_me edge
-        const hasMutual = graphData.edges.some(e =>
-          e.type === 'trusts_me' && e.from === edge.to && e.to === edge.from
-        )
-        if (hasMutual) {
-          mutualPairs.add(`${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`)
+    if (graphData.edges) {
+      graphData.edges.forEach(edge => {
+        if (edge.type === 'trusted') {
+          const hasMutual = graphData.edges.some(e =>
+            e.type === 'trusts_me' && e.from === edge.to && e.to === edge.from
+          )
+          if (hasMutual) {
+            mutualPairs.add(`${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`)
+          }
         }
-      }
-    })
+      })
+    }
 
     // Build nodes
     graphData.nodes.forEach(node => {
@@ -112,14 +107,8 @@
         color: {
           background: node.color || '#888888',
           border: isSelf ? '#ffffff' : 'rgba(255,255,255,0.5)',
-          highlight: {
-            background: node.color || '#888888',
-            border: '#ffffff'
-          },
-          hover: {
-            background: node.color || '#888888',
-            border: 'rgba(255,255,255,0.8)'
-          }
+          highlight: { background: node.color || '#888888', border: '#ffffff' },
+          hover: { background: node.color || '#888888', border: 'rgba(255,255,255,0.8)' }
         },
         title: `@${node.username}`,
         size: isSelf ? 35 : 25,
@@ -128,118 +117,111 @@
     })
 
     // Build edges
-    graphData.edges.forEach((edge, index) => {
-      const pairKey = `${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`
-      const isMutual = mutualPairs.has(pairKey) && (edge.type === 'trusted' || edge.type === 'trusts_me')
+    if (graphData.edges) {
+      graphData.edges.forEach((edge, index) => {
+        const pairKey = `${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`
+        const isMutual = mutualPairs.has(pairKey) && (edge.type === 'trusted' || edge.type === 'trusts_me')
 
-      // Skip trusts_me edges for mutual relationships (we'll use the trusted edge)
-      if (edge.type === 'trusts_me' && mutualPairs.has(pairKey)) {
-        return
-      }
-
-      const isPending = edge.type === 'pending_outgoing' || edge.type === 'pending_incoming'
-      const color = isMutual ? edgeColors.mutual : edgeColors[edge.type] || 'rgba(255,255,255,0.3)'
-
-      edges.push({
-        id: `edge-${index}`,
-        from: edge.from,
-        to: edge.to,
-        color: {
-          color: color,
-          highlight: '#ffffff',
-          hover: color
-        },
-        dashes: isPending ? [5, 5] : false,
-        width: isMutual ? 3 : 2,
-        arrows: isMutual ? undefined : {
-          to: {
-            enabled: true,
-            scaleFactor: 0.5
-          }
+        if (edge.type === 'trusts_me' && mutualPairs.has(pairKey)) {
+          return
         }
+
+        const isPending = edge.type === 'pending_outgoing' || edge.type === 'pending_incoming'
+        const color = isMutual ? edgeColors.mutual : edgeColors[edge.type] || 'rgba(255,255,255,0.3)'
+
+        edges.push({
+          id: `edge-${index}`,
+          from: edge.from,
+          to: edge.to,
+          color: { color, highlight: '#ffffff', hover: color },
+          dashes: isPending ? [5, 5] : false,
+          width: isMutual ? 3 : 2,
+          arrows: isMutual ? undefined : { to: { enabled: true, scaleFactor: 0.5 } }
+        })
       })
-    })
+    }
 
     return { nodes, edges }
   }
 
-  function initNetwork() {
-    if (!container || !graphData) return
-
-    const { nodes, edges } = buildGraphData()
-
-    nodesDataSet = new DataSet(nodes)
-    edgesDataSet = new DataSet(edges)
-
-    const data = {
-      nodes: nodesDataSet,
-      edges: edgesDataSet
-    }
-
-    network = new Network(container, data, options)
-
-    // Handle node click events
-    network.on('click', params => {
-      if (params.nodes.length > 0) {
-        const nodeId = params.nodes[0]
-        const currentUserId = graphData?.current_user?.id
-        if (live && nodeId !== currentUserId) {
-          live.pushEvent('node_clicked', { user_id: nodeId })
-        }
-      }
-    })
-
-    // Handle double-click to focus on a node
-    network.on('doubleClick', params => {
-      if (params.nodes.length > 0) {
-        network.focus(params.nodes[0], {
-          scale: 1.5,
-          animation: {
-            duration: 500,
-            easingFunction: 'easeInOutQuad'
-          }
-        })
-      }
-    })
-
-    // Fit the network to view once stabilized
-    network.once('stabilizationIterationsDone', () => {
-      network.fit({
-        animation: {
-          duration: 500,
-          easingFunction: 'easeInOutQuad'
-        }
-      })
-    })
-  }
-
-  function updateNetwork() {
-    if (!network || !nodesDataSet || !edgesDataSet) {
-      initNetwork()
+  async function initNetwork() {
+    if (!container) {
+      console.error('[FriendGraph] No container')
       return
     }
 
-    const { nodes, edges } = buildGraphData()
+    if (!graphData) {
+      console.error('[FriendGraph] No graphData')
+      return
+    }
 
-    // Update nodes
-    const currentNodeIds = nodesDataSet.getIds()
-    const newNodeIds = nodes.map(n => n.id)
+    try {
+      // Wait for DOM to be ready
+      await tick()
 
-    const nodesToRemove = currentNodeIds.filter(id => !newNodeIds.includes(id))
-    nodesDataSet.remove(nodesToRemove)
-    nodesDataSet.update(nodes)
+      // Ensure container has dimensions
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        console.warn('[FriendGraph] Container has no dimensions, retrying...')
+        setTimeout(initNetwork, 100)
+        return
+      }
 
-    // Update edges
-    const currentEdgeIds = edgesDataSet.getIds()
-    const newEdgeIds = edges.map(e => e.id)
+      const { nodes, edges } = buildGraphData()
 
-    const edgesToRemove = currentEdgeIds.filter(id => !newEdgeIds.includes(id))
-    edgesDataSet.remove(edgesToRemove)
-    edgesDataSet.update(edges)
+      console.log('[FriendGraph] Initializing with', nodes.length, 'nodes and', edges.length, 'edges')
+
+      if (nodes.length === 0) {
+        error = 'No nodes to display'
+        return
+      }
+
+      nodesDataSet = new DataSet(nodes)
+      edgesDataSet = new DataSet(edges)
+
+      const data = { nodes: nodesDataSet, edges: edgesDataSet }
+
+      // Destroy existing network if any
+      if (network) {
+        network.destroy()
+      }
+
+      network = new Network(container, data, options)
+
+      network.on('click', params => {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0]
+          const currentUserId = graphData?.current_user?.id
+          if (live && nodeId !== currentUserId) {
+            live.pushEvent('node_clicked', { user_id: nodeId })
+          }
+        }
+      })
+
+      network.on('doubleClick', params => {
+        if (params.nodes.length > 0) {
+          network.focus(params.nodes[0], {
+            scale: 1.5,
+            animation: { duration: 500, easingFunction: 'easeInOutQuad' }
+          })
+        }
+      })
+
+      network.once('stabilizationIterationsDone', () => {
+        network.fit({
+          animation: { duration: 500, easingFunction: 'easeInOutQuad' }
+        })
+      })
+
+      error = null
+    } catch (e) {
+      console.error('[FriendGraph] Error initializing network:', e)
+      error = e.message
+    }
   }
 
   onMount(() => {
-    initNetwork()
+    // Small delay to ensure container is rendered
+    setTimeout(initNetwork, 50)
   })
 
   onDestroy(() => {
@@ -249,19 +231,19 @@
     }
   })
 
-  // Reactive updates when graphData changes
-  $: if (container && graphData) {
-    updateNetwork()
+  // Reactive updates
+  $: if (container && graphData && !network) {
+    initNetwork()
   }
 </script>
 
 <div
   bind:this={container}
-  class="w-full h-full min-h-[500px] bg-transparent"
+  style="width: 100%; height: 500px; min-height: 500px;"
 ></div>
 
-<style>
-  div {
-    position: relative;
-  }
-</style>
+{#if error}
+  <div class="absolute inset-0 flex items-center justify-center text-red-400 text-sm">
+    Error: {error}
+  </div>
+{/if}
