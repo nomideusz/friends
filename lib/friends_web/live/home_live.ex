@@ -373,6 +373,7 @@ defmodule FriendsWeb.HomeLive do
           <% end %>
 
           <%!-- Actions --%>
+          <%= if not @room_access_denied do %>
           <div class="flex items-center gap-4 mb-10">
             <%= if @current_user do %>
               <form id="upload-form" phx-change="validate" phx-submit="save">
@@ -395,24 +396,28 @@ defmodule FriendsWeb.HomeLive do
                 </label>
                 <.live_file_input upload={@uploads.photo} class="sr-only" />
               </form>
+
+              <button
+                type="button"
+                phx-click="open_note_modal"
+                class="px-6 py-3 text-sm glass border border-white/10 text-neutral-300 hover:border-white/20 hover:text-white transition-all cursor-pointer rounded-xl"
+              >
+                write note
+              </button>
             <% else %>
               <div class="px-6 py-3 text-sm glass border border-white/5 text-neutral-500 rounded-xl cursor-not-allowed">
                 share photo
               </div>
+              <div class="px-6 py-3 text-sm glass border border-white/5 text-neutral-500 rounded-xl cursor-not-allowed">
+                write note
+              </div>
             <% end %>
-
-            <button
-              type="button"
-              phx-click="open_note_modal"
-              class="px-6 py-3 text-sm glass border border-white/10 text-neutral-300 hover:border-white/20 hover:text-white transition-all cursor-pointer rounded-xl"
-            >
-              write note
-            </button>
 
             <div class="flex-1" />
 
             <span class="text-xs text-neutral-600">{@item_count} items</span>
           </div>
+          <% end %>
 
           <%!-- Upload progress --%>
           <%= for entry <- @uploads.photo.entries do %>
@@ -1831,7 +1836,12 @@ defmodule FriendsWeb.HomeLive do
 
   # Note events
   def handle_event("open_note_modal", _params, socket) do
-    {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "")}
+    # Only registered users can open note modal
+    if socket.assigns.current_user && not socket.assigns.room_access_denied do
+      {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "")}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("close_note_modal", _params, socket) do
@@ -1845,7 +1855,8 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("save_note", %{"content" => content}, socket) do
     content = String.trim(content)
 
-    if content != "" && socket.assigns.user_id do
+    # Only registered users can create notes
+    if content != "" && socket.assigns.current_user && not socket.assigns.room_access_denied do
       case Social.create_note(
              %{
                user_id: socket.assigns.user_id,
@@ -2432,8 +2443,8 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_progress(:photo, entry, socket) when entry.done? do
-    # Don't allow uploads from anonymous users
-    if is_nil(socket.assigns.user_id) do
+    # Only registered users with room access can upload
+    if is_nil(socket.assigns.current_user) or socket.assigns.room_access_denied do
       {:noreply, put_flash(socket, :error, "Please register to upload photos")}
     else
       [photo_result] =
