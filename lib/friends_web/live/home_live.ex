@@ -567,97 +567,130 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
-            <div class="w-full max-w-lg mx-4 glass-strong rounded-2xl p-4 sm:p-6 md:p-8 opal-glow">
-              <div class="flex items-center justify-between mb-6 sm:mb-8">
-                <h2 id="room-modal-title" class="text-base font-medium tracking-wide opal-text">spaces</h2>
-                <button type="button" phx-click="close_room_modal" class="w-11 h-11 flex items-center justify-center text-neutral-500 hover:text-white cursor-pointer text-2xl transition-colors" aria-label="Close spaces dialog">×</button>
-              </div>
-
-              <%!-- Current Location --%>
-              <div class="mb-8 p-4 glass rounded-xl border border-white/10">
-                <div class="text-xs text-neutral-500 mb-1">you are here</div>
-                <div class="flex items-center gap-2">
-                  <%= if @room.is_private do %>
-                    <span class="text-green-500">🔒</span>
-                  <% else %>
-                    <span class="text-blue-400">◉</span>
-                  <% end %>
-                  <span class="text-white font-medium">{@room.name || @room.code}</span>
-                  <span class="text-neutral-600 text-xs ml-auto">{length(@viewers)} here</span>
-                </div>
-              </div>
-
-              <%!-- Public Square (always first) --%>
-              <%= if @room.code != "lobby" do %>
-                <button
-                  type="button"
-                  phx-click="go_to_public_square"
-                  class="w-full mb-4 p-3 bg-blue-500/10 border border-blue-500/30 text-left hover:bg-blue-500/20 transition-colors cursor-pointer"
-                >
-                  <div class="flex items-center gap-2">
-                    <span class="text-blue-400">◉</span>
-                    <span class="text-blue-400 font-medium">public square</span>
-                    <span class="text-neutral-600 text-xs ml-auto">the commons</span>
-                  </div>
+          <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title">
+            <div class="w-full sm:max-w-md sm:mx-4 bg-neutral-900 sm:rounded-2xl rounded-t-2xl border-t sm:border border-neutral-800 shadow-2xl max-h-[85vh] flex flex-col">
+              <%!-- Header --%>
+              <div class="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
+                <h2 id="room-modal-title" class="text-lg font-semibold text-white">Spaces</h2>
+                <button type="button" phx-click="close_room_modal" class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all" aria-label="Close">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
-              <% end %>
+              </div>
 
-              <%!-- Public Rooms Directory --%>
-              <%= if @public_rooms != [] do %>
-                <div class="mb-4">
-                  <div class="text-xs text-neutral-500 mb-2 flex items-center gap-2">
-                    <span>public spaces</span>
-                    <span class="flex-1 border-t border-neutral-800"></span>
+              <%!-- Content - scrollable --%>
+              <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <%!-- Current Location --%>
+                <div class="p-4 bg-neutral-800/50 rounded-xl">
+                  <div class="text-xs text-neutral-500 uppercase tracking-wider mb-2">Current space</div>
+                  <div class="flex items-center gap-3">
+                    <div class={[
+                      "w-10 h-10 rounded-xl flex items-center justify-center text-lg",
+                      @room.is_private && "bg-green-500/20",
+                      !@room.is_private && "bg-blue-500/20"
+                    ]}>
+                      <%= if @room.is_private do %>
+                        <span>🔒</span>
+                      <% else %>
+                        <span>🌐</span>
+                      <% end %>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-white font-medium truncate">{@room.name || @room.code}</div>
+                      <div class="text-xs text-neutral-500">{length(@viewers)} viewing now</div>
+                    </div>
                   </div>
-                  <div class="space-y-1 max-h-40 overflow-y-auto">
-                    <%= for room <- @public_rooms do %>
-                      <%= if room.code != "lobby" && room.code != @room.code do %>
+                </div>
+
+                <%!-- Quick Navigation --%>
+                <%= if @room.code != "lobby" do %>
+                  <button
+                    type="button"
+                    phx-click="go_to_public_square"
+                    class="w-full p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-left hover:bg-blue-500/20 hover:border-blue-500/30 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <span class="text-lg">🏛️</span>
+                      </div>
+                      <div>
+                        <div class="text-blue-400 font-medium">Public Square</div>
+                        <div class="text-xs text-neutral-500">The main gathering place</div>
+                      </div>
+                    </div>
+                  </button>
+                <% end %>
+
+                <%!-- Private Rooms --%>
+                <%= if @current_user && @user_private_rooms != [] do %>
+                  <div>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="text-xs text-neutral-500 uppercase tracking-wider">Your Private Spaces</span>
+                      <div class="flex-1 border-t border-neutral-800"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <%= for room <- @user_private_rooms do %>
                         <button
                           type="button"
                           phx-click="switch_room"
                           phx-value-code={room.code}
-                          class="w-full text-left px-3 py-2 bg-neutral-900 hover:bg-neutral-800 transition-colors cursor-pointer"
+                          class={[
+                            "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3",
+                            room.code == @room.code && "bg-green-500/20 border border-green-500/30 ring-1 ring-green-500/20",
+                            room.code != @room.code && "bg-neutral-800/50 hover:bg-neutral-800 border border-transparent"
+                          ]}
                         >
-                          <div class="flex items-center justify-between">
-                            <span class="text-neutral-300 text-sm">{room.name || room.code}</span>
-                            <span class="text-neutral-600 text-xs">{room.photo_count + room.note_count} items</span>
+                          <div class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
+                            <span class="text-sm">🔒</span>
                           </div>
+                          <span class={[
+                            "font-medium truncate",
+                            room.code == @room.code && "text-green-400",
+                            room.code != @room.code && "text-neutral-300"
+                          ]}>{room.name || room.code}</span>
+                          <%= if room.code == @room.code do %>
+                            <span class="ml-auto text-xs text-green-500">✓</span>
+                          <% end %>
                         </button>
                       <% end %>
-                    <% end %>
+                    </div>
                   </div>
-                </div>
-              <% end %>
+                <% end %>
 
-              <%!-- Private Rooms --%>
-              <%= if @current_user && @user_private_rooms != [] do %>
-                <div class="mb-4">
-                  <div class="text-xs text-neutral-500 mb-2 flex items-center gap-2">
-                    <span>🔒 your private spaces</span>
-                    <span class="flex-1 border-t border-neutral-800"></span>
+                <%!-- Public Rooms Directory --%>
+                <%= if @public_rooms != [] do %>
+                  <div>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="text-xs text-neutral-500 uppercase tracking-wider">Public Spaces</span>
+                      <div class="flex-1 border-t border-neutral-800"></div>
+                    </div>
+                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                      <%= for room <- @public_rooms do %>
+                        <%= if room.code != "lobby" && room.code != @room.code do %>
+                          <button
+                            type="button"
+                            phx-click="switch_room"
+                            phx-value-code={room.code}
+                            class="w-full p-3 rounded-xl text-left bg-neutral-800/50 hover:bg-neutral-800 transition-all flex items-center gap-3 border border-transparent"
+                          >
+                            <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                              <span class="text-sm">🌐</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="text-neutral-300 font-medium truncate">{room.name || room.code}</div>
+                              <div class="text-xs text-neutral-600">{room.photo_count + room.note_count} items</div>
+                            </div>
+                          </button>
+                        <% end %>
+                      <% end %>
+                    </div>
                   </div>
-                  <div class="space-y-1">
-                    <%= for room <- @user_private_rooms do %>
-                      <button
-                        type="button"
-                        phx-click="switch_room"
-                        phx-value-code={room.code}
-                        class={[
-                          "w-full text-left px-3 py-2 transition-colors cursor-pointer",
-                          room.code == @room.code && "bg-green-500/20 text-green-400 border border-green-500/30",
-                          room.code != @room.code && "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"
-                        ]}
-                      >
-                        {room.name || room.code}
-                      </button>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
+                <% end %>
+              </div>
 
-              <%!-- Actions --%>
-              <div class="pt-4 border-t border-neutral-800 space-y-3">
+              <%!-- Actions - sticky footer --%>
+              <div class="p-4 border-t border-neutral-800 bg-neutral-900 shrink-0 space-y-3">
                 <%!-- Join by code --%>
                 <form phx-submit="join_room" class="flex gap-2">
                   <input
@@ -665,11 +698,11 @@ defmodule FriendsWeb.HomeLive do
                     name="code"
                     value={@join_code}
                     phx-change="update_join_code"
-                    placeholder="enter room code..."
-                    class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+                    placeholder="Enter room code..."
+                    class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                   />
-                  <button type="submit" phx-disable-with="..." class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 cursor-pointer disabled:opacity-50">
-                    go
+                  <button type="submit" phx-disable-with="..." class="px-5 py-3 bg-white text-black text-sm font-medium rounded-xl hover:bg-neutral-200 transition-colors disabled:opacity-50">
+                    Join
                   </button>
                 </form>
 
@@ -679,22 +712,26 @@ defmodule FriendsWeb.HomeLive do
                     type="text"
                     name="name"
                     value={@new_room_name}
-                    placeholder="create new space..."
-                    class="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+                    placeholder="Create new space..."
+                    class="flex-1 px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                   />
-                  <button type="submit" phx-disable-with="..." class="px-4 py-2 border border-neutral-700 text-neutral-300 text-sm hover:border-neutral-500 hover:text-white cursor-pointer disabled:opacity-50">
-                    +
+                  <button type="submit" phx-disable-with="..." class="px-5 py-3 border border-neutral-600 text-neutral-300 text-sm font-medium rounded-xl hover:border-neutral-500 hover:text-white hover:bg-neutral-800 transition-all disabled:opacity-50">
+                    Create
                   </button>
                 </form>
+
                 <%= if @current_user do %>
-                  <label class="flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
+                  <label class="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-xl cursor-pointer hover:bg-neutral-800 transition-colors">
                     <input
                       type="checkbox"
                       name="is_private"
                       checked={@create_private_room}
-                      class="accent-green-500"
+                      class="w-5 h-5 rounded border-neutral-600 bg-neutral-700 text-green-500 focus:ring-green-500 focus:ring-offset-0"
                     />
-                    <span>make it private (invite only)</span>
+                    <div>
+                      <div class="text-sm text-neutral-300">Make it private</div>
+                      <div class="text-xs text-neutral-500">Only invited members can access</div>
+                    </div>
                   </label>
                 <% end %>
               </div>
@@ -1344,11 +1381,19 @@ defmodule FriendsWeb.HomeLive do
           user_id = "user-#{user.id}"
           user_name = user.display_name || user.username
 
-          Presence.track_user(self(), room.code, user_id, color, user_name)
-          viewers = Presence.list_users(room.code)
-
           private_rooms = Social.list_user_private_rooms(user.id)
           can_access = Social.can_access_room?(room, user.id)
+
+          # Only track presence and subscribe if user has access
+          viewers =
+            if can_access do
+              Social.subscribe(room.code)
+              Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
+              Presence.track_user(self(), room.code, user_id, color, user_name)
+              Presence.list_users(room.code)
+            else
+              []
+            end
 
           {items, photo_order} =
             if can_access do
