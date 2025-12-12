@@ -896,6 +896,54 @@ const Hooks = {
         }
     },
 
+    // Grid voice recorder - click to toggle recording from the photo/note grid
+    GridVoiceRecorder: {
+        mounted() {
+            this.roomId = this.el.dataset.roomId
+            this.voiceRecorder = null
+            this.isRecording = false
+            
+            this.el.addEventListener('click', async () => {
+                if (this.isRecording) {
+                    // Stop recording
+                    if (this.voiceRecorder) {
+                        this.voiceRecorder.stop()
+                    }
+                    this.isRecording = false
+                    this.pushEvent("stop_room_recording", {})
+                } else {
+                    // Start recording
+                    try {
+                        this.voiceRecorder = new VoiceRecorder()
+                        this.voiceRecorder.onStop = async (blob, durationMs) => {
+                            try {
+                                const { encryptedContent, nonce } = await messageEncryption.encryptVoiceNote(blob, `room-${this.roomId}`)
+                                this.pushEvent("send_room_voice_note", {
+                                    encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
+                                    nonce: messageEncryption.arrayToBase64(nonce),
+                                    duration_ms: durationMs
+                                })
+                            } catch (e) {
+                                console.error("Failed to encrypt grid voice note:", e)
+                            }
+                        }
+                        await this.voiceRecorder.start()
+                        this.isRecording = true
+                        this.pushEvent("start_room_recording", {})
+                    } catch (e) {
+                        console.error("Failed to start voice recording:", e)
+                        alert("Could not access microphone")
+                    }
+                }
+            })
+        },
+        destroyed() {
+            if (this.voiceRecorder && this.isRecording) {
+                this.voiceRecorder.stop()
+            }
+        }
+    },
+
     CopyToClipboard: {
         mounted() {
             this.handleClick = async (event) => {

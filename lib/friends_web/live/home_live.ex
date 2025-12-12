@@ -688,6 +688,24 @@ defmodule FriendsWeb.HomeLive do
                    </div>
                    <span class="text-sm font-medium text-neutral-400 group-hover:text-white">Note</span>
                 </button>
+
+                <%!-- Add Voice Card --%>
+                <button
+                  type="button"
+                  id="grid-voice-record"
+                  phx-hook="GridVoiceRecorder"
+                  data-room-id={@room.id}
+                  class={"group relative aspect-square opal-card rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-amber-500/10 hover:to-orange-500/10 #{if @recording_voice, do: "ring-2 ring-red-500 animate-pulse", else: ""}"}
+                >
+                   <div class={"w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform #{if @recording_voice, do: "bg-red-500", else: "bg-gradient-to-br from-amber-500/30 to-orange-500/30"}"}>
+                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                     </svg>
+                   </div>
+                   <span class={"text-sm font-medium group-hover:text-white #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
+                     <%= if @recording_voice, do: "Recording...", else: "Voice" %>
+                   </span>
+                </button>
               <% end %>
 
 
@@ -789,20 +807,23 @@ defmodule FriendsWeb.HomeLive do
             <%!-- Right: Chat Panel (always visible for private spaces) --%>
             <%= if @room.is_private and not @room_access_denied and @current_user do %>
               <div class="hidden lg:block w-2/5 min-w-[320px] max-w-[500px]">
-                <div class="opal-card rounded-2xl overflow-hidden sticky top-24" style="height: calc(100vh - 180px);">
-                  <%!-- Chat Header - Minimal --%>
-                  <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                <div class="opal-card rounded-2xl overflow-hidden sticky top-16" style="height: calc(100vh - 100px);">
+                  <%!-- Chat Header with Invite --%>
+                  <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                       <span class="font-medium text-sm text-white">Chat</span>
                       <span class="text-[10px] text-emerald-400 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        E2E encrypted
+                        E2E
                       </span>
                     </div>
+                    <button phx-click="open_invite_modal" class="text-xs text-neutral-400 hover:text-white cursor-pointer transition-colors">
+                      + Invite
+                    </button>
                   </div>
 
                   <%!-- Messages --%>
-                  <div id="room-messages-container" class="overflow-y-auto p-3 space-y-3" style="height: calc(100% - 120px);" phx-hook="RoomChatScroll" data-room-id={@room.id}>
+                  <div id="room-messages-container" class="overflow-y-auto p-3 space-y-3" style="height: calc(100% - 110px);" phx-hook="RoomChatScroll" data-room-id={@room.id}>
                     <%= if @room_messages == [] do %>
                       <div class="flex items-center justify-center h-full text-neutral-500">
                         <div class="text-center">

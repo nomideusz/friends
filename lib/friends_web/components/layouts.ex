@@ -64,14 +64,8 @@ defmodule FriendsWeb.Layouts do
             <% end %>
           </div>
 
-          <%!-- Right: Invite + User Profile --%>
-          <div class="flex items-center justify-end gap-4 w-[180px]">
-            <%!-- Invite button for private rooms --%>
-            <%= if @room && @room.is_private && @room.code != "lobby" && @current_user do %>
-              <button phx-click="open_invite_modal" class="text-sm font-medium text-neutral-400 hover:text-white cursor-pointer transition-colors">
-                Invite
-              </button>
-            <% end %>
+          <%!-- Right: User Profile --%>
+          <div class="flex items-center justify-end gap-4 w-[120px]">
             <%= if @auth_status == :pending do %>
               <span class="text-xs text-neutral-500">...</span>
             <% else %>
