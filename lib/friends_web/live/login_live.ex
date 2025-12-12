@@ -152,37 +152,41 @@ defmodule FriendsWeb.LoginLive do
               </div>
 
             <% :webauthn -> %>
-              <div id="webauthn-login" phx-hook="WebAuthnLogin" class="text-center space-y-4">
-                <div class="text-6xl mb-4">🔐</div>
-                <h2 class="text-xl font-medium text-white">Use Your Passkey</h2>
-                <p class="text-neutral-400">
-                  Use your fingerprint, face, or security key to sign in as <span class="text-white font-medium">@<%= @username %></span>
-                </p>
+              <div id="webauthn-login-wrapper" phx-hook="WebAuthnLogin">
+                <div class="text-center space-y-4">
+                  <div class="text-6xl mb-4">🔐</div>
+                  <h2 class="text-xl font-medium text-white">Use Your Passkey</h2>
+                  <p class="text-neutral-400">
+                    Use your fingerprint, face, or security key to sign in as <span class="text-white font-medium">@<%= @username %></span>
+                  </p>
 
-                <div class="pt-4">
-                  <div class="animate-pulse text-neutral-500">Waiting for passkey...</div>
-                </div>
-
-                <%= if @error do %>
-                  <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
-                    <%= @error %>
+                  <div class="pt-4">
+                    <div class="animate-pulse text-neutral-500">Waiting for passkey...</div>
                   </div>
-                <% end %>
 
-                <button
-                  type="button"
-                  phx-click="back"
-                  class="text-sm text-neutral-400 hover:text-white transition-colors"
-                >
-                  ← Back
-                </button>
+                  <%= if @error do %>
+                    <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
+                      <%= @error %>
+                    </div>
+                  <% end %>
+
+                  <button
+                    type="button"
+                    phx-click="back"
+                    class="text-sm text-neutral-400 hover:text-white transition-colors"
+                  >
+                    ← Back
+                  </button>
+                </div>
               </div>
 
             <% :success -> %>
-              <div class="text-center space-y-4">
-                <div class="text-6xl mb-4">✅</div>
-                <h2 class="text-xl font-medium text-white">Login Successful!</h2>
-                <p class="text-neutral-400">Redirecting...</p>
+              <div id="webauthn-login-wrapper" phx-hook="WebAuthnLogin">
+                <div class="text-center space-y-4">
+                  <div class="text-6xl mb-4">✅</div>
+                  <h2 class="text-xl font-medium text-white">Login Successful!</h2>
+                  <p class="text-neutral-400">Redirecting...</p>
+                </div>
               </div>
           <% end %>
         </div>
