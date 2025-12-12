@@ -72,10 +72,20 @@ defmodule Friends.Social do
   def get_room(id), do: Repo.get(Room, id)
 
   def create_room(attrs) do
-    %Room{}
+    result = %Room{}
     |> Room.changeset(attrs)
     |> Repo.insert()
+    
+    # Broadcast to all users so public rooms appear in their dropdowns
+    case result do
+      {:ok, room} when not room.is_private ->
+        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:rooms", {:public_room_created, room})
+        {:ok, room}
+      _ ->
+        result
+    end
   end
+
 
   def generate_room_code do
     words = ~w(swift calm warm cool soft deep wild free bold pure)
@@ -92,8 +102,8 @@ defmodule Friends.Social do
   Create a private room with the user as owner
   """
   def create_private_room(attrs, owner_id) do
-    Repo.transaction(fn ->
-      room_attrs = Map.merge(attrs, %{is_private: true, owner_id: owner_id})
+    result = Repo.transaction(fn ->
+      room_attrs = Map.merge(attrs, %{is_private: true, owner_id: owner_id, room_type: "private"})
       
       case create_room(room_attrs) do
         {:ok, room} ->
@@ -105,7 +115,17 @@ defmodule Friends.Social do
           Repo.rollback(changeset)
       end
     end)
+    
+    # Broadcast so owner's room list updates in real-time
+    case result do
+      {:ok, room} ->
+        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{owner_id}", {:room_created, room})
+        {:ok, room}
+      error ->
+        error
+    end
   end
+
 
   @doc """
   Check if a user can access a room
@@ -147,7 +167,7 @@ defmodule Friends.Social do
   Add a member to a private room
   """
   def add_room_member(room_id, user_id, role \\ "member", invited_by_id \\ nil) do
-    %RoomMember{}
+    result = %RoomMember{}
     |> RoomMember.changeset(%{
       room_id: room_id,
       user_id: user_id,
@@ -155,7 +175,20 @@ defmodule Friends.Social do
       invited_by_id: invited_by_id
     })
     |> Repo.insert()
+    
+    # Broadcast to the new member so their room list updates in real-time
+    case result do
+      {:ok, _member} ->
+        room = get_room(room_id)
+        if room do
+          Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:room_created, room})
+        end
+        result
+      _ ->
+        result
+    end
   end
+
 
   @doc """
   Remove a member from a room
@@ -240,6 +273,80 @@ defmodule Friends.Social do
   def get_room_member(room_id, user_id) do
     Repo.get_by(RoomMember, room_id: room_id, user_id: user_id)
   end
+
+  # --- DM Rooms (1-1 Private Spaces) ---
+
+  @doc """
+  Generate a predictable DM room code for two users.
+  Always uses the lower ID first to ensure consistency.
+  """
+  def dm_room_code(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
+    {lower, higher} = if user1_id < user2_id, do: {user1_id, user2_id}, else: {user2_id, user1_id}
+    "dm-#{lower}-#{higher}"
+  end
+
+  @doc """
+  Get or create a DM room for two users.
+  DM rooms are private rooms with exactly 2 members and room_type = "dm".
+  """
+  def get_or_create_dm_room(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
+    case get_dm_room(user1_id, user2_id) do
+      nil -> create_dm_room(user1_id, user2_id)
+      room -> {:ok, room}
+    end
+  end
+
+  @doc """
+  Find existing DM room between two users.
+  """
+  def get_dm_room(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
+    code = dm_room_code(user1_id, user2_id)
+    get_room_by_code(code)
+  end
+
+  @doc """
+  Create a new DM room for two users.
+  Both users are automatically added as members.
+  """
+  def create_dm_room(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
+    code = dm_room_code(user1_id, user2_id)
+    
+    # Get user names for room name
+    user1 = get_user(user1_id)
+    user2 = get_user(user2_id)
+    name = "#{user1 && user1.username || "user"} & #{user2 && user2.username || "user"}"
+    
+    result = Repo.transaction(fn ->
+      room_attrs = %{
+        code: code,
+        name: name,
+        is_private: true,
+        room_type: "dm"
+      }
+      
+      case create_room(room_attrs) do
+        {:ok, room} ->
+          # Add both users as members
+          {:ok, _} = add_room_member(room.id, user1_id, "member")
+          {:ok, _} = add_room_member(room.id, user2_id, "member")
+          room
+        
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+    
+    # Broadcast to both users so their room lists update in real-time
+    case result do
+      {:ok, room} ->
+        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user1_id}", {:room_created, room})
+        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user2_id}", {:room_created, room})
+        {:ok, room}
+      error ->
+        error
+    end
+  end
+
 
   # --- Photos ---
 
@@ -531,7 +638,7 @@ defmodule Friends.Social do
     case get_room_by_code(room_code) do
       nil -> {:error, :room_not_found}
       room ->
-        %RoomMember{}
+        result = %RoomMember{}
         |> RoomMember.changeset(%{
           room_id: room.id,
           user_id: user.id,
@@ -548,8 +655,20 @@ defmodule Friends.Social do
                {:error, changeset}
              end
         end
+        
+        # Broadcast so user's room list updates in real-time (for private rooms)
+        case result do
+          {:ok, room} when room.is_private ->
+            Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user.id}", {:room_created, room})
+            {:ok, room}
+          {:ok, room} ->
+            {:ok, room}
+          error ->
+            error
+        end
     end
   end
+
 
   @doc """
   Live room
@@ -631,12 +750,15 @@ defmodule Friends.Social do
         {:error, :not_found}
 
       note ->
-        if note.user_id == user_id do
-          note
-          |> Note.changeset(attrs)
-          |> Repo.update()
-        else
-          {:error, :unauthorized}
+        cond do
+          note.user_id != user_id ->
+            {:error, :unauthorized}
+          not Note.editable?(note) ->
+            {:error, :grace_period_expired}
+          true ->
+            note
+            |> Note.changeset(attrs)
+            |> Repo.update()
         end
     end
   end
@@ -647,20 +769,24 @@ defmodule Friends.Social do
         {:error, :not_found}
 
       note ->
-        if note.user_id == user_id do
-          case Repo.delete(note) do
-            {:ok, _} ->
-              broadcast(room_code, :note_deleted, %{id: note_id})
-              {:ok, note}
+        cond do
+          note.user_id != user_id ->
+            {:error, :unauthorized}
+          not Note.editable?(note) ->
+            {:error, :grace_period_expired}
+          true ->
+            case Repo.delete(note) do
+              {:ok, _} ->
+                broadcast(room_code, :note_deleted, %{id: note_id})
+                {:ok, note}
 
-            error ->
-              error
-          end
-        else
-          {:error, :unauthorized}
+              error ->
+                error
+            end
         end
     end
   end
+
 
   # --- Devices (Identity) ---
 
@@ -1248,6 +1374,7 @@ defmodule Friends.Social do
 
   @doc """
   Accept a friend request from another user.
+  Also creates a DM room for the two users to chat.
   """
   def accept_friend(user_id, requester_id) do
     case get_friendship(requester_id, user_id) do
@@ -1255,12 +1382,22 @@ defmodule Friends.Social do
         {:error, :no_pending_request}
         
       %{status: "pending"} = friendship ->
-        friendship
+        result = friendship
         |> Friendship.changeset(%{
           status: "accepted",
           accepted_at: DateTime.utc_now()
         })
         |> Repo.update()
+        
+        # Auto-create DM room for the new friends
+        case result do
+          {:ok, _} -> 
+            get_or_create_dm_room(user_id, requester_id)
+          _ -> 
+            :ok
+        end
+        
+        result
         |> broadcast_friend_update(:friend_accepted, [user_id, requester_id])
         
       %{status: "accepted"} ->
@@ -1270,6 +1407,7 @@ defmodule Friends.Social do
         {:error, :invalid_request}
     end
   end
+
 
   @doc """
   Remove a friendship (unfriend).

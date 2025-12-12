@@ -56,6 +56,14 @@ defmodule FriendsWeb.HomeLive do
     if connected?(socket) and can_access do
       Social.subscribe(room.code)
       Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
+      
+      # Subscribe to global room updates (for all users to see new public rooms)
+      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:rooms")
+      
+      # Subscribe to user-specific events (room creations, etc.)
+      if session_user do
+        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{session_user.id}")
+      end
 
       # Request identity from client once socket is connected
       push_event(socket, "request_identity", %{})
@@ -63,6 +71,8 @@ defmodule FriendsWeb.HomeLive do
       # Regenerate any missing thumbnails in the background so placeholders get filled
       Task.start(fn -> regenerate_all_missing_thumbnails(room.id, room.code) end)
     end
+
+
 
     socket =
       socket
@@ -174,6 +184,13 @@ defmodule FriendsWeb.HomeLive do
 
       viewers = if can_access, do: Presence.list_users(room.code), else: []
 
+      # Refresh room lists
+      private_rooms = case socket.assigns.current_user do
+        nil -> []
+        user -> Social.list_user_rooms(user.id)
+      end
+      public_rooms = Social.list_public_rooms()
+
       {:noreply,
        socket
        |> assign(:room, room)
@@ -183,7 +200,11 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:viewers, viewers)
        |> assign(:room_access_denied, not can_access)
        |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
+       |> assign(:user_private_rooms, private_rooms)
+       |> assign(:public_rooms, public_rooms)
        |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
+
+
     else
       {:noreply, socket}
     end
@@ -443,20 +464,24 @@ defmodule FriendsWeb.HomeLive do
                 <.live_file_input upload={@uploads.photo} class="sr-only" />
               </form>
 
-              <button
-                type="button"
-                phx-click="open_note_modal"
-                class="px-6 py-3 text-sm glass border border-white/10 text-neutral-300 hover:border-white/20 hover:text-white transition-all cursor-pointer rounded-xl"
-              >
-                write note
-              </button>
+              <%= unless @room.is_private do %>
+                <button
+                  type="button"
+                  phx-click="open_note_modal"
+                  class="px-6 py-3 text-sm glass border border-white/10 text-neutral-300 hover:border-white/20 hover:text-white transition-all cursor-pointer rounded-xl"
+                >
+                  write note
+                </button>
+              <% end %>
             <% else %>
               <div class="px-6 py-3 text-sm glass border border-white/5 text-neutral-500 rounded-xl cursor-not-allowed">
                 share photo
               </div>
-              <div class="px-6 py-3 text-sm glass border border-white/5 text-neutral-500 rounded-xl cursor-not-allowed">
-                write note
-              </div>
+              <%= unless @room.is_private do %>
+                <div class="px-6 py-3 text-sm glass border border-white/5 text-neutral-500 rounded-xl cursor-not-allowed">
+                  write note
+                </div>
+              <% end %>
             <% end %>
 
             <div class="flex-1" />
@@ -2865,6 +2890,23 @@ defmodule FriendsWeb.HomeLive do
   end
 
   # --- PubSub Handlers ---
+
+  # Handle real-time room creation (e.g., when a friendship creates a DM room)
+  def handle_info({:room_created, _room}, socket) do
+    case socket.assigns.current_user do
+      nil -> 
+        {:noreply, socket}
+      user ->
+        private_rooms = Social.list_user_rooms(user.id)
+        {:noreply, assign(socket, :user_private_rooms, private_rooms)}
+    end
+  end
+
+  # Handle real-time public room creation (for all users to see new public rooms)
+  def handle_info({:public_room_created, _room}, socket) do
+    public_rooms = Social.list_public_rooms()
+    {:noreply, assign(socket, :public_rooms, public_rooms)}
+  end
 
   def handle_info({:new_photo, photo}, socket) do
     if photo.user_id != socket.assigns.user_id do
