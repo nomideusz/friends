@@ -439,11 +439,34 @@ defmodule Friends.WebAuthn do
       # Build the EC public key in Erlang format
       point = <<4>> <> x_fixed <> y_fixed  # Uncompressed point format
 
-      ec_key = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
+      Logger.info("[WebAuthn] Signature size: #{byte_size(signature)}")
 
-      case :public_key.verify(data, :sha256, signature, ec_key) do
-        true -> :ok
-        false -> {:error, :invalid_signature}
+      # Handle potential raw signature (64 bytes) vs DER encoded
+      signature_der = 
+        if byte_size(signature) == 64 do
+          Logger.info("[WebAuthn] Converting raw signature to DER")
+          raw_to_der(signature)
+        else
+          signature
+        end
+
+      # Try verification with OID first, fallback to atom if needed
+      ec_key_oid = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
+      
+      try do
+        case :public_key.verify(data, :sha256, signature_der, ec_key_oid) do
+          true -> :ok
+          false -> {:error, :invalid_signature}
+        end
+      rescue
+        e in ArgumentError ->
+          Logger.warn("[WebAuthn] OID verification failed with ArgumentError, trying atom curve name. Error: #{inspect(e)}")
+          # Try with atom curve name (legacy/alternative format)
+          ec_key_atom = {:ECPoint, point, {:namedCurve, curve}}
+          case :public_key.verify(data, :sha256, signature_der, ec_key_atom) do
+            true -> :ok
+            false -> {:error, :invalid_signature}
+          end
       end
     else
       {:error, {:unsupported_curve, crv}}
@@ -453,6 +476,37 @@ defmodule Friends.WebAuthn do
       Logger.error("[WebAuthn] EC Verify crash: #{inspect(e)}")
       {:error, {:ec_verify_error, e}}
   end
+  
+  defp raw_to_der(<<r::binary-size(32), s::binary-size(32)>>) do
+    # Convert raw 64-byte signature (R|S) to ASN.1 DER
+    # Integers must be positive, so prepend 0x00 if MSB is 1
+    enc_r = der_integer(r)
+    enc_s = der_integer(s)
+    
+    # Sequence tag (0x30) + length + R + S
+    content = enc_r <> enc_s
+    <<0x30, byte_size(content)>> <> content
+  end
+  defp raw_to_der(sig), do: sig
+  
+  defp der_integer(bin) do
+    # Remove leading zeros to check MSB of significant byte
+    bin_trimmed = drop_leading_zeros(bin)
+    
+    # If MSB is 1 (>= 0x80), we must prepend 0x00 to make it positive in two's complement
+    case bin_trimmed do
+      <<b, _::binary>> when b >= 0x80 -> 
+        content = <<0>> <> bin_trimmed
+        <<0x02, byte_size(content)>> <> content
+      _ ->
+        content = if bin_trimmed == <<>>, do: <<0>>, else: bin_trimmed
+        <<0x02, byte_size(content)>> <> content
+    end
+  end
+  
+  defp drop_leading_zeros(<<0, rest::binary>>), do: drop_leading_zeros(rest)
+  defp drop_leading_zeros(bin), do: bin
+
   
   defp fix_coordinate_size(binary, size) do
     len = byte_size(binary)
