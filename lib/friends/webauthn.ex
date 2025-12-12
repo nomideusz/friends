@@ -481,29 +481,30 @@ defmodule Friends.WebAuthn do
   defp normalize_der(signature) do
     # Try to decode the signature as DER sequence of two integers (R, S)
     # Then re-encode strictly to satisfy Erlang's picky crypto lib
-    try do
-      case decode_der_sequence(signature) do
-        {:ok, r, s} -> 
-          # Re-encode strictly by normalizing R and S to 32 bytes then passing to raw_to_der
-          r_32 = fix_coordinate_size(r, 32)
-          s_32 = fix_coordinate_size(s, 32)
-          raw_to_der(r_32 <> s_32)
-        _ ->
-          # If decode fails, check if it's already a raw 64-byte signature
-          if byte_size(signature) == 64 do
-            raw_to_der(signature)
-          else
-            signature
-          end
-      end
-    rescue
-      _ -> signature
+    case decode_der_sequence(signature) do
+      {:ok, r, s} -> 
+        Logger.info("[WebAuthn] DER Decode Success. R=#{byte_size(r)}, S=#{byte_size(s)}")
+        # Re-encode strictly by normalizing R and S to 32 bytes then passing to raw_to_der
+        r_32 = fix_coordinate_size(r, 32)
+        s_32 = fix_coordinate_size(s, 32)
+        raw_to_der(r_32 <> s_32)
+      _ ->
+        Logger.warn("[WebAuthn] DER Decode FAILED. Signature hex: #{Base.encode16(signature)}")
+        # If decode fails, check if it's already a raw 64-byte signature
+        if byte_size(signature) == 64 do
+          raw_to_der(signature)
+        else
+          signature
+        end
     end
   end
 
-  defp decode_der_sequence(<<0x30, len, rest::binary>>) when byte_size(rest) == len do
-    with {:ok, r, rest_s} <- decode_der_integer(rest),
-         {:ok, s, ""} <- decode_der_integer(rest_s) do
+  # Relaxed matching: allow rest to be larger than len (ignore trailing bytes)
+  defp decode_der_sequence(<<0x30, len, rest::binary>>) when byte_size(rest) >= len do
+    # Take exactly len bytes for the sequence content
+    sequence_content = binary_part(rest, 0, len)
+    with {:ok, r, rest_s} <- decode_der_integer(sequence_content),
+         {:ok, s, _trailing} <- decode_der_integer(rest_s) do
       {:ok, r, s}
     else
       _ -> :error
