@@ -149,6 +149,7 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:new_chat_message, "")
         |> assign(:recording_voice, false)
         |> assign(:show_chat_panel, room.is_private) # Collapsible chat panel, default open for private
+        |> assign(:show_mobile_chat, false)
         |> assign(:show_room_modal, false)
         |> assign(:show_name_modal, false)
         |> assign(:show_note_modal, false)
@@ -170,7 +171,7 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:friend_search, "")
         |> assign(:friend_search_results, [])
         |> assign(:recovery_requests, [])
-        |> assign(:room_members, [])
+        |> assign(:room_members, if(room.is_private and can_access, do: Social.list_room_members(room.id), else: []))
         |> assign(:member_invite_search, "")
         |> assign(:member_invite_results, [])
         |> assign(:user_private_rooms, if(session_user, do: Social.list_user_rooms(session_user.id), else: []))
@@ -194,15 +195,18 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_params(%{"room" => room_code}, _uri, socket) do
-    if socket.assigns.room.code != room_code do
-      old_room = socket.assigns.room
+    current_room_code = socket.assigns[:room] && socket.assigns.room.code
+    if current_room_code != room_code do
+      old_room = socket.assigns[:room]
 
-      if socket.assigns.user_id do
-        Presence.untrack(self(), old_room.code, socket.assigns.user_id)
+      # Only cleanup subscriptions if coming from another room
+      if old_room do
+        if socket.assigns.user_id do
+          Presence.untrack(self(), old_room.code, socket.assigns.user_id)
+        end
+        Social.unsubscribe(old_room.code)
+        Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:presence:#{old_room.code}")
       end
-
-      Social.unsubscribe(old_room.code)
-      Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:presence:#{old_room.code}")
 
       room =
         case Social.get_room_by_code(room_code) do
@@ -256,6 +260,13 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
        |> assign(:user_private_rooms, private_rooms)
        |> assign(:public_rooms, public_rooms)
+       |> assign(:feed_mode, "room")
+       |> assign(:recording_voice, false)
+       |> assign(:uploading, false)
+       |> assign(:show_chat_panel, room.is_private)
+       |> assign(:current_route, "/r/#{room.code}")
+       |> assign(:room_members, if(room.is_private and can_access, do: Social.list_room_members(room.id), else: []))
+       |> maybe_allow_upload(can_access)
        |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
 
 
@@ -583,25 +594,27 @@ defmodule FriendsWeb.HomeLive do
           <% end %>
 
           <%!-- Main split-view layout container --%>
-          <div class={if @room.is_private and not @room_access_denied, do: "flex gap-6", else: ""}>
+          <div class={if @room.is_private and not @room_access_denied, do: "flex items-start gap-6", else: ""}>
             <%!-- Left: Main content area (narrows when chat visible) --%>
             <div class={if @room.is_private and not @room_access_denied, do: "flex-1 min-w-0", else: ""}>
 
 
 
           <%!-- Upload progress --%>
-          <%= for entry <- @uploads.photo.entries do %>
-            <div class="mb-4 bg-neutral-900 p-3">
-              <div class="flex items-center gap-3">
-                <div class="flex-1 bg-neutral-800 h-1">
-                  <div class="bg-white h-full transition-all" style={"width: #{entry.progress}%"} />
+          <%= if assigns[:uploads] do %>
+            <%= for entry <- @uploads.photo.entries do %>
+              <div class="mb-4 bg-neutral-900 p-3">
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 bg-neutral-800 h-1">
+                    <div class="bg-white h-full transition-all" style={"width: #{entry.progress}%"} />
+                  </div>
+                  <span class="text-xs text-neutral-500">{entry.progress}%</span>
+                  <button type="button" phx-click="cancel_upload" phx-value-ref={entry.ref} class="text-neutral-500 hover:text-white text-xs cursor-pointer">
+                    cancel
+                  </button>
                 </div>
-                <span class="text-xs text-neutral-500">{entry.progress}%</span>
-                <button type="button" phx-click="cancel_upload" phx-value-ref={entry.ref} class="text-neutral-500 hover:text-white text-xs cursor-pointer">
-                  cancel
-                </button>
               </div>
-            </div>
+            <% end %>
           <% end %>
 
           <%!-- Access Denied for Private Rooms --%>
@@ -652,14 +665,10 @@ defmodule FriendsWeb.HomeLive do
                 <% end %>
               </div>
             <% else %>
-            <div
-              id="items-grid"
-              phx-update="stream"
-              phx-hook="PhotoGrid"
-              class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4"
-            >
-              <%!-- Add Photo Card --%>
-              <%= if not is_nil(@current_user) and not @room_access_denied do %>
+            <%!-- Action buttons row - outside stream so they don't disappear --%>
+            <%= if not is_nil(@current_user) and not @room_access_denied and assigns[:uploads] do %>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mb-4">
+                <%!-- Add Photo Card --%>
                 <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
                   <label
                     for={@uploads.photo.ref}
@@ -706,28 +715,62 @@ defmodule FriendsWeb.HomeLive do
                      <%= if @recording_voice, do: "Recording...", else: "Voice" %>
                    </span>
                 </button>
-              <% end %>
+              </div>
+            <% end %>
 
-
+            <%!-- Content grid (stream) --%>
+            <div
+              id="items-grid"
+              phx-update="stream"
+              phx-hook="PhotoGrid"
+              class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4"
+            >
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10" phx-click="view_full_image" phx-value-photo_id={item.id}>
-                    <%= if item.thumbnail_data do %>
-                      <img
-                        src={item.thumbnail_data}
-                        alt=""
-                        class="w-full h-full object-cover loaded"
-                        decoding="async"
-                      />
-                    <% else %>
-                      <div class="w-full h-full flex items-center justify-center bg-neutral-800 skeleton border-2 border-dashed border-neutral-600">
-                        <div class="text-center">
-                          <svg class="w-8 h-8 mx-auto mb-2 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                          </svg>
-                          <span class="text-neutral-400 text-xs">loading</span>
-                        </div>
+                  <div id={dom_id} class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10" phx-click={if Map.get(item, :content_type) != "audio/encrypted", do: "view_full_image"} phx-value-photo_id={item.id}>
+                    <%= if Map.get(item, :content_type) == "audio/encrypted" do %>
+                      <div 
+                         class="w-full h-full flex flex-col items-center justify-center p-4 bg-neutral-900/50 opal-aurora text-center relative z-10"
+                         id={"grid-voice-player-#{item.id}"}
+                         data-item-id={item.id} 
+                         data-room-id={@room.id}
+                         phx-hook="GridVoicePlayer"
+                      >
+                          <div class="hidden" id={"grid-voice-data-#{item.id}"} data-encrypted={item.image_data} data-nonce={item.thumbnail_data}></div>
+                          
+                          <button class="grid-voice-play-btn w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-colors mb-3 group-hover:scale-110 active:scale-95 cursor-pointer z-20">
+                            ▶
+                          </button>
+                          
+                          <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div class="grid-voice-progress h-full bg-emerald-500 w-0 transition-all"></div>
+                          </div>
+                          
+                          <p class="text-xs text-neutral-400 mt-2 font-mono">
+                            <%= case Integer.parse(item.description || "0") do
+                                  {ms, _} -> format_voice_duration(ms)
+                                  _ -> "0:00"
+                                end %>
+                          </p>
                       </div>
+                    <% else %>
+                      <%= if item.thumbnail_data do %>
+                        <img
+                          src={item.thumbnail_data}
+                          alt=""
+                          class="w-full h-full object-cover loaded"
+                          decoding="async"
+                        />
+                      <% else %>
+                        <div class="w-full h-full flex items-center justify-center bg-neutral-800 skeleton border-2 border-dashed border-neutral-600">
+                          <div class="text-center">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="text-neutral-400 text-xs">loading</span>
+                          </div>
+                        </div>
+                      <% end %>
                     <% end %>
 
                     <%!-- Overlay on hover --%>
@@ -806,8 +849,17 @@ defmodule FriendsWeb.HomeLive do
 
             <%!-- Right: Chat Panel (always visible for private spaces) --%>
             <%= if @room.is_private and not @room_access_denied and @current_user do %>
-              <div class="hidden lg:block w-2/5 min-w-[320px] max-w-[500px]">
-                <div class="opal-card rounded-2xl overflow-hidden sticky top-16" style="height: calc(100vh - 100px);">
+              <div class={
+                if @show_mobile_chat,
+                  do: "fixed inset-0 z-50 bg-neutral-900 w-full pt-safe animate-in slide-in-from-right duration-300",
+                  else: "hidden lg:block w-2/5 min-w-[320px] max-w-[500px]"
+              }>
+                <%= if @show_mobile_chat do %>
+                  <button phx-click="toggle_mobile_chat" class="absolute top-4 right-4 z-50 p-2 bg-neutral-800 rounded-full text-white shadow-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                <% end %>
+                <div class="opal-card rounded-2xl overflow-hidden sticky top-4" style="height: calc(100vh - 32px);">
                   <%!-- Chat Header with Invite --%>
                   <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -822,8 +874,34 @@ defmodule FriendsWeb.HomeLive do
                     </button>
                   </div>
 
+                  <%!-- Members Section --%>
+                  <%= if @room_members != [] do %>
+                    <div class="px-3 py-2 border-b border-white/5">
+                      <div class="flex items-center gap-2">
+                        <%!-- Stacked avatars --%>
+                        <div class="flex -space-x-2">
+                          <%= for {member, idx} <- Enum.take(@room_members, 5) |> Enum.with_index() do %>
+                            <div 
+                              class="w-6 h-6 rounded-full border-2 border-neutral-900 flex items-center justify-center text-[9px] font-medium text-white"
+                              style={"background: #{member_color(member)}; z-index: #{10 - idx}"}
+                              title={member.user.display_name || "@#{member.user.username}"}
+                            >
+                              <%= String.first(member.user.display_name || member.user.username) |> String.upcase() %>
+                            </div>
+                          <% end %>
+                          <%= if length(@room_members) > 5 do %>
+                            <div class="w-6 h-6 rounded-full border-2 border-neutral-900 bg-neutral-700 flex items-center justify-center text-[9px] font-medium text-neutral-300">
+                              +<%= length(@room_members) - 5 %>
+                            </div>
+                          <% end %>
+                        </div>
+                        <span class="text-[10px] text-neutral-500"><%= length(@room_members) %> members</span>
+                      </div>
+                    </div>
+                  <% end %>
+
                   <%!-- Messages --%>
-                  <div id="room-messages-container" class="overflow-y-auto p-3 space-y-3" style="height: calc(100% - 110px);" phx-hook="RoomChatScroll" data-room-id={@room.id}>
+                  <div id="room-messages-container" class="overflow-y-auto p-3 space-y-3" style={"height: calc(100% - #{if @room_members != [], do: "150px", else: "110px"});"} phx-hook="RoomChatScroll" data-room-id={@room.id}>
                     <%= if @room_messages == [] do %>
                       <div class="flex items-center justify-center h-full text-neutral-500">
                         <div class="text-center">
@@ -864,14 +942,7 @@ defmodule FriendsWeb.HomeLive do
                   <%!-- Message Input --%>
                   <div class="p-3 border-t border-white/10">
                     <div id="room-message-input-area" class="flex items-center gap-2" phx-hook="RoomChatEncryption" data-room-id={@room.id}>
-                      <button
-                        type="button"
-                        phx-click={if @recording_voice, do: "stop_room_recording", else: "start_room_recording"}
-                        class={"w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm #{if @recording_voice, do: "bg-red-500 animate-pulse", else: "bg-white/10 hover:bg-white/20"}"}
-                        id="room-voice-btn"
-                      >
-                        🎤
-                      </button>
+                      <%!-- Voice button removed from chat --%>
                       <input
                         type="text"
                         value={@new_chat_message}
@@ -891,22 +962,36 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 </div>
               </div>
+
+
+              <%!-- Mobile Chat Toggle FAB --%>
+              <%= if not @show_mobile_chat do %>
+                <button phx-click="toggle_mobile_chat" class="lg:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full bg-indigo-600 opal-aurora text-white shadow-xl z-40 flex items-center justify-center animate-in zoom-in slide-in-from-bottom-4 duration-300 border border-white/20">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                  <%!-- Unread indicator could go here --%>
+                </button>
+              <% end %>
             <% end %>
           </div><%!-- Close flex container --%>
         </div>
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
-          <div id="room-modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title" phx-hook="LockScroll">
-            <div class="w-full sm:max-w-md sm:mx-4 bg-neutral-900 sm:rounded-2xl rounded-t-2xl border-t sm:border border-neutral-800 shadow-2xl max-h-[85vh] flex flex-col">
+          <div id="room-modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200" phx-click-away="close_room_modal" role="dialog" aria-modal="true" aria-labelledby="room-modal-title" phx-hook="LockScroll">
+            <div class="w-full sm:max-w-md opal-card opal-prismatic sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
               <%!-- Header --%>
-              <div class="flex items-center justify-between p-4 border-b border-neutral-800 shrink-0">
-                <h2 id="room-modal-title" class="text-lg font-semibold text-white">Groups</h2>
-                <button type="button" phx-click="close_room_modal" class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all cursor-pointer" aria-label="Close">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+              <div class="p-6 border-b border-white/5 opal-aurora shrink-0">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 id="room-modal-title" class="text-xl font-semibold text-white">Groups</h2>
+                    <p class="text-sm text-neutral-400 mt-1">Switch to another group</p>
+                  </div>
+                  <button type="button" phx-click="close_room_modal" class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer" aria-label="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <%!-- Content - scrollable --%>
@@ -1231,31 +1316,41 @@ defmodule FriendsWeb.HomeLive do
 
         <%!-- Note Modal --%>
         <%= if @show_note_modal do %>
-          <div id="note-modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_note_modal" phx-hook="LockScroll">
-            <div class="w-full max-w-md mx-4 bg-neutral-900 border border-neutral-800 p-4 sm:p-6">
-              <div class="flex items-center justify-between mb-4 sm:mb-6">
-                <h2 class="text-sm font-medium">new note</h2>
-                <button type="button" phx-click="close_note_modal" class="w-11 h-11 flex items-center justify-center text-neutral-500 hover:text-white cursor-pointer text-2xl transition-colors" aria-label="Close note dialog">×</button>
+          <div id="note-modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200" phx-click-away="close_note_modal" phx-hook="LockScroll">
+            <div class="w-full max-w-md opal-card opal-prismatic rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <%!-- Header --%>
+              <div class="p-6 border-b border-white/5 opal-aurora">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="text-xl font-semibold text-white">New Note</h2>
+                    <p class="text-sm text-neutral-400 mt-1">Share a thought with the group</p>
+                  </div>
+                  <button type="button" phx-click="close_note_modal" class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer" aria-label="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <form phx-submit="save_note" phx-change="update_note">
+              <form phx-submit="save_note" phx-change="update_note" class="p-6">
                 <textarea
                   name="content"
                   value={@note_input}
-                  placeholder="write something..."
+                  placeholder="What's on your mind?"
                   maxlength="500"
                   rows="5"
-                  class="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 text-sm text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 resize-none"
+                  class="w-full p-4 opal-input text-base text-white placeholder:text-neutral-600 focus:outline-none resize-none mb-4"
                   autofocus
                 >{@note_input}</textarea>
-                <div class="flex items-center justify-between mt-3">
-                  <span class="text-xs text-neutral-600">{String.length(@note_input)}/500</span>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-neutral-500">{String.length(@note_input)}/500</span>
                   <button
                     type="submit"
                     disabled={String.trim(@note_input) == ""}
-                    class="px-4 py-2 bg-white text-black text-sm hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    class="btn-opal-primary px-6 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20"
                   >
-                    share
+                    Share Note
                   </button>
                 </div>
               </form>
@@ -2300,12 +2395,13 @@ defmodule FriendsWeb.HomeLive do
         {:ok, note} ->
           note_with_type = note |> Map.put(:type, :note) |> Map.put(:unique_id, "note-#{note.id}")
 
-          {:noreply,
-           socket
-           |> assign(:show_note_modal, false)
-           |> assign(:note_input, "")
-           |> assign(:item_count, socket.assigns.item_count + 1)
-           |> stream_insert(:items, note_with_type, at: 0)}
+           {:noreply,
+            socket
+            |> assign(:show_note_modal, false)
+            |> assign(:note_input, "")
+            |> assign(:item_count, socket.assigns.item_count + 1)
+            |> stream_insert(:items, note_with_type, at: 0)
+            |> put_flash(:info, "Note added!")}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "failed")}
@@ -2506,12 +2602,12 @@ defmodule FriendsWeb.HomeLive do
     case socket.assigns.current_user do
       nil ->
         {:noreply, put_flash(socket, :error, "register first")}
-      
+
       user ->
         case Social.create_invite(user.id) do
           {:ok, invite} ->
             {:noreply, assign(socket, :invites, [invite | socket.assigns.invites])}
-          
+
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "failed to create invite")}
         end
@@ -2520,16 +2616,16 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("search_friends", %{"query" => query}, socket) do
     query = String.trim(query)
-    
-    results = 
+
+    results =
       if String.length(query) >= 2 do
         Social.search_users(query, socket.assigns.current_user && socket.assigns.current_user.id)
       else
         []
       end
-    
-    {:noreply, 
-     socket 
+
+    {:noreply,
+     socket
      |> assign(:friend_search, query)
      |> assign(:friend_search_results, results)}
   end
@@ -2600,20 +2696,20 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("search_member_invite", %{"query" => query}, socket) do
     query = String.trim(query)
     current_user = socket.assigns.current_user
-    
-    results = 
+
+    results =
       if String.length(query) >= 2 and current_user do
         # Get current member IDs to exclude
         member_ids = Enum.map(socket.assigns.room_members, & &1.user_id)
-        
+
         Social.search_users(query, current_user.id)
         |> Enum.reject(fn user -> user.id in member_ids end)
       else
         []
       end
-    
-    {:noreply, 
-     socket 
+
+    {:noreply,
+     socket
      |> assign(:member_invite_search, query)
      |> assign(:member_invite_results, results)}
   end
@@ -2681,7 +2777,7 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("switch_feed", %{"mode" => mode}, socket) when mode in ["room", "friends"] do
     socket = assign(socket, :feed_mode, mode)
-    
+
     case mode do
       "room" ->
         # Load room content
@@ -2690,14 +2786,14 @@ defmodule FriendsWeb.HomeLive do
         notes = Social.list_notes(room.id, @initial_batch, offset: 0)
         items = build_items(photos, notes)
         no_more = length(items) < @initial_batch
-        
+
         {:noreply,
          socket
          |> assign(:item_count, length(items))
          |> assign(:no_more_items, no_more)
          |> assign(:photo_order, photo_ids(items))
          |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
-      
+
       "friends" ->
         # Load network content
         case socket.assigns.current_user do
@@ -2839,11 +2935,11 @@ defmodule FriendsWeb.HomeLive do
   # Toggle the chat panel visibility in split-view layout
   def handle_event("toggle_chat_panel", _, socket) do
     new_show = not socket.assigns.show_chat_panel
-    
+
     socket = socket
     |> assign(:show_chat_panel, new_show)
     |> assign(:feed_mode, "room")  # Ensure we're in room mode
-    
+
     # Load chat messages and subscribe if opening chat
     socket = if new_show do
       if connected?(socket) do
@@ -3187,7 +3283,7 @@ defmodule FriendsWeb.HomeLive do
   # Handle real-time room creation (e.g., when a friendship creates a DM room)
   def handle_info({:room_created, _room}, socket) do
     case socket.assigns.current_user do
-      nil -> 
+      nil ->
         {:noreply, socket}
       user ->
         private_rooms = Social.list_user_rooms(user.id)
@@ -3256,6 +3352,42 @@ defmodule FriendsWeb.HomeLive do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_event("save_grid_voice_note", %{"encrypted_content" => encrypted, "nonce" => nonce, "duration_ms" => duration}, socket) do
+    if socket.assigns.current_user && not socket.assigns.room_access_denied do
+      message_params = %{
+        user_id: socket.assigns.user_id,
+        user_color: socket.assigns.user_color,
+        user_name: socket.assigns.user_name,
+        room_id: socket.assigns.room.id,
+        content_type: "audio/encrypted",
+        image_data: encrypted,
+        thumbnail_data: nonce,
+        description: "#{duration}",
+        file_size: 0
+      }
+
+      case Social.create_photo(message_params) do
+         {:ok, photo} ->
+            item = photo |> Map.put(:type, :photo) |> Map.put(:unique_id, "photo-#{photo.id}")
+            {:noreply,
+             socket
+             |> stream_insert(:items, item, at: 0)
+             |> assign(:recording_voice, false)
+             |> put_flash(:info, "Voice note sent!")}
+         {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to save voice note")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+
+
+  def handle_event("toggle_mobile_chat", _params, socket) do
+    {:noreply, assign(socket, :show_mobile_chat, not socket.assigns.show_mobile_chat)}
   end
 
   def handle_info({:note_deleted, %{id: id}}, socket) do
@@ -3520,6 +3652,9 @@ defmodule FriendsWeb.HomeLive do
 
   defp trusted_user_color(%{id: id}), do: color_from_user_id(id)
   defp trusted_user_color(_), do: "#666"
+
+  defp member_color(%{user: user}), do: trusted_user_color(user)
+  defp member_color(_), do: "#666"
 
   defp color_from_user_id("user-" <> id_str) do
     case Integer.parse(id_str) do

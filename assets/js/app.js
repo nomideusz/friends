@@ -1,9 +1,9 @@
 // Phoenix imports
 import "phoenix_html"
-import {Socket} from "phoenix"
-import {LiveSocket} from "phoenix_live_view"
+import { Socket } from "phoenix"
+import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
-import {getHooks} from "live_svelte"
+import { getHooks } from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
 import { mount, unmount } from 'svelte'
@@ -27,16 +27,16 @@ function generateFingerprint() {
         navigator.maxTouchPoints || 0,
         navigator.language
     ]
-    
+
     const fingerprint = components.join('|')
-    
+
     // FNV-1a hash
     let hash = 2166136261
     for (let i = 0; i < fingerprint.length; i++) {
         hash ^= fingerprint.charCodeAt(i)
         hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)
     }
-    
+
     return (hash >>> 0).toString(16)
 }
 
@@ -44,7 +44,7 @@ function generateFingerprint() {
 function getBrowserId() {
     const key = 'friends_browser_id'
     let id = localStorage.getItem(key)
-    
+
     if (!id) {
         id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
             const r = Math.random() * 16 | 0
@@ -53,7 +53,7 @@ function getBrowserId() {
         })
         localStorage.setItem(key, id)
     }
-    
+
     return id
 }
 
@@ -71,7 +71,7 @@ function generateThumbnail(file, maxSize = 300) {
 
         img.onload = () => {
             let { width, height } = img
-            
+
             if (width > height) {
                 height = Math.round((height * maxSize) / width)
                 width = maxSize
@@ -110,7 +110,7 @@ function optimizeImage(file, maxSize = 1200) {
 
         img.onload = () => {
             let { width, height } = img
-            
+
             if (width > maxSize || height > maxSize) {
                 if (width > height) {
                     height = Math.round((height * maxSize) / width)
@@ -268,7 +268,7 @@ const Hooks = {
                 }
             }
         },
-        
+
         setupImageOptimization() {
             const form = this.el.querySelector('#upload-form')
             if (!form) return
@@ -303,7 +303,7 @@ const Hooks = {
             })
         }
     },
-    
+
     PhotoGrid: {
         mounted() {
             this.observeImages()
@@ -323,7 +323,7 @@ const Hooks = {
             })
         }
     },
-    
+
     RegisterApp: {
         async mounted() {
             // Check WebAuthn availability
@@ -358,7 +358,7 @@ const Hooks = {
             })
         }
     },
-    
+
     RecoverApp: {
         async mounted() {
             // Check WebAuthn availability
@@ -391,7 +391,7 @@ const Hooks = {
             })
         }
     },
-    
+
     QRDisplay: {
         mounted() {
             this.updateQR()
@@ -411,7 +411,7 @@ const Hooks = {
             }
         }
     },
-    
+
     LinkDeviceApp: {
         async mounted() {
             // Check WebAuthn availability
@@ -460,16 +460,16 @@ const Hooks = {
     MessageEncryption: {
         mounted() {
             this.conversationId = parseInt(this.el.dataset.conversationId)
-            
+
             // Handle send button click
             const sendBtn = this.el.querySelector('#send-message-btn')
             const input = this.el.querySelector('#message-input')
-            
+
             if (sendBtn && input) {
                 sendBtn.addEventListener('click', async () => {
                     const message = input.value.trim()
                     if (!message) return
-                    
+
                     try {
                         const { encryptedContent, nonce } = await messageEncryption.encryptMessage(message, this.conversationId)
                         this.pushEvent("send_message", {
@@ -481,7 +481,7 @@ const Hooks = {
                         console.error("Failed to encrypt message:", e)
                     }
                 })
-                
+
                 // Enter key to send
                 input.addEventListener('keydown', async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -490,7 +490,7 @@ const Hooks = {
                     }
                 })
             }
-            
+
             // Handle start/stop voice recording events
             this.handleEvent("start_voice_recording", async () => {
                 this.voiceRecorder = new VoiceRecorder()
@@ -508,13 +508,13 @@ const Hooks = {
                 }
                 await this.voiceRecorder.start()
             })
-            
+
             this.handleEvent("stop_voice_recording", () => {
                 if (this.voiceRecorder) {
                     this.voiceRecorder.stop()
                 }
             })
-            
+
             // Handle scroll to bottom event
             this.handleEvent("scroll_to_bottom", () => {
                 const container = document.getElementById('messages-container')
@@ -522,23 +522,23 @@ const Hooks = {
                     container.scrollTop = container.scrollHeight
                 }
             })
-            
+
             // Decrypt existing messages on mount
             this.decryptVisibleMessages()
         },
-        
+
         updated() {
             this.decryptVisibleMessages()
         },
-        
+
         decryptVisibleMessages() {
             const messages = this.el.querySelectorAll('.decrypted-content')
             messages.forEach(async (el) => {
                 if (el.dataset.decrypted) return
-                
+
                 const encrypted = el.dataset.encrypted
                 const nonce = el.dataset.nonce
-                
+
                 if (encrypted && nonce) {
                     try {
                         const encryptedData = messageEncryption.base64ToArray(encrypted)
@@ -561,10 +561,10 @@ const Hooks = {
             // Get conversation ID from the parent input area
             const inputArea = document.getElementById('message-input-area')
             this.conversationId = inputArea ? parseInt(inputArea.dataset.conversationId) : null
-            
+
             // Scroll to bottom on mount
             this.el.scrollTop = this.el.scrollHeight
-            
+
             // Decrypt visible messages
             this.decryptVisibleMessages()
         },
@@ -574,24 +574,24 @@ const Hooks = {
             if (isAtBottom) {
                 this.el.scrollTop = this.el.scrollHeight
             }
-            
+
             // Decrypt any new messages
             this.decryptVisibleMessages()
         },
-        
+
         async decryptVisibleMessages() {
             if (!this.conversationId) {
                 console.warn("No conversation ID for decryption")
                 return
             }
-            
+
             const messages = this.el.querySelectorAll('.decrypted-content')
             for (const el of messages) {
                 if (el.dataset.decrypted === 'true') continue
-                
+
                 const encrypted = el.dataset.encrypted
                 const nonce = el.dataset.nonce
-                
+
                 if (encrypted && nonce) {
                     try {
                         const encryptedData = messageEncryption.base64ToArray(encrypted)
@@ -615,20 +615,20 @@ const Hooks = {
             this.messageId = this.el.dataset.messageId
             const playBtn = this.el.querySelector('.voice-play-btn')
             const progressBar = this.el.querySelector('.voice-progress')
-            
+
             // Get conversation ID from parent
             const inputArea = document.getElementById('message-input-area')
             this.conversationId = inputArea ? parseInt(inputArea.dataset.conversationId) : null
-            
+
             // Get encrypted data from the message element in DOM
             // We need to find the message data - it's passed as data attributes on the parent
             const messageContainer = this.el.closest('[data-encrypted]') || this.el
             this.encryptedData = messageContainer.dataset.encrypted
             this.nonceData = messageContainer.dataset.nonce
-            
+
             this.audio = null
             this.isPlaying = false
-            
+
             if (playBtn) {
                 playBtn.addEventListener('click', async () => {
                     if (this.isPlaying && this.audio) {
@@ -642,40 +642,40 @@ const Hooks = {
                     } else {
                         // First play - need to decrypt and create player
                         playBtn.textContent = '...'
-                        
+
                         try {
                             // Find the voice message element and get its encrypted content
                             // The server sends the binary data that we need to fetch
                             const msgEl = document.getElementById(`msg-${this.messageId}`)
                             const encrypted = msgEl?.dataset.encrypted
                             const nonce = msgEl?.dataset.nonce
-                            
+
                             if (encrypted && nonce && this.conversationId) {
                                 const encryptedArray = messageEncryption.base64ToArray(encrypted)
                                 const nonceArray = messageEncryption.base64ToArray(nonce)
-                                
+
                                 const audioBlob = await messageEncryption.decryptVoiceNote(
-                                    encryptedArray, 
-                                    nonceArray, 
+                                    encryptedArray,
+                                    nonceArray,
                                     this.conversationId
                                 )
-                                
+
                                 if (audioBlob) {
                                     this.audio = new Audio(URL.createObjectURL(audioBlob))
-                                    
+
                                     this.audio.ontimeupdate = () => {
                                         if (progressBar && this.audio.duration) {
                                             const percent = (this.audio.currentTime / this.audio.duration) * 100
                                             progressBar.style.width = `${percent}%`
                                         }
                                     }
-                                    
+
                                     this.audio.onended = () => {
                                         playBtn.textContent = '▶'
                                         this.isPlaying = false
                                         if (progressBar) progressBar.style.width = '0%'
                                     }
-                                    
+
                                     this.audio.play()
                                     playBtn.textContent = '⏸'
                                     this.isPlaying = true
@@ -706,10 +706,10 @@ const Hooks = {
     RoomChatScroll: {
         mounted() {
             this.roomId = this.el.dataset.roomId
-            
+
             // Scroll to bottom on mount
             this.el.scrollTop = this.el.scrollHeight
-            
+
             // Decrypt visible messages
             this.decryptVisibleMessages()
         },
@@ -719,21 +719,21 @@ const Hooks = {
             if (isAtBottom) {
                 this.el.scrollTop = this.el.scrollHeight
             }
-            
+
             // Decrypt any new messages
             this.decryptVisibleMessages()
         },
-        
+
         async decryptVisibleMessages() {
             if (!this.roomId) return
-            
+
             const messages = this.el.querySelectorAll('.room-decrypted-content')
             for (const el of messages) {
                 if (el.dataset.decrypted === 'true') continue
-                
+
                 const encrypted = el.dataset.encrypted
                 const nonce = el.dataset.nonce
-                
+
                 if (encrypted && nonce) {
                     try {
                         const encryptedData = messageEncryption.base64ToArray(encrypted)
@@ -757,15 +757,15 @@ const Hooks = {
         mounted() {
             this.roomId = this.el.dataset.roomId
             this.voiceRecorder = null
-            
+
             const sendBtn = this.el.querySelector('#send-room-message-btn')
             const input = this.el.querySelector('#room-message-input')
-            
+
             if (sendBtn && input) {
                 sendBtn.addEventListener('click', async () => {
                     const message = input.value.trim()
                     if (!message) return
-                    
+
                     try {
                         // Use room ID as the conversation ID for encryption
                         const { encryptedContent, nonce } = await messageEncryption.encryptMessage(message, `room-${this.roomId}`)
@@ -778,7 +778,7 @@ const Hooks = {
                         console.error("Failed to encrypt room message:", e)
                     }
                 })
-                
+
                 // Enter key to send
                 input.addEventListener('keydown', async (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -787,7 +787,7 @@ const Hooks = {
                     }
                 })
             }
-            
+
             // Handle voice recording events from LiveView
             this.handleEvent("start_room_voice_recording", async () => {
                 this.voiceRecorder = new VoiceRecorder()
@@ -805,7 +805,7 @@ const Hooks = {
                 }
                 await this.voiceRecorder.start()
             })
-            
+
             this.handleEvent("stop_room_voice_recording", () => {
                 if (this.voiceRecorder) {
                     this.voiceRecorder.stop()
@@ -821,10 +821,10 @@ const Hooks = {
             this.roomId = this.el.dataset.roomId
             const playBtn = this.el.querySelector('.room-voice-play-btn')
             const progressBar = this.el.querySelector('.room-voice-progress')
-            
+
             this.audio = null
             this.isPlaying = false
-            
+
             if (playBtn) {
                 playBtn.addEventListener('click', async () => {
                     if (this.isPlaying && this.audio) {
@@ -838,38 +838,38 @@ const Hooks = {
                     } else {
                         // First play - need to decrypt and create player
                         playBtn.textContent = '...'
-                        
+
                         try {
                             const msgEl = document.getElementById(`room-msg-${this.messageId}`)
                             const encrypted = msgEl?.dataset.encrypted
                             const nonce = msgEl?.dataset.nonce
-                            
+
                             if (encrypted && nonce && this.roomId) {
                                 const encryptedArray = messageEncryption.base64ToArray(encrypted)
                                 const nonceArray = messageEncryption.base64ToArray(nonce)
-                                
+
                                 const audioBlob = await messageEncryption.decryptVoiceNote(
-                                    encryptedArray, 
-                                    nonceArray, 
+                                    encryptedArray,
+                                    nonceArray,
                                     `room-${this.roomId}`
                                 )
-                                
+
                                 if (audioBlob) {
                                     this.audio = new Audio(URL.createObjectURL(audioBlob))
-                                    
+
                                     this.audio.ontimeupdate = () => {
                                         if (progressBar && this.audio.duration) {
                                             const percent = (this.audio.currentTime / this.audio.duration) * 100
                                             progressBar.style.width = `${percent}%`
                                         }
                                     }
-                                    
+
                                     this.audio.onended = () => {
                                         playBtn.textContent = '▶'
                                         this.isPlaying = false
                                         if (progressBar) progressBar.style.width = '0%'
                                     }
-                                    
+
                                     this.audio.play()
                                     playBtn.textContent = '⏸'
                                     this.isPlaying = true
@@ -902,7 +902,7 @@ const Hooks = {
             this.roomId = this.el.dataset.roomId
             this.voiceRecorder = null
             this.isRecording = false
-            
+
             this.el.addEventListener('click', async () => {
                 if (this.isRecording) {
                     // Stop recording
@@ -918,7 +918,7 @@ const Hooks = {
                         this.voiceRecorder.onStop = async (blob, durationMs) => {
                             try {
                                 const { encryptedContent, nonce } = await messageEncryption.encryptVoiceNote(blob, `room-${this.roomId}`)
-                                this.pushEvent("send_room_voice_note", {
+                                this.pushEvent("save_grid_voice_note", {
                                     encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
                                     nonce: messageEncryption.arrayToBase64(nonce),
                                     duration_ms: durationMs
@@ -929,328 +929,420 @@ const Hooks = {
                         }
                         await this.voiceRecorder.start()
                         this.isRecording = true
-                        this.pushEvent("start_room_recording", {})
                     } catch (e) {
-                        console.error("Failed to start voice recording:", e)
-                        alert("Could not access microphone")
+                        console.error("Failed to start recording:", e)
+                        this.pushEvent("recording_error", { error: e.message })
                     }
                 }
             })
-        },
-        destroyed() {
-            if (this.voiceRecorder && this.isRecording) {
-                this.voiceRecorder.stop()
-            }
         }
     },
 
-    CopyToClipboard: {
+    GridVoicePlayer: {
         mounted() {
-            this.handleClick = async (event) => {
-                event.preventDefault()
-                const text = this.el.dataset.copy || this.el.getAttribute('data-copy')
-                if (!text) return
-                try {
-                    await navigator.clipboard.writeText(text)
-                    console.log('[CopyToClipboard] copied', text)
-                } catch (e) {
-                    console.error('[CopyToClipboard] failed to copy', e)
-                }
-            }
-            this.el.addEventListener('click', this.handleClick)
-        },
-        destroyed() {
-            if (this.handleClick) {
-                this.el.removeEventListener('click', this.handleClick)
-            }
-        }
-    },
+            this.itemId = this.el.dataset.itemId
+            this.roomId = this.el.dataset.roomId
+            this.audio = null
+            this.isPlaying = false
 
-    // ExportKeys hook removed - WebAuthn passkeys are stored securely on your device
-    // and synced via your platform's passkey provider (iCloud Keychain, Google Password Manager, etc.)
+            const playBtn = this.el.querySelector('.grid-voice-play-btn')
+            const progressBar = this.el.querySelector('.grid-voice-progress')
 
-    WebAuthnManager: {
-        async mounted() {
-            const statusDiv = document.getElementById('webauthn-status')
-            const registerBtn = document.getElementById('register-webauthn-btn')
+            if (playBtn) {
+                this.el.addEventListener('click', async (e) => {
+                    if (e.target.closest('.grid-voice-play-btn')) {
+                        e.stopPropagation()
+                        e.preventDefault()
 
-            // Check WebAuthn support
-            const supported = isWebAuthnSupported()
-            const platformAvailable = supported && await isPlatformAuthenticatorAvailable()
+                        if (this.isPlaying && this.audio) {
+                            this.audio.pause()
+                            this.isPlaying = false
+                            playBtn.textContent = '▶'
+                            return
+                        }
 
-            if (!supported) {
-                statusDiv.textContent = 'Not supported'
-                statusDiv.className = 'text-xs text-red-500'
-                return
-            }
+                        try {
+                            playBtn.textContent = '...'
 
-            if (platformAvailable) {
-                statusDiv.textContent = 'Platform ready'
-                statusDiv.className = 'text-xs text-green-500 hidden md:block'
-            } else {
-                statusDiv.textContent = 'Key supported'
-                statusDiv.className = 'text-xs text-neutral-500 hidden md:block'
-            }
+                            const dataEl = document.getElementById(`grid-voice-data-${this.itemId}`)
+                            if (dataEl && dataEl.dataset.encrypted) {
+                                const encryptedArray = messageEncryption.base64ToArray(dataEl.dataset.encrypted)
+                                const nonceArray = messageEncryption.base64ToArray(dataEl.dataset.nonce)
 
-            // Show register button
-            registerBtn.classList.remove('hidden')
+                                const audioBlob = await messageEncryption.decryptVoiceNote(
+                                    encryptedArray,
+                                    nonceArray,
+                                    `room-${this.roomId}`
+                                )
 
-            // Handle challenge response from server
-            this.handleEvent("webauthn_challenge_generated", async ({ options }) => {
-                try {
-                    console.log('[WebAuthn] Challenge received, creating credential...')
+                                if (audioBlob) {
+                                    if (this.audio) {
+                                        this.audio.pause()
+                                        URL.revokeObjectURL(this.audio.src)
+                                    }
 
-                    // Create credential with the challenge from server
-                    const credential = await registerCredential(options)
+                                    this.audio = new Audio(URL.createObjectURL(audioBlob))
 
-                    console.log('[WebAuthn] Credential created, sending to server...')
+                                    this.audio.ontimeupdate = () => {
+                                        if (progressBar && this.audio.duration) {
+                                            const percent = (this.audio.currentTime / this.audio.duration) * 100
+                                            progressBar.style.width = `${percent}%`
+                                        }
+                                    }
 
-                    // Send credential back to server for verification
-                    this.pushEvent("register_webauthn_credential", {
-                        credential: credential
-                    })
-                } catch (error) {
-                    console.error('[WebAuthn] Registration failed:', error)
-                    registerBtn.disabled = false
-                    registerBtn.textContent = 'Register Hardware Key'
+                                    this.audio.onended = () => {
+                                        playBtn.textContent = '▶'
+                                        this.isPlaying = false
+                                        if (progressBar) progressBar.style.width = '0%'
+                                    }
 
-                    if (error.name === 'NotAllowedError') {
-                        alert('Registration cancelled or not allowed')
-                    } else {
-                        alert('Registration failed: ' + error.message)
-                    }
-                }
-            })
-
-            // Handle registration complete
-            this.handleEvent("webauthn_registration_complete", () => {
-                registerBtn.disabled = false
-                registerBtn.textContent = 'Register Hardware Key'
-                console.log('[WebAuthn] Registration complete!')
-            })
-
-            // Handle registration failed
-            this.handleEvent("webauthn_registration_failed", () => {
-                registerBtn.disabled = false
-                registerBtn.textContent = 'Register Hardware Key'
-            })
-
-            // Handle register button click
-            registerBtn.onclick = async () => {
-                try {
-                    registerBtn.disabled = true
-                    registerBtn.textContent = 'Preparing...'
-
-                    // Request challenge from server
-                    this.pushEvent("request_webauthn_challenge", {})
-                } catch (error) {
-                    console.error('[WebAuthn] Failed to request challenge:', error)
-                    registerBtn.disabled = false
-                    registerBtn.textContent = 'Register Hardware Key'
-                    alert('Failed to start registration: ' + error.message)
-                }
-            }
-        }
-    },
-
-    WebAuthnLogin: {
-        async mounted() {
-            // Handle WebAuthn login challenge from server
-            this.handleEvent("webauthn_login_challenge", async ({ options }) => {
-                try {
-                    console.log('[WebAuthn Login] Challenge received, authenticating...')
-
-                    // Authenticate with credential
-                    const credential = await authenticateWithCredential(options)
-
-                    console.log('[WebAuthn Login] Authentication successful, sending to server...')
-
-                    // Send credential back to server for verification
-                    this.pushEvent("webauthn_login_response", {
-                        credential: credential
-                    })
-                } catch (error) {
-                    console.error('[WebAuthn Login] Authentication failed:', error)
-
-                    let errorMsg = error.message
-                    if (error.name === 'NotAllowedError') {
-                        errorMsg = 'Authentication cancelled or not allowed'
-                    } else if (error.name === 'InvalidStateError') {
-                        errorMsg = 'No matching credential found'
-                    }
-
-                    this.pushEvent("webauthn_login_error", { error: errorMsg })
-                }
-            })
-
-            // Handle successful login
-            this.handleEvent("login_success", ({ user_id, token }) => {
-                // Detect if we're on HTTPS for Secure flag
-                const isSecure = window.location.protocol === 'https:'
-                const secureSuffix = isSecure ? '; Secure' : ''
-
-                // Set cookies for session
-                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secureSuffix}`
-                if (token) {
-                    document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureSuffix}`
-                }
-
-                // Redirect to home
-                setTimeout(() => {
-                    window.location.href = '/'
-                }, 500)
-            })
-        }
-    },
-
-    PhotoModal: {
-        mounted() {
-            // Lock body scrolling when modal opens
-            document.body.style.overflow = 'hidden'
-
-            // Handle image loading state
-            const img = this.el.querySelector('img')
-            if (img) {
-                // Show loading state initially
-                img.style.opacity = '0'
-
-                // Create and add loading spinner
-                const spinner = document.createElement('div')
-                spinner.className = 'absolute inset-0 flex items-center justify-center'
-                spinner.innerHTML = '<div class="spinner"></div>'
-                spinner.id = 'photo-loading-spinner'
-                img.parentElement.appendChild(spinner)
-
-                // Handle image load
-                const handleLoad = () => {
-                    img.style.transition = 'opacity 0.3s ease-in-out'
-                    img.style.opacity = '1'
-                    spinner.remove()
-                }
-
-                // Handle image error
-                const handleError = () => {
-                    spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
-                }
-
-                if (img.complete) {
-                    handleLoad()
-                } else {
-                    img.addEventListener('load', handleLoad, { once: true })
-                    img.addEventListener('error', handleError, { once: true })
-                }
-            }
-
-            // Add touch swipe gesture support
-            let touchStartX = 0
-            let touchEndX = 0
-            let touchStartY = 0
-            let touchEndY = 0
-
-            const handleTouchStart = (e) => {
-                touchStartX = e.changedTouches[0].screenX
-                touchStartY = e.changedTouches[0].screenY
-            }
-
-            const handleTouchEnd = (e) => {
-                touchEndX = e.changedTouches[0].screenX
-                touchEndY = e.changedTouches[0].screenY
-                handleGesture()
-            }
-
-            const handleGesture = () => {
-                const diffX = touchEndX - touchStartX
-                const diffY = touchEndY - touchStartY
-
-                // Only trigger if horizontal swipe is dominant
-                if (Math.abs(diffX) > Math.abs(diffY)) {
-                    // Minimum swipe distance (50px)
-                    if (Math.abs(diffX) > 50) {
-                        if (diffX > 0) {
-                            // Swipe right - previous photo
-                            this.pushEvent("prev_photo", {})
-                        } else {
-                            // Swipe left - next photo
-                            this.pushEvent("next_photo", {})
+                                    this.audio.play()
+                                    playBtn.textContent = '⏸'
+                                    this.isPlaying = true
+                                } else {
+                                    playBtn.textContent = '❌'
+                                }
+                            } else {
+                                playBtn.textContent = '❌'
+                            }
+                        } catch (e) {
+                            console.error("Failed to decrypt grid voice note:", e)
+                            playBtn.textContent = '❌'
                         }
                     }
-                }
-            }
-
-            // Add keyboard navigation
-            const handleKeyDown = (e) => {
-                if (e.key === 'ArrowLeft') {
-                    e.preventDefault()
-                    this.pushEvent("prev_photo", {})
-                } else if (e.key === 'ArrowRight') {
-                    e.preventDefault()
-                    this.pushEvent("next_photo", {})
-                } else if (e.key === 'Escape') {
-                    e.preventDefault()
-                    this.pushEvent("close_image_modal", {})
-                }
-            }
-
-            // Attach listeners
-            this.el.addEventListener('touchstart', handleTouchStart, { passive: true })
-            this.el.addEventListener('touchend', handleTouchEnd, { passive: true })
-            document.addEventListener('keydown', handleKeyDown)
-
-            // Store for cleanup
-            this.handleKeyDown = handleKeyDown
-        },
-
-        updated() {
-            // Handle loading state when photo changes (prev/next navigation)
-            const img = this.el.querySelector('img')
-            if (img) {
-                // Remove old spinner if it exists
-                const oldSpinner = this.el.querySelector('#photo-loading-spinner')
-                if (oldSpinner) {
-                    oldSpinner.remove()
-                }
-
-                // Show loading state initially
-                img.style.opacity = '0'
-
-                // Create and add loading spinner
-                const spinner = document.createElement('div')
-                spinner.className = 'absolute inset-0 flex items-center justify-center'
-                spinner.innerHTML = '<div class="spinner"></div>'
-                spinner.id = 'photo-loading-spinner'
-                img.parentElement.appendChild(spinner)
-
-                // Handle image load
-                const handleLoad = () => {
-                    img.style.transition = 'opacity 0.3s ease-in-out'
-                    img.style.opacity = '1'
-                    spinner.remove()
-                }
-
-                // Handle image error
-                const handleError = () => {
-                    spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
-                }
-
-                if (img.complete) {
-                    handleLoad()
-                } else {
-                    img.addEventListener('load', handleLoad, { once: true })
-                    img.addEventListener('error', handleError, { once: true })
-                }
+                })
             }
         },
-
         destroyed() {
-            // Unlock body scrolling when modal closes
-            document.body.style.overflow = ''
-
-            // Remove keyboard listener
-            if (this.handleKeyDown) {
-                document.removeEventListener('keydown', this.handleKeyDown)
+            if (this.audio) {
+                this.audio.pause()
+                URL.revokeObjectURL(this.audio.src)
             }
         }
     }
+this.isRecording = true
+this.pushEvent("start_room_recording", {})
+} catch (e) {
+    console.error("Failed to start voice recording:", e)
+    alert("Could not access microphone")
+}
+                }
+            })
+        },
+destroyed() {
+    if (this.voiceRecorder && this.isRecording) {
+        this.voiceRecorder.stop()
+    }
+}
+    },
+
+CopyToClipboard: {
+    mounted() {
+        this.handleClick = async (event) => {
+            event.preventDefault()
+            const text = this.el.dataset.copy || this.el.getAttribute('data-copy')
+            if (!text) return
+            try {
+                await navigator.clipboard.writeText(text)
+                console.log('[CopyToClipboard] copied', text)
+            } catch (e) {
+                console.error('[CopyToClipboard] failed to copy', e)
+            }
+        }
+        this.el.addEventListener('click', this.handleClick)
+    },
+    destroyed() {
+        if (this.handleClick) {
+            this.el.removeEventListener('click', this.handleClick)
+        }
+    }
+},
+
+// ExportKeys hook removed - WebAuthn passkeys are stored securely on your device
+// and synced via your platform's passkey provider (iCloud Keychain, Google Password Manager, etc.)
+
+WebAuthnManager: {
+        async mounted() {
+        const statusDiv = document.getElementById('webauthn-status')
+        const registerBtn = document.getElementById('register-webauthn-btn')
+
+        // Check WebAuthn support
+        const supported = isWebAuthnSupported()
+        const platformAvailable = supported && await isPlatformAuthenticatorAvailable()
+
+        if (!supported) {
+            statusDiv.textContent = 'Not supported'
+            statusDiv.className = 'text-xs text-red-500'
+            return
+        }
+
+        if (platformAvailable) {
+            statusDiv.textContent = 'Platform ready'
+            statusDiv.className = 'text-xs text-green-500 hidden md:block'
+        } else {
+            statusDiv.textContent = 'Key supported'
+            statusDiv.className = 'text-xs text-neutral-500 hidden md:block'
+        }
+
+        // Show register button
+        registerBtn.classList.remove('hidden')
+
+        // Handle challenge response from server
+        this.handleEvent("webauthn_challenge_generated", async ({ options }) => {
+            try {
+                console.log('[WebAuthn] Challenge received, creating credential...')
+
+                // Create credential with the challenge from server
+                const credential = await registerCredential(options)
+
+                console.log('[WebAuthn] Credential created, sending to server...')
+
+                // Send credential back to server for verification
+                this.pushEvent("register_webauthn_credential", {
+                    credential: credential
+                })
+            } catch (error) {
+                console.error('[WebAuthn] Registration failed:', error)
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+
+                if (error.name === 'NotAllowedError') {
+                    alert('Registration cancelled or not allowed')
+                } else {
+                    alert('Registration failed: ' + error.message)
+                }
+            }
+        })
+
+        // Handle registration complete
+        this.handleEvent("webauthn_registration_complete", () => {
+            registerBtn.disabled = false
+            registerBtn.textContent = 'Register Hardware Key'
+            console.log('[WebAuthn] Registration complete!')
+        })
+
+        // Handle registration failed
+        this.handleEvent("webauthn_registration_failed", () => {
+            registerBtn.disabled = false
+            registerBtn.textContent = 'Register Hardware Key'
+        })
+
+        // Handle register button click
+        registerBtn.onclick = async () => {
+            try {
+                registerBtn.disabled = true
+                registerBtn.textContent = 'Preparing...'
+
+                // Request challenge from server
+                this.pushEvent("request_webauthn_challenge", {})
+            } catch (error) {
+                console.error('[WebAuthn] Failed to request challenge:', error)
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+                alert('Failed to start registration: ' + error.message)
+            }
+        }
+    }
+},
+
+WebAuthnLogin: {
+        async mounted() {
+        // Handle WebAuthn login challenge from server
+        this.handleEvent("webauthn_login_challenge", async ({ options }) => {
+            try {
+                console.log('[WebAuthn Login] Challenge received, authenticating...')
+
+                // Authenticate with credential
+                const credential = await authenticateWithCredential(options)
+
+                console.log('[WebAuthn Login] Authentication successful, sending to server...')
+
+                // Send credential back to server for verification
+                this.pushEvent("webauthn_login_response", {
+                    credential: credential
+                })
+            } catch (error) {
+                console.error('[WebAuthn Login] Authentication failed:', error)
+
+                let errorMsg = error.message
+                if (error.name === 'NotAllowedError') {
+                    errorMsg = 'Authentication cancelled or not allowed'
+                } else if (error.name === 'InvalidStateError') {
+                    errorMsg = 'No matching credential found'
+                }
+
+                this.pushEvent("webauthn_login_error", { error: errorMsg })
+            }
+        })
+
+        // Handle successful login
+        this.handleEvent("login_success", ({ user_id, token }) => {
+            // Detect if we're on HTTPS for Secure flag
+            const isSecure = window.location.protocol === 'https:'
+            const secureSuffix = isSecure ? '; Secure' : ''
+
+            // Set cookies for session
+            document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secureSuffix}`
+            if (token) {
+                document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureSuffix}`
+            }
+
+            // Redirect to home
+            setTimeout(() => {
+                window.location.href = '/'
+            }, 500)
+        })
+    }
+},
+
+PhotoModal: {
+    mounted() {
+        // Lock body scrolling when modal opens
+        document.body.style.overflow = 'hidden'
+
+        // Handle image loading state
+        const img = this.el.querySelector('img')
+        if (img) {
+            // Show loading state initially
+            img.style.opacity = '0'
+
+            // Create and add loading spinner
+            const spinner = document.createElement('div')
+            spinner.className = 'absolute inset-0 flex items-center justify-center'
+            spinner.innerHTML = '<div class="spinner"></div>'
+            spinner.id = 'photo-loading-spinner'
+            img.parentElement.appendChild(spinner)
+
+            // Handle image load
+            const handleLoad = () => {
+                img.style.transition = 'opacity 0.3s ease-in-out'
+                img.style.opacity = '1'
+                spinner.remove()
+            }
+
+            // Handle image error
+            const handleError = () => {
+                spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+            }
+
+            if (img.complete) {
+                handleLoad()
+            } else {
+                img.addEventListener('load', handleLoad, { once: true })
+                img.addEventListener('error', handleError, { once: true })
+            }
+        }
+
+        // Add touch swipe gesture support
+        let touchStartX = 0
+        let touchEndX = 0
+        let touchStartY = 0
+        let touchEndY = 0
+
+        const handleTouchStart = (e) => {
+            touchStartX = e.changedTouches[0].screenX
+            touchStartY = e.changedTouches[0].screenY
+        }
+
+        const handleTouchEnd = (e) => {
+            touchEndX = e.changedTouches[0].screenX
+            touchEndY = e.changedTouches[0].screenY
+            handleGesture()
+        }
+
+        const handleGesture = () => {
+            const diffX = touchEndX - touchStartX
+            const diffY = touchEndY - touchStartY
+
+            // Only trigger if horizontal swipe is dominant
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                // Minimum swipe distance (50px)
+                if (Math.abs(diffX) > 50) {
+                    if (diffX > 0) {
+                        // Swipe right - previous photo
+                        this.pushEvent("prev_photo", {})
+                    } else {
+                        // Swipe left - next photo
+                        this.pushEvent("next_photo", {})
+                    }
+                }
+            }
+        }
+
+        // Add keyboard navigation
+        const handleKeyDown = (e) => {
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault()
+                this.pushEvent("prev_photo", {})
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault()
+                this.pushEvent("next_photo", {})
+            } else if (e.key === 'Escape') {
+                e.preventDefault()
+                this.pushEvent("close_image_modal", {})
+            }
+        }
+
+        // Attach listeners
+        this.el.addEventListener('touchstart', handleTouchStart, { passive: true })
+        this.el.addEventListener('touchend', handleTouchEnd, { passive: true })
+        document.addEventListener('keydown', handleKeyDown)
+
+        // Store for cleanup
+        this.handleKeyDown = handleKeyDown
+    },
+
+    updated() {
+        // Handle loading state when photo changes (prev/next navigation)
+        const img = this.el.querySelector('img')
+        if (img) {
+            // Remove old spinner if it exists
+            const oldSpinner = this.el.querySelector('#photo-loading-spinner')
+            if (oldSpinner) {
+                oldSpinner.remove()
+            }
+
+            // Show loading state initially
+            img.style.opacity = '0'
+
+            // Create and add loading spinner
+            const spinner = document.createElement('div')
+            spinner.className = 'absolute inset-0 flex items-center justify-center'
+            spinner.innerHTML = '<div class="spinner"></div>'
+            spinner.id = 'photo-loading-spinner'
+            img.parentElement.appendChild(spinner)
+
+            // Handle image load
+            const handleLoad = () => {
+                img.style.transition = 'opacity 0.3s ease-in-out'
+                img.style.opacity = '1'
+                spinner.remove()
+            }
+
+            // Handle image error
+            const handleError = () => {
+                spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+            }
+
+            if (img.complete) {
+                handleLoad()
+            } else {
+                img.addEventListener('load', handleLoad, { once: true })
+                img.addEventListener('error', handleError, { once: true })
+            }
+        }
+    },
+
+    destroyed() {
+        // Unlock body scrolling when modal closes
+        document.body.style.overflow = ''
+
+        // Remove keyboard listener
+        if (this.handleKeyDown) {
+            document.removeEventListener('keydown', this.handleKeyDown)
+        }
+    }
+}
 }
 
 // Precompute lightweight identity signals for instant server bootstrap
@@ -1271,7 +1363,7 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 
 // Progress bar
-topbar.config({barColors: {0: "#fff"}, shadowColor: "rgba(0, 0, 0, .3)"})
+topbar.config({ barColors: { 0: "#fff" }, shadowColor: "rgba(0, 0, 0, .3)" })
 let initialLoad = true
 window.addEventListener("phx:page-loading-start", info => {
     if (!initialLoad && info.detail.kind === "redirect") {
