@@ -158,6 +158,8 @@ defmodule Friends.WebAuthn do
          :ok <- verify_rp_id_hash(authenticator_data),
          :ok <- verify_user_present(authenticator_data),
          :ok <- verify_signature(credential.public_key, authenticator_data, client_data_json, signature),
+         {:ok, new_sign_count} <- verify_sign_count(authenticator_data, credential.sign_count) do
+
       # Update the credential's sign count and last used timestamp
       update_credential_usage(credential, new_sign_count)
 
