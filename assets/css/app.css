@@ -4,7 +4,7 @@
 @source "../../lib/friends_web";
 
 /* Custom theme - Opalescent Future */
-@theme {
+:root {
   --font-family-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* Deep space background */
@@ -30,6 +30,20 @@
   --opal-pink: #ff80ab;
 }
 
+@theme {
+  --font-family-mono: var(--font-family-mono);
+  --color-neutral-950: var(--color-neutral-950);
+  --color-neutral-900: var(--color-neutral-900);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-100: var(--color-neutral-100);
+}
+
 /* Base styles */
 html {
   font-family: var(--font-family-mono);
@@ -48,10 +62,10 @@ body {
   z-index: -1;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(255, 107, 157, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(130, 177, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 80%, rgba(100, 255, 218, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(179, 136, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 20%, rgba(255, 107, 157, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(130, 177, 255, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 40% 80%, rgba(100, 255, 218, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(179, 136, 255, 0.04) 0%, transparent 50%),
     var(--color-neutral-950);
   animation: opalShift 20s ease-in-out infinite;
 }
@@ -86,8 +100,23 @@ body {
 
 .opal-glow-subtle {
   box-shadow:
-    0 0 20px rgba(130, 177, 255, 0.05),
-    0 0 40px rgba(179, 136, 255, 0.03);
+    0 0 10px rgba(130, 177, 255, 0.2),
+    0 0 20px rgba(179, 136, 255, 0.1);
+}
+
+/* Opal branding dot */
+.opal-dot {
+  background: linear-gradient(135deg, var(--opal-rose), var(--opal-azure), var(--opal-mint)) !important;
+  background-size: 200% 200%;
+  animation: opalShift 3s ease infinite;
+  box-shadow: 0 0 15px rgba(130, 177, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.username-glow {
+  color: white !important;
+  text-shadow: 0 0 10px rgba(130, 177, 255, 0.6), 0 0 20px rgba(179, 136, 255, 0.4);
+  font-weight: 500;
 }
 
 /* Glassmorphism with opal tint */

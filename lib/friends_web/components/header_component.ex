@@ -21,7 +21,7 @@ defmodule FriendsWeb.HeaderComponent do
               <%= if @room && @room.is_private do %>
                 <span class="text-emerald-400 text-lg">🔒</span>
               <% else %>
-                <div class="w-3 h-3 rounded-full bg-blue-400 presence-dot"></div>
+                <div class="w-3 h-3 rounded-full opal-dot"></div>
               <% end %>
               <span class="font-medium tracking-wide">{@page_title}</span>
               <span class="text-neutral-500 text-sm group-hover:text-neutral-300 transition-colors">▼</span>
@@ -121,10 +121,10 @@ defmodule FriendsWeb.HeaderComponent do
                   class="flex items-center gap-3 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20"
                 >
                   <div
-                    class="w-3 h-3 rounded-full presence-dot"
+                    class="w-3 h-3 rounded-full presence-dot opal-glow-subtle"
                     style={"background-color: #{@user_color || "#666"}"}
                   />
-                  <span class="text-neutral-200">@{@current_user.username}</span>
+                  <span class="text-neutral-200 username-glow">@{@current_user.username}</span>
                 </button>
               <% else %>
                 <div class="flex items-center gap-2">

@@ -47,7 +47,7 @@ defmodule FriendsWeb.Layouts do
           <div class="flex items-center w-[120px]">
             <%= if @current_user do %>
               <.link navigate={~p"/"} class="group relative flex items-center justify-center w-10 h-10 -ml-2 rounded-full hover:bg-white/5 transition-all" title="Home">
-                <div class="w-2.5 h-2.5 rounded-full bg-white/70 group-hover:bg-white group-hover:scale-110 transition-all shadow-[0_0_8px_rgba(255,255,255,0.2)]"></div>
+                <div class="w-3 h-3 rounded-full opal-dot group-hover:scale-110 transition-all"></div>
               </.link>
             <% end %>
           </div>
@@ -76,7 +76,7 @@ defmodule FriendsWeb.Layouts do
                     phx-click="toggle_user_dropdown"
                     class="flex items-center gap-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors cursor-pointer"
                   >
-                    <span>@{@current_user.username}</span>
+                    <span class="username-glow">@{@current_user.username}</span>
                   </button>
 
                   <%= if @show_user_dropdown do %>
