@@ -29,6 +29,11 @@ defmodule FriendsWeb.RecoverLive do
   end
 
   @impl true
+  def handle_event("webauthn_available", %{"available" => available}, socket) do
+    {:noreply, assign(socket, :webauthn_available, available)}
+  end
+
+  @impl true
   def handle_event("update_username", %{"username" => username}, socket) do
     {:noreply, assign(socket, :username, String.trim(username))}
   end
