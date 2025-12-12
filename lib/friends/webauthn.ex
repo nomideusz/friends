@@ -13,6 +13,7 @@ defmodule Friends.WebAuthn do
   alias Friends.Social.WebAuthnCredential
   import Ecto.Query
   import Bitwise
+  require Logger
 
   # Challenge expiry time in seconds (5 minutes)
   @challenge_timeout 300
@@ -157,15 +158,17 @@ defmodule Friends.WebAuthn do
          :ok <- verify_rp_id_hash(authenticator_data),
          :ok <- verify_user_present(authenticator_data),
          :ok <- verify_signature(credential.public_key, authenticator_data, client_data_json, signature),
-         {:ok, new_sign_count} <- verify_sign_count(authenticator_data, credential.sign_count) do
-
       # Update the credential's sign count and last used timestamp
       update_credential_usage(credential, new_sign_count)
 
       {:ok, credential}
     else
-      {:error, reason} -> {:error, reason}
-      error -> {:error, {:verification_failed, error}}
+      {:error, reason} -> 
+        Logger.error("[WebAuthn] Verification failed: #{inspect(reason)}")
+        {:error, reason}
+      error -> 
+        Logger.error("[WebAuthn] Unexpected error: #{inspect(error)}")
+        {:error, {:verification_failed, error}}
     end
   end
 
