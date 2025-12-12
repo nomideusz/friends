@@ -87,7 +87,9 @@ defmodule FriendsWeb.NetworkLive do
     {:noreply, assign(socket, :show_user_dropdown, false)}
   end
 
-
+  def handle_event("set_view", %{"view" => view}, socket) do
+    {:noreply, socket |> assign(:view, view) |> load_data()}
+  end
 
   def handle_event("search_friends", %{"query" => query}, socket) do
     if String.length(query) >= 2 do
