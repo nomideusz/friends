@@ -686,7 +686,7 @@ defmodule Friends.Social do
           })
           |> Repo.insert()
 
-        {:ok, %{device | status: status}}
+        {:ok, device, status}
 
       device ->
         # Update fingerprint if changed
