@@ -63,7 +63,9 @@ if config_env() == :prod do
   # For "friends.zaur.app", we can use either "zaur.app" or "friends.zaur.app"
   # Using the full subdomain is more specific and secure
   webauthn_rp_id = System.get_env("WEBAUTHN_RP_ID") || host
+  webauthn_origin = System.get_env("WEBAUTHN_ORIGIN") || "https://#{host}"
 
   config :friends, :webauthn_rp_id, webauthn_rp_id
+  config :friends, :webauthn_origin, webauthn_origin
 end
 
