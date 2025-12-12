@@ -58,9 +58,6 @@ defmodule FriendsWeb.LoginLive do
         # Create session token
         token = Base.encode64(:crypto.strong_rand_bytes(32))
 
-        require Logger
-        Logger.info("[LoginLive] WebAuthn OK! Pushing login_success event for user #{user.id}")
-
         {:noreply,
          socket
          |> assign(:step, :success)

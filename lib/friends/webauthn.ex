@@ -430,8 +430,6 @@ defmodule Friends.WebAuthn do
     end
 
     if curve && x && y do
-      Logger.info("[WebAuthn] Verifying EC Signature. Curve: #{inspect(curve)}, Size: #{size}, X len: #{byte_size(x)}, Y len: #{byte_size(y)}")
-      
       # Ensure exact coordinate size (pad if short, trim if long e.g. leading zeros)
       x_fixed = fix_coordinate_size(x, size)
       y_fixed = fix_coordinate_size(y, size)
@@ -439,17 +437,9 @@ defmodule Friends.WebAuthn do
       # Build the EC public key in Erlang format
       point = <<4>> <> x_fixed <> y_fixed  # Uncompressed point format
 
-      Logger.info("[WebAuthn] Signature size: #{byte_size(signature)}")
-
-      Logger.info("[WebAuthn] Signature size: #{byte_size(signature)}")
-
       # Normalize signature to strict DER format
       # This handles both raw 64-byte signatures AND potentially malformed DER inputs
       signature_der = normalize_der(signature)
-      
-      if byte_size(signature) != byte_size(signature_der) do
-         Logger.info("[WebAuthn] Signature normalized. Original size: #{byte_size(signature)}, New size: #{byte_size(signature_der)}")
-      end
 
       # Try verification with OID first using public_key (high level)
       ec_key_oid = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
@@ -460,9 +450,7 @@ defmodule Friends.WebAuthn do
           false -> {:error, :invalid_signature}
         end
       rescue
-        e in ArgumentError ->
-          Logger.warn("[WebAuthn] public_key.verify (OID) failed, trying crypto.verify fallback. Error: #{inspect(e)}")
-          
+        _e in ArgumentError ->
           # Fallback 1: public_key with atom curve (legacy)
           ec_key_atom = {:ECPoint, point, {:namedCurve, curve}}
           try do
@@ -486,31 +474,15 @@ defmodule Friends.WebAuthn do
   end
 
   defp verify_crypto_fallback(curve, point, data, signature) do
-    Logger.info("[WebAuthn] Attempting crypto.verify fallback")
     # crypto:verify(Algorithm, DigestType, Msg, Signature, Key)
     # Key for ECDSA is [Point, CurveParams]
-    # CurveParams can be OID or Atom
-    
-    # Try with atom first as it's simpler
-    result = :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve])
-    Logger.info("[WebAuthn] crypto.verify(atom) result: #{inspect(result)}")
-    
-    case result do
-      true -> 
-        Logger.info("[WebAuthn] crypto.verify SUCCESS!")
-        :ok
+    # Try with atom first, then OID fallback
+    case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve]) do
+      true -> :ok
       false -> 
-        Logger.warn("[WebAuthn] crypto.verify(atom) returned false, trying OID")
-        # Try with OID
-        result2 = :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve_oid(curve)])
-        Logger.info("[WebAuthn] crypto.verify(oid) result: #{inspect(result2)}")
-        case result2 do
-           true -> 
-             Logger.info("[WebAuthn] crypto.verify(oid) SUCCESS!")
-             :ok
-           false -> 
-             Logger.error("[WebAuthn] crypto.verify returned false - signature invalid")
-             {:error, :invalid_signature}
+        case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve_oid(curve)]) do
+           true -> :ok
+           false -> {:error, :invalid_signature}
         end
     end
   rescue
@@ -524,13 +496,11 @@ defmodule Friends.WebAuthn do
     # Then re-encode strictly to satisfy Erlang's picky crypto lib
     case decode_der_sequence(signature) do
       {:ok, r, s} -> 
-        Logger.info("[WebAuthn] DER Decode Success. R=#{byte_size(r)}, S=#{byte_size(s)}")
         # Re-encode strictly by normalizing R and S to 32 bytes then passing to raw_to_der
         r_32 = fix_coordinate_size(r, 32)
         s_32 = fix_coordinate_size(s, 32)
         raw_to_der(r_32 <> s_32)
       _ ->
-        Logger.warn("[WebAuthn] DER Decode FAILED. Signature hex: #{Base.encode16(signature)}")
         # If decode fails, check if it's already a raw 64-byte signature
         if byte_size(signature) == 64 do
           raw_to_der(signature)

@@ -1037,8 +1037,6 @@ const Hooks = {
 
             // Handle successful login
             this.handleEvent("login_success", ({ user_id, token }) => {
-                console.log('[WebAuthn Login] Login successful!')
-
                 // Detect if we're on HTTPS for Secure flag
                 const isSecure = window.location.protocol === 'https:'
                 const secureSuffix = isSecure ? '; Secure' : ''
@@ -1048,8 +1046,6 @@ const Hooks = {
                 if (token) {
                     document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureSuffix}`
                 }
-
-                console.log('[WebAuthn Login] Cookies set, redirecting...')
 
                 // Redirect to home
                 setTimeout(() => {
