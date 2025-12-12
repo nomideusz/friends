@@ -422,6 +422,91 @@ defmodule FriendsWeb.HomeLive do
              </div>
            <% end %>
         </div>
+
+        <%!-- Create Group Modal for Dashboard --%>
+        <%= if @create_group_modal do %>
+          <div 
+            id="create-group-modal-overlay" 
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200" 
+            phx-click-away="close_create_group_modal" 
+            role="dialog" 
+            aria-modal="true" 
+            aria-labelledby="create-group-modal-title"
+            phx-hook="LockScroll"
+          >
+            <div class="w-full max-w-md opal-card opal-prismatic rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <%!-- Header with aurora gradient --%>
+              <div class="p-6 border-b border-white/5 opal-aurora">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 id="create-group-modal-title" class="text-xl font-semibold text-white">Create Group</h2>
+                    <p class="text-sm text-neutral-400 mt-1">Start a private space for your friends</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    phx-click="close_create_group_modal" 
+                    class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <%!-- Form --%>
+              <form phx-submit="create_group" phx-change="update_room_form" class="p-6 space-y-6">
+                <div>
+                  <label for="group-name-dashboard" class="block text-sm font-medium text-neutral-300 mb-2">
+                    Group name <span class="text-neutral-600">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="group-name-dashboard"
+                    name="name"
+                    value={@new_room_name}
+                    placeholder="e.g. Weekend Plans, Study Group..."
+                    maxlength="50"
+                    autofocus
+                    class="w-full px-4 py-3 opal-input text-white placeholder:text-neutral-600 focus:outline-none transition-all"
+                  />
+                  <p class="text-xs text-neutral-600 mt-2">Leave empty for an auto-generated code name</p>
+                </div>
+                
+                <div class="flex gap-3">
+                  <button
+                    type="button"
+                    phx-click="close_create_group_modal"
+                    class="flex-1 px-4 py-3 btn-opal-secondary cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    phx-disable-with="Creating..."
+                    class="flex-1 btn-opal-primary cursor-pointer"
+                  >
+                    Create Group
+                  </button>
+                </div>
+              </form>
+              
+              <%!-- Info footer --%>
+              <div class="px-6 pb-6">
+                <div class="p-4 bg-neutral-950/50 border border-neutral-800/50 rounded-xl">
+                  <div class="flex items-start gap-3">
+                    <span class="text-lg">🔒</span>
+                    <div class="text-xs text-neutral-500">
+                      <p class="font-medium text-neutral-400 mb-1">Private by default</p>
+                      <p>Only people you invite can access your group. Share the link or add members directly.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
       <% else %>
         <%!-- Room View --%>
         <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
