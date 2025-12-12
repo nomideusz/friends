@@ -58,6 +58,9 @@ defmodule FriendsWeb.LoginLive do
         # Create session token
         token = Base.encode64(:crypto.strong_rand_bytes(32))
 
+        require Logger
+        Logger.info("[LoginLive] WebAuthn OK! Pushing login_success event for user #{user.id}")
+
         {:noreply,
          socket
          |> assign(:step, :success)
@@ -66,7 +69,9 @@ defmodule FriendsWeb.LoginLive do
            token: token
          })}
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        require Logger
+        Logger.error("[LoginLive] WebAuthn verification failed: #{inspect(reason)}")
         {:noreply,
          socket
          |> assign(:step, :username)
