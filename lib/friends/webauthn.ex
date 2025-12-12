@@ -637,7 +637,7 @@ defmodule Friends.WebAuthn do
     credential
     |> Ecto.Changeset.change(%{
       sign_count: new_sign_count,
-      last_used_at: DateTime.utc_now()
+      last_used_at: DateTime.utc_now() |> DateTime.truncate(:second)
     })
     |> Repo.update()
   end
