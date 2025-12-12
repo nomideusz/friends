@@ -38,6 +38,14 @@ defmodule FriendsWeb.DevicesLive do
   end
 
   @impl true
+  def handle_event("sign_out", _params, socket) do
+    {:noreply,
+     socket
+     |> push_event("sign_out", %{})
+     |> put_flash(:info, "Signing out...")}
+  end
+
+  @impl true
   def handle_event("revoke_device", %{"device_id" => device_id}, socket) do
     device_id = String.to_integer(device_id)
     user_id = socket.assigns.current_user.id

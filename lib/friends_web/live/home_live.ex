@@ -160,6 +160,7 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:join_code, "")
         |> assign(:new_room_name, "")
         |> assign(:create_private_room, false)
+        |> assign(:create_group_modal, false)
         |> assign(:name_input, "")
         |> assign(:uploading, false)
         |> assign(:invites, [])
