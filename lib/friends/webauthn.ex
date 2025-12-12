@@ -492,17 +492,26 @@ defmodule Friends.WebAuthn do
     # CurveParams can be OID or Atom
     
     # Try with atom first as it's simpler
-    case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve]) do
-      true -> :ok
+    result = :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve])
+    Logger.info("[WebAuthn] crypto.verify(atom) result: #{inspect(result)}")
+    
+    case result do
+      true -> 
+        Logger.info("[WebAuthn] crypto.verify SUCCESS!")
+        :ok
       false -> 
+        Logger.warn("[WebAuthn] crypto.verify(atom) returned false, trying OID")
         # Try with OID
-        case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve_oid(curve)]) do
-           true -> :ok
-           false -> {:error, :invalid_signature}
+        result2 = :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve_oid(curve)])
+        Logger.info("[WebAuthn] crypto.verify(oid) result: #{inspect(result2)}")
+        case result2 do
+           true -> 
+             Logger.info("[WebAuthn] crypto.verify(oid) SUCCESS!")
+             :ok
+           false -> 
+             Logger.error("[WebAuthn] crypto.verify returned false - signature invalid")
+             {:error, :invalid_signature}
         end
-      {:error, reason} -> 
-         Logger.error("[WebAuthn] crypto.verify failed: #{inspect(reason)}")
-         {:error, :invalid_signature}
     end
   rescue
     e -> 
