@@ -1030,6 +1030,26 @@ const Hooks = {
                 if (!text) return
                 try {
                     await navigator.clipboard.writeText(text)
+                    // Visual feedback
+                    const originalText = this.el.textContent
+                    this.el.textContent = "Copied!"
+
+                    // Temporary styles for success state
+                    const originalClasses = this.el.className
+                    if (!this.el.classList.contains('text-green-500')) {
+                        // Assuming simple buttons, we might want to just rely on text
+                        // but let's try to add a subtle pop
+                        this.el.style.transition = 'all 0.2s'
+                        this.el.style.transform = 'scale(1.05)'
+                    }
+
+                    if (this.timeout) clearTimeout(this.timeout)
+                    this.timeout = setTimeout(() => {
+                        this.el.textContent = originalText
+                        this.el.style.transform = ''
+                        this.el.className = originalClasses
+                    }, 2000)
+
                     console.log('[CopyToClipboard] copied', text)
                 } catch (e) {
                     console.error('[CopyToClipboard] failed to copy', e)
@@ -1041,6 +1061,13 @@ const Hooks = {
             if (this.handleClick) {
                 this.el.removeEventListener('click', this.handleClick)
             }
+            if (this.timeout) clearTimeout(this.timeout)
+        }
+    },
+
+    AutoFocus: {
+        mounted() {
+            setTimeout(() => this.el.focus(), 50)
         }
     },
 

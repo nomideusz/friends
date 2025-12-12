@@ -39,7 +39,6 @@ html {
 
 body {
   background: var(--color-neutral-950);
-  min-height: 100vh;
 }
 
 /* Animated opalescent background */
@@ -47,6 +46,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: -1;
+  min-height: 100vh;
   background:
     radial-gradient(ellipse at 20% 20%, rgba(255, 107, 157, 0.08) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 20%, rgba(130, 177, 255, 0.08) 0%, transparent 50%),
@@ -57,15 +57,20 @@ body {
 }
 
 @keyframes opalShift {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%;
   }
+
   25% {
     background-position: 20% 10%, 80% 20%, 20% 80%, 80% 90%;
   }
+
   50% {
     background-position: 10% 20%, 90% 10%, 30% 90%, 70% 80%;
   }
+
   75% {
     background-position: 15% 5%, 85% 15%, 10% 85%, 90% 85%;
   }
@@ -112,14 +117,12 @@ body {
   position: absolute;
   inset: -1px;
   border-radius: 13px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 157, 0.3),
-    rgba(130, 177, 255, 0.3),
-    rgba(100, 255, 218, 0.3),
-    rgba(179, 136, 255, 0.3),
-    rgba(255, 128, 171, 0.3)
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 107, 157, 0.3),
+      rgba(130, 177, 255, 0.3),
+      rgba(100, 255, 218, 0.3),
+      rgba(179, 136, 255, 0.3),
+      rgba(255, 128, 171, 0.3));
   background-size: 300% 300%;
   animation: opalBorder 8s ease infinite;
   z-index: -1;
@@ -127,19 +130,24 @@ body {
 }
 
 @keyframes opalBorder {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Soft opal text gradient */
 .opal-text {
-  background: linear-gradient(
-    135deg,
-    var(--opal-rose),
-    var(--opal-azure),
-    var(--opal-mint),
-    var(--opal-violet)
-  );
+  background: linear-gradient(135deg,
+      var(--opal-rose),
+      var(--opal-azure),
+      var(--opal-mint),
+      var(--opal-violet));
   background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -148,8 +156,15 @@ body {
 }
 
 @keyframes opalText {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 /* Focus styles - opal ring */
@@ -181,20 +196,16 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    180deg,
-    rgba(130, 177, 255, 0.3),
-    rgba(179, 136, 255, 0.3)
-  );
+  background: linear-gradient(180deg,
+      rgba(130, 177, 255, 0.3),
+      rgba(179, 136, 255, 0.3));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(130, 177, 255, 0.5),
-    rgba(179, 136, 255, 0.5)
-  );
+  background: linear-gradient(180deg,
+      rgba(130, 177, 255, 0.5),
+      rgba(179, 136, 255, 0.5));
 }
 
 /* Image loading */
@@ -209,8 +220,13 @@ img.loaded {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
@@ -218,6 +234,7 @@ img.loaded {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -225,9 +242,12 @@ img.loaded {
 }
 
 @keyframes pulse-opal {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(130, 177, 255, 0.2);
   }
+
   50% {
     box-shadow: 0 0 40px rgba(179, 136, 255, 0.3);
   }
@@ -260,11 +280,13 @@ img.loaded {
 }
 
 /* Input fields - opal focus */
-input, textarea {
+input,
+textarea {
   transition: all 0.3s ease;
 }
 
-input:focus, textarea:focus {
+input:focus,
+textarea:focus {
   border-color: rgba(130, 177, 255, 0.5) !important;
   box-shadow: 0 0 20px rgba(130, 177, 255, 0.1);
 }
@@ -293,20 +315,23 @@ textarea:focus-visible {
   right: 0;
   height: 2px;
   z-index: 9999;
-  background: linear-gradient(
-    90deg,
-    var(--opal-rose),
-    var(--opal-azure),
-    var(--opal-mint),
-    var(--opal-violet)
-  );
+  background: linear-gradient(90deg,
+      var(--opal-rose),
+      var(--opal-azure),
+      var(--opal-mint),
+      var(--opal-violet));
   background-size: 200% 100%;
   animation: opalProgress 2s linear infinite;
 }
 
 @keyframes opalProgress {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 200% 0%; }
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: 200% 0%;
+  }
 }
 
 /* Modal backdrop - deeper blur */
@@ -332,9 +357,12 @@ textarea:focus-visible {
 
 /* Skeleton loading animation */
 @keyframes skeleton-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -342,12 +370,10 @@ textarea:focus-visible {
 
 .skeleton {
   animation: skeleton-pulse 1.5s ease-in-out infinite;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0.03) 100%);
   background-size: 200% 100%;
   animation: skeleton-pulse 1.5s ease-in-out infinite, skeleton-shimmer 2s ease-in-out infinite;
 }
@@ -356,6 +382,7 @@ textarea:focus-visible {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -366,6 +393,7 @@ textarea:focus-visible {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -389,10 +417,13 @@ textarea:focus-visible {
 
 /* Pulsing dot animation for loading states */
 @keyframes pulse-dot {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(0.8);
   }
+
   50% {
     opacity: 1;
     transform: scale(1);
@@ -415,12 +446,10 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%);
 }
 
 /* ======================================
@@ -437,15 +466,13 @@ textarea:focus-visible {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    120deg,
-    transparent 0%,
-    rgba(255, 107, 157, 0.08) 20%,
-    rgba(130, 177, 255, 0.12) 40%,
-    rgba(100, 255, 218, 0.08) 60%,
-    rgba(179, 136, 255, 0.1) 80%,
-    transparent 100%
-  );
+  background: linear-gradient(120deg,
+      transparent 0%,
+      rgba(255, 107, 157, 0.08) 20%,
+      rgba(130, 177, 255, 0.12) 40%,
+      rgba(100, 255, 218, 0.08) 60%,
+      rgba(179, 136, 255, 0.1) 80%,
+      transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
   pointer-events: none;
@@ -458,30 +485,46 @@ textarea:focus-visible {
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Aurora - flowing opalescent background like northern lights */
 .opal-aurora {
-  background: 
-    linear-gradient(
-      135deg,
+  background:
+    linear-gradient(135deg,
       rgba(255, 107, 157, 0.15) 0%,
       rgba(130, 177, 255, 0.1) 25%,
       rgba(100, 255, 218, 0.12) 50%,
       rgba(179, 136, 255, 0.15) 75%,
-      rgba(255, 128, 171, 0.1) 100%
-    );
+      rgba(255, 128, 171, 0.1) 100%);
   background-size: 400% 400%;
   animation: aurora 12s ease-in-out infinite;
 }
 
 @keyframes aurora {
-  0%, 100% { background-position: 0% 50%; }
-  25% { background-position: 50% 0%; }
-  50% { background-position: 100% 50%; }
-  75% { background-position: 50% 100%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  25% {
+    background-position: 50% 0%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  75% {
+    background-position: 50% 100%;
+  }
 }
 
 /* Prismatic glow - rainbow outer glow */
@@ -516,14 +559,12 @@ textarea:focus-visible {
   position: absolute;
   inset: -1px;
   border-radius: 17px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 107, 157, 0.3),
-    rgba(130, 177, 255, 0.3),
-    rgba(100, 255, 218, 0.3),
-    rgba(179, 136, 255, 0.3),
-    rgba(255, 128, 171, 0.3)
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 107, 157, 0.3),
+      rgba(130, 177, 255, 0.3),
+      rgba(100, 255, 218, 0.3),
+      rgba(179, 136, 255, 0.3),
+      rgba(255, 128, 171, 0.3));
   background-size: 300% 300%;
   animation: opalBorder 8s ease infinite;
   z-index: -1;
@@ -546,12 +587,10 @@ textarea:focus-visible {
 /* Primary opal button - gradient with glow */
 .btn-opal-primary {
   position: relative;
-  background: linear-gradient(
-    135deg,
-    var(--opal-azure) 0%,
-    var(--opal-violet) 50%,
-    var(--opal-mint) 100%
-  );
+  background: linear-gradient(135deg,
+      var(--opal-azure) 0%,
+      var(--opal-violet) 50%,
+      var(--opal-mint) 100%);
   background-size: 200% 200%;
   color: #000;
   font-weight: 600;
@@ -564,13 +603,20 @@ textarea:focus-visible {
 }
 
 @keyframes opalButton {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .btn-opal-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(130, 177, 255, 0.4),
     0 0 40px rgba(179, 136, 255, 0.2);
 }
@@ -649,15 +695,20 @@ textarea:focus-visible {
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
+
   25% {
     transform: translate(20px, -30px) scale(1.05);
   }
+
   50% {
     transform: translate(-10px, 20px) scale(0.95);
   }
+
   75% {
     transform: translate(30px, 10px) scale(1.02);
   }
@@ -673,13 +724,11 @@ textarea:focus-visible {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  background: linear-gradient(
-    135deg,
-    var(--opal-rose),
-    var(--opal-azure),
-    var(--opal-mint),
-    var(--opal-violet)
-  );
+  background: linear-gradient(135deg,
+      var(--opal-rose),
+      var(--opal-azure),
+      var(--opal-mint),
+      var(--opal-violet));
   background-size: 200% 200%;
   animation: opalBorder 4s linear infinite;
   z-index: -1;
@@ -687,12 +736,10 @@ textarea:focus-visible {
 
 /* Header with subtle aurora */
 .header-opal {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 107, 157, 0.03) 0%,
-    rgba(130, 177, 255, 0.05) 50%,
-    rgba(179, 136, 255, 0.03) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 107, 157, 0.03) 0%,
+      rgba(130, 177, 255, 0.05) 50%,
+      rgba(179, 136, 255, 0.03) 100%);
   backdrop-filter: blur(30px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -705,53 +752,50 @@ textarea:focus-visible {
 
 /* Message bubble with iridescent tint */
 .opal-message {
-  background: linear-gradient(
-    135deg,
-    rgba(130, 177, 255, 0.08) 0%,
-    rgba(179, 136, 255, 0.05) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(130, 177, 255, 0.08) 0%,
+      rgba(179, 136, 255, 0.05) 100%);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 16px 16px 16px 4px;
 }
 
 .opal-message.sent {
-  background: linear-gradient(
-    135deg,
-    rgba(100, 255, 218, 0.1) 0%,
-    rgba(130, 177, 255, 0.08) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(100, 255, 218, 0.1) 0%,
+      rgba(130, 177, 255, 0.08) 100%);
   border-radius: 16px 16px 4px 16px;
 }
 
 /* Loading skeleton with opal shimmer */
 .skeleton-opal {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.02) 0%,
-    rgba(130, 177, 255, 0.08) 25%,
-    rgba(179, 136, 255, 0.08) 50%,
-    rgba(100, 255, 218, 0.08) 75%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(130, 177, 255, 0.08) 25%,
+      rgba(179, 136, 255, 0.08) 50%,
+      rgba(100, 255, 218, 0.08) 75%,
+      rgba(255, 255, 255, 0.02) 100%);
   background-size: 400% 100%;
   animation: skeleton-opal 2s ease-in-out infinite;
 }
 
 @keyframes skeleton-opal {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Divider with gradient */
 .opal-divider {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(130, 177, 255, 0.3),
-    rgba(179, 136, 255, 0.3),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(130, 177, 255, 0.3),
+      rgba(179, 136, 255, 0.3),
+      transparent);
 }
 
 /* Tooltip with glow */
@@ -761,3 +805,44 @@ textarea:focus-visible {
   box-shadow: 0 0 20px rgba(130, 177, 255, 0.1);
 }
 
+/* ======================================
+   MOBILE OPTIMIZATIONS
+   ====================================== */
+
+/* Prevent iOS zoom on input focus - requires 16px minimum */
+@media (max-width: 640px) {
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Compact action buttons on mobile */
+  .action-compact {
+    gap: 0.5rem !important;
+  }
+
+  /* Better touch targets */
+  button,
+  a,
+  label[for] {
+    min-height: 44px;
+  }
+
+  /* Reduce card padding on mobile */
+  .opal-card {
+    padding: 0.75rem;
+  }
+}
+
+/* Safe area padding for notched iPhones */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pt-safe {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}

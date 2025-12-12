@@ -162,6 +162,7 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:settings_tab, "profile")
         |> assign(:network_tab, "friends")
         |> assign(:note_input, "")
+        |> assign(:viewing_note, nil)
         |> assign(:join_code, "")
         |> assign(:new_room_name, "")
         |> assign(:create_private_room, false)
@@ -325,7 +326,7 @@ defmodule FriendsWeb.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-neutral-950 text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white pb-20">
+    <div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white pb-20">
       <%= if @live_action == :index do %>
         <%!-- Dashboard View --%>
         <div class="max-w-[1600px] mx-auto p-4 sm:p-8">
@@ -530,9 +531,9 @@ defmodule FriendsWeb.HomeLive do
         <% end %>
       <% else %>
         <%!-- Room View --%>
-        <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
+        <div id="friends-app" class="text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
         <%!-- Main content - wider and more spacious --%>
-        <div class="max-w-[1600px] mx-auto px-8 py-10">
+        <div class="max-w-[1600px] mx-auto px-8 pt-10 pb-4">
 
           <%!-- Network Info (when in network mode) --%>
           <%= if @feed_mode == "friends" && @current_user do %>
@@ -604,9 +605,9 @@ defmodule FriendsWeb.HomeLive do
           <% end %>
 
           <%!-- Main split-view layout container --%>
-          <div class={if @room.is_private and not @room_access_denied, do: "flex items-start gap-6", else: ""}>
-            <%!-- Left: Main content area (narrows when chat visible) --%>
-            <div class={if @room.is_private and not @room_access_denied, do: "flex-1 min-w-0", else: ""}>
+          <div class={if @room.is_private and not @room_access_denied, do: "", else: ""}>
+            <%!-- Left: Main content area (with right margin for fixed chat on lg screens) --%>
+            <div class={if @room.is_private and not @room_access_denied, do: "lg:mr-[400px]", else: ""}>
 
 
 
@@ -675,69 +676,119 @@ defmodule FriendsWeb.HomeLive do
                 <% end %>
               </div>
             <% else %>
-            <%!-- Action buttons row - outside stream so they don't disappear --%>
+            <%!-- Unified grid wrapper - both children use display:contents to flow together --%>
+            
+            <%!-- Mobile compact action bar (visible on small screens only) --%>
             <%= if not is_nil(@current_user) and not @room_access_denied and assigns[:uploads] do %>
-              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mb-4">
-                <%!-- Add Photo Card --%>
-                <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
+              <div class="sm:hidden flex items-stretch gap-2 mb-4">
+                <%!-- Mobile Photo Button (triggers the desktop file input) --%>
+                <label
+                  for={@uploads.photo.ref}
+                  class="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-neutral-800/80 hover:bg-white/10 transition-all cursor-pointer active:scale-95"
+                >
+                  <svg class="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span class="text-[10px] font-medium text-neutral-500"><%= if @uploading, do: "...", else: "Photo" %></span>
+                </label>
+
+                <%!-- Mobile Note Button --%>
+                <button
+                  type="button"
+                  phx-click="open_note_modal"
+                  class="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-neutral-800/80 hover:bg-white/10 transition-all cursor-pointer active:scale-95"
+                >
+                  <svg class="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span class="text-[10px] font-medium text-neutral-500">Note</span>
+                </button>
+
+                <%!-- Mobile Voice Button --%>
+                <button
+                  type="button"
+                  id="grid-voice-record-mobile"
+                  phx-hook="GridVoiceRecorder"
+                  data-room-id={@room.id}
+                  class={"flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all cursor-pointer active:scale-95 #{if @recording_voice, do: "bg-red-500/30 animate-pulse", else: "bg-neutral-800/80 hover:bg-white/10"}"}
+                >
+                  <%= if @recording_voice do %>
+                    <div class="w-4 h-4 bg-red-500 rounded-sm"></div>
+                  <% else %>
+                    <svg class="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                  <% end %>
+                  <span class={"text-[10px] font-medium #{if @recording_voice, do: "text-red-400", else: "text-neutral-500"}"}><%= if @recording_voice, do: "Stop", else: "Voice" %></span>
+                </button>
+              </div>
+            <% end %>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+              <%!-- Action buttons (hidden on mobile, visible on sm+) --%>
+              <%= if not is_nil(@current_user) and not @room_access_denied and assigns[:uploads] do %>
+                <%!-- Add Photo Card (desktop only) --%>
+                <form id="upload-form" phx-change="validate" phx-submit="save" class="hidden sm:contents">
                   <label
                     for={@uploads.photo.ref}
-                    class="group relative aspect-square opal-card rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-rose-500/10 hover:to-violet-500/10"
+                    class="group relative aspect-square rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-2 transition-all border-2 border-dashed border-neutral-700 hover:border-rose-500/50 hover:bg-rose-500/5"
                   >
-                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500/30 to-violet-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                       <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <div class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:bg-rose-500/20">
+                       <svg class="w-4 h-4 text-neutral-500 group-hover:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                        </svg>
                      </div>
-                     <span class="text-sm font-medium text-neutral-400 group-hover:text-white"><%= if @uploading, do: "Uploading...", else: "Photo" %></span>
+                     <span class="text-xs font-medium text-neutral-500 group-hover:text-rose-400"><%= if @uploading, do: "Uploading...", else: "Photo" %></span>
                      <.live_file_input upload={@uploads.photo} class="sr-only" />
                   </label>
                 </form>
 
-                <%!-- Add Note Card --%>
+                <%!-- Add Note Card (desktop only) --%>
                 <button
                   type="button"
                   phx-click="open_note_modal"
-                  class="group relative aspect-square opal-card rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-cyan-500/10 hover:to-blue-500/10"
+                  class="hidden sm:flex group relative aspect-square rounded-2xl cursor-pointer flex-col items-center justify-center gap-2 transition-all border-2 border-dashed border-neutral-700 hover:border-cyan-500/50 hover:bg-cyan-500/5"
                 >
-                   <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <div class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:bg-cyan-500/20">
+                     <svg class="w-4 h-4 text-neutral-500 group-hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                      </svg>
                    </div>
-                   <span class="text-sm font-medium text-neutral-400 group-hover:text-white">Note</span>
+                   <span class="text-xs font-medium text-neutral-500 group-hover:text-cyan-400">Note</span>
                 </button>
 
-                <%!-- Add Voice Card --%>
+                <%!-- Add Voice Card (desktop only) --%>
                 <button
                   type="button"
                   id="grid-voice-record"
                   phx-hook="GridVoiceRecorder"
                   data-room-id={@room.id}
-                  class={"group relative aspect-square opal-card rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-amber-500/10 hover:to-orange-500/10 #{if @recording_voice, do: "ring-2 ring-red-500 animate-pulse", else: ""}"}
+                  class={"hidden sm:flex group relative aspect-square rounded-2xl cursor-pointer flex-col items-center justify-center gap-2 transition-all border-2 border-dashed #{if @recording_voice, do: "border-red-500 bg-red-500/10 animate-pulse", else: "border-neutral-700 hover:border-amber-500/50 hover:bg-amber-500/5"}"}
                 >
-                   <div class={"w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform #{if @recording_voice, do: "bg-red-500", else: "bg-gradient-to-br from-amber-500/30 to-orange-500/30"}"}>
-                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <div class={"w-8 h-8 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform #{if @recording_voice, do: "bg-red-500", else: "bg-neutral-800 group-hover:bg-amber-500/20"}"}
+                   >
+                     <svg class={"w-4 h-4 #{if @recording_voice, do: "text-white", else: "text-neutral-500 group-hover:text-amber-400"}"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                      </svg>
                    </div>
-                   <span class={"text-sm font-medium group-hover:text-white #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
+                   <span class={"text-xs font-medium #{if @recording_voice, do: "text-red-400", else: "text-neutral-500 group-hover:text-amber-400"}"}
+                   >
                      <%= if @recording_voice, do: "Recording...", else: "Voice" %>
                    </span>
                 </button>
-              </div>
-            <% end %>
+              <% end %>
 
-            <%!-- Content grid (stream) --%>
-            <div
-              id="items-grid"
-              phx-update="stream"
-              phx-hook="PhotoGrid"
-              class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4"
-            >
+              <%!-- Stream container with display:contents so items flow into parent grid --%>
+              <div
+                id="items-grid"
+                phx-update="stream"
+                phx-hook="PhotoGrid"
+                class="contents"
+              >
+              <%!-- Streamed content items --%>
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10" phx-click={if Map.get(item, :content_type) != "audio/encrypted", do: "view_full_image"} phx-value-photo_id={item.id}>
+                  <div id={dom_id} class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10 animate-in fade-in zoom-in-95 duration-300" phx-click={if Map.get(item, :content_type) != "audio/encrypted", do: "view_full_image"} phx-value-photo_id={item.id}>
                     <%= if Map.get(item, :content_type) == "audio/encrypted" do %>
                       <div 
                          class="w-full h-full flex flex-col items-center justify-center p-4 bg-neutral-900/50 opal-aurora text-center relative z-10"
@@ -812,8 +863,16 @@ defmodule FriendsWeb.HomeLive do
                     </div>
                   </div>
                 <% else %>
-                  <%!-- Note card --%>
-                  <div id={dom_id} class="group relative opal-card opal-shimmer p-5 min-h-[140px] flex flex-col rounded-2xl transition-all hover:shadow-xl hover:shadow-cyan-500/10">
+                  <%!-- Note card (clickable to expand) --%>
+                  <div 
+                    id={dom_id} 
+                    class="group relative opal-card opal-shimmer p-4 aspect-square flex flex-col rounded-2xl transition-all hover:shadow-xl hover:shadow-cyan-500/10 animate-in fade-in zoom-in-95 duration-300 cursor-pointer overflow-hidden"
+                    phx-click="view_full_note"
+                    phx-value-id={item.id}
+                    phx-value-content={item.content}
+                    phx-value-user={item.user_name || String.slice(item.user_id, 0, 6)}
+                    phx-value-time={format_time(item.inserted_at)}
+                  >
                     <p class="text-sm text-neutral-300 flex-1 line-clamp-4">{item.content}</p>
                     <div class="flex items-center gap-2 text-xs mt-3 pt-3 border-t border-neutral-800">
                       <div
@@ -839,7 +898,8 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 <% end %>
               <% end %>
-            </div>
+            </div><%!-- Close stream container --%>
+            </div><%!-- Close parent grid wrapper --%>
             <%= unless @no_more_items do %>
               <div class="flex justify-center mt-6">
                 <button
@@ -859,17 +919,19 @@ defmodule FriendsWeb.HomeLive do
 
             <%!-- Right: Chat Panel (always visible for private spaces) --%>
             <%= if @room.is_private and not @room_access_denied and @current_user do %>
-              <div class={
-                if @show_mobile_chat,
-                  do: "fixed inset-0 z-50 bg-neutral-900 w-full pt-safe animate-in slide-in-from-right duration-300",
-                  else: "hidden lg:block w-2/5 min-w-[320px] max-w-[500px]"
-              }>
+              <div 
+                class={
+                  if @show_mobile_chat,
+                    do: "fixed inset-0 z-50 bg-neutral-900 w-full pt-safe animate-in slide-in-from-right duration-300",
+                    else: "hidden lg:flex lg:flex-col fixed top-[84px] right-4 bottom-4 w-[380px] z-30"
+                }
+              >
                 <%= if @show_mobile_chat do %>
                   <button phx-click="toggle_mobile_chat" class="absolute top-4 right-4 z-50 p-2 bg-neutral-800 rounded-full text-white shadow-lg">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 <% end %>
-                <div class="opal-card rounded-2xl overflow-hidden sticky top-20 mt-0 self-start" style="height: calc(100vh - 96px);">
+                <div class="opal-card rounded-2xl overflow-hidden flex flex-col h-full border border-white/5">
                   <%!-- Chat Header with Invite --%>
                   <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -879,9 +941,11 @@ defmodule FriendsWeb.HomeLive do
                         E2E
                       </span>
                     </div>
-                    <button phx-click="open_invite_modal" class="text-xs text-neutral-400 hover:text-white cursor-pointer transition-colors">
-                      + Invite
-                    </button>
+                    <%= if @room.room_type != "dm" do %>
+                      <button phx-click="open_invite_modal" class="text-xs text-neutral-400 hover:text-white cursor-pointer transition-colors">
+                        + Invite
+                      </button>
+                    <% end %>
                   </div>
 
                   <%!-- Members Section --%>
@@ -910,8 +974,8 @@ defmodule FriendsWeb.HomeLive do
                     </div>
                   <% end %>
 
-                  <%!-- Messages --%>
-                  <div id="room-messages-container" class="overflow-y-auto p-3 space-y-3" style={"height: calc(100% - #{if @room_members != [], do: "150px", else: "110px"});"} phx-hook="RoomChatScroll" data-room-id={@room.id}>
+                  <%!-- Messages (flex-1 takes remaining space, scrollable) --%>
+                  <div id="room-messages-container" class="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3 min-h-0" phx-hook="RoomChatScroll" data-room-id={@room.id}>
                     <%= if @room_messages == [] do %>
                       <div class="flex items-center justify-center h-full text-neutral-500">
                         <div class="text-center">
@@ -949,8 +1013,8 @@ defmodule FriendsWeb.HomeLive do
                     <% end %>
                   </div>
 
-                  <%!-- Message Input --%>
-                  <div class="p-3 border-t border-white/10">
+                  <%!-- Message Input (fixed at bottom, shrink-0) --%>
+                  <div class="p-3 border-t border-white/10 shrink-0">
                     <div id="room-message-input-area" class="flex items-center gap-2" phx-hook="RoomChatEncryption" data-room-id={@room.id}>
                       <%!-- Voice button removed from chat --%>
                       <input
@@ -1239,44 +1303,110 @@ defmodule FriendsWeb.HomeLive do
         <% end %>
 
         <%= if @show_invite_modal do %>
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_invite_modal">
-            <div class="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl space-y-6">
-              <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-white">Invite to Space</h2>
-                <button type="button" phx-click="close_invite_modal" class="text-neutral-500 hover:text-white cursor-pointer">×</button>
+          <div 
+            id="invite-modal-overlay" 
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200" 
+            phx-click-away="close_invite_modal"
+            role="dialog"
+            aria-modal="true"
+            phx-hook="LockScroll"
+          >
+            <div class="w-full max-w-md opal-card opal-prismatic rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <%!-- Header --%>
+              <div class="p-6 border-b border-white/5 opal-aurora">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="text-xl font-semibold text-white">Invite People</h2>
+                    <p class="text-sm text-neutral-400 mt-1">Add friends to this space</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    phx-click="close_invite_modal" 
+                    class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <%= if @room.is_private do %>
-                <div class="space-y-2">
-                  <div class="text-xs text-neutral-500 uppercase tracking-wider">Share Link</div>
-                  <div class="flex gap-2">
-                    <input type="text" value={url(~p"/r/#{@room.code}")} readonly class="flex-1 px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-sm text-neutral-300 font-mono select-all" />
-                    <button phx-hook="CopyToClipboard" data-copy={url(~p"/r/#{@room.code}")} id="copy-invite-link-modal" class="px-3 py-2 bg-white text-black text-sm rounded-lg hover:bg-neutral-200 cursor-pointer">Copy</button>
+              <div class="p-6 space-y-6">
+                <%= if @room.is_private do %>
+                  <div class="space-y-3">
+                    <label class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Share Link</label>
+                    <div class="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={url(~p"/r/#{@room.code}")} 
+                        readonly 
+                        class="flex-1 px-4 py-3 bg-neutral-950/50 opal-input border border-white/10 rounded-xl text-sm text-neutral-300 font-mono select-all focus:outline-none" 
+                      />
+                      <button 
+                        phx-hook="CopyToClipboard" 
+                        data-copy={url(~p"/r/#{@room.code}")} 
+                        id="copy-invite-link-modal" 
+                        class="px-4 py-3 bg-white text-black text-sm font-medium rounded-xl hover:bg-neutral-200 transition-colors cursor-pointer"
+                      >
+                        Copy
+                      </button>
+                    </div>
                   </div>
-                </div>
-              <% end %>
-
-              <div class="space-y-3">
-                <div class="text-xs text-neutral-500 uppercase tracking-wider">Add Member</div>
-                <form phx-change="search_member_invite" phx-submit="search_member_invite">
-                   <div class="relative">
-                     <input type="text" name="query" value={@member_invite_search} placeholder="Search username..." class="w-full px-3 py-2 bg-neutral-950 border border-neutral-800 rounded-lg text-sm text-white focus:outline-none focus:border-neutral-600" autocomplete="off" phx-debounce="300" />
-                   </div>
-                </form>
-
-                <%= if @member_invite_results != [] do %>
-                  <div class="mt-2 max-h-48 overflow-y-auto space-y-1">
-                    <%= for user <- @member_invite_results do %>
-                       <div class="flex items-center justify-between p-2 hover:bg-neutral-800 rounded-lg group">
-                         <div class="flex items-center gap-2">
-                           <div class="w-6 h-6 rounded-full" style={"background-color: #{trusted_user_color(user)}"} />
-                           <span class="text-sm text-neutral-300">@{user.username}</span>
-                         </div>
-                         <button phx-click="invite_to_room" phx-value-user_id={user.id} class="text-xs text-blue-400 hover:text-white px-2 py-1 bg-blue-500/10 hover:bg-blue-600 rounded cursor-pointer">Invite</button>
-                       </div>
-                    <% end %>
+                  
+                  <div class="relative flex items-center gap-4 py-2">
+                    <div class="flex-1 border-t border-white/10"></div>
+                    <span class="text-xs text-neutral-500 uppercase">OR</span>
+                    <div class="flex-1 border-t border-white/10"></div>
                   </div>
                 <% end %>
+
+                <div class="space-y-3">
+                  <label class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Add Member</label>
+                  <form phx-change="search_member_invite" phx-submit="search_member_invite">
+                     <div class="relative">
+                       <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                       </svg>
+                       <input 
+                         type="text" 
+                         name="query" 
+                         value={@member_invite_search} 
+                         placeholder="Search by username..." 
+                         class="w-full pl-10 pr-4 py-3 bg-neutral-950/50 opal-input border border-white/10 rounded-xl text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/20 transition-all" 
+                         autocomplete="off" 
+                         phx-debounce="300" 
+                       />
+                     </div>
+                  </form>
+
+                  <%= if @member_invite_results != [] do %>
+                    <div class="mt-2 max-h-48 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                      <%= for user <- @member_invite_results do %>
+                         <div class="flex items-center justify-between p-3 hover:bg-white/5 rounded-xl group transition-colors border border-transparent hover:border-white/5">
+                           <div class="flex items-center gap-3">
+                             <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-black" style={"background-color: #{trusted_user_color(user)}"}>
+                               <%= String.first(user.username) |> String.upcase() %>
+                             </div>
+                             <span class="text-sm text-neutral-300 font-medium group-hover:text-white transition-colors">@{user.username}</span>
+                           </div>
+                           <button 
+                             phx-click="invite_to_room" 
+                             phx-value-user_id={user.id} 
+                             class="text-xs font-medium text-emerald-400 hover:text-black px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-400 rounded-lg transition-all cursor-pointer"
+                           >
+                             Invite
+                           </button>
+                         </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <%= if @member_invite_search != "" do %>
+                      <div class="text-center py-4 text-neutral-500 text-sm">
+                        No users found
+                      </div>
+                    <% end %>
+                  <% end %>
+                </div>
               </div>
             </div>
           </div>
@@ -1345,13 +1475,14 @@ defmodule FriendsWeb.HomeLive do
 
               <form phx-submit="save_note" phx-change="update_note" class="p-6">
                 <textarea
+                  id="note-input"
                   name="content"
                   value={@note_input}
                   placeholder="What's on your mind?"
                   maxlength="500"
                   rows="5"
+                  phx-hook="AutoFocus"
                   class="w-full p-4 opal-input text-base text-white placeholder:text-neutral-600 focus:outline-none resize-none mb-4"
-                  autofocus
                 >{@note_input}</textarea>
                 <div class="flex items-center justify-between">
                   <span class="text-xs text-neutral-500">{String.length(@note_input)}/500</span>
@@ -1364,6 +1495,32 @@ defmodule FriendsWeb.HomeLive do
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        <% end %>
+
+        <%!-- View Full Note Modal --%>
+        <%= if @viewing_note do %>
+          <div id="view-note-modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200" phx-click-away="close_view_note" phx-hook="LockScroll">
+            <div class="w-full max-w-lg opal-card opal-prismatic rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[80vh] flex flex-col">
+              <%!-- Header --%>
+              <div class="p-4 border-b border-white/5 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2 text-sm text-neutral-400">
+                  <span>@{@viewing_note.user}</span>
+                  <span class="text-neutral-600">·</span>
+                  <span class="text-neutral-600">{@viewing_note.time}</span>
+                </div>
+                <button type="button" phx-click="close_view_note" class="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer" aria-label="Close">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <%!-- Content --%>
+              <div class="p-6 overflow-y-auto flex-1">
+                <p class="text-base text-neutral-200 leading-relaxed whitespace-pre-wrap">{@viewing_note.content}</p>
+              </div>
             </div>
           </div>
         <% end %>
@@ -1962,14 +2119,16 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="prev_photo"
-              class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
+              class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
               aria-label="Previous photo"
             >
-              ‹
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
             </button>
 
             <div class="relative max-w-6xl max-h-[90vh] flex items-center justify-center">
-              <button type="button" phx-click="close_image_modal" class="absolute -top-12 sm:-top-14 right-0 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10" aria-label="Close photo viewer">×</button>
+              <button type="button" phx-click="close_image_modal" class="absolute -top-12 sm:-top-14 right-0 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10" aria-label="Close photo viewer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
 
               <%= if @full_image_data[:user_id] == @user_id do %>
                 <button
@@ -1996,10 +2155,10 @@ defmodule FriendsWeb.HomeLive do
             <button
               type="button"
               phx-click="next_photo"
-              class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 text-2xl cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
+              class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center glass rounded-full text-white hover:text-neutral-300 cursor-pointer border border-white/10 hover:border-white/20 transition-all z-10"
               aria-label="Next photo"
             >
-              ›
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
         <% end %>
@@ -2082,7 +2241,7 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("cancel_upload", %{"ref" => ref}, socket) do
-    {:noreply, cancel_upload(socket, :photo, ref)}
+    {:noreply, socket |> cancel_upload(:photo, ref) |> assign(:uploading, false)}
   end
 
   def handle_event("delete_photo", %{"id" => id}, socket) do
@@ -2569,9 +2728,20 @@ defmodule FriendsWeb.HomeLive do
       socket.assigns.show_note_modal ->
         {:noreply, socket |> assign(:show_note_modal, false) |> assign(:note_input, "")}
 
+      socket.assigns.viewing_note ->
+        {:noreply, assign(socket, :viewing_note, nil)}
+
       true ->
         {:noreply, socket}
     end
+  end
+
+  def handle_event("view_full_note", %{"id" => id, "content" => content, "user" => user, "time" => time}, socket) do
+    {:noreply, assign(socket, :viewing_note, %{id: id, content: content, user: user, time: time})}
+  end
+
+  def handle_event("close_view_note", _params, socket) do
+    {:noreply, assign(socket, :viewing_note, nil)}
   end
 
   def handle_event("handle_keydown", %{"key" => key}, socket)
