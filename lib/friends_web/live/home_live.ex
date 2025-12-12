@@ -1022,9 +1022,9 @@ defmodule FriendsWeb.HomeLive do
             aria-labelledby="create-group-modal-title"
             phx-hook="LockScroll"
           >
-            <div class="w-full max-w-md bg-neutral-900 rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-              <%!-- Header with gradient accent --%>
-              <div class="p-6 border-b border-neutral-800 bg-gradient-to-r from-emerald-500/10 to-blue-500/10">
+            <div class="w-full max-w-md opal-card opal-prismatic rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <%!-- Header with aurora gradient --%>
+              <div class="p-6 border-b border-white/5 opal-aurora">
                 <div class="flex items-center justify-between">
                   <div>
                     <h2 id="create-group-modal-title" class="text-xl font-semibold text-white">Create Group</h2>
@@ -1057,7 +1057,7 @@ defmodule FriendsWeb.HomeLive do
                     placeholder="e.g. Weekend Plans, Study Group..."
                     maxlength="50"
                     autofocus
-                    class="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    class="w-full px-4 py-3 opal-input text-white placeholder:text-neutral-600 focus:outline-none transition-all"
                   />
                   <p class="text-xs text-neutral-600 mt-2">Leave empty for an auto-generated code name</p>
                 </div>
@@ -1066,14 +1066,14 @@ defmodule FriendsWeb.HomeLive do
                   <button
                     type="button"
                     phx-click="close_create_group_modal"
-                    class="flex-1 px-4 py-3 border border-neutral-700 text-neutral-300 rounded-xl hover:bg-neutral-800 hover:text-white transition-all cursor-pointer"
+                    class="flex-1 px-4 py-3 btn-opal-secondary cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     phx-disable-with="Creating..."
-                    class="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-xl hover:from-emerald-400 hover:to-emerald-500 transition-all cursor-pointer shadow-lg shadow-emerald-500/25"
+                    class="flex-1 btn-opal-primary cursor-pointer"
                   >
                     Create Group
                   </button>

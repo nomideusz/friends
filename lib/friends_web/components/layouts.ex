@@ -39,7 +39,7 @@ defmodule FriendsWeb.Layouts do
     assigns = Phoenix.Component.assign(assigns, :context_title, context_title)
 
     ~H"""
-    <header class="glass-strong border-b border-white/5 sticky top-0 z-40">
+    <header class="header-opal glass-strong border-b border-white/5 sticky top-0 z-40">
       <div class="max-w-[1600px] mx-auto px-4 sm:px-8 py-3">
         <div class="flex items-center justify-between gap-6 relative">
           

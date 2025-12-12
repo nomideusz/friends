@@ -422,3 +422,342 @@ textarea:focus-visible {
     transparent 100%
   );
 }
+
+/* ======================================
+   OPALESCENT FUTURE - Enhanced Effects
+   ====================================== */
+
+/* Iridescent shimmer - subtle rainbow wash that moves across surfaces */
+.opal-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.opal-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 107, 157, 0.08) 20%,
+    rgba(130, 177, 255, 0.12) 40%,
+    rgba(100, 255, 218, 0.08) 60%,
+    rgba(179, 136, 255, 0.1) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.opal-shimmer:hover::after {
+  opacity: 1;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Aurora - flowing opalescent background like northern lights */
+.opal-aurora {
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(255, 107, 157, 0.15) 0%,
+      rgba(130, 177, 255, 0.1) 25%,
+      rgba(100, 255, 218, 0.12) 50%,
+      rgba(179, 136, 255, 0.15) 75%,
+      rgba(255, 128, 171, 0.1) 100%
+    );
+  background-size: 400% 400%;
+  animation: aurora 12s ease-in-out infinite;
+}
+
+@keyframes aurora {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+}
+
+/* Prismatic glow - rainbow outer glow */
+.opal-prismatic {
+  box-shadow:
+    0 0 20px rgba(255, 107, 157, 0.15),
+    0 0 40px rgba(130, 177, 255, 0.1),
+    0 0 60px rgba(100, 255, 218, 0.08),
+    0 0 80px rgba(179, 136, 255, 0.05);
+}
+
+.opal-prismatic-hover:hover {
+  box-shadow:
+    0 0 25px rgba(255, 107, 157, 0.25),
+    0 0 50px rgba(130, 177, 255, 0.15),
+    0 0 75px rgba(100, 255, 218, 0.12),
+    0 0 100px rgba(179, 136, 255, 0.08);
+}
+
+/* Opalescent card - premium card with iridescent border on hover */
+.opal-card {
+  position: relative;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: all 0.4s ease;
+}
+
+.opal-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 157, 0.3),
+    rgba(130, 177, 255, 0.3),
+    rgba(100, 255, 218, 0.3),
+    rgba(179, 136, 255, 0.3),
+    rgba(255, 128, 171, 0.3)
+  );
+  background-size: 300% 300%;
+  animation: opalBorder 8s ease infinite;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.opal-card:hover::before {
+  opacity: 0.8;
+}
+
+.opal-card:hover {
+  transform: translateY(-2px);
+  border-color: transparent;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 40px rgba(130, 177, 255, 0.1);
+}
+
+/* Primary opal button - gradient with glow */
+.btn-opal-primary {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    var(--opal-azure) 0%,
+    var(--opal-violet) 50%,
+    var(--opal-mint) 100%
+  );
+  background-size: 200% 200%;
+  color: #000;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.3s ease;
+  animation: opalButton 6s ease infinite;
+  box-shadow: 0 4px 20px rgba(130, 177, 255, 0.3);
+}
+
+@keyframes opalButton {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.btn-opal-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 30px rgba(130, 177, 255, 0.4),
+    0 0 40px rgba(179, 136, 255, 0.2);
+}
+
+.btn-opal-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary opal button - ghost with border */
+.btn-opal-secondary {
+  position: relative;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(130, 177, 255, 0.3);
+  border-radius: 12px;
+  padding: 12px 24px;
+  transition: all 0.3s ease;
+}
+
+.btn-opal-secondary:hover {
+  background: rgba(130, 177, 255, 0.1);
+  border-color: rgba(130, 177, 255, 0.5);
+  box-shadow: 0 0 30px rgba(130, 177, 255, 0.15);
+}
+
+/* Opal input - prismatic focus ring */
+.opal-input {
+  background: rgba(10, 10, 15, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.opal-input:focus {
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px rgba(130, 177, 255, 0.5),
+    0 0 0 4px rgba(130, 177, 255, 0.1),
+    0 0 30px rgba(179, 136, 255, 0.1);
+}
+
+/* Floating orbs - decorative background elements */
+.opal-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  animation: float 10s ease-in-out infinite;
+}
+
+.opal-orb-1 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, var(--opal-rose) 0%, transparent 70%);
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.opal-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--opal-azure) 0%, transparent 70%);
+  top: 60%;
+  right: 10%;
+  animation-delay: -3s;
+}
+
+.opal-orb-3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, var(--opal-mint) 0%, transparent 70%);
+  bottom: 20%;
+  left: 30%;
+  animation-delay: -6s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(20px, -30px) scale(1.05);
+  }
+  50% {
+    transform: translate(-10px, 20px) scale(0.95);
+  }
+  75% {
+    transform: translate(30px, 10px) scale(1.02);
+  }
+}
+
+/* Opal avatar ring */
+.opal-avatar {
+  position: relative;
+}
+
+.opal-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--opal-rose),
+    var(--opal-azure),
+    var(--opal-mint),
+    var(--opal-violet)
+  );
+  background-size: 200% 200%;
+  animation: opalBorder 4s linear infinite;
+  z-index: -1;
+}
+
+/* Header with subtle aurora */
+.header-opal {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 107, 157, 0.03) 0%,
+    rgba(130, 177, 255, 0.05) 50%,
+    rgba(179, 136, 255, 0.03) 100%
+  );
+  backdrop-filter: blur(30px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Notification badge with pulse */
+.opal-badge {
+  background: linear-gradient(135deg, var(--opal-rose), var(--opal-coral));
+  animation: pulse-opal 2s ease-in-out infinite;
+}
+
+/* Message bubble with iridescent tint */
+.opal-message {
+  background: linear-gradient(
+    135deg,
+    rgba(130, 177, 255, 0.08) 0%,
+    rgba(179, 136, 255, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.opal-message.sent {
+  background: linear-gradient(
+    135deg,
+    rgba(100, 255, 218, 0.1) 0%,
+    rgba(130, 177, 255, 0.08) 100%
+  );
+  border-radius: 16px 16px 4px 16px;
+}
+
+/* Loading skeleton with opal shimmer */
+.skeleton-opal {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(130, 177, 255, 0.08) 25%,
+    rgba(179, 136, 255, 0.08) 50%,
+    rgba(100, 255, 218, 0.08) 75%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-opal 2s ease-in-out infinite;
+}
+
+@keyframes skeleton-opal {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Divider with gradient */
+.opal-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(130, 177, 255, 0.3),
+    rgba(179, 136, 255, 0.3),
+    transparent
+  );
+}
+
+/* Tooltip with glow */
+.opal-tooltip {
+  background: rgba(10, 10, 15, 0.95);
+  border: 1px solid rgba(130, 177, 255, 0.2);
+  box-shadow: 0 0 20px rgba(130, 177, 255, 0.1);
+}
+
