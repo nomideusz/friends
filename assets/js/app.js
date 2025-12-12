@@ -1039,11 +1039,17 @@ const Hooks = {
             this.handleEvent("login_success", ({ user_id, token }) => {
                 console.log('[WebAuthn Login] Login successful!')
 
+                // Detect if we're on HTTPS for Secure flag
+                const isSecure = window.location.protocol === 'https:'
+                const secureSuffix = isSecure ? '; Secure' : ''
+
                 // Set cookies for session
-                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secureSuffix}`
                 if (token) {
-                    document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
+                    document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureSuffix}`
                 }
+
+                console.log('[WebAuthn Login] Cookies set, redirecting...')
 
                 // Redirect to home
                 setTimeout(() => {
