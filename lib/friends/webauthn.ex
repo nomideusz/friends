@@ -451,7 +451,7 @@ defmodule Friends.WebAuthn do
          Logger.info("[WebAuthn] Signature normalized. Original size: #{byte_size(signature)}, New size: #{byte_size(signature_der)}")
       end
 
-      # Try verification with OID first, fallback to atom if needed
+      # Try verification with OID first using public_key (high level)
       ec_key_oid = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
       
       try do
@@ -461,12 +461,19 @@ defmodule Friends.WebAuthn do
         end
       rescue
         e in ArgumentError ->
-          Logger.warn("[WebAuthn] OID verification failed with ArgumentError, trying atom curve name. Error: #{inspect(e)}")
-          # Try with atom curve name (legacy/alternative format)
+          Logger.warn("[WebAuthn] public_key.verify (OID) failed, trying crypto.verify fallback. Error: #{inspect(e)}")
+          
+          # Fallback 1: public_key with atom curve (legacy)
           ec_key_atom = {:ECPoint, point, {:namedCurve, curve}}
-          case :public_key.verify(data, :sha256, signature_der, ec_key_atom) do
-            true -> :ok
-            false -> {:error, :invalid_signature}
+          try do
+             case :public_key.verify(data, :sha256, signature_der, ec_key_atom) do
+               true -> :ok
+               false -> 
+                 # Fallback 2: Direct crypto.verify (low level)
+                 verify_crypto_fallback(curve, point, data, signature_der)
+             end
+          rescue
+             _ -> verify_crypto_fallback(curve, point, data, signature_der)
           end
       end
     else
@@ -476,6 +483,31 @@ defmodule Friends.WebAuthn do
     e -> 
       Logger.error("[WebAuthn] EC Verify crash: #{inspect(e)}")
       {:error, {:ec_verify_error, e}}
+  end
+
+  defp verify_crypto_fallback(curve, point, data, signature) do
+    Logger.info("[WebAuthn] Attempting crypto.verify fallback")
+    # crypto:verify(Algorithm, DigestType, Msg, Signature, Key)
+    # Key for ECDSA is [Point, CurveParams]
+    # CurveParams can be OID or Atom
+    
+    # Try with atom first as it's simpler
+    case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve]) do
+      true -> :ok
+      false -> 
+        # Try with OID
+        case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve_oid(curve)]) do
+           true -> :ok
+           false -> {:error, :invalid_signature}
+        end
+      {:error, reason} -> 
+         Logger.error("[WebAuthn] crypto.verify failed: #{inspect(reason)}")
+         {:error, :invalid_signature}
+    end
+  rescue
+    e -> 
+      Logger.error("[WebAuthn] crypto.verify crash: #{inspect(e)}")
+      {:error, :invalid_signature}
   end
   
   defp normalize_der(signature) do
