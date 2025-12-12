@@ -128,23 +128,28 @@
     if (graphData.edges) {
       graphData.edges.forEach((edge, index) => {
         const pairKey = `${Math.min(edge.from, edge.to)}-${Math.max(edge.from, edge.to)}`
-        const isMutual = mutualPairs.has(pairKey) && (edge.type === 'trusted' || edge.type === 'trusts_me')
+        const isMutualTrust = mutualPairs.has(pairKey) && (edge.type === 'trusted' || edge.type === 'trusts_me')
 
         if (edge.type === 'trusts_me' && mutualPairs.has(pairKey)) {
           return
         }
 
         const isPending = edge.type === 'pending_outgoing' || edge.type === 'pending_incoming'
-        const color = isMutual ? edgeColors.mutual : edgeColors[edge.type] || 'rgba(255,255,255,0.3)'
+        const isFriendToFriend = edge.type === 'mutual' // Friend-to-friend connections
+        const color = isMutualTrust ? edgeColors.mutual : edgeColors[edge.type] || 'rgba(255,255,255,0.3)'
 
         edges.push({
           id: `edge-${index}`,
           from: edge.from,
           to: edge.to,
-          color: { color, highlight: '#ffffff', hover: color },
-          dashes: isPending ? [5, 5] : false,
-          width: isMutual ? 3 : 2,
-          arrows: isMutual ? undefined : { to: { enabled: true, scaleFactor: 0.5 } }
+          color: { 
+            color: isFriendToFriend ? 'rgba(150,150,150,0.4)' : color, 
+            highlight: '#ffffff', 
+            hover: isFriendToFriend ? 'rgba(200,200,200,0.6)' : color 
+          },
+          dashes: isPending || isFriendToFriend ? [3, 3] : false,
+          width: isMutualTrust ? 3 : (isFriendToFriend ? 1 : 2),
+          arrows: isMutualTrust || isFriendToFriend ? undefined : { to: { enabled: true, scaleFactor: 0.5 } }
         })
       })
     }

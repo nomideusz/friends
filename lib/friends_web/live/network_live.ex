@@ -240,7 +240,7 @@ defmodule FriendsWeb.NetworkLive do
   def handle_info({:friend_accepted, _}, socket), do: {:noreply, load_data(socket)}
   def handle_info({:friend_removed, _}, socket), do: {:noreply, load_data(socket)}
 
-  # --- Graph Helper (Simplified from graph_live.ex) ---
+  # --- Graph Helper (Extended Social Network) ---
   defp build_graph_data(user) do
     user_id = user.id
 
@@ -255,8 +255,13 @@ defmodule FriendsWeb.NetworkLive do
           preload: [:user]
       )
 
-    # 7. Social Friends (accepted) - NEW!
-    friends = Social.list_friends(user_id) # returns list of %{user: user, direction: ...}
+    # 3. My friends (accepted)
+    friends = Social.list_friends(user_id)
+    friend_ids = Enum.map(friends, fn f -> f.user.id end)
+
+    # 4. Get friendships BETWEEN my friends (the social network magic!)
+    # This shows connections like: if A is friends with B and C, and B is friends with C
+    friend_to_friend_edges = get_friendships_between(friend_ids)
 
     # Build nodes map to avoid duplicates
     nodes_map = %{}
@@ -329,14 +334,16 @@ defmodule FriendsWeb.NetworkLive do
         end
       end)
 
-    # Edges for social friends
+    # Edges for my direct friends
     edges =
       Enum.reduce(friends, edges, fn f, acc ->
-        # Check if trusted edge already covers this connection?
-        # A user can be both trusted AND friend.
-        # For graph simplicity, we might want separate edges or a merged type.
-        # But for now, let's add friend edges. Vis.js handles multiple edges.
         [%{from: user.id, to: f.user.id, type: "friend"} | acc]
+      end)
+
+    # Edges between my friends (social network connections!)
+    edges =
+      Enum.reduce(friend_to_friend_edges, edges, fn {id1, id2}, acc ->
+        [%{from: id1, to: id2, type: "mutual"} | acc]
       end)
 
     # Stats
@@ -355,10 +362,28 @@ defmodule FriendsWeb.NetworkLive do
         i_trust: length(my_trusted),
         trust_me: length(people_who_trust_me),
         friends: length(friends),
-        pending_in: 0, # Simplified for NetworkLive
-        invited: 0     # Simplified for NetworkLive
+        friend_connections: length(friend_to_friend_edges),
+        pending_in: 0,
+        invited: 0
       }
     }
+  end
+
+  # Get all friendships between a list of user IDs
+  # Returns list of {user_id_1, user_id_2} tuples where both are friends
+  defp get_friendships_between(user_ids) when length(user_ids) < 2, do: []
+  defp get_friendships_between(user_ids) do
+    # Query friendships where BOTH users are in our friend list
+    Repo.all(
+      from f in Friends.Social.Friendship,
+        where: f.user_id in ^user_ids and f.friend_user_id in ^user_ids and f.status == "accepted",
+        select: {f.user_id, f.friend_user_id}
+    )
+    |> Enum.map(fn {id1, id2} ->
+      # Normalize to avoid duplicates (always smaller ID first)
+      if id1 < id2, do: {id1, id2}, else: {id2, id1}
+    end)
+    |> Enum.uniq()
   end
   
   defp trusted_user_color(%{id: id}) when is_integer(id) do
