@@ -210,23 +210,34 @@ defmodule Friends.WebAuthn do
   defp parse_attestation_object(attestation_object) do
     # CBOR decode the attestation object
     case CBOR.decode(attestation_object) do
-      {:ok, %{"authData" => auth_data, "fmt" => _fmt, "attStmt" => _att_stmt}, _rest} ->
-        parse_authenticator_data(auth_data)
       {:ok, decoded, _rest} when is_map(decoded) ->
-        # Handle string keys from some CBOR decoders
-        auth_data = decoded["authData"] || Map.get(decoded, :authData)
-        if auth_data do
-          parse_authenticator_data(auth_data)
-        else
-          {:error, :missing_auth_data}
+        # CBOR libraries may use string keys, atom keys, or binary keys
+        # Try all possibilities for "authData"
+        auth_data = Map.get(decoded, "authData") ||
+                    Map.get(decoded, :authData) ||
+                    Map.get(decoded, "auth_data") ||
+                    Map.get(decoded, :auth_data)
+
+        case auth_data do
+          nil -> {:error, {:missing_auth_data, Map.keys(decoded)}}
+          %CBOR.Tag{tag: :bytes, value: data} when is_binary(data) -> parse_authenticator_data(data)
+          data when is_binary(data) -> parse_authenticator_data(data)
+          other -> {:error, {:unexpected_auth_data_type, inspect(other)}}
         end
-      error ->
-        {:error, {:cbor_decode_failed, error}}
+      {:ok, other, _rest} ->
+        {:error, {:unexpected_cbor_structure, inspect(other)}}
+      {:error, reason} ->
+        {:error, {:cbor_decode_failed, reason}}
     end
   rescue
     e -> {:error, {:cbor_decode_error, e}}
   end
 
+  # Handle non-binary auth_data with better error messages
+  defp parse_authenticator_data(nil), do: {:error, :nil_auth_data}
+  defp parse_authenticator_data(%CBOR.Tag{tag: :bytes, value: data}) when is_binary(data) do
+    parse_authenticator_data(data)
+  end
   defp parse_authenticator_data(auth_data) when is_binary(auth_data) do
     # Authenticator data structure:
     # - rpIdHash (32 bytes)
