@@ -522,28 +522,25 @@ defmodule FriendsWeb.HomeLive do
                   type="button"
                   phx-click="set_feed_view"
                   phx-value-view="room"
-                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "room", do: "bg-gradient-to-r from-rose-500/20 to-violet-500/20 text-white shadow-lg shadow-violet-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
+                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @feed_mode == "room", do: "bg-gradient-to-r from-rose-500/20 to-violet-500/20 text-white shadow-lg shadow-violet-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
                 >
-                  <span>📍</span>
-                  <span>{room_label}</span>
+                  {room_label}
                 </button>
                 <button
                   type="button"
                   phx-click="set_feed_view"
                   phx-value-view="friends"
-                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "friends" && @network_filter != "me", do: "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-lg shadow-blue-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
+                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @feed_mode == "friends" && @network_filter != "me", do: "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-lg shadow-blue-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
                 >
-                  <span>👥</span>
-                  <span>Contacts</span>
+                  Contacts
                 </button>
                 <button
                   type="button"
                   phx-click="set_feed_view"
                   phx-value-view="me"
-                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "friends" && @network_filter == "me", do: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white shadow-lg shadow-orange-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
+                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @feed_mode == "friends" && @network_filter == "me", do: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white shadow-lg shadow-orange-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
                 >
-                  <span>👤</span>
-                  <span>Me</span>
+                  Me
                 </button>
               </div>
               
@@ -554,16 +551,15 @@ defmodule FriendsWeb.HomeLive do
                 <button
                     type="button"
                     phx-click="toggle_chat_panel"
-                    class={"px-4 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @show_chat_panel, do: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25", else: "opal-card text-neutral-400 hover:text-white"}"}
+                    class={"px-4 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @show_chat_panel, do: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25", else: "opal-card text-neutral-400 hover:text-white"}"}
                   >
-                    <span>💬</span>
-                    <span class="hidden sm:inline"><%= if @show_chat_panel, do: "Hide Chat", else: "Show Chat" %></span>
+                    <%= if @show_chat_panel, do: "Hide Chat", else: "Chat" %>
                   </button>
                 <% end %>
                 <%!-- Invite button --%>
                 <%= if @room.code != "lobby" and @feed_mode == "room" do %>
-              <button phx-click="open_invite_modal" class="opal-shimmer text-sm font-medium text-white flex items-center gap-2 cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 px-4 py-2 rounded-xl border border-violet-500/30 hover:border-violet-400/50 hover:shadow-lg hover:shadow-violet-500/20 transition-all">
-                    <span>💌</span> <span class="hidden sm:inline">Invite</span>
+              <button phx-click="open_invite_modal" class="text-sm font-medium text-white cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 px-4 py-2 rounded-xl border border-violet-500/30 hover:border-violet-400/50 hover:shadow-lg hover:shadow-violet-500/20 transition-all">
+                    Invite
                   </button>
                 <% end %>
               </div>
@@ -723,10 +719,14 @@ defmodule FriendsWeb.HomeLive do
                 <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
                   <label
                     for={@uploads.photo.ref}
-                    class="group relative aspect-square opal-card opal-shimmer rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-rose-500/10 hover:to-violet-500/10"
+                    class="group relative aspect-square opal-card rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-rose-500/10 hover:to-violet-500/10"
                   >
-                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-rose-500/20 to-violet-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">📷</div>
-                     <span class="text-sm font-medium text-neutral-400 group-hover:text-white"><%= if @uploading, do: "Uploading...", else: "Add Photo" %></span>
+                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500/30 to-violet-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                       <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                       </svg>
+                     </div>
+                     <span class="text-sm font-medium text-neutral-400 group-hover:text-white"><%= if @uploading, do: "Uploading...", else: "Photo" %></span>
                      <.live_file_input upload={@uploads.photo} class="sr-only" />
                   </label>
                 </form>
@@ -735,10 +735,14 @@ defmodule FriendsWeb.HomeLive do
                 <button
                   type="button"
                   phx-click="open_note_modal"
-                  class="group relative aspect-square opal-card opal-shimmer rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-cyan-500/10 hover:to-blue-500/10"
+                  class="group relative aspect-square opal-card rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-cyan-500/10 hover:to-blue-500/10"
                 >
-                   <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">📝</div>
-                   <span class="text-sm font-medium text-neutral-400 group-hover:text-white">Add Note</span>
+                   <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                     </svg>
+                   </div>
+                   <span class="text-sm font-medium text-neutral-400 group-hover:text-white">Note</span>
                 </button>
               <% end %>
 
