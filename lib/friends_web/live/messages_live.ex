@@ -35,7 +35,10 @@ defmodule FriendsWeb.MessagesLive do
        |> assign(:friend_search, "")
        |> assign(:friend_search_results, [])
        |> assign(:recording_voice, false)
-       |> assign(:page_title, "Messages")}
+       |> assign(:page_title, "Messages")
+       |> assign(:current_route, "/messages")
+       |> assign(:show_header_dropdown, false)
+       |> assign(:show_user_dropdown, false)}
     end
   end
 
@@ -174,6 +177,28 @@ defmodule FriendsWeb.MessagesLive do
      socket
      |> assign(:recording_voice, false)
      |> push_event("stop_voice_recording", %{})}
+  end
+
+  # --- Header Handlers ---
+
+  def handle_event("toggle_header_dropdown", _, socket) do
+    {:noreply, assign(socket, :show_header_dropdown, !socket.assigns.show_header_dropdown)}
+  end
+
+  def handle_event("close_header_dropdown", _, socket) do
+    {:noreply, assign(socket, :show_header_dropdown, false)}
+  end
+
+  def handle_event("toggle_user_dropdown", _, socket) do
+    {:noreply, assign(socket, :show_user_dropdown, !socket.assigns.show_user_dropdown)}
+  end
+
+  def handle_event("close_user_dropdown", _, socket) do
+    {:noreply, assign(socket, :show_user_dropdown, false)}
+  end
+
+  def handle_event("sign_out", _, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/login?action=signout")}
   end
 
   # --- PubSub Handlers ---

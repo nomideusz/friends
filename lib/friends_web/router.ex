@@ -20,17 +20,26 @@ defmodule FriendsWeb.Router do
 
     get "/r/public-square", RedirectController, :public_square
 
-    live "/", HomeLive, :index
-    live "/login", LoginLive, :index
-    live "/register", RegisterLive, :index
-    live "/recover", RecoverLive, :index
-    live "/link", LinkDeviceLive, :index
-    live "/devices", DevicesLive, :index
-    live "/network", NetworkLive, :index
-    live "/graph", GraphLive, :index
-    live "/messages", MessagesLive, :index
-    live "/messages/:id", MessagesLive, :show
-    live "/r/:room", HomeLive, :room
+    # Auth pages - no shared header needed
+    live_session :auth, layout: {FriendsWeb.Layouts, :auth} do
+      live "/login", LoginLive, :index
+      live "/register", RegisterLive, :index
+      live "/recover", RecoverLive, :index
+      live "/link", LinkDeviceLive, :index
+    end
+
+    # App pages - shared header with user auth
+    live_session :app,
+      on_mount: [{FriendsWeb.Live.Hooks.UserAuth, :default}],
+      layout: {FriendsWeb.Layouts, :app} do
+      live "/", HomeLive, :index
+      live "/devices", DevicesLive, :index
+      live "/network", NetworkLive, :index
+      live "/graph", GraphLive, :index
+      live "/messages", MessagesLive, :index
+      live "/messages/:id", MessagesLive, :show
+      live "/r/:room", HomeLive, :room
+    end
   end
 
   if Application.compile_env(:friends, :dev_routes) do

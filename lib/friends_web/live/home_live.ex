@@ -114,6 +114,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:public_rooms, Social.list_public_rooms())
       |> assign(:show_header_dropdown, false)
       |> assign(:show_invite_modal, false)
+      |> assign(:current_route, "/r/#{room.code}")
       |> assign(:network_filter, "trusted")
       |> assign(:room_access_denied, not can_access)
       |> assign(:show_image_modal, false)
@@ -193,28 +194,8 @@ defmodule FriendsWeb.HomeLive do
   def render(assigns) do
     ~H"""
     <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
-        <%!-- Animated opalescent background --%>
-        <div class="opal-bg"></div>
-
-        <%!-- Header --%>
-        <.live_component
-          module={FriendsWeb.HeaderComponent}
-          id="app-header"
-          room={@room}
-          page_title={@room.name || @room.code}
-          current_user={@current_user}
-          user_color={@user_color}
-          auth_status={@auth_status}
-          viewers={@viewers}
-          user_rooms={@user_private_rooms}
-          public_rooms={@public_rooms}
-          pending_count={length(@pending_requests)}
-          show_dropdown={@show_header_dropdown}
-          current_route={"/r/#{@room.code}"}
-        />
-
         <%!-- Main content - wider and more spacious --%>
-        <main class="max-w-[1600px] mx-auto px-8 py-10">
+        <div class="max-w-[1600px] mx-auto px-8 py-10">
           <%!-- Feed View Pills --%>
           <% room_label = if @room.code == "lobby", do: "Public Square", else: (@room.name || @room.code) %>
           
@@ -644,7 +625,7 @@ defmodule FriendsWeb.HomeLive do
             <% end %>
             <% end %>
           <% end %>
-        </main>
+        </div>
 
         <%!-- Room Modal --%>
         <%= if @show_room_modal do %>
@@ -2444,6 +2425,18 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("close_header_dropdown", _, socket) do
     {:noreply, assign(socket, :show_header_dropdown, false)}
+  end
+
+  def handle_event("toggle_user_dropdown", _, socket) do
+    {:noreply, assign(socket, :show_user_dropdown, !socket.assigns.show_user_dropdown)}
+  end
+
+  def handle_event("close_user_dropdown", _, socket) do
+    {:noreply, assign(socket, :show_user_dropdown, false)}
+  end
+
+  def handle_event("sign_out", _, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/login?action=signout")}
   end
 
   def handle_event("open_invite_modal", _, socket) do

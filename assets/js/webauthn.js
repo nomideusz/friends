@@ -72,11 +72,18 @@ export async function registerCredential(options) {
             throw new Error('Failed to create credential')
         }
 
+        // Get transports from credential response (critical for iOS Safari Face ID)
+        // This tells the browser what type of authenticator was used
+        const transports = credential.response.getTransports 
+            ? credential.response.getTransports() 
+            : []
+
         // Convert response to JSON-serializable format
         return {
             id: credential.id,
             rawId: bufferToBase64url(credential.rawId),
             type: credential.type,
+            transports: transports,
             response: {
                 clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
                 attestationObject: bufferToBase64url(credential.response.attestationObject)

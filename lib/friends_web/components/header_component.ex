@@ -79,7 +79,7 @@ defmodule FriendsWeb.HeaderComponent do
           <div class="flex items-center gap-6">
             <%!-- Viewers with opal glow --%>
             <%= if @viewers && @viewers != [] do %>
-              <div class="flex items-center gap-2">
+            <div class="hidden sm:flex items-center gap-2">
                 <%= for {viewer, idx} <- Enum.with_index(Enum.take(@viewers, 5)) do %>
                   <div
                     class="w-2.5 h-2.5 rounded-full presence-dot"
@@ -127,29 +127,18 @@ defmodule FriendsWeb.HeaderComponent do
                   <span class="text-neutral-200">@{@current_user.username}</span>
                 </button>
               <% else %>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                   <a
                     href="/login"
                     class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-all px-4 py-2 rounded-full glass border border-white/5 hover:border-white/15"
-                    title="Login with hardware key"
                   >
-                    <span>🔐</span>
-                    <span>login</span>
-                  </a>
-                  <a
-                    href="/link"
-                    class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-all px-4 py-2 rounded-full glass border border-white/5 hover:border-white/15"
-                    title="Import identity from another device"
-                  >
-                    <span>📱</span>
-                    <span>link</span>
+                    <span>Login</span>
                   </a>
                   <a
                     href="/register"
                     class="flex items-center gap-2 text-sm px-4 py-2 rounded-full btn-opal"
                   >
-                    <div class="w-2.5 h-2.5 rounded-full bg-violet-400 presence-dot" />
-                    <span class="opal-text font-medium">register</span>
+                    <span class="opal-text font-medium">Create Account</span>
                   </a>
                 </div>
               <% end %>

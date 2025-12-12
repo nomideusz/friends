@@ -119,11 +119,19 @@ defmodule Friends.WebAuthn do
     credentials = list_user_credentials(user.id)
 
     allow_credentials = Enum.map(credentials, fn cred ->
-      %{
+      # Build credential descriptor
+      base = %{
         type: "public-key",
-        id: Base.url_encode64(cred.credential_id, padding: false),
-        transports: cred.transports || []
+        id: Base.url_encode64(cred.credential_id, padding: false)
       }
+
+      # Only include transports if we have them - empty array causes Safari to
+      # show "Hardware key" prompt instead of Face ID/Touch ID
+      case cred.transports do
+        nil -> base
+        [] -> base
+        transports -> Map.put(base, :transports, transports)
+      end
     end)
 
     %{
