@@ -295,6 +295,8 @@ defmodule Friends.Social do
       room -> {:ok, room}
     end
   end
+  def get_or_create_dm_room(user1_id, user2_id) when is_binary(user1_id), do: get_or_create_dm_room(String.to_integer(user1_id), user2_id)
+  def get_or_create_dm_room(user1_id, user2_id) when is_binary(user2_id), do: get_or_create_dm_room(user1_id, String.to_integer(user2_id))
 
   @doc """
   Find existing DM room between two users.
