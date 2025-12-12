@@ -338,8 +338,8 @@ defmodule Friends.WebAuthn do
     # -2 (x): x coordinate
     # -3 (y): y coordinate
     crv = cose_key[-1] || cose_key["-1"]
-    x = cose_key[-2] || cose_key["-2"]
-    y = cose_key[-3] || cose_key["-3"]
+    x = unwrap_bytes(cose_key[-2] || cose_key["-2"])
+    y = unwrap_bytes(cose_key[-3] || cose_key["-3"])
 
     if x && y do
       # Store as concatenated x || y for EC keys (raw format)
@@ -360,8 +360,8 @@ defmodule Friends.WebAuthn do
     # RSA key structure:
     # -1 (n): modulus
     # -2 (e): exponent
-    n = cose_key[-1] || cose_key["-1"]
-    e = cose_key[-2] || cose_key["-2"]
+    n = unwrap_bytes(cose_key[-1] || cose_key["-1"])
+    e = unwrap_bytes(cose_key[-2] || cose_key["-2"])
 
     if n && e do
       public_key = %{
@@ -374,6 +374,10 @@ defmodule Friends.WebAuthn do
       {:error, :invalid_rsa_key}
     end
   end
+  
+  defp unwrap_bytes(%CBOR.Tag{tag: :bytes, value: bytes}), do: bytes
+  defp unwrap_bytes(bytes) when is_binary(bytes), do: bytes
+  defp unwrap_bytes(_), do: nil
 
   defp verify_rp_id_hash(authenticator_data) do
     <<actual_rp_id_hash::binary-size(32), _rest::binary>> = authenticator_data
@@ -406,9 +410,9 @@ defmodule Friends.WebAuthn do
 
     case public_key do
       %{type: :ec, curve: crv, x: x, y: y} ->
-        verify_ec_signature(crv, x, y, signed_data, signature)
+        verify_ec_signature(crv, unwrap_bytes(x), unwrap_bytes(y), signed_data, signature)
       %{type: :rsa, n: n, e: e} ->
-        verify_rsa_signature(n, e, signed_data, signature)
+        verify_rsa_signature(unwrap_bytes(n), unwrap_bytes(e), signed_data, signature)
       _ ->
         {:error, :unknown_key_type}
     end
@@ -425,10 +429,11 @@ defmodule Friends.WebAuthn do
       _ -> nil
     end
 
-    if curve do
+    if curve && x && y do
       # Build the EC public key in Erlang format
       # The point is represented as {x, y} coordinates
       point = <<4>> <> x <> y  # Uncompressed point format
+
       ec_key = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
 
       # WebAuthn uses DER-encoded ECDSA signatures
