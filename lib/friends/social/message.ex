@@ -12,6 +12,7 @@ defmodule Friends.Social.Message do
 
   schema "friends_messages" do
     belongs_to :conversation, Conversation
+    belongs_to :room, Friends.Social.Room
     belongs_to :sender, User, foreign_key: :sender_id
     belongs_to :reply_to, __MODULE__, foreign_key: :reply_to_id
 
@@ -25,10 +26,22 @@ defmodule Friends.Social.Message do
 
   def changeset(message, attrs) do
     message
-    |> cast(attrs, [:conversation_id, :sender_id, :encrypted_content, :content_type, :metadata, :nonce, :reply_to_id])
-    |> validate_required([:conversation_id, :sender_id, :encrypted_content, :content_type, :nonce])
+    |> cast(attrs, [:conversation_id, :room_id, :sender_id, :encrypted_content, :content_type, :metadata, :nonce, :reply_to_id])
+    |> validate_required([:sender_id, :encrypted_content, :content_type, :nonce])
     |> validate_inclusion(:content_type, ["text", "voice", "image"])
     |> validate_voice_duration()
+    |> validate_conversation_or_room()
+  end
+
+  defp validate_conversation_or_room(changeset) do
+    conversation_id = get_field(changeset, :conversation_id)
+    room_id = get_field(changeset, :room_id)
+
+    if is_nil(conversation_id) and is_nil(room_id) do
+      add_error(changeset, :base, "message must belong to either a conversation or a room")
+    else
+      changeset
+    end
   end
 
   defp validate_voice_duration(changeset) do

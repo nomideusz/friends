@@ -11,7 +11,7 @@ defmodule Friends.Social.Note do
     field :user_color, :string
     field :user_name, :string
     field :content, :string
-    field :editable_until, :utc_datetime
+    field :editable_until, :utc_datetime_usec
 
     belongs_to :room, Friends.Social.Room
 

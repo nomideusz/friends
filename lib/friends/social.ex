@@ -397,7 +397,8 @@ defmodule Friends.Social do
       uploaded_at: p.uploaded_at,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
-      updated_at: p.updated_at
+      updated_at: p.updated_at,
+      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
     })
     |> Repo.all()
   end
@@ -426,7 +427,8 @@ defmodule Friends.Social do
       uploaded_at: p.uploaded_at,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
-      updated_at: p.updated_at
+      updated_at: p.updated_at,
+      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
     })
     |> Repo.all()
   end
@@ -594,7 +596,8 @@ defmodule Friends.Social do
       uploaded_at: p.uploaded_at,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
-      updated_at: p.updated_at
+      updated_at: p.updated_at,
+      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
     })
     |> Repo.all()
   end
@@ -622,7 +625,8 @@ defmodule Friends.Social do
       uploaded_at: p.uploaded_at,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
-      updated_at: p.updated_at
+      updated_at: p.updated_at,
+      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
     })
     |> Repo.all()
   end
@@ -812,6 +816,59 @@ defmodule Friends.Social do
             end
         end
     end
+  end
+
+
+  # --- Messages ---
+
+  @doc """
+  List messages in a room
+  """
+  def list_room_messages(room_id, limit \\ 50) do
+    Repo.all(
+      from m in Message,
+        where: m.room_id == ^room_id,
+        order_by: [asc: m.inserted_at],
+        limit: ^limit,
+        preload: [:sender]
+    )
+  end
+
+  @doc """
+  Send a message to a room
+  """
+  def send_room_message(room_id, sender_id, content, type \\ "text", metadata \\ %{}, nonce \\ nil) do
+    %Message{}
+    |> Message.changeset(%{
+      room_id: room_id,
+      sender_id: sender_id,
+      encrypted_content: content,
+      content_type: type,
+      metadata: metadata,
+      nonce: nonce
+    })
+    |> Repo.insert()
+    |> case do
+      {:ok, message} ->
+        message = Repo.preload(message, :sender)
+        broadcast_room_message(room_id, message)
+        {:ok, message}
+
+      error ->
+        error
+    end
+  end
+
+  def subscribe_to_room_chat(room_id) do
+    Phoenix.PubSub.subscribe(Friends.PubSub, "friends:room:#{room_id}:chat")
+  end
+
+  defp broadcast_room_message(room_id, message) do
+    Phoenix.PubSub.broadcast(
+      Friends.PubSub,
+      "friends:room:#{room_id}:chat",
+      {:new_room_message, message}
+    )
   end
 
 
@@ -1105,11 +1162,6 @@ defmodule Friends.Social do
   end
 
   @doc """
-  Get user by ID
-  """
-  def get_user(id), do: Repo.get(User, id)
-
-  @doc """
   Check if username is available
   """
   def username_available?(username) do
@@ -1117,24 +1169,7 @@ defmodule Friends.Social do
     not Repo.exists?(from u in User, where: u.username == ^normalized)
   end
 
-  @doc """
-  Search users by username (for adding trusted friends)
-  """
-  def search_users(query, exclude_user_id \\ nil) do
-    query = String.downcase(query) <> "%"
-    
-    User
-    |> where([u], ilike(u.username, ^query))
-    |> where([u], u.status == "active")
-    |> maybe_exclude_user(exclude_user_id)
-    |> limit(10)
-    |> Repo.all()
-  end
 
-  defp maybe_exclude_user(query, nil), do: query
-  defp maybe_exclude_user(query, user_id) do
-    where(query, [u], u.id != ^user_id)
-  end
 
   @doc """
   Link a device to a user
@@ -2172,88 +2207,8 @@ defmodule Friends.Social do
     end)
   end
 
-  # --- Room Chat (Space Chat) ---
 
-  defp room_chat_topic(room_id), do: "friends:room_chat:#{room_id}"
 
-  @doc """
-  Subscribe to room chat messages.
-  """
-  def subscribe_to_room_chat(room_id) do
-    Phoenix.PubSub.subscribe(Friends.PubSub, room_chat_topic(room_id))
-  end
 
-  @doc """
-  List messages for a room's chat.
-  """
-  def list_room_messages(room_id, limit \\ 50) do
-    room_marker = Jason.encode!(%{room_id: room_id})
-    
-    Repo.all(
-      from m in Message,
-        join: c in Conversation, on: m.conversation_id == c.id,
-        where: c.type == "room" and c.name == ^room_marker,
-        order_by: [desc: m.inserted_at],
-        limit: ^limit,
-        preload: [:sender]
-    )
-    |> Enum.reverse()
-  end
 
-  @doc """
-  Get or create a conversation for a room's chat.
-  """
-  def get_or_create_room_conversation(room_id) do
-    room_marker = Jason.encode!(%{room_id: room_id})
-
-    case Repo.one(from c in Conversation, where: c.type == "room" and c.name == ^room_marker) do
-      nil ->
-        {:ok, conv} = %Conversation{}
-        |> Conversation.changeset(%{
-          type: "room",
-          name: room_marker
-        })
-        |> Repo.insert()
-        conv
-      conv -> conv
-    end
-  end
-
-  @doc """
-  Send a message to a room's chat.
-  """
-  def send_room_message(room_id, sender_id, encrypted_content, content_type, metadata \\ %{}, nonce) do
-    # Get or create room conversation
-    conversation = get_or_create_room_conversation(room_id)
-
-    result =
-      %Message{}
-      |> Message.changeset(%{
-        conversation_id: conversation.id,
-        sender_id: sender_id,
-        encrypted_content: encrypted_content,
-        content_type: content_type,
-        metadata: metadata,
-        nonce: nonce
-      })
-      |> Repo.insert()
-
-    case result do
-      {:ok, message} ->
-        message = Repo.preload(message, [:sender])
-
-        # Broadcast to room chat subscribers
-        Phoenix.PubSub.broadcast(
-          Friends.PubSub,
-          room_chat_topic(room_id),
-          {:new_room_message, message}
-        )
-
-        {:ok, message}
-
-      error -> error
-    end
-  end
 end
-
-

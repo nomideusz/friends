@@ -115,6 +115,10 @@ defmodule FriendsWeb.HomeLive do
         Social.subscribe(room.code)
         Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
         
+        if room.is_private do
+          Social.subscribe_to_room_chat(room.id)
+        end
+        
         # Subscribe to user-specific events (room creations, etc.)
         if session_user do
           Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{session_user.id}")
@@ -145,7 +149,7 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
         |> assign(:feed_mode, "room")
         |> assign(:room_tab, "content")  # "content" or "chat"
-        |> assign(:room_messages, [])
+        |> assign(:room_messages, if(room.is_private and can_access, do: Social.list_room_messages(room.id, 50), else: []))
         |> assign(:new_chat_message, "")
         |> assign(:recording_voice, false)
         |> assign(:show_chat_panel, room.is_private) # Collapsible chat panel, default open for private
@@ -220,6 +224,10 @@ defmodule FriendsWeb.HomeLive do
         Social.subscribe(room.code)
         Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
 
+        if room.is_private do
+          Social.subscribe_to_room_chat(room.id)
+        end
+
         if socket.assigns.user_id do
           Presence.track_user(
             self(),
@@ -257,6 +265,8 @@ defmodule FriendsWeb.HomeLive do
        |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
        |> assign(:viewers, viewers)
        |> assign(:room_access_denied, not can_access)
+       |> assign(:show_chat_panel, room.is_private)
+       |> assign(:room_messages, if(room.is_private and can_access, do: Social.list_room_messages(room.id, 50), else: []))
        |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
        |> assign(:user_private_rooms, private_rooms)
        |> assign(:public_rooms, public_rooms)
@@ -859,7 +869,7 @@ defmodule FriendsWeb.HomeLive do
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 <% end %>
-                <div class="opal-card rounded-2xl overflow-hidden sticky top-4" style="height: calc(100vh - 32px);">
+                <div class="opal-card rounded-2xl overflow-hidden sticky top-20 mt-0 self-start" style="height: calc(100vh - 96px);">
                   <%!-- Chat Header with Invite --%>
                   <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -3017,15 +3027,7 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  # Handle new room message from PubSub
-  def handle_info({:new_room_message, message}, socket) do
-    if socket.assigns.room_tab == "chat" do
-      messages = socket.assigns.room_messages ++ [message]
-      {:noreply, assign(socket, :room_messages, messages)}
-    else
-      {:noreply, socket}
-    end
-  end
+
 
   def handle_event("load_more", _params, socket) do
     if socket.assigns.room_access_denied do
@@ -3315,6 +3317,22 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  def handle_info({:new_note, note}, socket) do
+    if note.user_id != socket.assigns.user_id do
+      note_with_type =
+        note
+        |> Map.put(:type, :note)
+        |> Map.put(:unique_id, "note-#{note.id}")
+
+      {:noreply,
+       socket
+       |> assign(:item_count, socket.assigns.item_count + 1)
+       |> stream_insert(:items, note_with_type, at: 0)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:photo_deleted, %{id: id}}, socket) do
     {:noreply,
      socket
@@ -3368,11 +3386,12 @@ defmodule FriendsWeb.HomeLive do
         file_size: 0
       }
 
-      case Social.create_photo(message_params) do
+      case Social.create_photo(message_params, socket.assigns.room.code) do
          {:ok, photo} ->
             item = photo |> Map.put(:type, :photo) |> Map.put(:unique_id, "photo-#{photo.id}")
             {:noreply,
              socket
+             |> assign(:item_count, socket.assigns.item_count + 1)
              |> stream_insert(:items, item, at: 0)
              |> assign(:recording_voice, false)
              |> put_flash(:info, "Voice note sent!")}
@@ -3388,6 +3407,16 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("toggle_mobile_chat", _params, socket) do
     {:noreply, assign(socket, :show_mobile_chat, not socket.assigns.show_mobile_chat)}
+  end
+
+  # Handle new room message from PubSub
+  def handle_info({:new_room_message, message}, socket) do
+    if socket.assigns.show_chat_panel or socket.assigns.room_tab == "chat" do
+      messages = socket.assigns.room_messages ++ [message]
+      {:noreply, assign(socket, :room_messages, messages)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info({:note_deleted, %{id: id}}, socket) do

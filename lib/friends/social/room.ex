@@ -13,6 +13,7 @@ defmodule Friends.Social.Room do
     belongs_to :owner, Friends.Social.User
     has_many :photos, Friends.Social.Photo
     has_many :notes, Friends.Social.Note
+    has_many :messages, Friends.Social.Message
     has_many :members, Friends.Social.RoomMember
 
     timestamps()

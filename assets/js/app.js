@@ -1013,336 +1013,322 @@ const Hooks = {
                 })
             }
         },
+
         destroyed() {
             if (this.audio) {
                 this.audio.pause()
                 URL.revokeObjectURL(this.audio.src)
             }
         }
-    }
-this.isRecording = true
-this.pushEvent("start_room_recording", {})
-} catch (e) {
-    console.error("Failed to start voice recording:", e)
-    alert("Could not access microphone")
-}
+    },
+
+    CopyToClipboard: {
+        mounted() {
+            this.handleClick = async (event) => {
+                event.preventDefault()
+                const text = this.el.dataset.copy || this.el.getAttribute('data-copy')
+                if (!text) return
+                try {
+                    await navigator.clipboard.writeText(text)
+                    console.log('[CopyToClipboard] copied', text)
+                } catch (e) {
+                    console.error('[CopyToClipboard] failed to copy', e)
+                }
+            }
+            this.el.addEventListener('click', this.handleClick)
+        },
+        destroyed() {
+            if (this.handleClick) {
+                this.el.removeEventListener('click', this.handleClick)
+            }
+        }
+    },
+
+    // ExportKeys hook removed - WebAuthn passkeys are stored securely on your device
+    // and synced via your platform's passkey provider (iCloud Keychain, Google Password Manager, etc.)
+
+    WebAuthnManager: {
+        async mounted() {
+            const statusDiv = document.getElementById('webauthn-status')
+            const registerBtn = document.getElementById('register-webauthn-btn')
+
+            // Check WebAuthn support
+            const supported = isWebAuthnSupported()
+            const platformAvailable = supported && await isPlatformAuthenticatorAvailable()
+
+            if (!supported) {
+                statusDiv.textContent = 'Not supported'
+                statusDiv.className = 'text-xs text-red-500'
+                return
+            }
+
+            if (platformAvailable) {
+                statusDiv.textContent = 'Platform ready'
+                statusDiv.className = 'text-xs text-green-500 hidden md:block'
+            } else {
+                statusDiv.textContent = 'Key supported'
+                statusDiv.className = 'text-xs text-neutral-500 hidden md:block'
+            }
+
+            // Show register button
+            registerBtn.classList.remove('hidden')
+
+            // Handle challenge response from server
+            this.handleEvent("webauthn_challenge_generated", async ({ options }) => {
+                try {
+                    console.log('[WebAuthn] Challenge received, creating credential...')
+
+                    // Create credential with the challenge from server
+                    const credential = await registerCredential(options)
+
+                    console.log('[WebAuthn] Credential created, sending to server...')
+
+                    // Send credential back to server for verification
+                    this.pushEvent("register_webauthn_credential", {
+                        credential: credential
+                    })
+                } catch (error) {
+                    console.error('[WebAuthn] Registration failed:', error)
+                    registerBtn.disabled = false
+                    registerBtn.textContent = 'Register Hardware Key'
+
+                    if (error.name === 'NotAllowedError') {
+                        alert('Registration cancelled or not allowed')
+                    } else {
+                        alert('Registration failed: ' + error.message)
+                    }
                 }
             })
-        },
-destroyed() {
-    if (this.voiceRecorder && this.isRecording) {
-        this.voiceRecorder.stop()
-    }
-}
-    },
 
-CopyToClipboard: {
-    mounted() {
-        this.handleClick = async (event) => {
-            event.preventDefault()
-            const text = this.el.dataset.copy || this.el.getAttribute('data-copy')
-            if (!text) return
-            try {
-                await navigator.clipboard.writeText(text)
-                console.log('[CopyToClipboard] copied', text)
-            } catch (e) {
-                console.error('[CopyToClipboard] failed to copy', e)
-            }
-        }
-        this.el.addEventListener('click', this.handleClick)
-    },
-    destroyed() {
-        if (this.handleClick) {
-            this.el.removeEventListener('click', this.handleClick)
-        }
-    }
-},
-
-// ExportKeys hook removed - WebAuthn passkeys are stored securely on your device
-// and synced via your platform's passkey provider (iCloud Keychain, Google Password Manager, etc.)
-
-WebAuthnManager: {
-        async mounted() {
-        const statusDiv = document.getElementById('webauthn-status')
-        const registerBtn = document.getElementById('register-webauthn-btn')
-
-        // Check WebAuthn support
-        const supported = isWebAuthnSupported()
-        const platformAvailable = supported && await isPlatformAuthenticatorAvailable()
-
-        if (!supported) {
-            statusDiv.textContent = 'Not supported'
-            statusDiv.className = 'text-xs text-red-500'
-            return
-        }
-
-        if (platformAvailable) {
-            statusDiv.textContent = 'Platform ready'
-            statusDiv.className = 'text-xs text-green-500 hidden md:block'
-        } else {
-            statusDiv.textContent = 'Key supported'
-            statusDiv.className = 'text-xs text-neutral-500 hidden md:block'
-        }
-
-        // Show register button
-        registerBtn.classList.remove('hidden')
-
-        // Handle challenge response from server
-        this.handleEvent("webauthn_challenge_generated", async ({ options }) => {
-            try {
-                console.log('[WebAuthn] Challenge received, creating credential...')
-
-                // Create credential with the challenge from server
-                const credential = await registerCredential(options)
-
-                console.log('[WebAuthn] Credential created, sending to server...')
-
-                // Send credential back to server for verification
-                this.pushEvent("register_webauthn_credential", {
-                    credential: credential
-                })
-            } catch (error) {
-                console.error('[WebAuthn] Registration failed:', error)
+            // Handle registration complete
+            this.handleEvent("webauthn_registration_complete", () => {
                 registerBtn.disabled = false
                 registerBtn.textContent = 'Register Hardware Key'
+                console.log('[WebAuthn] Registration complete!')
+            })
 
-                if (error.name === 'NotAllowedError') {
-                    alert('Registration cancelled or not allowed')
+            // Handle registration failed
+            this.handleEvent("webauthn_registration_failed", () => {
+                registerBtn.disabled = false
+                registerBtn.textContent = 'Register Hardware Key'
+            })
+
+            // Handle register button click
+            registerBtn.onclick = async () => {
+                try {
+                    registerBtn.disabled = true
+                    registerBtn.textContent = 'Preparing...'
+
+                    // Request challenge from server
+                    this.pushEvent("request_webauthn_challenge", {})
+                } catch (error) {
+                    console.error('[WebAuthn] Failed to request challenge:', error)
+                    registerBtn.disabled = false
+                    registerBtn.textContent = 'Register Hardware Key'
+                    alert('Failed to start registration: ' + error.message)
+                }
+            }
+        }
+    },
+
+    WebAuthnLogin: {
+        async mounted() {
+            // Handle WebAuthn login challenge from server
+            this.handleEvent("webauthn_login_challenge", async ({ options }) => {
+                try {
+                    console.log('[WebAuthn Login] Challenge received, authenticating...')
+
+                    // Authenticate with credential
+                    const credential = await authenticateWithCredential(options)
+
+                    console.log('[WebAuthn Login] Authentication successful, sending to server...')
+
+                    // Send credential back to server for verification
+                    this.pushEvent("webauthn_login_response", {
+                        credential: credential
+                    })
+                } catch (error) {
+                    console.error('[WebAuthn Login] Authentication failed:', error)
+
+                    let errorMsg = error.message
+                    if (error.name === 'NotAllowedError') {
+                        errorMsg = 'Authentication cancelled or not allowed'
+                    } else if (error.name === 'InvalidStateError') {
+                        errorMsg = 'No matching credential found'
+                    }
+
+                    this.pushEvent("webauthn_login_error", { error: errorMsg })
+                }
+            })
+
+            // Handle successful login
+            this.handleEvent("login_success", ({ user_id, token }) => {
+                // Detect if we're on HTTPS for Secure flag
+                const isSecure = window.location.protocol === 'https:'
+                const secureSuffix = isSecure ? '; Secure' : ''
+
+                // Set cookies for session
+                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secureSuffix}`
+                if (token) {
+                    document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureSuffix}`
+                }
+
+                // Redirect to home
+                setTimeout(() => {
+                    window.location.href = '/'
+                }, 500)
+            })
+        }
+    },
+
+    PhotoModal: {
+        mounted() {
+            // Lock body scrolling when modal opens
+            document.body.style.overflow = 'hidden'
+
+            // Handle image loading state
+            const img = this.el.querySelector('img')
+            if (img) {
+                // Show loading state initially
+                img.style.opacity = '0'
+
+                // Create and add loading spinner
+                const spinner = document.createElement('div')
+                spinner.className = 'absolute inset-0 flex items-center justify-center'
+                spinner.innerHTML = '<div class="spinner"></div>'
+                spinner.id = 'photo-loading-spinner'
+                img.parentElement.appendChild(spinner)
+
+                // Handle image load
+                const handleLoad = () => {
+                    img.style.transition = 'opacity 0.3s ease-in-out'
+                    img.style.opacity = '1'
+                    spinner.remove()
+                }
+
+                // Handle image error
+                const handleError = () => {
+                    spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+                }
+
+                if (img.complete) {
+                    handleLoad()
                 } else {
-                    alert('Registration failed: ' + error.message)
+                    img.addEventListener('load', handleLoad, { once: true })
+                    img.addEventListener('error', handleError, { once: true })
                 }
             }
-        })
 
-        // Handle registration complete
-        this.handleEvent("webauthn_registration_complete", () => {
-            registerBtn.disabled = false
-            registerBtn.textContent = 'Register Hardware Key'
-            console.log('[WebAuthn] Registration complete!')
-        })
+            // Add touch swipe gesture support
+            let touchStartX = 0
+            let touchEndX = 0
+            let touchStartY = 0
+            let touchEndY = 0
 
-        // Handle registration failed
-        this.handleEvent("webauthn_registration_failed", () => {
-            registerBtn.disabled = false
-            registerBtn.textContent = 'Register Hardware Key'
-        })
-
-        // Handle register button click
-        registerBtn.onclick = async () => {
-            try {
-                registerBtn.disabled = true
-                registerBtn.textContent = 'Preparing...'
-
-                // Request challenge from server
-                this.pushEvent("request_webauthn_challenge", {})
-            } catch (error) {
-                console.error('[WebAuthn] Failed to request challenge:', error)
-                registerBtn.disabled = false
-                registerBtn.textContent = 'Register Hardware Key'
-                alert('Failed to start registration: ' + error.message)
-            }
-        }
-    }
-},
-
-WebAuthnLogin: {
-        async mounted() {
-        // Handle WebAuthn login challenge from server
-        this.handleEvent("webauthn_login_challenge", async ({ options }) => {
-            try {
-                console.log('[WebAuthn Login] Challenge received, authenticating...')
-
-                // Authenticate with credential
-                const credential = await authenticateWithCredential(options)
-
-                console.log('[WebAuthn Login] Authentication successful, sending to server...')
-
-                // Send credential back to server for verification
-                this.pushEvent("webauthn_login_response", {
-                    credential: credential
-                })
-            } catch (error) {
-                console.error('[WebAuthn Login] Authentication failed:', error)
-
-                let errorMsg = error.message
-                if (error.name === 'NotAllowedError') {
-                    errorMsg = 'Authentication cancelled or not allowed'
-                } else if (error.name === 'InvalidStateError') {
-                    errorMsg = 'No matching credential found'
-                }
-
-                this.pushEvent("webauthn_login_error", { error: errorMsg })
-            }
-        })
-
-        // Handle successful login
-        this.handleEvent("login_success", ({ user_id, token }) => {
-            // Detect if we're on HTTPS for Secure flag
-            const isSecure = window.location.protocol === 'https:'
-            const secureSuffix = isSecure ? '; Secure' : ''
-
-            // Set cookies for session
-            document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax${secureSuffix}`
-            if (token) {
-                document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureSuffix}`
+            const handleTouchStart = (e) => {
+                touchStartX = e.changedTouches[0].screenX
+                touchStartY = e.changedTouches[0].screenY
             }
 
-            // Redirect to home
-            setTimeout(() => {
-                window.location.href = '/'
-            }, 500)
-        })
-    }
-},
-
-PhotoModal: {
-    mounted() {
-        // Lock body scrolling when modal opens
-        document.body.style.overflow = 'hidden'
-
-        // Handle image loading state
-        const img = this.el.querySelector('img')
-        if (img) {
-            // Show loading state initially
-            img.style.opacity = '0'
-
-            // Create and add loading spinner
-            const spinner = document.createElement('div')
-            spinner.className = 'absolute inset-0 flex items-center justify-center'
-            spinner.innerHTML = '<div class="spinner"></div>'
-            spinner.id = 'photo-loading-spinner'
-            img.parentElement.appendChild(spinner)
-
-            // Handle image load
-            const handleLoad = () => {
-                img.style.transition = 'opacity 0.3s ease-in-out'
-                img.style.opacity = '1'
-                spinner.remove()
+            const handleTouchEnd = (e) => {
+                touchEndX = e.changedTouches[0].screenX
+                touchEndY = e.changedTouches[0].screenY
+                handleGesture()
             }
 
-            // Handle image error
-            const handleError = () => {
-                spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
-            }
+            const handleGesture = () => {
+                const diffX = touchEndX - touchStartX
+                const diffY = touchEndY - touchStartY
 
-            if (img.complete) {
-                handleLoad()
-            } else {
-                img.addEventListener('load', handleLoad, { once: true })
-                img.addEventListener('error', handleError, { once: true })
-            }
-        }
-
-        // Add touch swipe gesture support
-        let touchStartX = 0
-        let touchEndX = 0
-        let touchStartY = 0
-        let touchEndY = 0
-
-        const handleTouchStart = (e) => {
-            touchStartX = e.changedTouches[0].screenX
-            touchStartY = e.changedTouches[0].screenY
-        }
-
-        const handleTouchEnd = (e) => {
-            touchEndX = e.changedTouches[0].screenX
-            touchEndY = e.changedTouches[0].screenY
-            handleGesture()
-        }
-
-        const handleGesture = () => {
-            const diffX = touchEndX - touchStartX
-            const diffY = touchEndY - touchStartY
-
-            // Only trigger if horizontal swipe is dominant
-            if (Math.abs(diffX) > Math.abs(diffY)) {
-                // Minimum swipe distance (50px)
-                if (Math.abs(diffX) > 50) {
-                    if (diffX > 0) {
-                        // Swipe right - previous photo
-                        this.pushEvent("prev_photo", {})
-                    } else {
-                        // Swipe left - next photo
-                        this.pushEvent("next_photo", {})
+                // Only trigger if horizontal swipe is dominant
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    // Minimum swipe distance (50px)
+                    if (Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                            // Swipe right - previous photo
+                            this.pushEvent("prev_photo", {})
+                        } else {
+                            // Swipe left - next photo
+                            this.pushEvent("next_photo", {})
+                        }
                     }
                 }
             }
-        }
 
-        // Add keyboard navigation
-        const handleKeyDown = (e) => {
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault()
-                this.pushEvent("prev_photo", {})
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault()
-                this.pushEvent("next_photo", {})
-            } else if (e.key === 'Escape') {
-                e.preventDefault()
-                this.pushEvent("close_image_modal", {})
-            }
-        }
-
-        // Attach listeners
-        this.el.addEventListener('touchstart', handleTouchStart, { passive: true })
-        this.el.addEventListener('touchend', handleTouchEnd, { passive: true })
-        document.addEventListener('keydown', handleKeyDown)
-
-        // Store for cleanup
-        this.handleKeyDown = handleKeyDown
-    },
-
-    updated() {
-        // Handle loading state when photo changes (prev/next navigation)
-        const img = this.el.querySelector('img')
-        if (img) {
-            // Remove old spinner if it exists
-            const oldSpinner = this.el.querySelector('#photo-loading-spinner')
-            if (oldSpinner) {
-                oldSpinner.remove()
+            // Add keyboard navigation
+            const handleKeyDown = (e) => {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault()
+                    this.pushEvent("prev_photo", {})
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault()
+                    this.pushEvent("next_photo", {})
+                } else if (e.key === 'Escape') {
+                    e.preventDefault()
+                    this.pushEvent("close_image_modal", {})
+                }
             }
 
-            // Show loading state initially
-            img.style.opacity = '0'
+            // Attach listeners
+            this.el.addEventListener('touchstart', handleTouchStart, { passive: true })
+            this.el.addEventListener('touchend', handleTouchEnd, { passive: true })
+            document.addEventListener('keydown', handleKeyDown)
 
-            // Create and add loading spinner
-            const spinner = document.createElement('div')
-            spinner.className = 'absolute inset-0 flex items-center justify-center'
-            spinner.innerHTML = '<div class="spinner"></div>'
-            spinner.id = 'photo-loading-spinner'
-            img.parentElement.appendChild(spinner)
+            // Store for cleanup
+            this.handleKeyDown = handleKeyDown
+        },
 
-            // Handle image load
-            const handleLoad = () => {
-                img.style.transition = 'opacity 0.3s ease-in-out'
-                img.style.opacity = '1'
-                spinner.remove()
+        updated() {
+            // Handle loading state when photo changes (prev/next navigation)
+            const img = this.el.querySelector('img')
+            if (img) {
+                // Remove old spinner if it exists
+                const oldSpinner = this.el.querySelector('#photo-loading-spinner')
+                if (oldSpinner) {
+                    oldSpinner.remove()
+                }
+
+                // Show loading state initially
+                img.style.opacity = '0'
+
+                // Create and add loading spinner
+                const spinner = document.createElement('div')
+                spinner.className = 'absolute inset-0 flex items-center justify-center'
+                spinner.innerHTML = '<div class="spinner"></div>'
+                spinner.id = 'photo-loading-spinner'
+                img.parentElement.appendChild(spinner)
+
+                // Handle image load
+                const handleLoad = () => {
+                    img.style.transition = 'opacity 0.3s ease-in-out'
+                    img.style.opacity = '1'
+                    spinner.remove()
+                }
+
+                // Handle image error
+                const handleError = () => {
+                    spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+                }
+
+                if (img.complete) {
+                    handleLoad()
+                } else {
+                    img.addEventListener('load', handleLoad, { once: true })
+                    img.addEventListener('error', handleError, { once: true })
+                }
             }
+        },
 
-            // Handle image error
-            const handleError = () => {
-                spinner.innerHTML = '<div class="text-white text-sm">Failed to load image</div>'
+        destroyed() {
+            // Unlock body scrolling when modal closes
+            document.body.style.overflow = ''
+
+            // Remove keyboard listener
+            if (this.handleKeyDown) {
+                document.removeEventListener('keydown', this.handleKeyDown)
             }
-
-            if (img.complete) {
-                handleLoad()
-            } else {
-                img.addEventListener('load', handleLoad, { once: true })
-                img.addEventListener('error', handleError, { once: true })
-            }
-        }
-    },
-
-    destroyed() {
-        // Unlock body scrolling when modal closes
-        document.body.style.overflow = ''
-
-        // Remove keyboard listener
-        if (this.handleKeyDown) {
-            document.removeEventListener('keydown', this.handleKeyDown)
         }
     }
-}
 }
 
 // Precompute lightweight identity signals for instant server bootstrap
