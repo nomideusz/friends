@@ -430,17 +430,17 @@ defmodule Friends.WebAuthn do
     end
 
     if curve && x && y do
-      # Pad coordinates to expected size (authenticators may strip leading zeros)
-      x_padded = pad_binary(x, size)
-      y_padded = pad_binary(y, size)
+      Logger.info("[WebAuthn] Verifying EC Signature. Curve: #{inspect(curve)}, Size: #{size}, X len: #{byte_size(x)}, Y len: #{byte_size(y)}")
+      
+      # Ensure exact coordinate size (pad if short, trim if long e.g. leading zeros)
+      x_fixed = fix_coordinate_size(x, size)
+      y_fixed = fix_coordinate_size(y, size)
       
       # Build the EC public key in Erlang format
-      # The point is represented as {x, y} coordinates
-      point = <<4>> <> x_padded <> y_padded  # Uncompressed point format
+      point = <<4>> <> x_fixed <> y_fixed  # Uncompressed point format
 
       ec_key = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
 
-      # WebAuthn uses DER-encoded ECDSA signatures
       case :public_key.verify(data, :sha256, signature, ec_key) do
         true -> :ok
         false -> {:error, :invalid_signature}
@@ -449,14 +449,17 @@ defmodule Friends.WebAuthn do
       {:error, {:unsupported_curve, crv}}
     end
   rescue
-    e -> {:error, {:ec_verify_error, e}}
+    e -> 
+      Logger.error("[WebAuthn] EC Verify crash: #{inspect(e)}")
+      {:error, {:ec_verify_error, e}}
   end
   
-  defp pad_binary(binary, size) do
-    case size - byte_size(binary) do
-      0 -> binary
-      n when n > 0 -> <<0::size(n*8)>> <> binary
-      _ -> binary # Should usually not happen, but return as is if larger
+  defp fix_coordinate_size(binary, size) do
+    len = byte_size(binary)
+    cond do
+      len == size -> binary
+      len < size -> <<0::size((size - len)*8)>> <> binary
+      len > size -> binary_part(binary, len - size, size)
     end
   end
 
