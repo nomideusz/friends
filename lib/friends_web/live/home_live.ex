@@ -516,13 +516,13 @@ defmodule FriendsWeb.HomeLive do
           <% room_label = if @room.code == "lobby", do: "Public Square", else: (@room.name || @room.code) %>
           
           <%= if @current_user do %>
-            <div class="flex items-center justify-between mb-6">
-              <div class="flex items-center gap-1 p-1 bg-neutral-900/80 border border-white/5 rounded-full backdrop-blur-md">
+            <div class="flex items-center justify-between mb-8">
+              <div class="flex items-center gap-1 p-1.5 opal-card rounded-2xl">
                 <button
                   type="button"
                   phx-click="set_feed_view"
                   phx-value-view="room"
-                  class={"px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "room", do: "bg-neutral-800 text-white shadow-sm ring-1 ring-white/10", else: "text-neutral-500 hover:text-neutral-300"}"}
+                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "room", do: "bg-gradient-to-r from-rose-500/20 to-violet-500/20 text-white shadow-lg shadow-violet-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
                 >
                   <span>📍</span>
                   <span>{room_label}</span>
@@ -531,7 +531,7 @@ defmodule FriendsWeb.HomeLive do
                   type="button"
                   phx-click="set_feed_view"
                   phx-value-view="friends"
-                  class={"px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "friends" && @network_filter != "me", do: "bg-neutral-800 text-white shadow-sm ring-1 ring-white/10", else: "text-neutral-500 hover:text-neutral-300"}"}
+                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "friends" && @network_filter != "me", do: "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-lg shadow-blue-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
                 >
                   <span>👥</span>
                   <span>Contacts</span>
@@ -540,7 +540,7 @@ defmodule FriendsWeb.HomeLive do
                   type="button"
                   phx-click="set_feed_view"
                   phx-value-view="me"
-                  class={"px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "friends" && @network_filter == "me", do: "bg-neutral-800 text-white shadow-sm ring-1 ring-white/10", else: "text-neutral-500 hover:text-neutral-300"}"}
+                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @feed_mode == "friends" && @network_filter == "me", do: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white shadow-lg shadow-orange-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
                 >
                   <span>👤</span>
                   <span>Me</span>
@@ -551,10 +551,10 @@ defmodule FriendsWeb.HomeLive do
               <div class="flex items-center gap-3">
                 <%!-- Chat toggle for private spaces --%>
                 <%= if @room.is_private and @feed_mode == "room" do %>
-                  <button
+                <button
                     type="button"
                     phx-click="toggle_chat_panel"
-                    class={"px-3 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer #{if @show_chat_panel, do: "bg-emerald-600 text-white", else: "bg-neutral-800/50 text-neutral-400 hover:text-white"}"}
+                    class={"px-4 py-2 text-sm font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer #{if @show_chat_panel, do: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25", else: "opal-card text-neutral-400 hover:text-white"}"}
                   >
                     <span>💬</span>
                     <span class="hidden sm:inline"><%= if @show_chat_panel, do: "Hide Chat", else: "Show Chat" %></span>
@@ -562,7 +562,7 @@ defmodule FriendsWeb.HomeLive do
                 <% end %>
                 <%!-- Invite button --%>
                 <%= if @room.code != "lobby" and @feed_mode == "room" do %>
-                  <button phx-click="open_invite_modal" class="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-2 cursor-pointer bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+              <button phx-click="open_invite_modal" class="opal-shimmer text-sm font-medium text-white flex items-center gap-2 cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 px-4 py-2 rounded-xl border border-violet-500/30 hover:border-violet-400/50 hover:shadow-lg hover:shadow-violet-500/20 transition-all">
                     <span>💌</span> <span class="hidden sm:inline">Invite</span>
                   </button>
                 <% end %>
@@ -575,7 +575,7 @@ defmodule FriendsWeb.HomeLive do
 
           <%!-- Network Info (when in network mode) --%>
           <%= if @feed_mode == "friends" && @current_user do %>
-            <div class="mb-10 p-6 glass rounded-2xl border border-white/5 opal-glow-subtle">
+            <div class="mb-10 p-6 opal-card opal-aurora rounded-2xl">
               <div class="flex items-center justify-between mb-3">
                 <div class="text-xs text-neutral-500">your trust network</div>
                 <button
@@ -719,14 +719,14 @@ defmodule FriendsWeb.HomeLive do
               class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4"
             >
               <%!-- Add Photo Card --%>
-              <%= if @current_user and not @room_access_denied do %>
+              <%= if not is_nil(@current_user) and not @room_access_denied do %>
                 <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
                   <label
                     for={@uploads.photo.ref}
-                    class="group relative aspect-square glass rounded-xl border border-white/5 hover:border-white/20 cursor-pointer flex flex-col items-center justify-center gap-2 transition-all hover:bg-white/5"
+                    class="group relative aspect-square opal-card opal-shimmer rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-rose-500/10 hover:to-violet-500/10"
                   >
-                     <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📷</div>
-                     <span class="text-sm text-neutral-400 group-hover:text-white"><%= if @uploading, do: "Uploading...", else: "Add Photo" %></span>
+                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-rose-500/20 to-violet-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">📷</div>
+                     <span class="text-sm font-medium text-neutral-400 group-hover:text-white"><%= if @uploading, do: "Uploading...", else: "Add Photo" %></span>
                      <.live_file_input upload={@uploads.photo} class="sr-only" />
                   </label>
                 </form>
@@ -735,17 +735,17 @@ defmodule FriendsWeb.HomeLive do
                 <button
                   type="button"
                   phx-click="open_note_modal"
-                  class="group relative aspect-square glass rounded-xl border border-white/5 hover:border-white/20 cursor-pointer flex flex-col items-center justify-center gap-2 transition-all hover:bg-white/5"
+                  class="group relative aspect-square opal-card opal-shimmer rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-3 transition-all hover:bg-gradient-to-br hover:from-cyan-500/10 hover:to-blue-500/10"
                 >
-                   <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">📝</div>
-                   <span class="text-sm text-neutral-400 group-hover:text-white">Add Note</span>
+                   <div class="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">📝</div>
+                   <span class="text-sm font-medium text-neutral-400 group-hover:text-white">Add Note</span>
                 </button>
               <% end %>
 
 
               <%= for {dom_id, item} <- @streams.items do %>
                 <%= if Map.get(item, :type) == :photo do %>
-                  <div id={dom_id} class="photo-item group relative aspect-square glass overflow-hidden rounded-xl border border-white/5 hover:border-white/15 cursor-pointer" phx-click="view_full_image" phx-value-photo_id={item.id}>
+                  <div id={dom_id} class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10" phx-click="view_full_image" phx-value-photo_id={item.id}>
                     <%= if item.thumbnail_data do %>
                       <img
                         src={item.thumbnail_data}
@@ -765,7 +765,7 @@ defmodule FriendsWeb.HomeLive do
                     <% end %>
 
                     <%!-- Overlay on hover --%>
-                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                       <div class="flex items-center gap-2 text-xs">
                         <div
                           class="w-2 h-2 rounded-full"
@@ -794,7 +794,7 @@ defmodule FriendsWeb.HomeLive do
                   </div>
                 <% else %>
                   <%!-- Note card --%>
-                  <div id={dom_id} class="group relative bg-neutral-900 p-4 min-h-[120px] flex flex-col rounded-lg border border-neutral-800/80 shadow-md shadow-black/30 hover:border-neutral-700 transition">
+                  <div id={dom_id} class="group relative opal-card opal-shimmer p-5 min-h-[140px] flex flex-col rounded-2xl transition-all hover:shadow-xl hover:shadow-cyan-500/10">
                     <p class="text-sm text-neutral-300 flex-1 line-clamp-4">{item.content}</p>
                     <div class="flex items-center gap-2 text-xs mt-3 pt-3 border-t border-neutral-800">
                       <div
