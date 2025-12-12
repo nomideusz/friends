@@ -225,6 +225,31 @@ defmodule Friends.Social do
   end
 
   @doc """
+  List private rooms for the dashboard.
+  For DMs, it populates `r.name` with the other user's username.
+  """
+  def list_user_dashboard_rooms(user_id) do
+    rooms = Repo.all(
+      from r in Room,
+        join: rm in RoomMember,
+        on: rm.room_id == r.id,
+        where: rm.user_id == ^user_id and r.is_private == true,
+        order_by: [desc: r.updated_at],
+        preload: [members: :user]
+    )
+
+    Enum.map(rooms, fn room ->
+      if room.room_type == "dm" do
+        other_member = Enum.find(room.members, fn m -> m.user_id != user_id end)
+        name = if other_member && other_member.user, do: other_member.user.username, else: "User"
+        %{room | name: name}
+      else
+        room
+      end
+    end)
+  end
+
+  @doc """
   List public rooms with activity counts, ordered by recent activity
   """
   def list_public_rooms(limit \\ 20) do

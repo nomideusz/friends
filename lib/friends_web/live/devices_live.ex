@@ -16,14 +16,25 @@ defmodule FriendsWeb.DevicesLive do
        |> assign(:current_user, user)
        |> assign(:devices, devices)
        |> assign(:webauthn_credentials, webauthn_credentials)
-       |> assign(:show_export, false)
-       |> assign(:webauthn_challenge, nil)}
+       |> assign(:show_header_dropdown, false)
+       |> assign(:show_user_dropdown, false)
+       |> assign(:page_title, "Devices")}
     else
       {:ok,
        socket
        |> put_flash(:error, "You must be logged in to manage devices")
        |> redirect(to: "/")}
     end
+  end
+
+  @impl true
+  def handle_event("toggle_user_dropdown", _params, socket) do
+    {:noreply, assign(socket, :show_user_dropdown, !socket.assigns.show_user_dropdown)}
+  end
+
+  @impl true
+  def handle_event("close_user_dropdown", _params, socket) do
+    {:noreply, assign(socket, :show_user_dropdown, false)}
   end
 
   @impl true
@@ -139,175 +150,80 @@ defmodule FriendsWeb.DevicesLive do
     end
   end
 
-  @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen p-4 md:p-8">
-      <div class="max-w-4xl mx-auto">
-        <div class="mb-8">
-          <h1 class="text-2xl font-medium text-white mb-2">Device Management</h1>
-          <p class="text-neutral-500 text-sm">
-            Manage devices that have access to your account
-          </p>
+    <div class="min-h-screen p-4 md:p-8 text-neutral-200">
+      <div class="max-w-2xl mx-auto space-y-8">
+        
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold text-white">Devices</h1>
+          <.link navigate={~p"/"} class="text-sm text-neutral-500 hover:text-white transition-colors">Done</.link>
         </div>
 
-        <%= if @flash["info"] do %>
-          <div class="mb-4 p-3 bg-green-900/30 border border-green-700 text-green-400 text-sm">
-            {@flash["info"]}
-          </div>
-        <% end %>
-
-        <%= if @flash["error"] do %>
-          <div class="mb-4 p-3 bg-red-900/30 border border-red-700 text-red-400 text-sm">
-            {@flash["error"]}
-          </div>
-        <% end %>
-
-        <div class="mb-8 space-y-6">
-          <%!-- WebAuthn / Hardware Keys --%>
-          <div id="webauthn-section" phx-hook="WebAuthnManager" class="p-6 bg-neutral-900 border border-neutral-800">
-            <h2 class="text-lg font-medium text-white mb-2">Hardware Security</h2>
-            <p class="text-sm text-neutral-400 mb-4">
-              Use Touch ID, Face ID, Windows Hello, or hardware security keys for enhanced protection.
-            </p>
-            <div id="webauthn-status" class="text-sm text-neutral-500 mb-4">
-              Checking availability...
-            </div>
-            <button
-              id="register-webauthn-btn"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium hidden"
-            >
-              Register Hardware Key
-            </button>
-          </div>
-
-          <%!-- Backup & Export --%>
-          <div class="p-6 bg-neutral-900 border border-neutral-800">
-            <h2 class="text-lg font-medium text-white mb-2">Backup & Export</h2>
-            <p class="text-sm text-neutral-400 mb-4">
-              Export your cryptographic keys for backup. Store this safely - anyone with access can impersonate you.
-            </p>
-            <div class="space-y-2">
-              <button
-                phx-click="show_export"
-                class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium"
-              >
-                Export Keys
+        <%!-- Hardware Keys --%>
+        <section>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-medium text-white">Hardware Keys</h2>
+            <div id="webauthn-section" phx-hook="WebAuthnManager" phx-update="ignore" class="flex items-center gap-3">
+              <div id="webauthn-status" class="hidden text-xs text-neutral-500"></div>
+              <button id="register-webauthn-btn" class="text-xs bg-white text-black px-3 py-1.5 rounded-lg hover:bg-neutral-200 transition-colors hidden">
+                + Add Key
               </button>
             </div>
-
-            <%= if @show_export do %>
-              <div id="export-container" phx-hook="ExportKeys" class="mt-4 p-4 bg-black/30 border border-amber-700">
-                <p class="text-xs text-amber-400 mb-2">
-                  Download your backup file and store it securely. You can also use QR codes to transfer to mobile devices.
-                </p>
-                <div id="export-qr-code" class="mt-4 flex justify-center"></div>
-              </div>
-            <% end %>
           </div>
-
-          <%!-- Registered Hardware Keys --%>
-          <%= if not Enum.empty?(@webauthn_credentials) do %>
-            <div class="p-6 bg-neutral-900 border border-neutral-800">
-              <h2 class="text-lg font-medium text-white mb-4">Registered Hardware Keys</h2>
-              <div class="space-y-3">
+          
+          <div class="bg-neutral-900 rounded-2xl border border-white/5 overflow-hidden">
+            <%= if @webauthn_credentials == [] do %>
+              <div class="p-4 text-center text-sm text-neutral-500">No keys added.</div>
+            <% else %>
+              <div class="divide-y divide-white/5">
                 <%= for cred <- @webauthn_credentials do %>
-                  <div class="flex items-center justify-between p-3 bg-neutral-950 border border-neutral-800">
+                  <div class="p-4 flex items-center justify-between">
                     <div>
-                      <p class="text-sm text-white">{cred.name || "Hardware Key"}</p>
-                      <p class="text-xs text-neutral-500 mt-1">
-                        Last used: {format_datetime(cred.last_used_at)}
-                      </p>
+                      <div class="text-sm font-medium text-white">{cred.name || "Security Key"}</div>
+                      <div class="text-xs text-neutral-500">Last used: {format_datetime(cred.last_used_at)}</div>
                     </div>
-                    <button
-                      phx-click="delete_webauthn_credential"
-                      phx-value-credential_id={Base.url_encode64(cred.credential_id, padding: false)}
-                      data-confirm="Remove this hardware key?"
-                      class="px-3 py-1 text-xs border border-red-800 hover:border-red-700 text-red-500 hover:text-red-400"
-                    >
-                      Remove
-                    </button>
+                    <button phx-click="delete_webauthn_credential" phx-value-credential_id={Base.url_encode64(cred.credential_id, padding: false)} class="text-xs text-red-500 hover:text-red-400">Remove</button>
                   </div>
                 <% end %>
               </div>
-            </div>
-          <% end %>
-        </div>
-
-        <div class="bg-neutral-900 border border-neutral-800">
-          <div class="p-6 border-b border-neutral-800">
-            <h2 class="text-lg font-medium text-white">Trusted Devices</h2>
-            <p class="text-sm text-neutral-500 mt-1">
-              Devices that have authenticated with your account
-            </p>
+            <% end %>
           </div>
+        </section>
 
-          <%= if Enum.empty?(@devices) do %>
-            <div class="p-6 text-center text-neutral-600">
-              <p>No devices registered yet</p>
-              <p class="text-xs mt-2">Devices will appear here after you log in</p>
-            </div>
-          <% else %>
-            <div class="divide-y divide-neutral-800">
-              <%= for device <- @devices do %>
-                <div class="p-6">
-                  <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                      <div class="flex items-center gap-3">
-                        <h3 class="font-medium text-white">{device.device_name || "Unknown Device"}</h3>
-                        <%= if device.trusted do %>
-                          <span class="text-xs px-2 py-1 bg-green-900/30 text-green-400 border border-green-700">
-                            trusted
-                          </span>
-                        <% else %>
-                          <span class="text-xs px-2 py-1 bg-neutral-800 text-neutral-500">
-                            untrusted
-                          </span>
-                        <% end %>
-                      </div>
-
-                      <div class="mt-2 text-sm text-neutral-500 space-y-1">
-                        <p>
-                          Fingerprint: <span class="font-mono text-neutral-400">{String.slice(device.device_fingerprint, 0..15)}...</span>
-                        </p>
-                        <p>
-                          First seen: <span class="text-neutral-400">{format_datetime(device.first_seen_at)}</span>
-                        </p>
-                        <p>
-                          Last seen: <span class="text-neutral-400">{format_datetime(device.last_seen_at)}</span>
-                        </p>
+        <%!-- Trusted Devices --%>
+        <section>
+          <h2 class="font-medium text-white mb-4">Active Sessions</h2>
+          <div class="bg-neutral-900 rounded-2xl border border-white/5 overflow-hidden">
+            <%= if @devices == [] do %>
+              <div class="p-4 text-center text-sm text-neutral-500">No active sessions.</div>
+            <% else %>
+              <div class="divide-y divide-white/5">
+                <%= for device <- @devices do %>
+                  <div class="p-4 flex items-center justify-between">
+                    <div>
+                      <div class="font-medium text-white text-sm">{device.device_name || "Unknown Device"}</div>
+                      <div class="text-xs text-neutral-500">
+                        <%= if device.trusted, do: "Trusted", else: "Untrusted" %> • <!-- Last seen --> {format_datetime(device.last_seen_at)}
                       </div>
                     </div>
-
-                    <div class="flex gap-2">
-                      <button
-                        phx-click="toggle_trust"
-                        phx-value-device_id={device.id}
-                        class="px-3 py-1 text-sm border border-neutral-700 hover:border-neutral-600 text-neutral-400 hover:text-white"
-                      >
+                    <div class="flex gap-3">
+                      <button phx-click="toggle_trust" phx-value-device_id={device.id} class="text-xs text-neutral-400 hover:text-white transition-colors">
                         {if device.trusted, do: "Untrust", else: "Trust"}
                       </button>
-                      <button
-                        phx-click="revoke_device"
-                        phx-value-device_id={device.id}
-                        data-confirm="Are you sure? This device will need to re-authenticate."
-                        class="px-3 py-1 text-sm border border-red-800 hover:border-red-700 text-red-500 hover:text-red-400"
-                      >
+                      <button phx-click="revoke_device" phx-value-device_id={device.id} class="text-xs text-red-500 hover:text-red-400 transition-colors">
                         Revoke
                       </button>
                     </div>
                   </div>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </section>
 
-        <div class="mt-8">
-          <a href="/" class="text-neutral-500 hover:text-white text-sm">
-            ← Back to home
-          </a>
-        </div>
+
+
       </div>
     </div>
     """

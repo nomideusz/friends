@@ -931,17 +931,17 @@ const Hooks = {
             const platformAvailable = supported && await isPlatformAuthenticatorAvailable()
 
             if (!supported) {
-                statusDiv.textContent = '❌ WebAuthn not supported in this browser'
-                statusDiv.className = 'text-sm text-red-500 mb-4'
+                statusDiv.textContent = 'Not supported'
+                statusDiv.className = 'text-xs text-red-500'
                 return
             }
 
             if (platformAvailable) {
-                statusDiv.textContent = '✅ Platform authenticator available (Touch ID, Face ID, Windows Hello)'
-                statusDiv.className = 'text-sm text-green-500 mb-4'
+                statusDiv.textContent = 'Platform ready'
+                statusDiv.className = 'text-xs text-green-500 hidden md:block'
             } else {
-                statusDiv.textContent = '⚠️ WebAuthn supported, but no platform authenticator detected. You can still use USB security keys.'
-                statusDiv.className = 'text-sm text-yellow-500 mb-4'
+                statusDiv.textContent = 'Key supported'
+                statusDiv.className = 'text-xs text-neutral-500 hidden md:block'
             }
 
             // Show register button

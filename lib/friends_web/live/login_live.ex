@@ -58,6 +58,10 @@ defmodule FriendsWeb.LoginLive do
         # Create session token
         token = Base.encode64(:crypto.strong_rand_bytes(32))
 
+        # Register device session
+        device_fingerprint = credential_data["rawId"] # Use credential ID as fingerprint for now
+        Social.register_user_device(user.id, device_fingerprint, "Web Browser", nil)
+
         {:noreply,
          socket
          |> assign(:step, :success)
