@@ -422,17 +422,21 @@ defmodule Friends.WebAuthn do
 
   defp verify_ec_signature(crv, x, y, data, signature) do
     # Map COSE curve to Erlang named curve
-    curve = case crv do
-      1 -> :secp256r1  # P-256
-      2 -> :secp384r1  # P-384
-      3 -> :secp521r1  # P-521
-      _ -> nil
+    {curve, size} = case crv do
+      1 -> {:secp256r1, 32}  # P-256
+      2 -> {:secp384r1, 48}  # P-384
+      3 -> {:secp521r1, 66}  # P-521 (ceil(521/8) = 66)
+      _ -> {nil, 0}
     end
 
     if curve && x && y do
+      # Pad coordinates to expected size (authenticators may strip leading zeros)
+      x_padded = pad_binary(x, size)
+      y_padded = pad_binary(y, size)
+      
       # Build the EC public key in Erlang format
       # The point is represented as {x, y} coordinates
-      point = <<4>> <> x <> y  # Uncompressed point format
+      point = <<4>> <> x_padded <> y_padded  # Uncompressed point format
 
       ec_key = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
 
@@ -447,10 +451,19 @@ defmodule Friends.WebAuthn do
   rescue
     e -> {:error, {:ec_verify_error, e}}
   end
+  
+  defp pad_binary(binary, size) do
+    case size - byte_size(binary) do
+      0 -> binary
+      n when n > 0 -> <<0::size(n*8)>> <> binary
+      _ -> binary # Should usually not happen, but return as is if larger
+    end
+  end
 
   defp curve_oid(:secp256r1), do: {1, 2, 840, 10045, 3, 1, 7}
   defp curve_oid(:secp384r1), do: {1, 3, 132, 0, 34}
   defp curve_oid(:secp521r1), do: {1, 3, 132, 0, 35}
+
 
   defp verify_rsa_signature(n, e, data, signature) do
     # Build RSA public key
