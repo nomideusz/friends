@@ -36,8 +36,6 @@ defmodule FriendsWeb.Router do
       live "/devices", DevicesLive, :index
       live "/network", NetworkLive, :index
       live "/graph", GraphLive, :index
-      live "/messages", MessagesLive, :index
-      live "/messages/:id", MessagesLive, :show
       live "/r/:room", HomeLive, :room
     end
   end

@@ -64,11 +64,33 @@ defmodule FriendsWeb.Layouts do
                   </.link>
                   
                   <%= if @current_user do %>
-                    <%!-- My Spaces --%>
-                    <%= if @user_rooms != [] do %>
+                    <% dm_rooms = Enum.filter(@user_rooms, & &1.room_type == "dm") %>
+                    <% group_rooms = Enum.filter(@user_rooms, & &1.room_type != "dm") %>
+                    
+                    <%!-- DM Chats --%>
+                    <%= if dm_rooms != [] do %>
                       <div class="h-px bg-white/5 my-1"></div>
-                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider">My Spaces</div>
-                      <%= for room <- @user_rooms do %>
+                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider flex items-center gap-2">
+                        <span>💬</span> Direct Messages
+                      </div>
+                      <%= for room <- Enum.take(dm_rooms, 5) do %>
+                         <.link navigate={~p"/r/#{room.code}"} class={"w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left group cursor-pointer #{if @room && @room.code == room.code, do: "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}>
+                           <span class="text-emerald-400">💬</span>
+                           <span class="truncate">{if(room.name && room.name != "", do: room.name, else: room.code)}</span>
+                         </.link>
+                      <% end %>
+                      <%= if length(dm_rooms) > 5 do %>
+                        <div class="px-3 py-1 text-xs text-neutral-500">+{length(dm_rooms) - 5} more chats</div>
+                      <% end %>
+                    <% end %>
+                    
+                    <%!-- Group Spaces --%>
+                    <%= if group_rooms != [] do %>
+                      <div class="h-px bg-white/5 my-1"></div>
+                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider flex items-center gap-2">
+                        <span>🔒</span> Group Spaces
+                      </div>
+                      <%= for room <- group_rooms do %>
                          <.link navigate={~p"/r/#{room.code}"} class={"w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left group cursor-pointer #{if @room && @room.code == room.code, do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}>
                            <span>🔒</span>
                            <span class="truncate">{if(room.name && room.name != "", do: room.name, else: room.code)}</span>
@@ -124,14 +146,6 @@ defmodule FriendsWeb.Layouts do
               <span class="text-sm text-neutral-500">checking identity…</span>
             <% else %>
               <%= if @current_user do %>
-                <.link
-                  navigate={~p"/messages"}
-                  class="flex items-center gap-2 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20"
-                >
-                  <span>💬</span>
-                  <span class="hidden sm:inline">Messages</span>
-                </.link>
-                
                 <%!-- User dropdown --%>
                 <div class="relative" phx-click-away="close_user_dropdown">
                   <button

@@ -95,6 +95,7 @@ defmodule FriendsWeb.HomeLive do
       |> assign(:room_messages, [])
       |> assign(:new_chat_message, "")
       |> assign(:recording_voice, false)
+      |> assign(:show_chat_panel, room.is_private) # Collapsible chat panel, default open for private
       |> assign(:show_room_modal, false)
       |> assign(:show_name_modal, false)
       |> assign(:show_note_modal, false)
@@ -250,26 +251,28 @@ defmodule FriendsWeb.HomeLive do
                   <span>👤</span>
                   <span>Me</span>
                 </button>
-                <%!-- Chat tab - only show for non-public rooms --%>
-                <%= if @room.code != "lobby" && @room.is_private do %>
+              </div>
+              
+              <%!-- Right-side actions --%>
+              <div class="flex items-center gap-3">
+                <%!-- Chat toggle for private spaces --%>
+                <%= if @room.is_private and @feed_mode == "room" do %>
                   <button
                     type="button"
-                    phx-click="set_room_tab"
-                    phx-value-tab="chat"
-                    class={"px-4 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer #{if @room_tab == "chat", do: "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/30", else: "text-neutral-500 hover:text-neutral-300"}"}
+                    phx-click="toggle_chat_panel"
+                    class={"px-3 py-1.5 text-sm font-medium rounded-full transition-all flex items-center gap-2 cursor-pointer #{if @show_chat_panel, do: "bg-emerald-600 text-white", else: "bg-neutral-800/50 text-neutral-400 hover:text-white"}"}
                   >
                     <span>💬</span>
-                    <span>Chat</span>
+                    <span class="hidden sm:inline"><%= if @show_chat_panel, do: "Hide Chat", else: "Show Chat" %></span>
+                  </button>
+                <% end %>
+                <%!-- Invite button --%>
+                <%= if @room.code != "lobby" and @feed_mode == "room" do %>
+                  <button phx-click="open_invite_modal" class="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-2 cursor-pointer bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                    <span>💌</span> <span class="hidden sm:inline">Invite</span>
                   </button>
                 <% end %>
               </div>
-              
-              <%!-- Contextual Actions (Invite) --%>
-              <%= if @room.code != "lobby" and @feed_mode == "room" and @room_tab != "chat" do %>
-                <button phx-click="open_invite_modal" class="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-2 cursor-pointer bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-                  <span>💌</span> Invite People
-                </button>
-              <% end %>
             </div>
           <% else %>
             <%!-- Spacing for non-logged-in users --%>
@@ -345,102 +348,13 @@ defmodule FriendsWeb.HomeLive do
             </div>
           <% end %>
 
-          <%!-- Space Chat UI --%>
-          <%= if @room_tab == "chat" and not @room_access_denied do %>
-            <div class="glass rounded-2xl border border-white/10 overflow-hidden mb-6" style="height: calc(100vh - 280px);">
-              <%!-- Chat Header --%>
-              <div class="p-4 border-b border-white/10 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-emerald-400">💬</span>
-                  <span class="font-medium">Space Chat</span>
-                  <span class="text-xs text-emerald-400 flex items-center gap-1">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    E2E Encrypted
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  phx-click="set_room_tab"
-                  phx-value-tab="content"
-                  class="text-sm text-neutral-400 hover:text-white cursor-pointer"
-                >
-                  ← Back to content
-                </button>
-              </div>
+          <%!-- Main split-view layout container --%>
+          <div class={if @room.is_private and @feed_mode == "room" and not @room_access_denied and @show_chat_panel, do: "flex gap-6", else: ""}>
+            <%!-- Left: Main content area (narrows when chat visible) --%>
+            <div class={if @room.is_private and @feed_mode == "room" and not @room_access_denied and @show_chat_panel, do: "flex-1 min-w-0", else: ""}>
 
-              <%!-- Messages --%>
-              <div id="room-messages-container" class="flex-1 overflow-y-auto p-4 space-y-4" style="height: calc(100% - 130px);" phx-hook="RoomChatScroll" data-room-id={@room.id}>
-                <%= if @room_messages == [] do %>
-                  <div class="flex items-center justify-center h-full text-neutral-500">
-                    <div class="text-center">
-                      <p class="text-4xl mb-2">💬</p>
-                      <p>No messages yet</p>
-                      <p class="text-xs mt-1">Start a conversation with your space members</p>
-                    </div>
-                  </div>
-                <% else %>
-                  <%= for message <- @room_messages do %>
-                    <div class={"flex #{if message.sender_id == @current_user.id, do: "justify-end", else: "justify-start"}"}>
-                      <div class={"max-w-[70%] rounded-2xl px-4 py-2 #{if message.sender_id == @current_user.id, do: "bg-emerald-600", else: "bg-neutral-800"}"}>
-                        <%= if message.sender_id != @current_user.id do %>
-                          <p class="text-xs text-neutral-400 mb-1">@{message.sender.username}</p>
-                        <% end %>
-                        <%= if message.content_type == "voice" do %>
-                          <div class="flex items-center gap-2" id={"room-voice-#{message.id}"} phx-hook="RoomVoicePlayer" data-message-id={message.id} data-room-id={@room.id}>
-                            <button class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors cursor-pointer room-voice-play-btn">
-                              ▶
-                            </button>
-                            <div class="flex-1 h-1 bg-white/20 rounded-full min-w-[100px]">
-                              <div class="room-voice-progress h-full bg-white rounded-full" style="width: 0%"></div>
-                            </div>
-                            <span class="text-xs text-white/70">{format_voice_duration(message.metadata["duration_ms"])}</span>
-                            <span class="hidden" id={"room-msg-#{message.id}"} data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
-                          </div>
-                        <% else %>
-                          <p class="text-sm room-decrypted-content" id={"room-msg-#{message.id}"} data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}>
-                            <span class="text-neutral-400 italic">Decrypting...</span>
-                          </p>
-                        <% end %>
-                        <p class="text-[10px] text-white/50 mt-1">{Calendar.strftime(message.inserted_at, "%H:%M")}</p>
-                      </div>
-                    </div>
-                  <% end %>
-                <% end %>
-              </div>
-
-              <%!-- Message Input --%>
-              <div class="p-4 border-t border-white/10">
-                <div id="room-message-input-area" class="flex items-center gap-2" phx-hook="RoomChatEncryption" data-room-id={@room.id}>
-                  <button
-                    type="button"
-                    phx-click={if @recording_voice, do: "stop_room_recording", else: "start_room_recording"}
-                    class={"w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer #{if @recording_voice, do: "bg-red-500 animate-pulse", else: "bg-white/10 hover:bg-white/20"}"}
-                    id="room-voice-btn"
-                  >
-                    🎤
-                  </button>
-                  <input
-                    type="text"
-                    value={@new_chat_message}
-                    phx-keyup="update_chat_message"
-                    placeholder="Type a message..."
-                    class="flex-1 bg-neutral-900 border border-white/10 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-white/30"
-                    id="room-message-input"
-                    autocomplete="off"
-                  />
-                  <button
-                    id="send-room-message-btn"
-                    class="w-10 h-10 rounded-full bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center transition-colors cursor-pointer"
-                  >
-                    ➤
-                  </button>
-                </div>
-              </div>
-            </div>
-          <% end %>
-
-          <%!-- Actions (only show when not in chat mode) --%>
-          <%= if not @room_access_denied and @room_tab != "chat" do %>
+          <%!-- Actions --%>
+          <%= if not @room_access_denied do %>
           <div class="flex items-center gap-4 mb-10">
             <%= if @current_user do %>
               <form id="upload-form" phx-change="validate" phx-submit="save">
@@ -650,6 +564,103 @@ defmodule FriendsWeb.HomeLive do
             <% end %>
             <% end %>
           <% end %>
+
+            </div><%!-- Close left content wrapper --%>
+
+            <%!-- Right: Chat Panel (collapsible, only shown for private spaces) --%>
+            <%= if @room.is_private and @feed_mode == "room" and not @room_access_denied and @show_chat_panel and @current_user do %>
+              <div class="hidden lg:block w-2/5 min-w-[320px] max-w-[500px]">
+                <div class="glass rounded-2xl border border-white/10 overflow-hidden sticky top-24" style="height: calc(100vh - 180px);">
+                  <%!-- Chat Header --%>
+                  <div class="p-3 border-b border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-emerald-400">💬</span>
+                      <span class="font-medium text-sm">Chat</span>
+                      <span class="text-[10px] text-emerald-400 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        E2E
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      phx-click="toggle_chat_panel"
+                      class="text-neutral-400 hover:text-white cursor-pointer text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <%!-- Messages --%>
+                  <div id="room-messages-container" class="overflow-y-auto p-3 space-y-3" style="height: calc(100% - 120px);" phx-hook="RoomChatScroll" data-room-id={@room.id}>
+                    <%= if @room_messages == [] do %>
+                      <div class="flex items-center justify-center h-full text-neutral-500">
+                        <div class="text-center">
+                          <p class="text-3xl mb-2">💬</p>
+                          <p class="text-sm">No messages yet</p>
+                        </div>
+                      </div>
+                    <% else %>
+                      <%= for message <- @room_messages do %>
+                        <div class={"flex #{if message.sender_id == @current_user.id, do: "justify-end", else: "justify-start"}"}>
+                          <div class={"max-w-[85%] rounded-xl px-3 py-2 #{if message.sender_id == @current_user.id, do: "bg-emerald-600", else: "bg-neutral-800"}"}>
+                            <%= if message.sender_id != @current_user.id do %>
+                              <p class="text-[10px] text-neutral-400 mb-0.5">@{message.sender.username}</p>
+                            <% end %>
+                            <%= if message.content_type == "voice" do %>
+                              <div class="flex items-center gap-2" id={"room-voice-#{message.id}"} phx-hook="RoomVoicePlayer" data-message-id={message.id} data-room-id={@room.id}>
+                                <button class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors cursor-pointer room-voice-play-btn text-xs">
+                                  ▶
+                                </button>
+                                <div class="flex-1 h-1 bg-white/20 rounded-full min-w-[60px]">
+                                  <div class="room-voice-progress h-full bg-white rounded-full" style="width: 0%"></div>
+                                </div>
+                                <span class="text-[10px] text-white/70">{format_voice_duration(message.metadata["duration_ms"])}</span>
+                                <span class="hidden" id={"room-msg-#{message.id}"} data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
+                              </div>
+                            <% else %>
+                              <p class="text-sm room-decrypted-content" id={"room-msg-#{message.id}"} data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}>
+                                <span class="text-neutral-400 italic text-xs">Decrypting...</span>
+                              </p>
+                            <% end %>
+                            <p class="text-[9px] text-white/50 mt-1">{Calendar.strftime(message.inserted_at, "%H:%M")}</p>
+                          </div>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+
+                  <%!-- Message Input --%>
+                  <div class="p-3 border-t border-white/10">
+                    <div id="room-message-input-area" class="flex items-center gap-2" phx-hook="RoomChatEncryption" data-room-id={@room.id}>
+                      <button
+                        type="button"
+                        phx-click={if @recording_voice, do: "stop_room_recording", else: "start_room_recording"}
+                        class={"w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer text-sm #{if @recording_voice, do: "bg-red-500 animate-pulse", else: "bg-white/10 hover:bg-white/20"}"}
+                        id="room-voice-btn"
+                      >
+                        🎤
+                      </button>
+                      <input
+                        type="text"
+                        value={@new_chat_message}
+                        phx-keyup="update_chat_message"
+                        placeholder="Message..."
+                        class="flex-1 bg-neutral-900 border border-white/10 rounded-full px-3 py-1.5 text-sm focus:outline-none focus:border-white/30"
+                        id="room-message-input"
+                        autocomplete="off"
+                      />
+                      <button
+                        id="send-room-message-btn"
+                        class="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center transition-colors cursor-pointer text-sm"
+                      >
+                        ➤
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div><%!-- Close flex container --%>
         </div>
 
         <%!-- Room Modal --%>
@@ -2546,13 +2557,16 @@ defmodule FriendsWeb.HomeLive do
      |> stream(:items, items, reset: true, dom_id: &("item-#{&1.unique_id}"))}
   end
 
-  # Switch between content and chat tabs within a room
-  def handle_event("set_room_tab", %{"tab" => tab}, socket) do
-    socket = assign(socket, :room_tab, tab)
-    socket = assign(socket, :feed_mode, "room")  # Ensure we're in room mode
-
-    # Load chat messages and subscribe if switching to chat
-    socket = if tab == "chat" do
+  # Toggle the chat panel visibility in split-view layout
+  def handle_event("toggle_chat_panel", _, socket) do
+    new_show = not socket.assigns.show_chat_panel
+    
+    socket = socket
+    |> assign(:show_chat_panel, new_show)
+    |> assign(:feed_mode, "room")  # Ensure we're in room mode
+    
+    # Load chat messages and subscribe if opening chat
+    socket = if new_show do
       if connected?(socket) do
         Social.subscribe_to_room_chat(socket.assigns.room.id)
       end

@@ -239,6 +239,10 @@ defmodule FriendsWeb.NetworkLive do
   def handle_info({:friend_request, _}, socket), do: {:noreply, load_data(socket)}
   def handle_info({:friend_accepted, _}, socket), do: {:noreply, load_data(socket)}
   def handle_info({:friend_removed, _}, socket), do: {:noreply, load_data(socket)}
+  # Room events - refresh user_rooms list
+  def handle_info({:room_created, _room}, socket), do: {:noreply, load_data(socket)}
+  # Catch-all for any other broadcasts we don't need to handle
+  def handle_info(_, socket), do: {:noreply, socket}
 
   # --- Graph Helper (Extended Social Network) ---
   defp build_graph_data(user) do
