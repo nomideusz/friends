@@ -441,14 +441,15 @@ defmodule Friends.WebAuthn do
 
       Logger.info("[WebAuthn] Signature size: #{byte_size(signature)}")
 
-      # Handle potential raw signature (64 bytes) vs DER encoded
-      signature_der = 
-        if byte_size(signature) == 64 do
-          Logger.info("[WebAuthn] Converting raw signature to DER")
-          raw_to_der(signature)
-        else
-          signature
-        end
+      Logger.info("[WebAuthn] Signature size: #{byte_size(signature)}")
+
+      # Normalize signature to strict DER format
+      # This handles both raw 64-byte signatures AND potentially malformed DER inputs
+      signature_der = normalize_der(signature)
+      
+      if byte_size(signature) != byte_size(signature_der) do
+         Logger.info("[WebAuthn] Signature normalized. Original size: #{byte_size(signature)}, New size: #{byte_size(signature_der)}")
+      end
 
       # Try verification with OID first, fallback to atom if needed
       ec_key_oid = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
@@ -477,6 +478,44 @@ defmodule Friends.WebAuthn do
       {:error, {:ec_verify_error, e}}
   end
   
+  defp normalize_der(signature) do
+    # Try to decode the signature as DER sequence of two integers (R, S)
+    # Then re-encode strictly to satisfy Erlang's picky crypto lib
+    try do
+      case decode_der_sequence(signature) do
+        {:ok, r, s} -> 
+          # Re-encode strictly by normalizing R and S to 32 bytes then passing to raw_to_der
+          r_32 = fix_coordinate_size(r, 32)
+          s_32 = fix_coordinate_size(s, 32)
+          raw_to_der(r_32 <> s_32)
+        _ ->
+          # If decode fails, check if it's already a raw 64-byte signature
+          if byte_size(signature) == 64 do
+            raw_to_der(signature)
+          else
+            signature
+          end
+      end
+    rescue
+      _ -> signature
+    end
+  end
+
+  defp decode_der_sequence(<<0x30, len, rest::binary>>) when byte_size(rest) == len do
+    with {:ok, r, rest_s} <- decode_der_integer(rest),
+         {:ok, s, ""} <- decode_der_integer(rest_s) do
+      {:ok, r, s}
+    else
+      _ -> :error
+    end
+  end
+  defp decode_der_sequence(_), do: :error
+
+  defp decode_der_integer(<<0x02, len, val::binary-size(len), rest::binary>>) do
+    {:ok, val, rest}
+  end
+  defp decode_der_integer(_), do: :error
+
   defp raw_to_der(<<r::binary-size(32), s::binary-size(32)>>) do
     # Convert raw 64-byte signature (R|S) to ASN.1 DER
     # Integers must be positive, so prepend 0x00 if MSB is 1
