@@ -512,26 +512,6 @@ defmodule FriendsWeb.HomeLive do
         <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
         <%!-- Main content - wider and more spacious --%>
         <div class="max-w-[1600px] mx-auto px-8 py-10">
-          <%!-- Room Header - Clean and minimal --%>
-          <% room_label = if @room.code == "lobby", do: "Public Square", else: (@room.name || @room.code) %>
-          
-          <%= if @current_user do %>
-            <div class="flex items-center justify-between mb-8">
-              <h1 class="text-2xl font-semibold text-white">{room_label}</h1>
-              
-              <%!-- Invite button --%>
-              <%= if @room.code != "lobby" do %>
-                <button phx-click="open_invite_modal" class="text-sm font-medium text-white cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 px-4 py-2 rounded-xl border border-violet-500/30 hover:border-violet-400/50 hover:shadow-lg hover:shadow-violet-500/20 transition-all">
-                  Invite
-                </button>
-              <% end %>
-            </div>
-          <% else %>
-            <%!-- Header for non-logged-in users --%>
-            <div class="flex items-center justify-between mb-8">
-              <h1 class="text-2xl font-semibold text-white">{room_label}</h1>
-            </div>
-          <% end %>
 
           <%!-- Network Info (when in network mode) --%>
           <%= if @feed_mode == "friends" && @current_user do %>
