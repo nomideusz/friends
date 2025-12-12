@@ -512,61 +512,25 @@ defmodule FriendsWeb.HomeLive do
         <div id="friends-app" class="min-h-screen text-white relative" phx-hook="FriendsApp" phx-window-keydown="handle_keydown">
         <%!-- Main content - wider and more spacious --%>
         <div class="max-w-[1600px] mx-auto px-8 py-10">
-          <%!-- Feed View Pills --%>
+          <%!-- Room Header - Clean and minimal --%>
           <% room_label = if @room.code == "lobby", do: "Public Square", else: (@room.name || @room.code) %>
           
           <%= if @current_user do %>
             <div class="flex items-center justify-between mb-8">
-              <div class="flex items-center gap-1 p-1.5 opal-card rounded-2xl">
-                <button
-                  type="button"
-                  phx-click="set_feed_view"
-                  phx-value-view="room"
-                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @feed_mode == "room", do: "bg-gradient-to-r from-rose-500/20 to-violet-500/20 text-white shadow-lg shadow-violet-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
-                >
-                  {room_label}
-                </button>
-                <button
-                  type="button"
-                  phx-click="set_feed_view"
-                  phx-value-view="friends"
-                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @feed_mode == "friends" && @network_filter != "me", do: "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-lg shadow-blue-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
-                >
-                  Contacts
-                </button>
-                <button
-                  type="button"
-                  phx-click="set_feed_view"
-                  phx-value-view="me"
-                  class={"px-5 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @feed_mode == "friends" && @network_filter == "me", do: "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-white shadow-lg shadow-orange-500/10 ring-1 ring-white/10", else: "text-neutral-500 hover:text-white hover:bg-white/5"}"}
-                >
-                  Me
-                </button>
-              </div>
+              <h1 class="text-2xl font-semibold text-white">{room_label}</h1>
               
-              <%!-- Right-side actions --%>
-              <div class="flex items-center gap-3">
-                <%!-- Chat toggle for private spaces --%>
-                <%= if @room.is_private and @feed_mode == "room" do %>
-                <button
-                    type="button"
-                    phx-click="toggle_chat_panel"
-                    class={"px-4 py-2 text-sm font-medium rounded-xl transition-all cursor-pointer #{if @show_chat_panel, do: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25", else: "opal-card text-neutral-400 hover:text-white"}"}
-                  >
-                    <%= if @show_chat_panel, do: "Hide Chat", else: "Chat" %>
-                  </button>
-                <% end %>
-                <%!-- Invite button --%>
-                <%= if @room.code != "lobby" and @feed_mode == "room" do %>
-              <button phx-click="open_invite_modal" class="text-sm font-medium text-white cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 px-4 py-2 rounded-xl border border-violet-500/30 hover:border-violet-400/50 hover:shadow-lg hover:shadow-violet-500/20 transition-all">
-                    Invite
-                  </button>
-                <% end %>
-              </div>
+              <%!-- Invite button --%>
+              <%= if @room.code != "lobby" do %>
+                <button phx-click="open_invite_modal" class="text-sm font-medium text-white cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 px-4 py-2 rounded-xl border border-violet-500/30 hover:border-violet-400/50 hover:shadow-lg hover:shadow-violet-500/20 transition-all">
+                  Invite
+                </button>
+              <% end %>
             </div>
           <% else %>
-            <%!-- Spacing for non-logged-in users --%>
-            <div class="mb-6"></div>
+            <%!-- Header for non-logged-in users --%>
+            <div class="flex items-center justify-between mb-8">
+              <h1 class="text-2xl font-semibold text-white">{room_label}</h1>
+            </div>
           <% end %>
 
           <%!-- Network Info (when in network mode) --%>
@@ -639,9 +603,9 @@ defmodule FriendsWeb.HomeLive do
           <% end %>
 
           <%!-- Main split-view layout container --%>
-          <div class={if @room.is_private and @feed_mode == "room" and not @room_access_denied and @show_chat_panel, do: "flex gap-6", else: ""}>
+          <div class={if @room.is_private and not @room_access_denied, do: "flex gap-6", else: ""}>
             <%!-- Left: Main content area (narrows when chat visible) --%>
-            <div class={if @room.is_private and @feed_mode == "room" and not @room_access_denied and @show_chat_panel, do: "flex-1 min-w-0", else: ""}>
+            <div class={if @room.is_private and not @room_access_denied, do: "flex-1 min-w-0", else: ""}>
 
 
 
@@ -842,27 +806,19 @@ defmodule FriendsWeb.HomeLive do
 
             </div><%!-- Close left content wrapper --%>
 
-            <%!-- Right: Chat Panel (collapsible, only shown for private spaces) --%>
-            <%= if @room.is_private and @feed_mode == "room" and not @room_access_denied and @show_chat_panel and @current_user do %>
+            <%!-- Right: Chat Panel (always visible for private spaces) --%>
+            <%= if @room.is_private and not @room_access_denied and @current_user do %>
               <div class="hidden lg:block w-2/5 min-w-[320px] max-w-[500px]">
-                <div class="glass rounded-2xl border border-white/10 overflow-hidden sticky top-24" style="height: calc(100vh - 180px);">
-                  <%!-- Chat Header --%>
-                  <div class="p-3 border-b border-white/10 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <span class="text-emerald-400">💬</span>
-                      <span class="font-medium text-sm">Chat</span>
+                <div class="opal-card rounded-2xl overflow-hidden sticky top-24" style="height: calc(100vh - 180px);">
+                  <%!-- Chat Header - Minimal --%>
+                  <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <span class="font-medium text-sm text-white">Chat</span>
                       <span class="text-[10px] text-emerald-400 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        E2E
+                        E2E encrypted
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      phx-click="toggle_chat_panel"
-                      class="text-neutral-400 hover:text-white cursor-pointer text-sm"
-                    >
-                      ✕
-                    </button>
                   </div>
 
                   <%!-- Messages --%>
