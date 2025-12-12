@@ -14,12 +14,15 @@ defmodule FriendsWeb.RegisterLive do
      |> assign(:webauthn_challenge, nil)
      |> assign(:error, nil)
      |> assign(:username_available, nil)
-     |> assign(:checking_username, false)}
+     |> assign(:checking_username, false)
+     |> assign(:pending_room_code, nil)}
   end
 
   @impl true
-  def handle_params(_params, _uri, socket) do
-    {:noreply, socket}
+  def handle_params(params, _uri, socket) do
+    # Check for join param (room to auto-join after registration)
+    pending_room = params["join"]
+    {:noreply, assign(socket, :pending_room_code, pending_room)}
   end
 
   @impl true
@@ -86,6 +89,15 @@ defmodule FriendsWeb.RegisterLive do
           {:ok, user} ->
             case Social.verify_and_store_webauthn_credential(user.id, credential_data, challenge) do
               {:ok, _credential} ->
+                # Check if user should auto-join a room
+                pending_room = socket.assigns.pending_room_code
+                if pending_room do
+                  case Social.join_room(user, pending_room) do
+                    {:ok, _room} -> :ok
+                    _ -> :ok  # Silently ignore join failures
+                  end
+                end
+
                 {:noreply,
                  socket
                  |> assign(:step, :complete)
@@ -283,10 +295,14 @@ defmodule FriendsWeb.RegisterLive do
               <p class="text-neutral-500 text-sm mb-8">your passkey is set up</p>
 
               <a
-                href="/"
+                href={if @pending_room_code, do: "/r/#{@pending_room_code}", else: "/"}
                 class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
               >
-                enter friends
+                <%= if @pending_room_code do %>
+                  enter {@pending_room_code}
+                <% else %>
+                  enter friends
+                <% end %>
               </a>
 
               <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800 text-left">

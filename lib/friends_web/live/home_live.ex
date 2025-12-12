@@ -361,7 +361,7 @@ defmodule FriendsWeb.HomeLive do
                    <h2 class="text-xl font-medium text-white flex items-center gap-2">
                      <span>👥</span> Groups
                    </h2>
-                   <button phx-click="open_room_modal" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1">
+                   <button phx-click="open_create_group_modal" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 cursor-pointer">
                      <span>+</span> Create Group
                    </button>
                  </div>
@@ -371,7 +371,7 @@ defmodule FriendsWeb.HomeLive do
                    <%= if group_rooms == [] do %>
                      <div class="p-8 rounded-2xl glass border border-white/5 text-center">
                        <p class="text-neutral-500 mb-2">No groups yet</p>
-                       <button phx-click="open_room_modal" class="text-emerald-400 hover:text-emerald-300 text-sm">
+                       <button phx-click="open_create_group_modal" class="text-emerald-400 hover:text-emerald-300 text-sm cursor-pointer">
                          Create your first group
                        </button>
                      </div>
@@ -585,9 +585,10 @@ defmodule FriendsWeb.HomeLive do
               <p class="text-neutral-400 text-sm font-medium">private room</p>
               <p class="text-neutral-600 text-xs mt-2">you don't have access to this room</p>
               <%= if is_nil(@current_user) do %>
-                <a href="/register" class="inline-block mt-4 px-4 py-2 bg-green-500 text-black text-sm hover:bg-green-400">
+                <a href={"/register?join=#{@room.code}"} class="inline-block mt-4 px-4 py-2 bg-emerald-500 text-black text-sm font-medium rounded-lg hover:bg-emerald-400 transition-colors">
                   register to join
                 </a>
+                <p class="text-neutral-600 text-xs mt-2">or <a href="/login" class="text-emerald-400 hover:text-emerald-300">login</a> if you have an account</p>
               <% else %>
                 <p class="text-neutral-700 text-xs mt-4">ask the owner to invite you</p>
               <% end %>
@@ -1010,7 +1011,91 @@ defmodule FriendsWeb.HomeLive do
           </div>
         <% end %>
 
-        <%!-- Invite Modal --%>
+        <%!-- Create Group Modal - Beautiful focused modal --%>
+        <%= if @create_group_modal do %>
+          <div 
+            id="create-group-modal-overlay" 
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200" 
+            phx-click-away="close_create_group_modal" 
+            role="dialog" 
+            aria-modal="true" 
+            aria-labelledby="create-group-modal-title"
+            phx-hook="LockScroll"
+          >
+            <div class="w-full max-w-md bg-neutral-900 rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <%!-- Header with gradient accent --%>
+              <div class="p-6 border-b border-neutral-800 bg-gradient-to-r from-emerald-500/10 to-blue-500/10">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 id="create-group-modal-title" class="text-xl font-semibold text-white">Create Group</h2>
+                    <p class="text-sm text-neutral-400 mt-1">Start a private space for your friends</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    phx-click="close_create_group_modal" 
+                    class="w-10 h-10 flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <%!-- Form --%>
+              <form phx-submit="create_group" phx-change="update_room_form" class="p-6 space-y-6">
+                <div>
+                  <label for="group-name" class="block text-sm font-medium text-neutral-300 mb-2">
+                    Group name <span class="text-neutral-600">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="group-name"
+                    name="name"
+                    value={@new_room_name}
+                    placeholder="e.g. Weekend Plans, Study Group..."
+                    maxlength="50"
+                    autofocus
+                    class="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  />
+                  <p class="text-xs text-neutral-600 mt-2">Leave empty for an auto-generated code name</p>
+                </div>
+                
+                <div class="flex gap-3">
+                  <button
+                    type="button"
+                    phx-click="close_create_group_modal"
+                    class="flex-1 px-4 py-3 border border-neutral-700 text-neutral-300 rounded-xl hover:bg-neutral-800 hover:text-white transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    phx-disable-with="Creating..."
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-xl hover:from-emerald-400 hover:to-emerald-500 transition-all cursor-pointer shadow-lg shadow-emerald-500/25"
+                  >
+                    Create Group
+                  </button>
+                </div>
+              </form>
+              
+              <%!-- Info footer --%>
+              <div class="px-6 pb-6">
+                <div class="p-4 bg-neutral-950/50 border border-neutral-800/50 rounded-xl">
+                  <div class="flex items-start gap-3">
+                    <span class="text-lg">🔒</span>
+                    <div class="text-xs text-neutral-500">
+                      <p class="font-medium text-neutral-400 mb-1">Private by default</p>
+                      <p>Only people you invite can access your group. Share the link or add members directly.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
         <%= if @show_invite_modal do %>
           <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" phx-click-away="close_invite_modal">
             <div class="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl space-y-6">
@@ -1907,6 +1992,44 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_room_modal, false)}
   end
 
+  # Create Group modal events
+  def handle_event("open_create_group_modal", _params, socket) do
+    if socket.assigns.current_user do
+      {:noreply, socket |> assign(:create_group_modal, true) |> assign(:new_room_name, "")}
+    else
+      {:noreply, put_flash(socket, :error, "please login to create groups")}
+    end
+  end
+
+  def handle_event("close_create_group_modal", _params, socket) do
+    {:noreply, socket |> assign(:create_group_modal, false) |> assign(:new_room_name, "")}
+  end
+
+  def handle_event("create_group", %{"name" => name}, socket) do
+    name = String.trim(name)
+    
+    case socket.assigns.current_user do
+      nil ->
+        {:noreply, put_flash(socket, :error, "please login to create groups")}
+      
+      user ->
+        code = Social.generate_room_code()
+        group_name = if name == "", do: nil, else: name
+        
+        case Social.create_private_room(%{code: code, name: group_name, created_by: socket.assigns.user_id}, user.id) do
+          {:ok, _room} ->
+            {:noreply,
+             socket
+             |> assign(:create_group_modal, false)
+             |> assign(:new_room_name, "")
+             |> push_navigate(to: ~p"/r/#{code}")}
+          
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "failed to create group")}
+        end
+    end
+  end
+
   def handle_event("update_join_code", %{"code" => code}, socket) do
     {:noreply, assign(socket, :join_code, code)}
   end
@@ -2269,6 +2392,9 @@ defmodule FriendsWeb.HomeLive do
 
       socket.assigns.show_room_modal ->
         {:noreply, assign(socket, :show_room_modal, false)}
+
+      socket.assigns.create_group_modal ->
+        {:noreply, socket |> assign(:create_group_modal, false) |> assign(:new_room_name, "")}
 
       socket.assigns.show_settings_modal ->
         {:noreply,
