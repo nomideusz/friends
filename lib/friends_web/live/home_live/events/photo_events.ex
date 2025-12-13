@@ -29,8 +29,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           filename = "#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
           # Process image to generate variants
-          with {:ok, variants} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
-               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type) do
+          with {:ok, variants, processed} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
+               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type, processed) do
             case Social.create_photo(
                    %{
                      user_id: socket.assigns.user_id,
@@ -98,8 +98,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           filename = "public/#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
           # Process image to generate variants
-          with {:ok, variants} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
-               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type) do
+          with {:ok, variants, processed} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
+               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type, processed) do
             case Social.create_public_photo(
                    %{
                      user_id: socket.assigns.user_id,

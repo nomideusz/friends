@@ -18,15 +18,19 @@ defmodule Friends.ImageProcessor do
 
   @doc """
   Processes an uploaded image binary and generates all size variants.
-  Returns {:ok, %{thumb: binary, medium: binary, large: binary, original: binary}}
+  Returns {:ok, %{thumb: binary, medium: binary, large: binary, original: binary}, processed: boolean}
+  where processed indicates if actual image processing was done (false = all same as original)
   """
   def process_upload(binary, content_type) when is_binary(binary) do
     if @image_available and image_processing_enabled?() do
-      process_with_image_library(binary, content_type)
+      case process_with_image_library(binary, content_type) do
+        {:ok, variants} -> {:ok, variants, true}
+        {:error, _} = error -> error
+      end
     else
       # Fallback: return original for all sizes (Windows or disabled)
       Logger.info("Image processing not available, using original for all sizes")
-      {:ok, %{thumb: binary, medium: binary, large: binary, original: binary}}
+      {:ok, %{thumb: binary, medium: binary, large: binary, original: binary}, false}
     end
   end
 

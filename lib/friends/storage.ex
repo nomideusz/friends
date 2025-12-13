@@ -21,26 +21,36 @@ defmodule Friends.Storage do
 
   @doc """
   Uploads multiple image variants (thumb, medium, large, original).
+  When processed=true, thumbnails use .jpg extension (they were converted to JPEG).
+  When processed=false, all variants use original extension (they're all the same file).
   Returns {:ok, %{thumb_url, medium_url, large_url, original_url}} or {:error, reason}
   """
-  def upload_with_variants(variants, base_filename, original_content_type) do
+  def upload_with_variants(variants, base_filename, original_content_type, processed \\ true) do
+    require Logger
+    Logger.info("upload_with_variants called with #{map_size(variants)} variants, base: #{base_filename}, processed: #{processed}")
+
+    original_ext = Path.extname(base_filename)
+
     results =
       Enum.reduce(variants, %{}, fn {size, binary}, acc ->
-        # Thumbnails are JPEG for better compression, original keeps its type
+        # When processed=true, thumbnails are JPEG. When false, all use original type.
         {suffix, content_type} =
-          if size == :original do
-            {Path.extname(base_filename), original_content_type}
+          if size == :original or not processed do
+            {original_ext, original_content_type}
           else
             {".jpg", "image/jpeg"}
           end
 
         filename = build_variant_filename(base_filename, size, suffix)
+        Logger.info("Uploading #{size} variant to: #{filename}")
 
         case upload_file(binary, filename, content_type) do
           {:ok, url} ->
+            Logger.info("Successfully uploaded #{size} to: #{url}")
             Map.put(acc, :"#{size}_url", url)
 
           {:error, reason} ->
+            Logger.error("Failed to upload #{size}: #{inspect(reason)}")
             Map.put(acc, :"#{size}_error", reason)
         end
       end)
