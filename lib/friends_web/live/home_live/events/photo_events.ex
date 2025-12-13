@@ -28,26 +28,33 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           file_content = File.read!(path)
           filename = "#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
-          case Friends.Storage.upload_file(file_content, filename, entry.client_type) do
-            {:ok, url} ->
-              case Social.create_photo(
-                     %{
-                       user_id: socket.assigns.current_user.id,
-                       user_name: socket.assigns.current_user.username,
-                       user_color: socket.assigns.current_user.color,
-                       image_data: url,
-                       thumbnail_data: url,
-                       content_type: entry.client_type,
-                       file_size: entry.client_size,
-                       description: ""
-                     },
-                     socket.assigns.room.code
-                   ) do
-                {:ok, photo} -> {:ok, photo}
-                {:error, reason} -> {:postpone, reason}
-              end
-
-            {:error, _} ->
+          # Process image to generate variants
+          with {:ok, variants} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
+               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type) do
+            case Social.create_photo(
+                   %{
+                     user_id: socket.assigns.user_id,
+                     user_name: socket.assigns.current_user.username,
+                     user_color: socket.assigns.user_color,
+                     image_data: urls.original_url,
+                     thumbnail_data: urls[:thumb_url] || urls.original_url,
+                     image_url_thumb: urls[:thumb_url],
+                     image_url_medium: urls[:medium_url],
+                     image_url_large: urls[:large_url],
+                     content_type: entry.client_type,
+                     file_size: entry.client_size,
+                     description: "",
+                     room_id: socket.assigns.room.id
+                   },
+                   socket.assigns.room.code
+                 ) do
+              {:ok, photo} -> {:ok, photo}
+              {:error, reason} -> {:postpone, reason}
+            end
+          else
+            {:error, reason} ->
+              require Logger
+              Logger.error("Room photo upload failed: #{inspect(reason)}")
               {:postpone, :upload_failed}
           end
         end)
@@ -90,26 +97,35 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           file_content = File.read!(path)
           filename = "public/#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
-          case Friends.Storage.upload_file(file_content, filename, entry.client_type) do
-            {:ok, url} ->
-              case Social.create_public_photo(
-                     %{
-                       user_id: socket.assigns.current_user.id,
-                       user_name: socket.assigns.current_user.username,
-                       user_color: socket.assigns.current_user.color,
-                       image_data: url,
-                       thumbnail_data: url,
-                       content_type: entry.client_type,
-                       file_size: entry.client_size,
-                       description: ""
-                     },
-                     socket.assigns.current_user.id
-                   ) do
-                {:ok, photo} -> {:ok, photo}
-                {:error, reason} -> {:postpone, reason}
-              end
-
-            {:error, _} ->
+          # Process image to generate variants
+          with {:ok, variants} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
+               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type) do
+            case Social.create_public_photo(
+                   %{
+                     user_id: socket.assigns.user_id,
+                     user_name: socket.assigns.current_user.username,
+                     user_color: socket.assigns.user_color,
+                     image_data: urls.original_url,
+                     thumbnail_data: urls[:thumb_url] || urls.original_url,
+                     image_url_thumb: urls[:thumb_url],
+                     image_url_medium: urls[:medium_url],
+                     image_url_large: urls[:large_url],
+                     content_type: entry.client_type,
+                     file_size: entry.client_size,
+                     description: ""
+                   },
+                   socket.assigns.current_user.id
+                 ) do
+              {:ok, photo} -> {:ok, photo}
+              {:error, reason} ->
+                require Logger
+                Logger.error("Feed photo DB insert failed: #{inspect(reason)}")
+                {:postpone, reason}
+            end
+          else
+            {:error, reason} ->
+              require Logger
+              Logger.error("Feed photo upload failed: #{inspect(reason)}")
               {:postpone, :upload_failed}
           end
         end)

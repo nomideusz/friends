@@ -47,4 +47,15 @@ config :phoenix_live_view,
 # WebAuthn RPID for development
 config :friends, :webauthn_rp_id, "localhost"
 # WebAuthn origin for dev server (matches Bandit on port 4001)
+# WebAuthn origin for dev server (matches Bandit on port 4001)
 config :friends, :webauthn_origin, "http://localhost:4001"
+
+# Disable image processing on Windows (Image/vix doesn't support Windows)
+# On Linux production, this defaults to true
+config :friends, :enable_image_processing, false
+
+# Import secret configuration for development (gitignored)
+if File.exists?(Path.join(__DIR__, "dev.secret.exs")) do
+  import_config "dev.secret.exs"
+end
+

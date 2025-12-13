@@ -119,6 +119,7 @@ defmodule Friends.Social do
   defdelegate create_note(attrs, room_code), to: Notes
   defdelegate update_note(note_id, attrs, user_id), to: Notes
   defdelegate delete_note(note_id, user_id, room_code), to: Notes
+  defdelegate create_public_note(attrs, user_id), to: Notes
 
   # --- Friendships / Relationships ---
 

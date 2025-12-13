@@ -76,18 +76,28 @@ if config_env() == :prod do
   config :friends, :webauthn_rp_id, webauthn_rp_id
   config :friends, :webauthn_origin, webauthn_origin
 
-  # MinIO / S3 Configuration
-  if System.get_env("MINIO_ENDPOINT") do
-    config :ex_aws,
-      access_key_id: System.get_env("MINIO_ROOT_USER"),
-      secret_access_key: System.get_env("MINIO_ROOT_PASSWORD"),
-      s3: [
-        scheme: "http://", # Assuming http for internal minio typically, or use "https://" if needed
-        host: System.get_env("MINIO_ENDPOINT") || "localhost",
-        port: 9000, # Default MinIO API port
-        region: "local"
-      ]
+end
 
-    config :friends, :media_bucket, System.get_env("MINIO_BUCKET_NAME") || "friends-images"
-  end
+# MinIO / S3 Configuration
+# MinIO / S3 Configuration
+if System.get_env("MINIO_ENDPOINT") do
+  endpoint = System.get_env("MINIO_ENDPOINT")
+  scheme = if String.starts_with?(endpoint, "https://") or System.get_env("MINIO_PORT") == "443", do: "https://", else: "http://"
+  host = endpoint |> String.replace("http://", "") |> String.replace("https://", "")
+  port = String.to_integer(System.get_env("MINIO_PORT") || "9000")
+
+  # If using HTTPS and no explicit port, default to 443
+  port = if scheme == "https://" and System.get_env("MINIO_PORT") == nil, do: 443, else: port
+
+  config :ex_aws,
+    access_key_id: System.get_env("MINIO_ROOT_USER"),
+    secret_access_key: System.get_env("MINIO_ROOT_PASSWORD"),
+    s3: [
+      scheme: scheme,
+      host: host,
+      port: port,
+      region: "local"
+    ]
+
+  config :friends, :media_bucket, System.get_env("MINIO_BUCKET_NAME") || "friends-images"
 end

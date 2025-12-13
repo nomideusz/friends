@@ -137,24 +137,32 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
     if user && audio_data && audio_data != "" do
       # Decode base64 audio data
       decoded_audio = Base.decode64!(audio_data)
+      filename = "public/#{user.id}/voice-#{Ecto.UUID.generate()}.webm"
 
-      # Voice messages are stored as photos with audio content type
-      attrs = %{
-        image_data: decoded_audio,
-        thumbnail_data: nil,
-        # Use generic audio type for public feed to use standard player
-        content_type: "audio/webm",
-        # Duration in description
-        description: "#{duration_ms}",
-        file_size: byte_size(decoded_audio)
-      }
+      # Upload to S3 first
+      case Friends.Storage.upload_file(decoded_audio, filename, "audio/webm") do
+        {:ok, url} ->
+          attrs = %{
+            user_id: "user-#{user.id}",
+            user_color: socket.assigns.user_color,
+            user_name: user.display_name || user.username,
+            image_data: url,
+            thumbnail_data: nil,
+            content_type: "audio/webm",
+            description: "#{duration_ms}",
+            file_size: byte_size(decoded_audio)
+          }
 
-      case Social.create_public_photo(attrs, user.id) do
-        {:ok, _photo} ->
-          {:noreply, assign(socket, :recording_voice, false)}
+          case Social.create_public_photo(attrs, user.id) do
+            {:ok, _photo} ->
+              {:noreply, assign(socket, :recording_voice, false)}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, "Failed to post voice message")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Failed to post voice message")}
+          end
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to upload voice message")}
       end
     else
       {:noreply, assign(socket, :recording_voice, false)}

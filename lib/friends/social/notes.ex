@@ -71,6 +71,26 @@ defmodule Friends.Social.Notes do
     end
   end
 
+  @doc """
+  Creates a public note (without room_id) and broadcasts to contacts.
+  """
+  def create_public_note(attrs, user_id) do
+    result =
+      %Note{}
+      |> Note.changeset(Map.put(attrs, :room_id, nil))
+      |> Repo.insert()
+
+    case result do
+      {:ok, note} ->
+        # Broadcast to user's contacts
+        Relationships.broadcast_to_contacts(user_id, :new_public_note, note)
+        {:ok, note}
+
+      error ->
+        error
+    end
+  end
+
   def update_note(note_id, attrs, user_id) do
     case Repo.get(Note, note_id) do
       nil ->
