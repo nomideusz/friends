@@ -87,15 +87,18 @@ defmodule Friends.Storage do
      host = config[:host]
      port = config[:port]
 
+     # URL-encode the filename to handle spaces and special characters
+     encoded_filename = URI.encode(filename)
+
      # Construct URL based on host/port config
      # For localhost minio: http://localhost:9000/bucket/filename
      # For real S3: https://bucket.s3.amazonaws.com/filename or similar
 
      if host == "s3.amazonaws.com" do
-       "#{scheme}#{bucket()}.s3.amazonaws.com/#{filename}"
+       "#{scheme}#{bucket()}.s3.amazonaws.com/#{encoded_filename}"
      else
        port_str = if port && port != 80 && port != 443, do: ":#{port}", else: ""
-       "#{scheme}#{host}#{port_str}/#{bucket()}/#{filename}"
+       "#{scheme}#{host}#{port_str}/#{bucket()}/#{encoded_filename}"
      end
   end
 end
