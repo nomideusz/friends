@@ -32,4 +32,14 @@ config :logger, :console,
 
 config :phoenix, :json_library, Jason
 
+config :ex_aws,
+  json_codec: Jason,
+  # Default to S3 config for MinIO
+  s3: [
+    scheme: "http://",
+    host: "localhost",
+    port: 9000,
+    region: "local"
+  ]
+
 import_config "#{config_env()}.exs"

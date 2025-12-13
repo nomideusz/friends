@@ -75,4 +75,19 @@ if config_env() == :prod do
 
   config :friends, :webauthn_rp_id, webauthn_rp_id
   config :friends, :webauthn_origin, webauthn_origin
+
+  # MinIO / S3 Configuration
+  if System.get_env("MINIO_ENDPOINT") do
+    config :ex_aws,
+      access_key_id: System.get_env("MINIO_ROOT_USER"),
+      secret_access_key: System.get_env("MINIO_ROOT_PASSWORD"),
+      s3: [
+        scheme: "http://", # Assuming http for internal minio typically, or use "https://" if needed
+        host: System.get_env("MINIO_ENDPOINT") || "localhost",
+        port: 9000, # Default MinIO API port
+        region: "local"
+      ]
+
+    config :friends, :media_bucket, System.get_env("MINIO_BUCKET_NAME") || "friends-images"
+  end
 end

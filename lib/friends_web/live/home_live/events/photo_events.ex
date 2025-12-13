@@ -20,80 +20,59 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   end
 
   def handle_progress(:photo, entry, socket) when entry.done? do
-    # Only registered users with room access can upload
     if is_nil(socket.assigns.current_user) or socket.assigns.room_access_denied do
       {:noreply, put_flash(socket, :error, "Please register to upload photos")}
     else
-      [photo_result] =
-        consume_uploaded_entries(socket, :photo, fn %{path: path}, _entry ->
-          binary = File.read!(path)
+      results =
+        consume_uploaded_entries(socket, :photo, fn %{path: path}, entry ->
+          file_content = File.read!(path)
+          filename = "#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
-          # Validate actual file content, not just extension/client type
-          case validate_image_content(binary) do
-            {:ok, validated_type} ->
-              base64 = Base.encode64(binary)
-              file_size = byte_size(binary)
+          case Friends.Storage.upload_file(file_content, filename, entry.client_type) do
+            {:ok, url} ->
+              case Social.create_photo(
+                     %{
+                       user_id: socket.assigns.current_user.id,
+                       user_name: socket.assigns.current_user.username,
+                       user_color: socket.assigns.current_user.color,
+                       image_data: url,
+                       thumbnail_data: url,
+                       content_type: entry.client_type,
+                       file_size: entry.client_size,
+                       description: ""
+                     },
+                     socket.assigns.room.code
+                   ) do
+                {:ok, photo} -> {:ok, photo}
+                {:error, reason} -> {:postpone, reason}
+              end
 
-              {:ok,
-               %{
-                 data_url: "data:#{validated_type};base64,#{base64}",
-                 content_type: validated_type,
-                 file_size: file_size
-               }}
-
-            {:error, :invalid_image} ->
-              {:ok, %{error: :invalid_image}}
+            {:error, _} ->
+              {:postpone, :upload_failed}
           end
         end)
 
-      # Check if validation failed
-      case photo_result do
-        %{error: :invalid_image} ->
+      case List.first(results) do
+        {:ok, photo} ->
+          photo_with_type =
+            photo
+            |> Map.put(:type, :photo)
+            |> Map.put(:unique_id, "photo-#{photo.id}")
+
           {:noreply,
            socket
            |> assign(:uploading, false)
-           |> put_flash(
-             :error,
-             "Invalid file type. Please upload a valid image (JPEG, PNG, GIF, or WebP)."
-           )}
+           |> assign(:item_count, socket.assigns.item_count + 1)
+           |> assign(
+             :photo_order,
+             merge_photo_order(socket.assigns.photo_order, [photo.id], :front)
+           )
+           |> stream_insert(:items, photo_with_type, at: 0)
+           |> push_event("photo_uploaded", %{photo_id: photo.id})}
 
-        %{data_url: _, content_type: _, file_size: _} = valid_result ->
-          room = socket.assigns.room
-
-          case Social.create_photo(
-                 %{
-                   user_id: socket.assigns.user_id,
-                   user_color: socket.assigns.user_color,
-                   user_name: socket.assigns.user_name,
-                   image_data: valid_result.data_url,
-                   content_type: valid_result.content_type,
-                   file_size: valid_result.file_size,
-                   room_id: room.id
-                 },
-                 room.code
-               ) do
-            {:ok, photo} ->
-              photo_with_type =
-                photo
-                |> Map.put(:type, :photo)
-                |> Map.put(:unique_id, "photo-#{photo.id}")
-                |> Map.put(:thumbnail_data, photo.thumbnail_data)
-
-              {:noreply,
-               socket
-               |> assign(:uploading, false)
-               |> assign(:item_count, socket.assigns.item_count + 1)
-               |> assign(
-                 :photo_order,
-                 merge_photo_order(socket.assigns.photo_order, [photo.id], :front)
-               )
-               |> stream_insert(:items, photo_with_type, at: 0)
-               |> push_event("photo_uploaded", %{photo_id: photo.id})}
-
-            {:error, _} ->
-              {:noreply,
-               socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
-          end
+        _ ->
+          {:noreply,
+           socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
       end
     end
   end
@@ -103,82 +82,55 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   end
 
   def handle_progress(:feed_photo, entry, socket) when entry.done? do
-    # Only registered users can post to public feed
     if is_nil(socket.assigns.current_user) do
       {:noreply, put_flash(socket, :error, "Please login to post photos")}
     else
-      user = socket.assigns.current_user
+      results =
+        consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, entry ->
+          file_content = File.read!(path)
+          filename = "public/#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
-      [photo_result] =
-        consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, _entry ->
-          binary = File.read!(path)
+          case Friends.Storage.upload_file(file_content, filename, entry.client_type) do
+            {:ok, url} ->
+              case Social.create_public_photo(
+                     %{
+                       user_id: socket.assigns.current_user.id,
+                       user_name: socket.assigns.current_user.username,
+                       user_color: socket.assigns.current_user.color,
+                       image_data: url,
+                       thumbnail_data: url,
+                       content_type: entry.client_type,
+                       file_size: entry.client_size,
+                       description: ""
+                     },
+                     socket.assigns.current_user.id
+                   ) do
+                {:ok, photo} -> {:ok, photo}
+                {:error, reason} -> {:postpone, reason}
+              end
 
-          case validate_image_content(binary) do
-            {:ok, validated_type} ->
-              base64 = Base.encode64(binary)
-              file_size = byte_size(binary)
-
-              {:ok,
-               %{
-                 data_url: "data:#{validated_type};base64,#{base64}",
-                 content_type: validated_type,
-                 file_size: file_size
-               }}
-
-            {:error, :invalid_image} ->
-              {:ok, %{error: :invalid_image}}
+            {:error, _} ->
+              {:postpone, :upload_failed}
           end
         end)
 
-      case photo_result do
-        %{error: :invalid_image} ->
+      case List.first(results) do
+        {:ok, photo} ->
+          photo_with_type =
+            photo
+            |> Map.put(:type, :photo)
+            |> Map.put(:unique_id, "photo-#{photo.id}")
+
           {:noreply,
            socket
            |> assign(:uploading, false)
-           |> put_flash(
-             :error,
-             "Invalid file type. Please upload a valid image (JPEG, PNG, GIF, or WebP)."
-           )}
+           |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+           |> stream_insert(:feed_items, photo_with_type, at: 0)
+           |> push_event("photo_uploaded", %{photo_id: photo.id})}
 
-        %{data_url: data_url, content_type: content_type, file_size: file_size} ->
-          attrs = %{
-            user_id: "user-#{user.id}",
-            user_color: socket.assigns.user_color,
-            user_name: user.display_name || user.username,
-            image_data: data_url,
-            content_type: content_type,
-            file_size: file_size
-          }
-
-          result = Social.create_public_photo(attrs, user.id)
-
-          case result do
-            {:ok, photo} ->
-              photo_item = %{
-                id: photo.id,
-                type: "photo",
-                user_id: photo.user_id,
-                user_color: photo.user_color,
-                user_name: photo.user_name,
-                thumbnail_data: photo.thumbnail_data,
-                image_data: photo.image_data,
-                content_type: photo.content_type,
-                file_size: photo.file_size,
-                description: photo.description,
-                inserted_at: photo.uploaded_at
-              }
-
-              {:noreply,
-               socket
-               |> assign(:uploading, false)
-               |> assign(:feed_item_count, socket.assigns.feed_item_count + 1)
-               |> stream_insert(:feed_items, photo_item, at: 0)
-               |> push_event("photo_uploaded", %{photo_id: photo.id})}
-
-            {:error, _} ->
-              {:noreply,
-               socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
-          end
+        _ ->
+          {:noreply,
+           socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
       end
     end
   end

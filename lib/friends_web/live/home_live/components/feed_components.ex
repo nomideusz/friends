@@ -143,7 +143,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
 
   def feed_item(assigns) do
     ~H"""
-    <%= if @item.type == "photo" do %>
+    <%= if @item.type == :photo or @item.type == "photo" do %>
       <div
         id={@id}
         class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10 animate-in fade-in zoom-in-95 duration-300"

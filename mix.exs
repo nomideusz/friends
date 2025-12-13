@@ -43,7 +43,12 @@ defmodule Friends.MixProject do
       {:bandit, "~> 1.5"},
       {:live_svelte, "~> 0.16.0"},
       # WebAuthn/FIDO2 support
-      {:cbor, "~> 1.0"}
+      {:cbor, "~> 1.0"},
+      # MinIO / S3 Storage
+      {:ex_aws, "~> 2.5"},
+      {:ex_aws_s3, "~> 2.5"},
+      {:hackney, "~> 1.20"},
+      {:sweet_xml, "~> 0.7"}
     ]
   end
 
