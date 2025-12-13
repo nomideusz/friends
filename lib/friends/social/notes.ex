@@ -77,7 +77,7 @@ defmodule Friends.Social.Notes do
   def create_public_note(attrs, user_id) do
     result =
       %Note{}
-      |> Note.changeset(Map.put(attrs, :room_id, nil))
+      |> Note.public_changeset(Map.put(attrs, :room_id, nil))
       |> Repo.insert()
 
     case result do

@@ -185,6 +185,7 @@ defmodule FriendsWeb.HomeLive do
 
   # Note events
   def handle_event("open_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
+  def handle_event("open_feed_note_modal", _params, socket), do: NoteEvents.open_feed_note_modal(socket)
   def handle_event("close_note_modal", _params, socket), do: NoteEvents.close_note_modal(socket)
 
   def handle_event("update_note", %{"content" => content}, socket) do

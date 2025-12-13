@@ -101,7 +101,11 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
   end
 
   def post_feed_note(socket, content) do
+    require Logger
+    Logger.debug("post_feed_note called with content: #{inspect(content)}")
+    
     user = socket.assigns.current_user
+    Logger.debug("post_feed_note user: #{inspect(user && user.id)}")
 
     if user && String.trim(content) != "" do
       attrs = %{
@@ -111,17 +115,30 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
         user_name: user.display_name || user.username
       }
 
+      Logger.debug("post_feed_note creating note with attrs: #{inspect(attrs)}")
+
       case Social.create_public_note(attrs, user.id) do
-        {:ok, _note} ->
+        {:ok, note} ->
+          Logger.info("post_feed_note SUCCESS - note created: #{inspect(note.id)}")
+          
+          note_with_type =
+            note
+            |> Map.put(:type, :note)
+            |> Map.put(:unique_id, "note-#{note.id}")
+
           {:noreply,
            socket
            |> assign(:show_note_modal, false)
-           |> assign(:note_input, "")}
+           |> assign(:note_input, "")
+           |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+           |> stream_insert(:feed_items, note_with_type, at: 0)}
 
-        {:error, _} ->
+        {:error, reason} ->
+          Logger.error("post_feed_note FAILED: #{inspect(reason)}")
           {:noreply, put_flash(socket, :error, "Failed to post note")}
       end
     else
+      Logger.debug("post_feed_note skipped - user nil or empty content")
       {:noreply, socket}
     end
   end

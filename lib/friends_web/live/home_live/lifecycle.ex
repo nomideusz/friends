@@ -68,6 +68,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       |> assign(:show_room_modal, false)
       |> assign(:show_name_modal, false)
       |> assign(:show_note_modal, false)
+      |> assign(:note_modal_action, nil)
       |> assign(:show_settings_modal, false)
       |> assign(:show_network_modal, false)
       # Dashboard specific assigns

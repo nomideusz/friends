@@ -27,6 +27,17 @@ defmodule Friends.Social.Note do
     |> maybe_set_editable_until()
   end
 
+  @doc """
+  Changeset for public notes (no room_id required).
+  """
+  def public_changeset(note, attrs) do
+    note
+    |> cast(attrs, [:user_id, :user_color, :user_name, :content, :room_id, :editable_until])
+    |> validate_required([:user_id, :content])
+    |> validate_length(:content, min: 1, max: 500)
+    |> maybe_set_editable_until()
+  end
+
   defp maybe_set_editable_until(changeset) do
     # Only set editable_until for new notes (no id yet)
     if get_field(changeset, :id) == nil and get_field(changeset, :editable_until) == nil do
