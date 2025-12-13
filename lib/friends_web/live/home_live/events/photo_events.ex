@@ -6,6 +6,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   import Phoenix.LiveView
   import FriendsWeb.HomeLive.Helpers
   alias Friends.Social
+  alias Friends.Repo
+  import Ecto.Query
 
   # --- Upload Handlers ---
 
@@ -15,6 +17,85 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
 
   def cancel_upload(socket, ref) do
     {:noreply, socket |> cancel_upload(:photo, ref) |> assign(:uploading, false)}
+  end
+
+  def handle_progress(:photo, entry, socket) when entry.done? do
+    # Only registered users with room access can upload
+    if is_nil(socket.assigns.current_user) or socket.assigns.room_access_denied do
+      {:noreply, put_flash(socket, :error, "Please register to upload photos")}
+    else
+      [photo_result] =
+        consume_uploaded_entries(socket, :photo, fn %{path: path}, _entry ->
+          binary = File.read!(path)
+
+          # Validate actual file content, not just extension/client type
+          case validate_image_content(binary) do
+            {:ok, validated_type} ->
+              base64 = Base.encode64(binary)
+              file_size = byte_size(binary)
+
+              {:ok,
+               %{
+                 data_url: "data:#{validated_type};base64,#{base64}",
+                 content_type: validated_type,
+                 file_size: file_size
+               }}
+
+            {:error, :invalid_image} ->
+              {:ok, %{error: :invalid_image}}
+          end
+        end)
+
+      # Check if validation failed
+      case photo_result do
+        %{error: :invalid_image} ->
+          {:noreply,
+           socket
+           |> assign(:uploading, false)
+           |> put_flash(
+             :error,
+             "Invalid file type. Please upload a valid image (JPEG, PNG, GIF, or WebP)."
+           )}
+
+        %{data_url: _, content_type: _, file_size: _} = valid_result ->
+          room = socket.assigns.room
+
+          case Social.create_photo(
+                 %{
+                   user_id: socket.assigns.user_id,
+                   user_color: socket.assigns.user_color,
+                   user_name: socket.assigns.user_name,
+                   image_data: valid_result.data_url,
+                   content_type: valid_result.content_type,
+                   file_size: valid_result.file_size,
+                   room_id: room.id
+                 },
+                 room.code
+               ) do
+            {:ok, photo} ->
+              photo_with_type =
+                photo
+                |> Map.put(:type, :photo)
+                |> Map.put(:unique_id, "photo-#{photo.id}")
+                |> Map.put(:thumbnail_data, photo.thumbnail_data)
+
+              {:noreply,
+               socket
+               |> assign(:uploading, false)
+               |> assign(:item_count, socket.assigns.item_count + 1)
+               |> assign(
+                 :photo_order,
+                 merge_photo_order(socket.assigns.photo_order, [photo.id], :front)
+               )
+               |> stream_insert(:items, photo_with_type, at: 0)
+               |> push_event("photo_uploaded", %{photo_id: photo.id})}
+
+            {:error, _} ->
+              {:noreply,
+               socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
+          end
+      end
+    end
   end
 
   def handle_progress(:photo, _entry, socket) do
@@ -190,5 +271,89 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
       {:error, _} ->
         {:noreply, socket}
     end
+  end
+
+  def regenerate_thumbnails(socket) do
+    # Rate limit: only allow once per 60 seconds per session
+    last_regen = socket.assigns[:last_thumbnail_regen] || 0
+    now = System.system_time(:second)
+
+    if now - last_regen < 60 do
+      {:noreply, put_flash(socket, :error, "Please wait before regenerating again")}
+    else
+      # Start background task to regenerate missing thumbnails
+      Task.async(fn ->
+        regenerate_all_missing_thumbnails(socket.assigns.room.id, socket.assigns.room.code)
+      end)
+
+      {:noreply,
+       socket
+       |> assign(:last_thumbnail_regen, now)
+       |> put_flash(:info, "Regenerating missing thumbnails in background...")}
+    end
+  end
+
+  # --- Private Helpers ---
+
+  # Generate thumbnail from base64 image data
+  defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do
+    try do
+      # Extract the actual base64 data after the comma
+      case String.split(data, ",", parts: 2) do
+        [mime, base64_data] ->
+          case Base.decode64(base64_data) do
+            {:ok, binary_data} ->
+              # Try to generate a smaller thumbnail; fall back to original data URL
+              thumbnail_data =
+                generate_server_thumbnail(binary_data) ||
+                  "data:#{mime},#{base64_data}"
+
+              Social.set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
+
+            _ ->
+              :error
+          end
+
+        _ ->
+          :error
+      end
+    rescue
+      _ -> :error
+    end
+  end
+
+  defp generate_thumbnail_from_data(_, _, _, _), do: :error
+
+  # Server-side thumbnail generation (simplified version)
+  defp generate_server_thumbnail(binary_data) do
+    try do
+      # Placeholder for future server-side resizing; return nil so callers fall back to the source data
+      _ = byte_size(binary_data)
+      nil
+    rescue
+      _ -> nil
+    end
+  end
+
+  # Regenerate missing thumbnails for all photos in a room
+  def regenerate_all_missing_thumbnails(room_id, room_code) do
+    # Get all photos in the room that don't have thumbnails
+    photos_without_thumbnails =
+      Social.Photo
+      |> where(
+        [p],
+        p.room_id == ^room_id and
+          (is_nil(p.thumbnail_data) or ilike(p.thumbnail_data, ^"data:image/svg+xml%"))
+      )
+      |> Repo.all()
+
+    # Process each photo
+    Enum.each(photos_without_thumbnails, fn photo ->
+      if photo.image_data do
+        generate_thumbnail_from_data(photo.image_data, photo.id, photo.user_id, room_code)
+        # Add small delay to avoid overwhelming the system
+        Process.sleep(100)
+      end
+    end)
   end
 end
