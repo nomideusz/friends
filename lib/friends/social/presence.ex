@@ -50,4 +50,3 @@ defmodule Friends.Social.Presence do
     end)
   end
 end
-

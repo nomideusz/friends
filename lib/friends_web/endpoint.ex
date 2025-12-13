@@ -45,4 +45,3 @@ defmodule FriendsWeb.Endpoint do
   plug Plug.Session, @session_options
   plug FriendsWeb.Router
 end
-

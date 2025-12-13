@@ -7,4 +7,3 @@
 alias Friends.Social
 
 Social.get_or_create_lobby()
-

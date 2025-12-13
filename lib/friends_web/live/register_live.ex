@@ -91,10 +91,12 @@ defmodule FriendsWeb.RegisterLive do
               {:ok, _credential} ->
                 # Check if user should auto-join a room
                 pending_room = socket.assigns.pending_room_code
+
                 if pending_room do
                   case Social.join_room(user, pending_room) do
                     {:ok, _room} -> :ok
-                    _ -> :ok  # Silently ignore join failures
+                    # Silently ignore join failures
+                    _ -> :ok
                   end
                 end
 
@@ -102,11 +104,15 @@ defmodule FriendsWeb.RegisterLive do
                  socket
                  |> assign(:step, :complete)
                  |> assign(:user, user)
-                 |> push_event("registration_complete", %{user: %{id: user.id, username: user.username}})}
+                 |> push_event("registration_complete", %{
+                   user: %{id: user.id, username: user.username}
+                 })}
 
               {:error, reason} ->
                 Friends.Repo.delete(user)
-                {:noreply, assign(socket, :error, "WebAuthn registration failed: #{inspect(reason)}")}
+
+                {:noreply,
+                 assign(socket, :error, "WebAuthn registration failed: #{inspect(reason)}")}
             end
 
           {:error, :invalid_invite} ->
@@ -117,6 +123,7 @@ defmodule FriendsWeb.RegisterLive do
               changeset.errors
               |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
               |> Enum.join(", ")
+
             {:noreply, assign(socket, :error, error)}
         end
     end
@@ -171,6 +178,7 @@ defmodule FriendsWeb.RegisterLive do
 
       true ->
         available = Social.username_available?(username)
+
         {:noreply,
          socket
          |> assign(:username, username)
@@ -187,15 +195,20 @@ defmodule FriendsWeb.RegisterLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id="register-app" class="min-h-screen flex items-center justify-center p-4" phx-hook="RegisterApp">
+    <div
+      id="register-app"
+      class="min-h-screen flex items-center justify-center p-4"
+      phx-hook="RegisterApp"
+    >
       <div class="w-full max-w-md">
         <%= case @step do %>
           <% :username -> %>
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">join friends</h1>
+              
               <p class="text-neutral-500 text-sm">invite is optional; pick a username to continue</p>
             </div>
-
+            
             <div class="space-y-4">
               <div>
                 <label class="block text-xs text-neutral-500 mb-2">invite code (optional)</label>
@@ -208,9 +221,11 @@ defmodule FriendsWeb.RegisterLive do
                   autocomplete="off"
                   class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 font-mono"
                 />
-                <p class="mt-1 text-xs text-neutral-600">enter an invite for automatic trusted friend connection</p>
+                <p class="mt-1 text-xs text-neutral-600">
+                  enter an invite for automatic trusted friend connection
+                </p>
               </div>
-
+              
               <form phx-change="check_username" phx-submit="noop" class="space-y-2">
                 <div>
                   <label class="block text-xs text-neutral-500 mb-2">username</label>
@@ -231,13 +246,18 @@ defmodule FriendsWeb.RegisterLive do
                       ]}
                     />
                     <%= if @username_available == true do %>
-                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-xs">available</span>
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-xs">
+                        available
+                      </span>
                     <% end %>
                   </div>
-                  <p class="mt-1 text-xs text-neutral-600">3-20 characters, lowercase, numbers, underscores</p>
+                  
+                  <p class="mt-1 text-xs text-neutral-600">
+                    3-20 characters, lowercase, numbers, underscores
+                  </p>
                 </div>
               </form>
-
+              
               <div>
                 <label class="block text-xs text-neutral-500 mb-2">display name (optional)</label>
                 <input
@@ -250,11 +270,11 @@ defmodule FriendsWeb.RegisterLive do
                   class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600"
                 />
               </div>
-
+              
               <%= if @error do %>
                 <p class="text-red-500 text-xs">{@error}</p>
               <% end %>
-
+              
               <%= if @username_available == true do %>
                 <%= if @webauthn_available do %>
                   <button
@@ -270,6 +290,7 @@ defmodule FriendsWeb.RegisterLive do
                 <% else %>
                   <div class="w-full p-4 bg-neutral-900 border border-red-900 text-red-400 text-center">
                     <p class="font-medium mb-1">Passkeys not available</p>
+                    
                     <p class="text-xs text-neutral-500">
                       Your browser doesn't support passkeys. Try using Chrome, Safari, or Edge on a device with biometrics.
                     </p>
@@ -281,19 +302,20 @@ defmodule FriendsWeb.RegisterLive do
                 </div>
               <% end %>
             </div>
-
+            
             <div class="mt-6 text-center">
               <a href="/login" class="text-xs text-neutral-500 hover:text-white transition-colors">
                 already have an account? login
               </a>
             </div>
-
           <% :complete -> %>
             <div class="text-center">
               <div class="text-4xl mb-4">✓</div>
+              
               <h1 class="text-2xl font-medium text-white mb-2">welcome, {@user.username}</h1>
+              
               <p class="text-neutral-500 text-sm mb-8">your passkey is set up</p>
-
+              
               <a
                 href={if @pending_room_code, do: "/r/#{@pending_room_code}", else: "/"}
                 class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
@@ -304,12 +326,14 @@ defmodule FriendsWeb.RegisterLive do
                   enter friends
                 <% end %>
               </a>
-
               <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800 text-left">
                 <p class="text-xs text-neutral-500 mb-2">next steps:</p>
+                
                 <ul class="text-xs text-neutral-400 space-y-1">
                   <li>• add trusted friends for account recovery</li>
+                  
                   <li>• register additional passkeys on other devices</li>
+                  
                   <li>• share your invite codes with friends</li>
                 </ul>
               </div>
@@ -322,5 +346,3 @@ defmodule FriendsWeb.RegisterLive do
 
   # Admin invite is unused in the current unified form; keep helper if needed later.
 end
-
-

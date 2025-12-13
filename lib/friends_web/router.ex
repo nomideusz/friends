@@ -50,4 +50,3 @@ defmodule FriendsWeb.Router do
     end
   end
 end
-

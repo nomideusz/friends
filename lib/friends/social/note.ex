@@ -5,7 +5,8 @@ defmodule Friends.Social.Note do
   @grace_period_minutes 15
 
   # Use existing friends_text_cards table from rzeczywiscie
-  @derive {Jason.Encoder, only: [:id, :content, :user_id, :user_color, :user_name, :inserted_at, :editable_until]}
+  @derive {Jason.Encoder,
+           only: [:id, :content, :user_id, :user_color, :user_name, :inserted_at, :editable_until]}
   schema "friends_text_cards" do
     field :user_id, :string
     field :user_color, :string
@@ -40,11 +41,10 @@ defmodule Friends.Social.Note do
   Check if a note is still within its edit grace period.
   """
   def editable?(%__MODULE__{editable_until: nil}), do: false
+
   def editable?(%__MODULE__{editable_until: until}) do
     DateTime.compare(DateTime.utc_now(), until) == :lt
   end
 
   def grace_period_minutes, do: @grace_period_minutes
 end
-
-

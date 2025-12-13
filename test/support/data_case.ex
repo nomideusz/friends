@@ -35,4 +35,3 @@ defmodule Friends.DataCase do
     end)
   end
 end
-

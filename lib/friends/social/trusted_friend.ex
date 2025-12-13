@@ -9,10 +9,11 @@ defmodule Friends.Social.TrustedFriend do
   schema "friends_trusted_friends" do
     belongs_to :user, Friends.Social.User
     belongs_to :trusted_user, Friends.Social.User
-    
-    field :status, :string, default: "pending"  # pending, confirmed, removed
+
+    # pending, confirmed, removed
+    field :status, :string, default: "pending"
     field :confirmed_at, :utc_datetime
-    
+
     timestamps()
   end
 
@@ -21,9 +22,9 @@ defmodule Friends.Social.TrustedFriend do
     |> cast(attrs, [:user_id, :trusted_user_id, :status, :confirmed_at])
     |> validate_required([:user_id, :trusted_user_id])
     |> validate_inclusion(:status, ["pending", "confirmed", "removed"])
-    |> unique_constraint([:user_id, :trusted_user_id], name: :friends_trusted_friends_user_trusted_unique)
+    |> unique_constraint([:user_id, :trusted_user_id],
+      name: :friends_trusted_friends_user_trusted_unique
+    )
     |> check_constraint(:self_trust, name: :no_self_trust, message: "cannot trust yourself")
   end
 end
-
-

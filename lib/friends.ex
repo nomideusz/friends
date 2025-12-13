@@ -4,4 +4,3 @@ defmodule Friends do
   No sign-in required. Device fingerprint based identity.
   """
 end
-

@@ -103,4 +103,3 @@ defmodule FriendsWeb.Telemetry do
     :telemetry.execute([:vm, :total_run_queue_lengths], queue_lengths, %{})
   end
 end
-

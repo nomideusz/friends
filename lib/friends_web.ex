@@ -92,4 +92,3 @@ defmodule FriendsWeb do
     apply(__MODULE__, which, [])
   end
 end
-

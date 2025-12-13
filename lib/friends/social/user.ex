@@ -10,9 +10,11 @@ defmodule Friends.Social.User do
 
   schema "friends_users" do
     field :username, :string
-    field :public_key, :map  # Legacy - kept for backward compatibility, nil for WebAuthn-only users
+    # Legacy - kept for backward compatibility, nil for WebAuthn-only users
+    field :public_key, :map
     field :display_name, :string
-    field :status, :string, default: "active"  # active, suspended, recovering
+    # active, suspended, recovering
+    field :status, :string, default: "active"
 
     # Invite system
     field :invited_by_id, :integer
@@ -28,9 +30,19 @@ defmodule Friends.Social.User do
 
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:username, :public_key, :display_name, :status, :invited_by_id, :invite_code, :recovery_requested_at])
+    |> cast(attrs, [
+      :username,
+      :public_key,
+      :display_name,
+      :status,
+      :invited_by_id,
+      :invite_code,
+      :recovery_requested_at
+    ])
     |> validate_required([:username])
-    |> validate_format(:username, @username_regex, message: "must be 3-20 lowercase letters, numbers, or underscores")
+    |> validate_format(:username, @username_regex,
+      message: "must be 3-20 lowercase letters, numbers, or underscores"
+    )
     |> validate_length(:display_name, max: 50)
     |> unique_constraint(:username)
   end
@@ -40,5 +52,3 @@ defmodule Friends.Social.User do
     |> changeset(attrs)
   end
 end
-
-

@@ -24,4 +24,3 @@ defmodule Friends.Application do
     :ok
   end
 end
-

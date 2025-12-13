@@ -1,7 +1,7 @@
 defmodule FriendsWeb.RecoverLive do
   @moduledoc """
   Recovery flow for users who lost their browser key.
-  
+
   The process:
   1. User enters their username
   2. They get a new crypto key generated
@@ -41,14 +41,14 @@ defmodule FriendsWeb.RecoverLive do
   @impl true
   def handle_event("lookup_user", _params, socket) do
     username = socket.assigns.username
-    
+
     case Social.get_user_by_username(username) do
       nil ->
         {:noreply, assign(socket, :error, "user not found")}
-      
+
       user ->
         trusted_friends = Social.list_trusted_friends(user.id)
-        
+
         if length(trusted_friends) < 4 do
           {:noreply, assign(socket, :error, "not enough trusted friends (need 4+)")}
         else
@@ -64,7 +64,7 @@ defmodule FriendsWeb.RecoverLive do
   @impl true
   def handle_event("submit_recovery", _params, socket) do
     user = socket.assigns.user
-    
+
     # Start recovery process
     case Social.request_recovery(user.username) do
       {:ok, updated_user} ->
@@ -74,7 +74,7 @@ defmodule FriendsWeb.RecoverLive do
          |> assign(:user, updated_user)
          |> assign(:step, :generating)
          |> push_event("generate_recovery_key", %{})}
-      
+
       {:error, _} ->
         {:noreply, assign(socket, :error, "failed to start recovery")}
     end
@@ -84,7 +84,7 @@ defmodule FriendsWeb.RecoverLive do
   def handle_event("set_public_key", %{"public_key" => public_key}, socket) do
     # Key is now generated - move to waiting state
     recovery_status = Social.get_recovery_status(socket.assigns.user.id)
-    
+
     {:noreply,
      socket
      |> assign(:new_public_key, public_key)
@@ -96,7 +96,7 @@ defmodule FriendsWeb.RecoverLive do
   def handle_event("check_status", _params, socket) do
     user = socket.assigns.user
     recovery_status = Social.get_recovery_status(user.id)
-    
+
     if recovery_status.can_recover do
       # Recovery successful - update public key
       new_public_key = socket.assigns.new_public_key
@@ -126,15 +126,20 @@ defmodule FriendsWeb.RecoverLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id="recover-app" class="min-h-screen flex items-center justify-center p-4" phx-hook="RecoverApp">
+    <div
+      id="recover-app"
+      class="min-h-screen flex items-center justify-center p-4"
+      phx-hook="RecoverApp"
+    >
       <div class="w-full max-w-md">
         <%= case @step do %>
           <% :username -> %>
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">recover account</h1>
+              
               <p class="text-neutral-500 text-sm">lost your device? your friends can help</p>
             </div>
-
+            
             <form phx-submit="lookup_user" class="space-y-4">
               <div>
                 <label class="block text-xs text-neutral-500 mb-2">your username</label>
@@ -149,11 +154,11 @@ defmodule FriendsWeb.RecoverLive do
                   class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 font-mono"
                 />
               </div>
-
+              
               <%= if @error do %>
                 <p class="text-red-500 text-xs">{@error}</p>
               <% end %>
-
+              
               <button
                 type="submit"
                 disabled={String.trim(@username) == ""}
@@ -162,39 +167,41 @@ defmodule FriendsWeb.RecoverLive do
                 find account
               </button>
             </form>
-
+            
             <div class="mt-8 text-center">
               <a href="/register" class="text-xs text-neutral-600 hover:text-white">
                 don't have an account? register →
               </a>
             </div>
-
           <% :confirm -> %>
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">confirm recovery</h1>
+              
               <p class="text-neutral-500 text-sm">we'll notify your trusted friends</p>
             </div>
-
+            
             <div class="bg-neutral-900 border border-neutral-800 p-4 mb-6">
-              <p class="text-sm text-neutral-300 mb-2">recovering: <span class="text-white">@{@user.username}</span></p>
-              <p class="text-xs text-neutral-500">
-                a new crypto key will be generated for this browser.
-                your trusted friends will vote to confirm it's really you.
+              <p class="text-sm text-neutral-300 mb-2">
+                recovering: <span class="text-white">@{@user.username}</span>
               </p>
+              
+              <p class="text-xs text-neutral-500">a new crypto key will be generated for this browser.
+                your trusted friends will vote to confirm it's really you.</p>
             </div>
-
+            
             <div class="bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
               <p class="text-sm text-amber-400">⚠️ important</p>
+              
               <p class="text-xs text-amber-500/80 mt-1">
                 contact your trusted friends outside this app and ask them to confirm your recovery.
                 you need 4 confirmations.
               </p>
             </div>
-
+            
             <%= if @error do %>
               <p class="text-red-500 text-xs mb-4">{@error}</p>
             <% end %>
-
+            
             <button
               type="button"
               phx-click="submit_recovery"
@@ -202,7 +209,6 @@ defmodule FriendsWeb.RecoverLive do
             >
               start recovery
             </button>
-
             <button
               type="button"
               phx-click="go_back"
@@ -210,36 +216,40 @@ defmodule FriendsWeb.RecoverLive do
             >
               ← back
             </button>
-
           <% :generating -> %>
             <div class="text-center">
               <div class="text-4xl mb-4 animate-pulse">🔐</div>
+              
               <h1 class="text-2xl font-medium text-white mb-2">generating new key...</h1>
+              
               <p class="text-neutral-500 text-sm">please wait</p>
             </div>
-
           <% :waiting -> %>
             <div class="text-center mb-8">
               <div class="text-4xl mb-4">⏳</div>
+              
               <h1 class="text-2xl font-medium text-white mb-2">waiting for friends</h1>
+              
               <p class="text-neutral-500 text-sm">ask your trusted friends to confirm</p>
             </div>
-
+            
             <%= if @recovery_status do %>
               <div class="bg-neutral-900 border border-neutral-800 p-4 mb-6">
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm text-neutral-400">confirmations</span>
-                  <span class="text-lg font-mono text-white">{@recovery_status.confirmations} / 4</span>
+                  <span class="text-lg font-mono text-white">
+                    {@recovery_status.confirmations} / 4
+                  </span>
                 </div>
                 
                 <div class="w-full bg-neutral-800 h-2 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     class="bg-green-500 h-full transition-all"
                     style={"width: #{min(@recovery_status.confirmations * 25, 100)}%"}
                   />
                 </div>
               </div>
-
+              
               <button
                 type="button"
                 phx-click="check_status"
@@ -248,32 +258,36 @@ defmodule FriendsWeb.RecoverLive do
                 check status
               </button>
             <% end %>
-
+            
             <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800">
               <p class="text-xs text-neutral-500 mb-2">what to tell your friends:</p>
+              
               <p class="text-xs text-neutral-400">
                 "hey, i'm recovering my friends account. can you go to friends and confirm my recovery request? my username is @{@user.username}"
               </p>
             </div>
-
           <% :complete -> %>
             <div class="text-center">
               <div class="text-4xl mb-4">✓</div>
+              
               <h1 class="text-2xl font-medium text-white mb-2">recovered!</h1>
+              
               <p class="text-neutral-500 text-sm mb-8">your account is restored with a new key</p>
-
+              
               <a
                 href="/"
                 class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
               >
                 enter friends
               </a>
-
               <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800 text-left">
                 <p class="text-xs text-neutral-500 mb-2">what happened:</p>
+                
                 <ul class="text-xs text-neutral-400 space-y-1">
                   <li>• your trusted friends confirmed your identity</li>
+                  
                   <li>• a new crypto key was linked to your account</li>
+                  
                   <li>• your old key is now invalid</li>
                 </ul>
               </div>
@@ -284,4 +298,3 @@ defmodule FriendsWeb.RecoverLive do
     """
   end
 end
-

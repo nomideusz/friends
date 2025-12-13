@@ -31,7 +31,12 @@ defmodule FriendsWeb.LoginLive do
         credentials = Social.list_webauthn_credentials(user.id)
 
         if Enum.empty?(credentials) do
-          {:noreply, assign(socket, :error, "No passkey registered for this account. Try account recovery or create a new account.")}
+          {:noreply,
+           assign(
+             socket,
+             :error,
+             "No passkey registered for this account. Try account recovery or create a new account."
+           )}
         else
           # Generate WebAuthn challenge
           challenge_options = Social.generate_webauthn_authentication_challenge(user)
@@ -59,7 +64,8 @@ defmodule FriendsWeb.LoginLive do
         token = Base.encode64(:crypto.strong_rand_bytes(32))
 
         # Register device session
-        device_fingerprint = credential_data["rawId"] # Use credential ID as fingerprint for now
+        # Use credential ID as fingerprint for now
+        device_fingerprint = credential_data["rawId"]
         Social.register_user_device(user.id, device_fingerprint, "Web Browser", nil)
 
         {:noreply,
@@ -73,6 +79,7 @@ defmodule FriendsWeb.LoginLive do
       {:error, reason} ->
         require Logger
         Logger.error("[LoginLive] WebAuthn verification failed: #{inspect(reason)}")
+
         {:noreply,
          socket
          |> assign(:step, :username)
@@ -102,13 +109,14 @@ defmodule FriendsWeb.LoginLive do
     ~H"""
     <div class="min-h-screen flex items-center justify-center p-4 relative">
       <div class="opal-bg"></div>
-
+      
       <div class="w-full max-w-md relative z-10">
         <div class="text-center mb-8">
           <h1 class="text-3xl font-bold text-white mb-2">Login</h1>
+          
           <p class="text-neutral-400">Sign in with your passkey</p>
         </div>
-
+        
         <div class="bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 p-6 space-y-6">
           <%= case @step do %>
             <% :username -> %>
@@ -125,13 +133,13 @@ defmodule FriendsWeb.LoginLive do
                     class="w-full px-4 py-3 bg-black border border-neutral-700 text-white placeholder-neutral-600 focus:border-white focus:outline-none"
                   />
                 </div>
-
+                
                 <%= if @error do %>
                   <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
-                    <%= @error %>
+                    {@error}
                   </div>
                 <% end %>
-
+                
                 <button
                   type="submit"
                   class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 transition-colors"
@@ -139,38 +147,47 @@ defmodule FriendsWeb.LoginLive do
                   Continue with Passkey
                 </button>
               </form>
-
+              
               <div class="text-center pt-4 border-t border-neutral-800">
                 <p class="text-sm text-neutral-500 mb-3">Other options</p>
+                
                 <div class="space-y-2">
-                  <a href="/recover" class="block text-sm text-neutral-400 hover:text-white transition-colors">
+                  <a
+                    href="/recover"
+                    class="block text-sm text-neutral-400 hover:text-white transition-colors"
+                  >
                     Recover account with trusted friends
                   </a>
-                  <a href="/register" class="block text-sm text-neutral-400 hover:text-white transition-colors">
+                  <a
+                    href="/register"
+                    class="block text-sm text-neutral-400 hover:text-white transition-colors"
+                  >
                     Create new account
                   </a>
                 </div>
               </div>
-
             <% :webauthn -> %>
               <div id="webauthn-login-wrapper" phx-hook="WebAuthnLogin">
                 <div class="text-center space-y-4">
                   <div class="text-6xl mb-4">🔐</div>
+                  
                   <h2 class="text-xl font-medium text-white">Use Your Passkey</h2>
+                  
                   <p class="text-neutral-400">
-                    Use your fingerprint, face, or security key to sign in as <span class="text-white font-medium">@<%= @username %></span>
+                    Use your fingerprint, face, or security key to sign in as
+                    <span class="text-white font-medium">@{@username}</span>
                   </p>
-
+                  
                   <div class="pt-4">
                     <div class="animate-pulse text-neutral-500">Waiting for passkey...</div>
                   </div>
-
+                  
                   <%= if @error do %>
                     <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
-                      <%= @error %>
+                      {@error}
                     </div>
                   <% end %>
-
+                  
                   <button
                     type="button"
                     phx-click="back"
@@ -180,18 +197,19 @@ defmodule FriendsWeb.LoginLive do
                   </button>
                 </div>
               </div>
-
             <% :success -> %>
               <div id="webauthn-login-wrapper" phx-hook="WebAuthnLogin">
                 <div class="text-center space-y-4">
                   <div class="text-6xl mb-4">✅</div>
+                  
                   <h2 class="text-xl font-medium text-white">Login Successful!</h2>
+                  
                   <p class="text-neutral-400">Redirecting...</p>
                 </div>
               </div>
           <% end %>
         </div>
-
+        
         <div class="text-center mt-6">
           <a href="/" class="text-sm text-neutral-500 hover:text-white transition-colors">
             ← Back to home

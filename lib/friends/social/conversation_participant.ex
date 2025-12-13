@@ -12,8 +12,10 @@ defmodule Friends.Social.ConversationParticipant do
     belongs_to :conversation, Conversation
     belongs_to :user, User
 
-    field :encrypted_key, :binary  # Conversation key encrypted with user's public key
-    field :role, :string, default: "member"  # "owner", "admin", "member"
+    # Conversation key encrypted with user's public key
+    field :encrypted_key, :binary
+    # "owner", "admin", "member"
+    field :role, :string, default: "member"
     field :last_read_at, :utc_datetime
     field :muted, :boolean, default: false
 

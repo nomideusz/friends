@@ -8,7 +8,7 @@ defmodule Friends.Social.Device do
     field :fingerprint, :string, source: :device_fingerprint
     field :master_id, :string, source: :master_user_id
     field :user_name, :string
-    
+
     belongs_to :user, Friends.Social.User
 
     timestamps()
@@ -22,4 +22,3 @@ defmodule Friends.Social.Device do
     |> unique_constraint(:browser_id)
   end
 end
-

@@ -9,8 +9,10 @@ defmodule Friends.Social.Conversation do
   alias Friends.Social.{User, ConversationParticipant, Message}
 
   schema "friends_conversations" do
-    field :type, :string, default: "direct"  # "direct" or "group"
-    field :name, :string  # For group chats
+    # "direct" or "group"
+    field :type, :string, default: "direct"
+    # For group chats
+    field :name, :string
 
     belongs_to :created_by, User, foreign_key: :created_by_id
     has_many :participants, ConversationParticipant
@@ -29,7 +31,7 @@ defmodule Friends.Social.Conversation do
 
   defp validate_group_name(changeset) do
     type = get_field(changeset, :type)
-    
+
     if type == "group" do
       validate_required(changeset, [:name])
     else

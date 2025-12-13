@@ -9,12 +9,13 @@ defmodule Friends.Social.Invite do
   schema "friends_invites" do
     belongs_to :created_by, Friends.Social.User
     belongs_to :used_by, Friends.Social.User
-    
+
     field :code, :string
-    field :status, :string, default: "active"  # active, used, revoked
+    # active, used, revoked
+    field :status, :string, default: "active"
     field :used_at, :utc_datetime
     field :expires_at, :utc_datetime
-    
+
     timestamps()
   end
 
@@ -33,13 +34,11 @@ defmodule Friends.Social.Invite do
     # Format: word-word-number (easy to share verbally)
     adjectives = ~w(swift calm warm cool soft deep wild free bold pure brave kind wise fair)
     nouns = ~w(wave tide peak vale cove glen bay dune reef isle moon star sun rain)
-    
+
     adj = Enum.random(adjectives)
     noun = Enum.random(nouns)
     num = :rand.uniform(999)
-    
+
     "#{adj}-#{noun}-#{num}"
   end
 end
-
-

@@ -32,9 +32,8 @@ defmodule Friends.Social.Photo do
       :description,
       :room_id
     ])
-    |> validate_required([:user_id, :image_data, :room_id])
+    |> validate_required([:user_id, :image_data])
     |> validate_length(:description, max: 200)
     |> put_change(:uploaded_at, DateTime.utc_now() |> DateTime.truncate(:second))
   end
 end
-

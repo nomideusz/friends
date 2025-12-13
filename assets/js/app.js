@@ -181,6 +181,63 @@ const Hooks = {
         }
     },
 
+    // Feed voice recording for public feed
+    FeedVoiceRecorder: {
+        mounted() {
+            this.recorder = null
+            this.isRecording = false
+
+            this.el.addEventListener('click', async () => {
+                if (this.isRecording) {
+                    // Stop recording - the onStop callback handles the result
+                    if (this.recorder) {
+                        this.recorder.stop()
+                    }
+                    this.isRecording = false
+                } else {
+                    // Start recording
+                    try {
+                        this.recorder = new VoiceRecorder()
+
+                        // Setup callback for when recording stops
+                        this.recorder.onStop = async (audioBlob, durationMs) => {
+                            try {
+                                // Convert blob to base64 for sending to server
+                                const arrayBuffer = await audioBlob.arrayBuffer()
+                                const bytes = new Uint8Array(arrayBuffer)
+                                let binary = ''
+                                for (let i = 0; i < bytes.length; i++) {
+                                    binary += String.fromCharCode(bytes[i])
+                                }
+                                const base64 = btoa(binary)
+
+                                this.pushEvent("post_public_voice", {
+                                    audio_data: base64,
+                                    duration_ms: durationMs
+                                })
+                            } catch (err) {
+                                console.error("Failed to process audio:", err)
+                            }
+                        }
+
+                        const started = await this.recorder.start()
+                        if (started) {
+                            this.isRecording = true
+                            this.pushEvent("start_voice_recording", {})
+                        }
+                    } catch (err) {
+                        console.error("Failed to start recording:", err)
+                    }
+                }
+            })
+        },
+        destroyed() {
+            if (this.recorder && this.isRecording) {
+                this.recorder.stop()
+            }
+        }
+    },
+
     FriendsApp: {
         async mounted() {
             this.browserId = bootstrapBrowserId
@@ -270,10 +327,10 @@ const Hooks = {
         },
 
         setupImageOptimization() {
-            const form = this.el.querySelector('#upload-form')
-            if (!form) return
+            // Find any file input for photo uploads (feed or room)
+            const fileInput = this.el.querySelector('input[type="file"][name*="photo"]') ||
+                this.el.querySelector('input[type="file"]')
 
-            const fileInput = form.querySelector('input[type="file"]')
             if (!fileInput) return
 
             // Avoid setting up duplicate listeners

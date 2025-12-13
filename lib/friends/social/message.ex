@@ -8,7 +8,8 @@ defmodule Friends.Social.Message do
 
   alias Friends.Social.{User, Conversation}
 
-  @max_voice_duration_ms 60_000  # 60 seconds
+  # 60 seconds
+  @max_voice_duration_ms 60_000
 
   schema "friends_messages" do
     belongs_to :conversation, Conversation
@@ -16,17 +17,30 @@ defmodule Friends.Social.Message do
     belongs_to :sender, User, foreign_key: :sender_id
     belongs_to :reply_to, __MODULE__, foreign_key: :reply_to_id
 
-    field :encrypted_content, :binary  # E2E encrypted
-    field :content_type, :string, default: "text"  # "text", "voice", "image"
-    field :metadata, :map, default: %{}  # duration_ms for voice, dimensions for image
-    field :nonce, :binary  # Encryption nonce/IV
+    # E2E encrypted
+    field :encrypted_content, :binary
+    # "text", "voice", "image"
+    field :content_type, :string, default: "text"
+    # duration_ms for voice, dimensions for image
+    field :metadata, :map, default: %{}
+    # Encryption nonce/IV
+    field :nonce, :binary
 
     timestamps()
   end
 
   def changeset(message, attrs) do
     message
-    |> cast(attrs, [:conversation_id, :room_id, :sender_id, :encrypted_content, :content_type, :metadata, :nonce, :reply_to_id])
+    |> cast(attrs, [
+      :conversation_id,
+      :room_id,
+      :sender_id,
+      :encrypted_content,
+      :content_type,
+      :metadata,
+      :nonce,
+      :reply_to_id
+    ])
     |> validate_required([:sender_id, :encrypted_content, :content_type, :nonce])
     |> validate_inclusion(:content_type, ["text", "voice", "image"])
     |> validate_voice_duration()
@@ -50,7 +64,7 @@ defmodule Friends.Social.Message do
 
     if content_type == "voice" do
       duration = metadata["duration_ms"] || metadata[:duration_ms] || 0
-      
+
       if duration > @max_voice_duration_ms do
         add_error(changeset, :metadata, "voice note exceeds maximum duration of 60 seconds")
       else

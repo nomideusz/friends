@@ -3,4 +3,3 @@ defmodule Friends.Repo do
     otp_app: :friends,
     adapter: Ecto.Adapters.Postgres
 end
-

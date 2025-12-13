@@ -63,4 +63,3 @@ defmodule Friends.MixProject do
     ]
   end
 end
-

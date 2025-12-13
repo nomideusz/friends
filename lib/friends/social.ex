@@ -6,7 +6,22 @@ defmodule Friends.Social do
 
   import Ecto.Query, warn: false
   alias Friends.Repo
-  alias Friends.Social.{Room, Photo, Note, Device, User, Invite, TrustedFriend, RecoveryVote, RoomMember, Friendship, Conversation, ConversationParticipant, Message}
+
+  alias Friends.Social.{
+    Room,
+    Photo,
+    Note,
+    Device,
+    User,
+    Invite,
+    TrustedFriend,
+    RecoveryVote,
+    RoomMember,
+    Friendship,
+    Conversation,
+    ConversationParticipant,
+    Message
+  }
 
   def admin_username?(username) when is_binary(username) do
     admins =
@@ -72,20 +87,21 @@ defmodule Friends.Social do
   def get_room(id), do: Repo.get(Room, id)
 
   def create_room(attrs) do
-    result = %Room{}
-    |> Room.changeset(attrs)
-    |> Repo.insert()
-    
+    result =
+      %Room{}
+      |> Room.changeset(attrs)
+      |> Repo.insert()
+
     # Broadcast to all users so public rooms appear in their dropdowns
     case result do
       {:ok, room} when not room.is_private ->
         Phoenix.PubSub.broadcast(Friends.PubSub, "friends:rooms", {:public_room_created, room})
         {:ok, room}
+
       _ ->
         result
     end
   end
-
 
   def generate_room_code do
     words = ~w(swift calm warm cool soft deep wild free bold pure)
@@ -102,30 +118,37 @@ defmodule Friends.Social do
   Create a private room with the user as owner
   """
   def create_private_room(attrs, owner_id) do
-    result = Repo.transaction(fn ->
-      room_attrs = Map.merge(attrs, %{is_private: true, owner_id: owner_id, room_type: "private"})
-      
-      case create_room(room_attrs) do
-        {:ok, room} ->
-          # Add owner as member
-          {:ok, _member} = add_room_member(room.id, owner_id, "owner")
-          room
-        
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
-    
+    result =
+      Repo.transaction(fn ->
+        room_attrs =
+          Map.merge(attrs, %{is_private: true, owner_id: owner_id, room_type: "private"})
+
+        case create_room(room_attrs) do
+          {:ok, room} ->
+            # Add owner as member
+            {:ok, _member} = add_room_member(room.id, owner_id, "owner")
+            room
+
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
+
     # Broadcast so owner's room list updates in real-time
     case result do
       {:ok, room} ->
-        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{owner_id}", {:room_created, room})
+        Phoenix.PubSub.broadcast(
+          Friends.PubSub,
+          "friends:user:#{owner_id}",
+          {:room_created, room}
+        )
+
         {:ok, room}
+
       error ->
         error
     end
   end
-
 
   @doc """
   Check if a user can access a room
@@ -161,34 +184,42 @@ defmodule Friends.Social do
       _ -> nil
     end
   end
+
   defp extract_user_id(_), do: nil
 
   @doc """
   Add a member to a private room
   """
   def add_room_member(room_id, user_id, role \\ "member", invited_by_id \\ nil) do
-    result = %RoomMember{}
-    |> RoomMember.changeset(%{
-      room_id: room_id,
-      user_id: user_id,
-      role: role,
-      invited_by_id: invited_by_id
-    })
-    |> Repo.insert()
-    
+    result =
+      %RoomMember{}
+      |> RoomMember.changeset(%{
+        room_id: room_id,
+        user_id: user_id,
+        role: role,
+        invited_by_id: invited_by_id
+      })
+      |> Repo.insert()
+
     # Broadcast to the new member so their room list updates in real-time
     case result do
       {:ok, _member} ->
         room = get_room(room_id)
+
         if room do
-          Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:room_created, room})
+          Phoenix.PubSub.broadcast(
+            Friends.PubSub,
+            "friends:user:#{user_id}",
+            {:room_created, room}
+          )
         end
+
         result
+
       _ ->
         result
     end
   end
-
 
   @doc """
   Remove a member from a room
@@ -229,14 +260,15 @@ defmodule Friends.Social do
   For DMs, it populates `r.name` with the other user's username.
   """
   def list_user_dashboard_rooms(user_id) do
-    rooms = Repo.all(
-      from r in Room,
-        join: rm in RoomMember,
-        on: rm.room_id == r.id,
-        where: rm.user_id == ^user_id and r.is_private == true,
-        order_by: [desc: r.updated_at],
-        preload: [members: :user]
-    )
+    rooms =
+      Repo.all(
+        from r in Room,
+          join: rm in RoomMember,
+          on: rm.room_id == r.id,
+          where: rm.user_id == ^user_id and r.is_private == true,
+          order_by: [desc: r.updated_at],
+          preload: [members: :user]
+      )
 
     Enum.map(rooms, fn room ->
       if room.room_type == "dm" do
@@ -262,7 +294,10 @@ defmodule Friends.Social do
         on: n.room_id == r.id,
         where: r.is_private == false,
         group_by: r.id,
-        order_by: [desc: fragment("GREATEST(MAX(?), MAX(?), ?)", p.inserted_at, n.inserted_at, r.inserted_at)],
+        order_by: [
+          desc:
+            fragment("GREATEST(MAX(?), MAX(?), ?)", p.inserted_at, n.inserted_at, r.inserted_at)
+        ],
         limit: ^limit,
         select: %{
           id: r.id,
@@ -270,7 +305,8 @@ defmodule Friends.Social do
           name: r.name,
           photo_count: count(p.id, :distinct),
           note_count: count(n.id, :distinct),
-          last_activity: fragment("GREATEST(MAX(?), MAX(?), ?)", p.inserted_at, n.inserted_at, r.inserted_at)
+          last_activity:
+            fragment("GREATEST(MAX(?), MAX(?), ?)", p.inserted_at, n.inserted_at, r.inserted_at)
         }
     )
   end
@@ -283,10 +319,10 @@ defmodule Friends.Social do
     case get_room_member(room_id, inviter_user_id) do
       nil ->
         {:error, :not_a_member}
-      
+
       member when member.role in ["owner", "admin"] ->
         add_room_member(room_id, invitee_user_id, "member", inviter_user_id)
-      
+
       _ ->
         {:error, :not_authorized}
     end
@@ -314,14 +350,19 @@ defmodule Friends.Social do
   Get or create a DM room for two users.
   DM rooms are private rooms with exactly 2 members and room_type = "dm".
   """
-  def get_or_create_dm_room(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
+  def get_or_create_dm_room(user1_id, user2_id)
+      when is_integer(user1_id) and is_integer(user2_id) do
     case get_dm_room(user1_id, user2_id) do
       nil -> create_dm_room(user1_id, user2_id)
       room -> {:ok, room}
     end
   end
-  def get_or_create_dm_room(user1_id, user2_id) when is_binary(user1_id), do: get_or_create_dm_room(String.to_integer(user1_id), user2_id)
-  def get_or_create_dm_room(user1_id, user2_id) when is_binary(user2_id), do: get_or_create_dm_room(user1_id, String.to_integer(user2_id))
+
+  def get_or_create_dm_room(user1_id, user2_id) when is_binary(user1_id),
+    do: get_or_create_dm_room(String.to_integer(user1_id), user2_id)
+
+  def get_or_create_dm_room(user1_id, user2_id) when is_binary(user2_id),
+    do: get_or_create_dm_room(user1_id, String.to_integer(user2_id))
 
   @doc """
   Find existing DM room between two users.
@@ -337,43 +378,54 @@ defmodule Friends.Social do
   """
   def create_dm_room(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
     code = dm_room_code(user1_id, user2_id)
-    
+
     # Get user names for room name
     user1 = get_user(user1_id)
     user2 = get_user(user2_id)
-    name = "#{user1 && user1.username || "user"} & #{user2 && user2.username || "user"}"
-    
-    result = Repo.transaction(fn ->
-      room_attrs = %{
-        code: code,
-        name: name,
-        is_private: true,
-        room_type: "dm"
-      }
-      
-      case create_room(room_attrs) do
-        {:ok, room} ->
-          # Add both users as members
-          {:ok, _} = add_room_member(room.id, user1_id, "member")
-          {:ok, _} = add_room_member(room.id, user2_id, "member")
-          room
-        
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
-    
+    name = "#{(user1 && user1.username) || "user"} & #{(user2 && user2.username) || "user"}"
+
+    result =
+      Repo.transaction(fn ->
+        room_attrs = %{
+          code: code,
+          name: name,
+          is_private: true,
+          room_type: "dm"
+        }
+
+        case create_room(room_attrs) do
+          {:ok, room} ->
+            # Add both users as members
+            {:ok, _} = add_room_member(room.id, user1_id, "member")
+            {:ok, _} = add_room_member(room.id, user2_id, "member")
+            room
+
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
+
     # Broadcast to both users so their room lists update in real-time
     case result do
       {:ok, room} ->
-        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user1_id}", {:room_created, room})
-        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user2_id}", {:room_created, room})
+        Phoenix.PubSub.broadcast(
+          Friends.PubSub,
+          "friends:user:#{user1_id}",
+          {:room_created, room}
+        )
+
+        Phoenix.PubSub.broadcast(
+          Friends.PubSub,
+          "friends:user:#{user2_id}",
+          {:room_created, room}
+        )
+
         {:ok, room}
+
       error ->
         error
     end
   end
-
 
   # --- Photos ---
 
@@ -382,7 +434,8 @@ defmodule Friends.Social do
 
     Photo
     |> where([p], p.room_id == ^room_id)
-    |> order_by([p], [desc: p.uploaded_at, desc: p.id])  # Add secondary sort for consistency
+    # Add secondary sort for consistency
+    |> order_by([p], desc: p.uploaded_at, desc: p.id)
     |> limit(^limit)
     |> offset(^offset_val)
     |> select([p], %{
@@ -398,7 +451,12 @@ defmodule Friends.Social do
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
-      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
+      image_data:
+        fragment(
+          "CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END",
+          p.content_type,
+          p.image_data
+        )
     })
     |> Repo.all()
   end
@@ -428,7 +486,12 @@ defmodule Friends.Social do
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
-      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
+      image_data:
+        fragment(
+          "CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END",
+          p.content_type,
+          p.image_data
+        )
     })
     |> Repo.all()
   end
@@ -441,7 +504,11 @@ defmodule Friends.Social do
   def get_photo_image_data(id) do
     Photo
     |> where([p], p.id == ^id)
-    |> select([p], %{image_data: p.image_data, thumbnail_data: p.thumbnail_data, content_type: p.content_type})
+    |> select([p], %{
+      image_data: p.image_data,
+      thumbnail_data: p.thumbnail_data,
+      content_type: p.content_type
+    })
     |> Repo.one()
   end
 
@@ -463,17 +530,70 @@ defmodule Friends.Social do
 
   def set_photo_thumbnail(photo_id, thumbnail_data, user_id, room_code)
       when is_integer(photo_id) and is_binary(thumbnail_data) do
-    result = Photo
-             |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
-             |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
+    result =
+      Photo
+      |> where([p], p.id == ^photo_id and p.user_id == ^user_id)
+      |> Repo.update_all(set: [thumbnail_data: thumbnail_data])
 
     case result do
       {1, _} ->
         # Successfully updated, broadcast the thumbnail update
-        broadcast(room_code, :photo_thumbnail_updated, %{id: photo_id, thumbnail_data: thumbnail_data})
+        broadcast(room_code, :photo_thumbnail_updated, %{
+          id: photo_id,
+          thumbnail_data: thumbnail_data
+        })
+
         :ok
+
       _ ->
         :error
+    end
+  end
+
+  def update_photo_thumbnail(photo_id, thumbnail_data, user_id) do
+    case Repo.get(Photo, photo_id) do
+      nil ->
+        {:error, :not_found}
+
+      photo ->
+        # Check ownership
+        current_user_id_str = if is_integer(user_id), do: "user-#{user_id}", else: user_id
+        
+        if photo.user_id == current_user_id_str do
+          photo
+          |> Photo.changeset(%{thumbnail_data: thumbnail_data})
+          |> Repo.update()
+          |> case do
+            {:ok, updated_photo} ->
+              # Broadcast update
+              if updated_photo.room_id do
+                # It's a room photo
+                room = get_room(updated_photo.room_id)
+                broadcast(room.code, :photo_thumbnail_updated, %{
+                  id: photo_id,
+                  thumbnail_data: thumbnail_data
+                })
+              else
+                # It's a public photo
+                # Extract integer ID for broadcast_to_contacts
+                case Integer.parse(String.replace(current_user_id_str, "user-", "")) do
+                  {int_id, ""} -> 
+                     broadcast_to_contacts(int_id, :photo_thumbnail_updated, %{
+                       id: photo_id,
+                       thumbnail_data: thumbnail_data
+                     })
+                  _ -> nil
+                end
+              end
+              
+              {:ok, updated_photo}
+
+            error ->
+              error
+          end
+        else
+          {:error, :unauthorized}
+        end
     end
   end
 
@@ -529,7 +649,7 @@ defmodule Friends.Social do
   def list_friends_notes(user_id, limit \\ 50, opts \\ []) do
     offset_val = Keyword.get(opts, :offset, 0)
     friend_user_ids = get_friend_network_ids(user_id)
-    
+
     Note
     |> where([n], n.user_id in ^friend_user_ids)
     |> order_by([n], desc: n.inserted_at)
@@ -541,34 +661,37 @@ defmodule Friends.Social do
   @doc """
   Get the user IDs in someone's friend network (for Friends feed).
   This uses the Friendship table (social connections) NOT TrustedFriend (recovery).
-  
+
   Includes:
   - Friends I added (accepted)
   - Friends who added me (accepted)
-  
+
   Excludes:
   - Self (own posts go to "Me" feed)
   """
   def get_friend_network_ids(user_id) do
     # Get friends I added (accepted)
-    my_friends = Repo.all(
-      from f in Friendship,
-        where: f.user_id == ^user_id and f.status == "accepted",
-        select: f.friend_user_id
-    )
-    
+    my_friends =
+      Repo.all(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "accepted",
+          select: f.friend_user_id
+      )
+
     # Get people who added me as friend (accepted)
-    friends_of_me = Repo.all(
-      from f in Friendship,
-        where: f.friend_user_id == ^user_id and f.status == "accepted",
-        select: f.user_id
-    )
-    
+    friends_of_me =
+      Repo.all(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "accepted",
+          select: f.user_id
+      )
+
     # Combine (no self!), converting to string user_ids
-    friend_ids = (my_friends ++ friends_of_me)
-    |> Enum.uniq()
-    |> Enum.map(&"user-#{&1}")
-    
+    friend_ids =
+      (my_friends ++ friends_of_me)
+      |> Enum.uniq()
+      |> Enum.map(&"user-#{&1}")
+
     friend_ids
   end
 
@@ -597,7 +720,12 @@ defmodule Friends.Social do
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
-      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
+      image_data:
+        fragment(
+          "CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END",
+          p.content_type,
+          p.image_data
+        )
     })
     |> Repo.all()
   end
@@ -626,7 +754,12 @@ defmodule Friends.Social do
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
-      image_data: fragment("CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END", p.content_type, p.image_data)
+      image_data:
+        fragment(
+          "CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END",
+          p.content_type,
+          p.image_data
+        )
     })
     |> Repo.all()
   end
@@ -647,15 +780,14 @@ defmodule Friends.Social do
 
   # --- Rooms & Membership ---
 
-
-
   @doc """
   List rooms a user is a member of
   """
   def list_user_rooms(user_id) do
     Repo.all(
       from r in Room,
-        join: m in RoomMember, on: m.room_id == r.id,
+        join: m in RoomMember,
+        on: m.room_id == r.id,
         where: m.user_id == ^user_id,
         order_by: [desc: m.inserted_at],
         preload: [:owner]
@@ -667,39 +799,52 @@ defmodule Friends.Social do
   """
   def join_room(user, room_code) do
     case get_room_by_code(room_code) do
-      nil -> {:error, :room_not_found}
+      nil ->
+        {:error, :room_not_found}
+
       room ->
-        result = %RoomMember{}
-        |> RoomMember.changeset(%{
-          room_id: room.id,
-          user_id: user.id,
-          role: "member"
-        })
-        |> Repo.insert()
-        |> case do
-           {:ok, _member} -> {:ok, room} # Return room for easy redirect
-           {:error, changeset} -> 
-             # Check if already member
-             if changeset.errors[:user_id] do
-               {:ok, room} # Already member, just return room
-             else
-               {:error, changeset}
-             end
-        end
-        
+        result =
+          %RoomMember{}
+          |> RoomMember.changeset(%{
+            room_id: room.id,
+            user_id: user.id,
+            role: "member"
+          })
+          |> Repo.insert()
+          |> case do
+            # Return room for easy redirect
+            {:ok, _member} ->
+              {:ok, room}
+
+            {:error, changeset} ->
+              # Check if already member
+              if changeset.errors[:user_id] do
+                # Already member, just return room
+                {:ok, room}
+              else
+                {:error, changeset}
+              end
+          end
+
         # Broadcast so user's room list updates in real-time (for private rooms)
         case result do
           {:ok, room} when room.is_private ->
-            Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user.id}", {:room_created, room})
+            Phoenix.PubSub.broadcast(
+              Friends.PubSub,
+              "friends:user:#{user.id}",
+              {:room_created, room}
+            )
+
             {:ok, room}
+
           {:ok, room} ->
             {:ok, room}
+
           error ->
             error
         end
     end
   end
-
 
   @doc """
   Live room
@@ -715,7 +860,8 @@ defmodule Friends.Social do
   def get_room_members(room_id) do
     Repo.all(
       from m in RoomMember,
-        join: u in User, on: m.user_id == u.id,
+        join: u in User,
+        on: m.user_id == u.id,
         where: m.room_id == ^room_id,
         select: %{user: u, role: m.role, joined_at: m.inserted_at}
     )
@@ -736,11 +882,11 @@ defmodule Friends.Social do
         # Auto-join owner
         join_room(user, room.code)
         {:ok, room}
-      error -> error
+
+      error ->
+        error
     end
   end
-
-
 
   @doc """
   List notes by a specific user (across all rooms)
@@ -784,8 +930,10 @@ defmodule Friends.Social do
         cond do
           note.user_id != user_id ->
             {:error, :unauthorized}
+
           not Note.editable?(note) ->
             {:error, :grace_period_expired}
+
           true ->
             note
             |> Note.changeset(attrs)
@@ -803,8 +951,10 @@ defmodule Friends.Social do
         cond do
           note.user_id != user_id ->
             {:error, :unauthorized}
+
           not Note.editable?(note) ->
             {:error, :grace_period_expired}
+
           true ->
             case Repo.delete(note) do
               {:ok, _} ->
@@ -817,7 +967,6 @@ defmodule Friends.Social do
         end
     end
   end
-
 
   # --- Messages ---
 
@@ -837,7 +986,14 @@ defmodule Friends.Social do
   @doc """
   Send a message to a room
   """
-  def send_room_message(room_id, sender_id, content, type \\ "text", metadata \\ %{}, nonce \\ nil) do
+  def send_room_message(
+        room_id,
+        sender_id,
+        content,
+        type \\ "text",
+        metadata \\ %{},
+        nonce \\ nil
+      ) do
     %Message{}
     |> Message.changeset(%{
       room_id: room_id,
@@ -871,7 +1027,6 @@ defmodule Friends.Social do
     )
   end
 
-
   # --- Devices (Identity) ---
 
   def register_device(fingerprint, browser_id) do
@@ -892,7 +1047,7 @@ defmodule Friends.Social do
           |> Device.changeset(%{
             fingerprint: fingerprint,
             browser_id: browser_id,
-            master_id: existing && existing.master_id || Ecto.UUID.generate()
+            master_id: (existing && existing.master_id) || Ecto.UUID.generate()
           })
           |> Repo.insert()
 
@@ -905,6 +1060,7 @@ defmodule Friends.Social do
           |> Device.changeset(%{fingerprint: fingerprint})
           |> Repo.update()
         end
+
         {:ok, device, :existing}
     end
   end
@@ -968,6 +1124,7 @@ defmodule Friends.Social do
           if invite.created_by_id do
             create_mutual_trust(invite.created_by_id, user.id)
           end
+
           {:ok, user}
         end
 
@@ -1015,9 +1172,14 @@ defmodule Friends.Social do
     # Compare the key components (x, y coordinates for ECDSA)
     Repo.one(
       from u in User,
-        where: fragment("?->>'x' = ? AND ?->>'y' = ?", 
-                        u.public_key, ^public_key["x"],
-                        u.public_key, ^public_key["y"]),
+        where:
+          fragment(
+            "?->>'x' = ? AND ?->>'y' = ?",
+            u.public_key,
+            ^public_key["x"],
+            u.public_key,
+            ^public_key["y"]
+          ),
         limit: 1
     )
   end
@@ -1030,12 +1192,14 @@ defmodule Friends.Social do
   def get_user(id) when is_integer(id) do
     Repo.get(User, id)
   end
+
   def get_user(id) when is_binary(id) do
     case Integer.parse(id) do
       {int_id, _} -> Repo.get(User, int_id)
       :error -> nil
     end
   end
+
   def get_user(_), do: nil
 
   @doc """
@@ -1044,14 +1208,17 @@ defmodule Friends.Social do
   """
   def search_users(query, current_user_id) when is_binary(query) and byte_size(query) >= 2 do
     pattern = "%#{query}%"
+
     Repo.all(
       from u in User,
-        where: u.id != ^current_user_id and
-               (ilike(u.username, ^pattern) or ilike(u.display_name, ^pattern)),
+        where:
+          u.id != ^current_user_id and
+            (ilike(u.username, ^pattern) or ilike(u.display_name, ^pattern)),
         order_by: [asc: u.username],
         limit: 20
     )
   end
+
   def search_users(_, _), do: []
 
   @doc """
@@ -1085,8 +1252,9 @@ defmodule Friends.Social do
 
           with {:ok, x} <- Base.url_decode64(x_val, padding: false),
                {:ok, y} <- Base.url_decode64(y_val, padding: false) do
-
-            Logger.info("Public key decoded successfully: x=#{byte_size(x)} bytes, y=#{byte_size(y)} bytes")
+            Logger.info(
+              "Public key decoded successfully: x=#{byte_size(x)} bytes, y=#{byte_size(y)} bytes"
+            )
 
             # Create the EC public key point (uncompressed format: 04 || x || y)
             public_key_point = <<4>> <> x <> y
@@ -1110,7 +1278,10 @@ defmodule Friends.Social do
                   signature_bin
               end
 
-            Logger.info("About to call crypto.verify with challenge length: #{String.length(challenge)}, signature size: #{byte_size(der_signature)}")
+            Logger.info(
+              "About to call crypto.verify with challenge length: #{String.length(challenge)}, signature size: #{byte_size(der_signature)}"
+            )
+
             result = :crypto.verify(:ecdsa, :sha256, challenge, der_signature, ec_public_key)
             Logger.info("Signature verification result: #{inspect(result)}")
             result
@@ -1169,14 +1340,14 @@ defmodule Friends.Social do
     not Repo.exists?(from u in User, where: u.username == ^normalized)
   end
 
-
-
   @doc """
   Link a device to a user
   """
   def link_device_to_user(browser_id, user_id) do
     case get_device_by_browser(browser_id) do
-      nil -> {:error, :device_not_found}
+      nil ->
+        {:error, :device_not_found}
+
       device ->
         device
         |> Device.changeset(%{user_id: user_id})
@@ -1195,17 +1366,20 @@ defmodule Friends.Social do
     if admin_code && code == admin_code do
       {:ok, %Invite{code: admin_code, status: "active", created_by_id: nil, expires_at: nil}}
     else
-    case Repo.get_by(Invite, code: code, status: "active") do
-      nil -> {:error, :invalid_invite}
-      invite ->
-        if invite.expires_at && DateTime.compare(DateTime.utc_now(), invite.expires_at) == :gt do
-          {:error, :invite_expired}
-        else
-          {:ok, invite}
-        end
-    end
+      case Repo.get_by(Invite, code: code, status: "active") do
+        nil ->
+          {:error, :invalid_invite}
+
+        invite ->
+          if invite.expires_at && DateTime.compare(DateTime.utc_now(), invite.expires_at) == :gt do
+            {:error, :invite_expired}
+          else
+            {:ok, invite}
+          end
+      end
     end
   end
+
   def validate_invite(_), do: {:error, :invalid_invite}
 
   @doc """
@@ -1213,7 +1387,7 @@ defmodule Friends.Social do
   """
   def create_invite(user_id, expires_in_days \\ 7) do
     expires_at = DateTime.utc_now() |> DateTime.add(expires_in_days * 24 * 60 * 60, :second)
-    
+
     %Invite{}
     |> Invite.changeset(%{
       created_by_id: user_id,
@@ -1275,6 +1449,7 @@ defmodule Friends.Social do
     else
       # Check current count
       count = count_trusted_friends(user_id)
+
       if count >= 5 do
         {:error, :max_trusted_friends}
       else
@@ -1294,22 +1469,27 @@ defmodule Friends.Social do
   """
   def confirm_trusted_friend(user_id, requester_id) do
     case get_trusted_friend_request(requester_id, user_id) do
-      nil -> {:error, :not_found}
+      nil ->
+        {:error, :not_found}
+
       tf ->
         # Confirm the incoming request
-        result = tf
-        |> TrustedFriend.changeset(%{
-          status: "confirmed",
-          confirmed_at: DateTime.utc_now()
-        })
-        |> Repo.update()
+        result =
+          tf
+          |> TrustedFriend.changeset(%{
+            status: "confirmed",
+            confirmed_at: DateTime.utc_now()
+          })
+          |> Repo.update()
 
         # Also create reverse trust (confirmer trusts requester) if not exists
         case result do
           {:ok, _} ->
             create_reverse_trust(user_id, requester_id)
             result
-          error -> error
+
+          error ->
+            error
         end
     end
   end
@@ -1320,6 +1500,7 @@ defmodule Friends.Social do
       nil ->
         # Only create if under the limit
         count = count_trusted_friends(user_id)
+
         if count < 5 do
           %TrustedFriend{}
           |> TrustedFriend.changeset(%{
@@ -1330,6 +1511,7 @@ defmodule Friends.Social do
           })
           |> Repo.insert()
         end
+
       existing ->
         # If pending, confirm it
         if existing.status == "pending" do
@@ -1405,8 +1587,9 @@ defmodule Friends.Social do
       {:error, :cannot_friend_self}
     else
       # Check if friendship already exists (in either direction)
-      existing = get_friendship(user_id, friend_user_id) || get_friendship(friend_user_id, user_id)
-      
+      existing =
+        get_friendship(user_id, friend_user_id) || get_friendship(friend_user_id, user_id)
+
       case existing do
         nil ->
           %Friendship{}
@@ -1417,17 +1600,17 @@ defmodule Friends.Social do
           })
           |> Repo.insert()
           |> broadcast_friend_update(:friend_request, [user_id, friend_user_id])
-          
+
         %{status: "accepted"} ->
           {:error, :already_friends}
-          
+
         %{status: "pending", user_id: ^user_id} ->
           {:error, :request_already_sent}
-          
+
         %{status: "pending"} = friendship ->
           # They already sent us a request - auto-accept!
           accept_friend(user_id, friendship.user_id)
-          
+
         _ ->
           {:error, :friendship_exists}
       end
@@ -1440,47 +1623,51 @@ defmodule Friends.Social do
   """
   def accept_friend(user_id, requester_id) do
     case get_friendship(requester_id, user_id) do
-      nil -> 
+      nil ->
         {:error, :no_pending_request}
-        
+
       %{status: "pending"} = friendship ->
-        result = friendship
-        |> Friendship.changeset(%{
-          status: "accepted",
-          accepted_at: DateTime.utc_now()
-        })
-        |> Repo.update()
-        
+        result =
+          friendship
+          |> Friendship.changeset(%{
+            status: "accepted",
+            accepted_at: DateTime.utc_now()
+          })
+          |> Repo.update()
+
         # Auto-create DM room for the new friends
         case result do
-          {:ok, _} -> 
+          {:ok, _} ->
             get_or_create_dm_room(user_id, requester_id)
-          _ -> 
+
+          _ ->
             :ok
         end
-        
+
         result
         |> broadcast_friend_update(:friend_accepted, [user_id, requester_id])
-        
+
       %{status: "accepted"} ->
         {:error, :already_friends}
-        
+
       _ ->
         {:error, :invalid_request}
     end
   end
-
 
   @doc """
   Remove a friendship (unfriend).
   """
   def remove_friend(user_id, friend_user_id) do
     # Check both directions
-    friendship = get_friendship(user_id, friend_user_id) || get_friendship(friend_user_id, user_id)
-    
+    friendship =
+      get_friendship(user_id, friend_user_id) || get_friendship(friend_user_id, user_id)
+
     case friendship do
-      nil -> {:error, :not_friends}
-      f -> 
+      nil ->
+        {:error, :not_friends}
+
+      f ->
         Repo.delete(f)
         |> broadcast_friend_update(:friend_removed, [user_id, friend_user_id])
     end
@@ -1490,8 +1677,10 @@ defmodule Friends.Social do
     Enum.each(user_ids, fn uid ->
       Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{uid}", {event, result})
     end)
+
     {:ok, result}
   end
+
   defp broadcast_friend_update(error, _, _), do: error
 
   @doc """
@@ -1506,21 +1695,23 @@ defmodule Friends.Social do
   """
   def list_friends(user_id) do
     # Friends I added
-    my_friends = Repo.all(
-      from f in Friendship,
-        where: f.user_id == ^user_id and f.status == "accepted",
-        preload: [:friend_user]
-    )
-    |> Enum.map(fn f -> %{user: f.friend_user, friendship: f, direction: :outgoing} end)
-    
+    my_friends =
+      Repo.all(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "accepted",
+          preload: [:friend_user]
+      )
+      |> Enum.map(fn f -> %{user: f.friend_user, friendship: f, direction: :outgoing} end)
+
     # Friends who added me
-    friends_of_me = Repo.all(
-      from f in Friendship,
-        where: f.friend_user_id == ^user_id and f.status == "accepted",
-        preload: [:user]
-    )
-    |> Enum.map(fn f -> %{user: f.user, friendship: f, direction: :incoming} end)
-    
+    friends_of_me =
+      Repo.all(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "accepted",
+          preload: [:user]
+      )
+      |> Enum.map(fn f -> %{user: f.user, friendship: f, direction: :incoming} end)
+
     # Combine and dedupe by user id
     (my_friends ++ friends_of_me)
     |> Enum.uniq_by(fn %{user: u} -> u.id end)
@@ -1552,18 +1743,20 @@ defmodule Friends.Social do
   Count accepted friends for a user.
   """
   def count_friends(user_id) do
-    my_count = Repo.one(
-      from f in Friendship,
-        where: f.user_id == ^user_id and f.status == "accepted",
-        select: count(f.id)
-    )
-    
-    their_count = Repo.one(
-      from f in Friendship,
-        where: f.friend_user_id == ^user_id and f.status == "accepted",
-        select: count(f.id)
-    )
-    
+    my_count =
+      Repo.one(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "accepted",
+          select: count(f.id)
+      )
+
+    their_count =
+      Repo.one(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "accepted",
+          select: count(f.id)
+      )
+
     my_count + their_count
   end
 
@@ -1574,7 +1767,9 @@ defmodule Friends.Social do
   """
   def request_recovery(username) do
     case get_user_by_username(username) do
-      nil -> {:error, :user_not_found}
+      nil ->
+        {:error, :user_not_found}
+
       user ->
         user
         |> User.changeset(%{
@@ -1592,8 +1787,12 @@ defmodule Friends.Social do
   def cast_recovery_vote(recovering_user_id, voting_user_id, vote, new_public_key) do
     # Verify voter is a trusted friend first (outside transaction for fast fail)
     case get_trusted_friend_request(recovering_user_id, voting_user_id) do
-      nil -> {:error, :not_trusted_friend}
-      tf when tf.status != "confirmed" -> {:error, :not_confirmed_friend}
+      nil ->
+        {:error, :not_trusted_friend}
+
+      tf when tf.status != "confirmed" ->
+        {:error, :not_confirmed_friend}
+
       _tf ->
         # Use transaction with serializable isolation for race condition safety
         Repo.transaction(fn ->
@@ -1630,13 +1829,15 @@ defmodule Friends.Social do
 
   # Internal threshold check (called within transaction)
   defp check_recovery_threshold_internal(user_id, new_public_key) do
-    confirm_count = Repo.one(
-      from rv in RecoveryVote,
-        where: rv.recovering_user_id == ^user_id
-               and rv.vote == "confirm"
-               and fragment("?::jsonb = ?::jsonb", rv.new_public_key, ^new_public_key),
-        select: count(rv.id)
-    )
+    confirm_count =
+      Repo.one(
+        from rv in RecoveryVote,
+          where:
+            rv.recovering_user_id == ^user_id and
+              rv.vote == "confirm" and
+              fragment("?::jsonb = ?::jsonb", rv.new_public_key, ^new_public_key),
+          select: count(rv.id)
+      )
 
     if confirm_count >= 4 do
       # Recovery successful - update public key with lock
@@ -1670,13 +1871,15 @@ defmodule Friends.Social do
   Check if recovery threshold is met (4 out of 5) - public API for status checks
   """
   def check_recovery_threshold(user_id, new_public_key) do
-    confirm_count = Repo.one(
-      from rv in RecoveryVote,
-        where: rv.recovering_user_id == ^user_id
-               and rv.vote == "confirm"
-               and fragment("?::jsonb = ?::jsonb", rv.new_public_key, ^new_public_key),
-        select: count(rv.id)
-    )
+    confirm_count =
+      Repo.one(
+        from rv in RecoveryVote,
+          where:
+            rv.recovering_user_id == ^user_id and
+              rv.vote == "confirm" and
+              fragment("?::jsonb = ?::jsonb", rv.new_public_key, ^new_public_key),
+          select: count(rv.id)
+      )
 
     if confirm_count >= 4 do
       {:ok, :threshold_met, confirm_count}
@@ -1689,15 +1892,16 @@ defmodule Friends.Social do
   Get recovery status
   """
   def get_recovery_status(user_id) do
-    votes = Repo.all(
-      from rv in RecoveryVote,
-        where: rv.recovering_user_id == ^user_id,
-        preload: [:voting_user]
-    )
-    
+    votes =
+      Repo.all(
+        from rv in RecoveryVote,
+          where: rv.recovering_user_id == ^user_id,
+          preload: [:voting_user]
+      )
+
     trusted_count = count_trusted_friends(user_id)
-    confirm_votes = Enum.count(votes, & &1.vote == "confirm")
-    
+    confirm_votes = Enum.count(votes, &(&1.vote == "confirm"))
+
     %{
       votes: votes,
       trusted_friends: trusted_count,
@@ -1715,7 +1919,8 @@ defmodule Friends.Social do
     Repo.all(
       from u in User,
         join: tf in TrustedFriend,
-        on: tf.user_id == u.id and tf.trusted_user_id == ^voter_user_id and tf.status == "confirmed",
+        on:
+          tf.user_id == u.id and tf.trusted_user_id == ^voter_user_id and tf.status == "confirmed",
         where: u.status == "recovering",
         select: u
     )
@@ -1727,7 +1932,8 @@ defmodule Friends.Social do
   def has_voted_for_recovery?(recovering_user_id, voter_user_id) do
     Repo.exists?(
       from rv in RecoveryVote,
-        where: rv.recovering_user_id == ^recovering_user_id and rv.voting_user_id == ^voter_user_id
+        where:
+          rv.recovering_user_id == ^recovering_user_id and rv.voting_user_id == ^voter_user_id
     )
   end
 
@@ -1849,12 +2055,16 @@ defmodule Friends.Social do
   @doc """
   Generate a WebAuthn registration challenge for a user.
   """
-  defdelegate generate_webauthn_registration_challenge(user), to: Friends.WebAuthn, as: :generate_registration_challenge
+  defdelegate generate_webauthn_registration_challenge(user),
+    to: Friends.WebAuthn,
+    as: :generate_registration_challenge
 
   @doc """
   Generate a WebAuthn authentication challenge for a user.
   """
-  defdelegate generate_webauthn_authentication_challenge(user), to: Friends.WebAuthn, as: :generate_authentication_challenge
+  defdelegate generate_webauthn_authentication_challenge(user),
+    to: Friends.WebAuthn,
+    as: :generate_authentication_challenge
 
   @doc """
   Verify a WebAuthn registration response and store the credential.
@@ -1870,6 +2080,7 @@ defmodule Friends.Social do
     case Friends.WebAuthn.verify_registration(attestation_response, challenge, user_id) do
       {:ok, cred_data} ->
         Friends.WebAuthn.store_credential(cred_data, name)
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -1932,17 +2143,22 @@ defmodule Friends.Social do
     [first_id, second_id] = Enum.sort([user_a_id, user_b_id])
 
     # Look for existing direct conversation with exactly these two participants
-    existing = Repo.one(
-      from c in Conversation,
-        join: p1 in ConversationParticipant, on: p1.conversation_id == c.id,
-        join: p2 in ConversationParticipant, on: p2.conversation_id == c.id,
-        where: c.type == "direct" and
-               p1.user_id == ^first_id and
-               p2.user_id == ^second_id,
-        group_by: c.id,
-        having: count(fragment("DISTINCT ?", p1.id)) + count(fragment("DISTINCT ?", p2.id)) == 2,
-        limit: 1
-    )
+    existing =
+      Repo.one(
+        from c in Conversation,
+          join: p1 in ConversationParticipant,
+          on: p1.conversation_id == c.id,
+          join: p2 in ConversationParticipant,
+          on: p2.conversation_id == c.id,
+          where:
+            c.type == "direct" and
+              p1.user_id == ^first_id and
+              p2.user_id == ^second_id,
+          group_by: c.id,
+          having:
+            count(fragment("DISTINCT ?", p1.id)) + count(fragment("DISTINCT ?", p2.id)) == 2,
+          limit: 1
+      )
 
     case existing do
       nil -> create_conversation(user_a_id, [user_b_id], "direct", nil)
@@ -1989,7 +2205,8 @@ defmodule Friends.Social do
   def list_user_conversations(user_id) do
     Repo.all(
       from c in Conversation,
-        join: p in ConversationParticipant, on: p.conversation_id == c.id,
+        join: p in ConversationParticipant,
+        on: p.conversation_id == c.id,
         where: p.user_id == ^user_id,
         preload: [participants: :user],
         order_by: [desc: c.updated_at]
@@ -1998,7 +2215,7 @@ defmodule Friends.Social do
       # Get the latest message for preview
       latest_message = get_latest_message(conv.id)
       unread_count = get_unread_count(conv.id, user_id)
-      
+
       Map.merge(conv, %{
         latest_message: latest_message,
         unread_count: unread_count
@@ -2023,24 +2240,32 @@ defmodule Friends.Social do
   Get unread message count for a user in a conversation.
   """
   def get_unread_count(conversation_id, user_id) do
-    participant = Repo.one(
-      from p in ConversationParticipant,
-        where: p.conversation_id == ^conversation_id and p.user_id == ^user_id
-    )
+    participant =
+      Repo.one(
+        from p in ConversationParticipant,
+          where: p.conversation_id == ^conversation_id and p.user_id == ^user_id
+      )
 
     case participant do
-      nil -> 0
+      nil ->
+        0
+
       %{last_read_at: nil} ->
         Repo.aggregate(
-          from(m in Message, where: m.conversation_id == ^conversation_id and m.sender_id != ^user_id),
+          from(m in Message,
+            where: m.conversation_id == ^conversation_id and m.sender_id != ^user_id
+          ),
           :count
         )
+
       %{last_read_at: last_read} ->
         Repo.aggregate(
           from(m in Message,
-            where: m.conversation_id == ^conversation_id and
-                   m.sender_id != ^user_id and
-                   m.inserted_at > ^last_read),
+            where:
+              m.conversation_id == ^conversation_id and
+                m.sender_id != ^user_id and
+                m.inserted_at > ^last_read
+          ),
           :count
         )
     end
@@ -2049,12 +2274,21 @@ defmodule Friends.Social do
   @doc """
   Send a message to a conversation.
   """
-  def send_message(conversation_id, sender_id, encrypted_content, content_type, metadata \\ %{}, nonce, reply_to_id \\ nil) do
+  def send_message(
+        conversation_id,
+        sender_id,
+        encrypted_content,
+        content_type,
+        metadata \\ %{},
+        nonce,
+        reply_to_id \\ nil
+      ) do
     # Verify sender is a participant
-    participant = Repo.one(
-      from p in ConversationParticipant,
-        where: p.conversation_id == ^conversation_id and p.user_id == ^sender_id
-    )
+    participant =
+      Repo.one(
+        from p in ConversationParticipant,
+          where: p.conversation_id == ^conversation_id and p.user_id == ^sender_id
+      )
 
     if is_nil(participant) do
       {:error, :not_a_participant}
@@ -2090,11 +2324,12 @@ defmodule Friends.Social do
           )
 
           # Notify all participants
-          participants = Repo.all(
-            from p in ConversationParticipant,
-              where: p.conversation_id == ^conversation_id and p.user_id != ^sender_id,
-              select: p.user_id
-          )
+          participants =
+            Repo.all(
+              from p in ConversationParticipant,
+                where: p.conversation_id == ^conversation_id and p.user_id != ^sender_id,
+                select: p.user_id
+            )
 
           Enum.each(participants, fn user_id ->
             Phoenix.PubSub.broadcast(
@@ -2106,7 +2341,8 @@ defmodule Friends.Social do
 
           {:ok, message}
 
-        error -> error
+        error ->
+          error
       end
     end
   end
@@ -2123,7 +2359,8 @@ defmodule Friends.Social do
         offset: ^offset,
         preload: [:sender, :reply_to]
     )
-    |> Enum.reverse()  # Return in chronological order
+    # Return in chronological order
+    |> Enum.reverse()
   end
 
   @doc """
@@ -2132,7 +2369,8 @@ defmodule Friends.Social do
   def mark_conversation_read(conversation_id, user_id) do
     Repo.update_all(
       from(p in ConversationParticipant,
-        where: p.conversation_id == ^conversation_id and p.user_id == ^user_id),
+        where: p.conversation_id == ^conversation_id and p.user_id == ^user_id
+      ),
       set: [last_read_at: DateTime.utc_now()]
     )
   end
@@ -2142,7 +2380,7 @@ defmodule Friends.Social do
   """
   def get_conversation(conversation_id) do
     Repo.get(Conversation, conversation_id)
-    |> Repo.preload([participants: :user])
+    |> Repo.preload(participants: :user)
   end
 
   @doc """
@@ -2162,10 +2400,18 @@ defmodule Friends.Social do
     conversation = Repo.get(Conversation, conversation_id)
 
     cond do
-      is_nil(conversation) -> {:error, :conversation_not_found}
-      conversation.type != "group" -> {:error, :not_a_group}
-      not is_participant?(conversation_id, added_by_id) -> {:error, :not_authorized}
-      is_participant?(conversation_id, user_id) -> {:error, :already_participant}
+      is_nil(conversation) ->
+        {:error, :conversation_not_found}
+
+      conversation.type != "group" ->
+        {:error, :not_a_group}
+
+      not is_participant?(conversation_id, added_by_id) ->
+        {:error, :not_authorized}
+
+      is_participant?(conversation_id, user_id) ->
+        {:error, :already_participant}
+
       true ->
         %ConversationParticipant{}
         |> ConversationParticipant.changeset(%{
@@ -2181,34 +2427,235 @@ defmodule Friends.Social do
   Get the total unread message count across all conversations for a user.
   """
   def get_total_unread_count(user_id) do
-    conversations = Repo.all(
-      from p in ConversationParticipant,
-        where: p.user_id == ^user_id,
-        select: {p.conversation_id, p.last_read_at}
-    )
+    conversations =
+      Repo.all(
+        from p in ConversationParticipant,
+          where: p.user_id == ^user_id,
+          select: {p.conversation_id, p.last_read_at}
+      )
 
     Enum.reduce(conversations, 0, fn {conv_id, last_read}, acc ->
-      count = case last_read do
-        nil ->
-          Repo.aggregate(
-            from(m in Message, where: m.conversation_id == ^conv_id and m.sender_id != ^user_id),
-            :count
-          )
-        _ ->
-          Repo.aggregate(
-            from(m in Message,
-              where: m.conversation_id == ^conv_id and
-                     m.sender_id != ^user_id and
-                     m.inserted_at > ^last_read),
-            :count
-          )
-      end
+      count =
+        case last_read do
+          nil ->
+            Repo.aggregate(
+              from(m in Message,
+                where: m.conversation_id == ^conv_id and m.sender_id != ^user_id
+              ),
+              :count
+            )
+
+          _ ->
+            Repo.aggregate(
+              from(m in Message,
+                where:
+                  m.conversation_id == ^conv_id and
+                    m.sender_id != ^user_id and
+                    m.inserted_at > ^last_read
+              ),
+              :count
+            )
+        end
+
       acc + count
     end)
   end
 
+  # --- Public Feed (Posts visible to contacts, no room) ---
 
+  @doc """
+  Get a single photo by ID.
+  """
+  def get_photo(id) do
+    Repo.get(Photo, id)
+  end
 
+  @doc """
+  List public feed items (photos and notes with room_id = nil) from user's contacts.
+  Returns a combined list sorted by timestamp, newest first.
+  """
+  def list_public_feed_items(user_id, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+    contact_ids = get_contact_user_ids(user_id)
 
+    # Include own posts in the feed
+    all_user_ids = [make_user_id_string(user_id) | contact_ids]
 
+    photos =
+      Photo
+      |> where([p], is_nil(p.room_id) and p.user_id in ^all_user_ids)
+      |> order_by([p], desc: p.uploaded_at)
+      |> limit(^limit)
+      |> offset(^offset_val)
+      |> select([p], %{
+        id: p.id,
+        type: "photo",
+        user_id: p.user_id,
+        user_color: p.user_color,
+        user_name: p.user_name,
+        thumbnail_data: p.thumbnail_data,
+        content_type: p.content_type,
+        file_size: p.file_size,
+        description: p.description,
+        inserted_at: p.uploaded_at,
+        image_data: p.image_data
+      })
+      |> Repo.all()
+
+    notes =
+      Note
+      |> where([n], is_nil(n.room_id) and n.user_id in ^all_user_ids)
+      |> order_by([n], desc: n.inserted_at)
+      |> limit(^limit)
+      |> offset(^offset_val)
+      |> select([n], %{
+        id: n.id,
+        type: "note",
+        user_id: n.user_id,
+        user_color: n.user_color,
+        user_name: n.user_name,
+        content: n.content,
+        inserted_at: n.inserted_at
+      })
+      |> Repo.all()
+
+    # Combine and sort by inserted_at, newest first (handle mixed DateTime/NaiveDateTime)
+    (photos ++ notes)
+    |> Enum.sort_by(
+      fn item ->
+        case item.inserted_at do
+          %DateTime{} = dt -> DateTime.to_unix(dt)
+          %NaiveDateTime{} = ndt -> NaiveDateTime.diff(ndt, ~N[1970-01-01 00:00:00])
+          _ -> 0
+        end
+      end,
+      :desc
+    )
+    |> Enum.take(limit)
+  end
+
+  @doc """
+  Get list of room IDs the user has access to.
+  """
+  def list_user_room_ids(user_id) do
+    Repo.all(
+      from rm in RoomMember,
+        where: rm.user_id == ^user_id,
+        select: rm.room_id
+    )
+  end
+
+  @doc """
+  Get contact user IDs (as strings like "user-123") for public feed visibility.
+  Returns accepted friendships (both directions).
+  """
+  def get_contact_user_ids(user_id) do
+    # Get friends I added (accepted)
+    my_friends =
+      Repo.all(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "accepted",
+          select: f.friend_user_id
+      )
+
+    # Get people who added me as friend (accepted)
+    friends_of_me =
+      Repo.all(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "accepted",
+          select: f.user_id
+      )
+
+    # Combine and convert to string user_ids
+    (my_friends ++ friends_of_me)
+    |> Enum.uniq()
+    |> Enum.map(&make_user_id_string/1)
+  end
+
+  defp make_user_id_string(id) when is_integer(id), do: "user-#{id}"
+  defp make_user_id_string("user-" <> _ = id), do: id
+  defp make_user_id_string(id) when is_binary(id), do: "user-#{id}"
+
+  @doc """
+  Create a photo for the public feed (no room).
+  """
+  def create_public_photo(attrs, user_id) do
+    result =
+      %Photo{}
+      |> Photo.changeset(Map.put(attrs, :room_id, nil))
+      |> Repo.insert()
+
+    case result do
+      {:ok, photo} ->
+        broadcast_to_contacts(user_id, :new_public_photo, photo)
+        {:ok, photo}
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Create a note for the public feed (no room).
+  """
+  def create_public_note(attrs, user_id) do
+    result =
+      %Note{}
+      |> Note.changeset(Map.put(attrs, :room_id, nil))
+      |> Repo.insert()
+
+    case result do
+      {:ok, note} ->
+        broadcast_to_contacts(user_id, :new_public_note, note)
+        {:ok, note}
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Subscribe to public feed updates for a user.
+  """
+  def subscribe_to_public_feed(user_id) do
+    Phoenix.PubSub.subscribe(Friends.PubSub, "friends:public_feed:#{user_id}")
+  end
+
+  @doc """
+  Broadcast a public feed item to all of a user's contacts.
+  """
+  def broadcast_to_contacts(user_id, event, payload) do
+    # Get contact integer IDs
+    my_friends =
+      Repo.all(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "accepted",
+          select: f.friend_user_id
+      )
+
+    friends_of_me =
+      Repo.all(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "accepted",
+          select: f.user_id
+      )
+
+    contact_ids = Enum.uniq(my_friends ++ friends_of_me)
+
+    # Broadcast to each contact's public feed channel
+    Enum.each(contact_ids, fn contact_id ->
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "friends:public_feed:#{contact_id}",
+        {event, payload}
+      )
+    end)
+
+    # Also broadcast to self so own posts appear immediately
+    Phoenix.PubSub.broadcast(
+      Friends.PubSub,
+      "friends:public_feed:#{user_id}",
+      {event, payload}
+    )
+  end
 end

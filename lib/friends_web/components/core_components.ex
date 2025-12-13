@@ -68,7 +68,10 @@ defmodule FriendsWeb.CoreComponents do
   attr :field, Phoenix.HTML.FormField
   attr :errors, :list, default: []
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength multiple pattern placeholder readonly required rows size step)
+
+  attr :rest, :global,
+    include:
+      ~w(accept autocomplete capture cols disabled form list max maxlength min minlength multiple pattern placeholder readonly required rows size step)
 
   def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
@@ -84,10 +87,13 @@ defmodule FriendsWeb.CoreComponents do
   def input(%{type: "textarea"} = assigns) do
     ~H"""
     <div>
-      <label :if={@label} for={@id} class="block text-xs text-neutral-500 mb-1 uppercase tracking-wide">
+      <label
+        :if={@label}
+        for={@id}
+        class="block text-xs text-neutral-500 mb-1 uppercase tracking-wide"
+      >
         {@label}
-      </label>
-      <textarea
+      </label> <textarea
         id={@id}
         name={@name}
         class={[
@@ -106,7 +112,11 @@ defmodule FriendsWeb.CoreComponents do
   def input(assigns) do
     ~H"""
     <div>
-      <label :if={@label} for={@id} class="block text-xs text-neutral-500 mb-1 uppercase tracking-wide">
+      <label
+        :if={@label}
+        for={@id}
+        class="block text-xs text-neutral-500 mb-1 uppercase tracking-wide"
+      >
         {@label}
       </label>
       <input
@@ -133,9 +143,7 @@ defmodule FriendsWeb.CoreComponents do
 
   def error(assigns) do
     ~H"""
-    <p class="mt-1 text-xs text-red-500">
-      {render_slot(@inner_block)}
-    </p>
+    <p class="mt-1 text-xs text-red-500">{render_slot(@inner_block)}</p>
     """
   end
 
@@ -184,8 +192,7 @@ defmodule FriendsWeb.CoreComponents do
               aria-label="close"
             >
               ×
-            </button>
-            {render_slot(@inner_block)}
+            </button> {render_slot(@inner_block)}
           </div>
         </div>
       </div>
@@ -196,16 +203,30 @@ defmodule FriendsWeb.CoreComponents do
   def show_modal(js \\ %JS{}, id) when is_binary(id) do
     js
     |> JS.show(to: "##{id}")
-    |> JS.show(to: "##{id}-bg", transition: {"transition-opacity ease-out duration-200", "opacity-0", "opacity-100"})
-    |> JS.show(to: "##{id}-container", transition: {"transition-all ease-out duration-200", "opacity-0 scale-95", "opacity-100 scale-100"})
+    |> JS.show(
+      to: "##{id}-bg",
+      transition: {"transition-opacity ease-out duration-200", "opacity-0", "opacity-100"}
+    )
+    |> JS.show(
+      to: "##{id}-container",
+      transition:
+        {"transition-all ease-out duration-200", "opacity-0 scale-95", "opacity-100 scale-100"}
+    )
     |> JS.add_class("overflow-hidden", to: "body")
     |> JS.focus_first(to: "##{id}-container")
   end
 
   def hide_modal(js \\ %JS{}, id) do
     js
-    |> JS.hide(to: "##{id}-bg", transition: {"transition-opacity ease-in duration-200", "opacity-100", "opacity-0"})
-    |> JS.hide(to: "##{id}-container", transition: {"transition-all ease-in duration-200", "opacity-100 scale-100", "opacity-0 scale-95"})
+    |> JS.hide(
+      to: "##{id}-bg",
+      transition: {"transition-opacity ease-in duration-200", "opacity-100", "opacity-0"}
+    )
+    |> JS.hide(
+      to: "##{id}-container",
+      transition:
+        {"transition-all ease-in duration-200", "opacity-100 scale-100", "opacity-0 scale-95"}
+    )
     |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
     |> JS.remove_class("overflow-hidden", to: "body")
     |> JS.pop_focus()
@@ -222,4 +243,3 @@ defmodule FriendsWeb.CoreComponents do
     end
   end
 end
-

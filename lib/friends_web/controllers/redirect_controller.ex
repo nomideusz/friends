@@ -6,4 +6,3 @@ defmodule FriendsWeb.RedirectController do
     |> Phoenix.Controller.redirect(to: ~p"/r/lobby")
   end
 end
-

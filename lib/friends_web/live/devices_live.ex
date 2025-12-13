@@ -162,19 +162,30 @@ defmodule FriendsWeb.DevicesLive do
     ~H"""
     <div class="min-h-screen p-4 md:p-8 text-neutral-200">
       <div class="max-w-2xl mx-auto space-y-8">
-        
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-bold text-white">Devices</h1>
-          <.link navigate={~p"/"} class="text-sm text-neutral-500 hover:text-white transition-colors">Done</.link>
+          
+          <.link navigate={~p"/"} class="text-sm text-neutral-500 hover:text-white transition-colors">
+            Done
+          </.link>
         </div>
-
-        <%!-- Hardware Keys --%>
+         <%!-- Hardware Keys --%>
         <section>
           <div class="flex items-center justify-between mb-4">
             <h2 class="font-medium text-white">Hardware Keys</h2>
-            <div id="webauthn-section" phx-hook="WebAuthnManager" phx-update="ignore" class="flex items-center gap-3">
+            
+            <div
+              id="webauthn-section"
+              phx-hook="WebAuthnManager"
+              phx-update="ignore"
+              class="flex items-center gap-3"
+            >
               <div id="webauthn-status" class="hidden text-xs text-neutral-500"></div>
-              <button id="register-webauthn-btn" class="text-xs bg-white text-black px-3 py-1.5 rounded-lg hover:bg-neutral-200 transition-colors hidden">
+              
+              <button
+                id="register-webauthn-btn"
+                class="text-xs bg-white text-black px-3 py-1.5 rounded-lg hover:bg-neutral-200 transition-colors hidden"
+              >
                 + Add Key
               </button>
             </div>
@@ -189,19 +200,29 @@ defmodule FriendsWeb.DevicesLive do
                   <div class="p-4 flex items-center justify-between">
                     <div>
                       <div class="text-sm font-medium text-white">{cred.name || "Security Key"}</div>
-                      <div class="text-xs text-neutral-500">Last used: {format_datetime(cred.last_used_at)}</div>
+                      
+                      <div class="text-xs text-neutral-500">
+                        Last used: {format_datetime(cred.last_used_at)}
+                      </div>
                     </div>
-                    <button phx-click="delete_webauthn_credential" phx-value-credential_id={Base.url_encode64(cred.credential_id, padding: false)} class="text-xs text-red-500 hover:text-red-400">Remove</button>
+                    
+                    <button
+                      phx-click="delete_webauthn_credential"
+                      phx-value-credential_id={Base.url_encode64(cred.credential_id, padding: false)}
+                      class="text-xs text-red-500 hover:text-red-400"
+                    >
+                      Remove
+                    </button>
                   </div>
                 <% end %>
               </div>
             <% end %>
           </div>
         </section>
-
-        <%!-- Trusted Devices --%>
+         <%!-- Trusted Devices --%>
         <section>
           <h2 class="font-medium text-white mb-4">Active Sessions</h2>
+          
           <div class="bg-neutral-900 rounded-2xl border border-white/5 overflow-hidden">
             <%= if @devices == [] do %>
               <div class="p-4 text-center text-sm text-neutral-500">No active sessions.</div>
@@ -210,16 +231,30 @@ defmodule FriendsWeb.DevicesLive do
                 <%= for device <- @devices do %>
                   <div class="p-4 flex items-center justify-between">
                     <div>
-                      <div class="font-medium text-white text-sm">{device.device_name || "Unknown Device"}</div>
+                      <div class="font-medium text-white text-sm">
+                        {device.device_name || "Unknown Device"}
+                      </div>
+                      
                       <div class="text-xs text-neutral-500">
-                        <%= if device.trusted, do: "Trusted", else: "Untrusted" %> • <!-- Last seen --> {format_datetime(device.last_seen_at)}
+                        {if device.trusted, do: "Trusted", else: "Untrusted"}
+                        • <!-- Last seen -->
+                        {format_datetime(device.last_seen_at)}
                       </div>
                     </div>
+                    
                     <div class="flex gap-3">
-                      <button phx-click="toggle_trust" phx-value-device_id={device.id} class="text-xs text-neutral-400 hover:text-white transition-colors">
+                      <button
+                        phx-click="toggle_trust"
+                        phx-value-device_id={device.id}
+                        class="text-xs text-neutral-400 hover:text-white transition-colors"
+                      >
                         {if device.trusted, do: "Untrust", else: "Trust"}
                       </button>
-                      <button phx-click="revoke_device" phx-value-device_id={device.id} class="text-xs text-red-500 hover:text-red-400 transition-colors">
+                      <button
+                        phx-click="revoke_device"
+                        phx-value-device_id={device.id}
+                        class="text-xs text-red-500 hover:text-red-400 transition-colors"
+                      >
                         Revoke
                       </button>
                     </div>
@@ -229,9 +264,6 @@ defmodule FriendsWeb.DevicesLive do
             <% end %>
           </div>
         </section>
-
-
-
       </div>
     </div>
     """

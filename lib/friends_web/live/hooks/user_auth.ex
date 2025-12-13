@@ -1,11 +1,11 @@
 defmodule FriendsWeb.Live.Hooks.UserAuth do
   @moduledoc """
   LiveView on_mount hook for user authentication and shared assigns.
-  
+
   This hook loads the current user from the session and sets up common assigns
   needed by the header and other shared components across all pages.
   """
-  import Phoenix.Component, only: [assign: 2, assign_new: 3]
+  import Phoenix.Component, only: [assign_new: 3]
   alias Friends.Social
 
   # User color palette - must match HomeLive
@@ -42,7 +42,7 @@ defmodule FriendsWeb.Live.Hooks.UserAuth do
 
   defp assign_derived_user_data(socket) do
     user = socket.assigns[:current_user]
-    
+
     socket
     |> assign_new(:user_color, fn -> user_color(user) end)
     |> assign_new(:user_name, fn -> user && (user.display_name || user.username) end)
@@ -51,12 +51,13 @@ defmodule FriendsWeb.Live.Hooks.UserAuth do
 
   defp assign_header_data(socket) do
     user = socket.assigns[:current_user]
-    
+
     socket
-    |> assign_new(:pending_requests, fn -> 
+    |> assign_new(:pending_requests, fn ->
       if user, do: Social.list_friend_requests(user.id), else: []
     end)
-    |> assign_new(:recovery_requests, fn -> [] end)  # TODO: implement if needed
+    # TODO: implement if needed
+    |> assign_new(:recovery_requests, fn -> [] end)
     |> assign_new(:user_private_rooms, fn ->
       if user, do: Social.list_user_rooms(user.id), else: []
     end)
@@ -66,8 +67,10 @@ defmodule FriendsWeb.Live.Hooks.UserAuth do
   end
 
   defp user_color(nil), do: "#888"
+
   defp user_color(%{id: id}) when is_integer(id) do
     Enum.at(@colors, rem(id, length(@colors)))
   end
+
   defp user_color(_), do: "#888"
 end

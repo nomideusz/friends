@@ -28,6 +28,7 @@ defmodule FriendsWeb.Plugs.UserSession do
 
   defp parse_user_id_cookie(nil), do: nil
   defp parse_user_id_cookie(""), do: nil
+
   defp parse_user_id_cookie(user_id_str) do
     case Integer.parse(user_id_str) do
       {user_id, ""} -> user_id

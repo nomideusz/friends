@@ -35,10 +35,18 @@ if config_env() == :prod do
 
   check_origin =
     case origin_env do
-      nil -> ["https://#{host}"]
-      "" -> ["https://#{host}"]
-      "false" -> false
-      "0" -> false
+      nil ->
+        ["https://#{host}"]
+
+      "" ->
+        ["https://#{host}"]
+
+      "false" ->
+        false
+
+      "0" ->
+        false
+
       value ->
         # allow comma-separated list; otherwise single origin
         value
@@ -68,4 +76,3 @@ if config_env() == :prod do
   config :friends, :webauthn_rp_id, webauthn_rp_id
   config :friends, :webauthn_origin, webauthn_origin
 end
-

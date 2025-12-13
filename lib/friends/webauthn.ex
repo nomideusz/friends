@@ -49,13 +49,15 @@ defmodule Friends.WebAuthn do
 
     # Get existing credentials to exclude (prevent re-registration)
     existing_credentials = list_user_credentials(user.id)
-    exclude_credentials = Enum.map(existing_credentials, fn cred ->
-      %{
-        type: "public-key",
-        id: Base.url_encode64(cred.credential_id, padding: false),
-        transports: cred.transports || []
-      }
-    end)
+
+    exclude_credentials =
+      Enum.map(existing_credentials, fn cred ->
+        %{
+          type: "public-key",
+          id: Base.url_encode64(cred.credential_id, padding: false),
+          transports: cred.transports || []
+        }
+      end)
 
     %{
       challenge: Base.url_encode64(challenge, padding: false),
@@ -69,11 +71,14 @@ defmodule Friends.WebAuthn do
         displayName: user.display_name || user.username
       },
       pubKeyCredParams: [
-        %{type: "public-key", alg: -7},   # ES256 (ECDSA with P-256)
-        %{type: "public-key", alg: -257}  # RS256 (RSASSA-PKCS1-v1_5)
+        # ES256 (ECDSA with P-256)
+        %{type: "public-key", alg: -7},
+        # RS256 (RSASSA-PKCS1-v1_5)
+        %{type: "public-key", alg: -257}
       ],
       timeout: @challenge_timeout * 1000,
-      attestation: "none",  # We don't need attestation for this use case
+      # We don't need attestation for this use case
+      attestation: "none",
       excludeCredentials: exclude_credentials,
       authenticatorSelection: %{
         residentKey: "preferred",
@@ -93,7 +98,6 @@ defmodule Friends.WebAuthn do
          :ok <- verify_client_data(client_data_json, challenge, "webauthn.create"),
          {:ok, auth_data} <- parse_attestation_object(attestation_object),
          {:ok, public_key_spki} <- extract_public_key(auth_data) do
-
       # Build credential data for storage
       credential_data = %{
         credential_id: credential_id,
@@ -119,21 +123,22 @@ defmodule Friends.WebAuthn do
 
     credentials = list_user_credentials(user.id)
 
-    allow_credentials = Enum.map(credentials, fn cred ->
-      # Build credential descriptor
-      base = %{
-        type: "public-key",
-        id: Base.url_encode64(cred.credential_id, padding: false)
-      }
+    allow_credentials =
+      Enum.map(credentials, fn cred ->
+        # Build credential descriptor
+        base = %{
+          type: "public-key",
+          id: Base.url_encode64(cred.credential_id, padding: false)
+        }
 
-      # Only include transports if we have them - empty array causes Safari to
-      # show "Hardware key" prompt instead of Face ID/Touch ID
-      case cred.transports do
-        nil -> base
-        [] -> base
-        transports -> Map.put(base, :transports, transports)
-      end
-    end)
+        # Only include transports if we have them - empty array causes Safari to
+        # show "Hardware key" prompt instead of Face ID/Touch ID
+        case cred.transports do
+          nil -> base
+          [] -> base
+          transports -> Map.put(base, :transports, transports)
+        end
+      end)
 
     %{
       challenge: Base.url_encode64(challenge, padding: false),
@@ -157,18 +162,24 @@ defmodule Friends.WebAuthn do
          {:ok, credential} <- get_credential(user_id, credential_id),
          :ok <- verify_rp_id_hash(authenticator_data),
          :ok <- verify_user_present(authenticator_data),
-         :ok <- verify_signature(credential.public_key, authenticator_data, client_data_json, signature),
+         :ok <-
+           verify_signature(
+             credential.public_key,
+             authenticator_data,
+             client_data_json,
+             signature
+           ),
          {:ok, new_sign_count} <- verify_sign_count(authenticator_data, credential.sign_count) do
-
       # Update the credential's sign count and last used timestamp
       update_credential_usage(credential, new_sign_count)
 
       {:ok, credential}
     else
-      {:error, reason} -> 
+      {:error, reason} ->
         Logger.error("[WebAuthn] Verification failed: #{inspect(reason)}")
         {:error, reason}
-      error -> 
+
+      error ->
         Logger.error("[WebAuthn] Unexpected error: #{inspect(error)}")
         {:error, {:verification_failed, error}}
     end
@@ -177,6 +188,7 @@ defmodule Friends.WebAuthn do
   # --- Private Helper Functions ---
 
   defp decode_base64url(nil), do: {:error, :missing_data}
+
   defp decode_base64url(data) when is_binary(data) do
     case Base.url_decode64(data, padding: false) do
       {:ok, decoded} -> {:ok, decoded}
@@ -192,6 +204,7 @@ defmodule Friends.WebAuthn do
              :ok <- verify_origin(client_data["origin"]) do
           :ok
         end
+
       {:error, _} ->
         {:error, :invalid_client_data_json}
     end
@@ -213,7 +226,7 @@ defmodule Friends.WebAuthn do
     expected = origin()
     # Allow both with and without port for flexibility
     if String.starts_with?(actual_origin, expected) or
-       actual_origin == String.replace(expected, ~r/:4000$/, "") do
+         actual_origin == String.replace(expected, ~r/:4000$/, "") do
       :ok
     else
       {:error, {:origin_mismatch, actual_origin, expected}}
@@ -226,19 +239,29 @@ defmodule Friends.WebAuthn do
       {:ok, decoded, _rest} when is_map(decoded) ->
         # CBOR libraries may use string keys, atom keys, or binary keys
         # Try all possibilities for "authData"
-        auth_data = Map.get(decoded, "authData") ||
-                    Map.get(decoded, :authData) ||
-                    Map.get(decoded, "auth_data") ||
-                    Map.get(decoded, :auth_data)
+        auth_data =
+          Map.get(decoded, "authData") ||
+            Map.get(decoded, :authData) ||
+            Map.get(decoded, "auth_data") ||
+            Map.get(decoded, :auth_data)
 
         case auth_data do
-          nil -> {:error, {:missing_auth_data, Map.keys(decoded)}}
-          %CBOR.Tag{tag: :bytes, value: data} when is_binary(data) -> parse_authenticator_data(data)
-          data when is_binary(data) -> parse_authenticator_data(data)
-          other -> {:error, {:unexpected_auth_data_type, inspect(other)}}
+          nil ->
+            {:error, {:missing_auth_data, Map.keys(decoded)}}
+
+          %CBOR.Tag{tag: :bytes, value: data} when is_binary(data) ->
+            parse_authenticator_data(data)
+
+          data when is_binary(data) ->
+            parse_authenticator_data(data)
+
+          other ->
+            {:error, {:unexpected_auth_data_type, inspect(other)}}
         end
+
       {:ok, other, _rest} ->
         {:error, {:unexpected_cbor_structure, inspect(other)}}
+
       {:error, reason} ->
         {:error, {:cbor_decode_failed, reason}}
     end
@@ -248,9 +271,11 @@ defmodule Friends.WebAuthn do
 
   # Handle non-binary auth_data with better error messages
   defp parse_authenticator_data(nil), do: {:error, :nil_auth_data}
+
   defp parse_authenticator_data(%CBOR.Tag{tag: :bytes, value: data}) when is_binary(data) do
     parse_authenticator_data(data)
   end
+
   defp parse_authenticator_data(auth_data) when is_binary(auth_data) do
     # Authenticator data structure:
     # - rpIdHash (32 bytes)
@@ -301,17 +326,21 @@ defmodule Friends.WebAuthn do
           <<cred_id::binary-size(cred_id_len), cose_key_cbor::binary>> ->
             case CBOR.decode(cose_key_cbor) do
               {:ok, cose_key, _rest} ->
-                {:ok, %{
-                  aaguid: aaguid,
-                  credential_id: cred_id,
-                  cose_key: cose_key
-                }}
+                {:ok,
+                 %{
+                   aaguid: aaguid,
+                   credential_id: cred_id,
+                   cose_key: cose_key
+                 }}
+
               error ->
                 {:error, {:cose_key_decode_failed, error}}
             end
+
           _ ->
             {:error, :invalid_credential_data}
         end
+
       _ ->
         {:error, :invalid_attested_credential_data}
     end
@@ -330,6 +359,7 @@ defmodule Friends.WebAuthn do
       _ -> {:error, {:unsupported_key_type, kty}}
     end
   end
+
   defp extract_public_key(_), do: {:error, :no_cose_key}
 
   defp extract_ec_public_key(cose_key) do
@@ -350,6 +380,7 @@ defmodule Friends.WebAuthn do
         x: x,
         y: y
       }
+
       {:ok, :erlang.term_to_binary(public_key)}
     else
       {:error, :invalid_ec_key}
@@ -369,12 +400,13 @@ defmodule Friends.WebAuthn do
         n: n,
         e: e
       }
+
       {:ok, :erlang.term_to_binary(public_key)}
     else
       {:error, :invalid_rsa_key}
     end
   end
-  
+
   defp unwrap_bytes(%CBOR.Tag{tag: :bytes, value: bytes}), do: bytes
   defp unwrap_bytes(bytes) when is_binary(bytes), do: bytes
   defp unwrap_bytes(_), do: nil
@@ -411,8 +443,10 @@ defmodule Friends.WebAuthn do
     case public_key do
       %{type: :ec, curve: crv, x: x, y: y} ->
         verify_ec_signature(crv, unwrap_bytes(x), unwrap_bytes(y), signed_data, signature)
+
       %{type: :rsa, n: n, e: e} ->
         verify_rsa_signature(unwrap_bytes(n), unwrap_bytes(e), signed_data, signature)
+
       _ ->
         {:error, :unknown_key_type}
     end
@@ -422,20 +456,25 @@ defmodule Friends.WebAuthn do
 
   defp verify_ec_signature(crv, x, y, data, signature) do
     # Map COSE curve to Erlang named curve
-    {curve, size} = case crv do
-      1 -> {:secp256r1, 32}  # P-256
-      2 -> {:secp384r1, 48}  # P-384
-      3 -> {:secp521r1, 66}  # P-521 (ceil(521/8) = 66)
-      _ -> {nil, 0}
-    end
+    {curve, size} =
+      case crv do
+        # P-256
+        1 -> {:secp256r1, 32}
+        # P-384
+        2 -> {:secp384r1, 48}
+        # P-521 (ceil(521/8) = 66)
+        3 -> {:secp521r1, 66}
+        _ -> {nil, 0}
+      end
 
     if curve && x && y do
       # Ensure exact coordinate size (pad if short, trim if long e.g. leading zeros)
       x_fixed = fix_coordinate_size(x, size)
       y_fixed = fix_coordinate_size(y, size)
-      
+
       # Build the EC public key in Erlang format
-      point = <<4>> <> x_fixed <> y_fixed  # Uncompressed point format
+      # Uncompressed point format
+      point = <<4>> <> x_fixed <> y_fixed
 
       # Normalize signature to strict DER format
       # This handles both raw 64-byte signatures AND potentially malformed DER inputs
@@ -443,7 +482,7 @@ defmodule Friends.WebAuthn do
 
       # Try verification with OID first using public_key (high level)
       ec_key_oid = {:ECPoint, point, {:namedCurve, curve_oid(curve)}}
-      
+
       try do
         case :public_key.verify(data, :sha256, signature_der, ec_key_oid) do
           true -> :ok
@@ -453,22 +492,25 @@ defmodule Friends.WebAuthn do
         _e in ArgumentError ->
           # Fallback 1: public_key with atom curve (legacy)
           ec_key_atom = {:ECPoint, point, {:namedCurve, curve}}
+
           try do
-             case :public_key.verify(data, :sha256, signature_der, ec_key_atom) do
-               true -> :ok
-               false -> 
-                 # Fallback 2: Direct crypto.verify (low level)
-                 verify_crypto_fallback(curve, point, data, signature_der)
-             end
+            case :public_key.verify(data, :sha256, signature_der, ec_key_atom) do
+              true ->
+                :ok
+
+              false ->
+                # Fallback 2: Direct crypto.verify (low level)
+                verify_crypto_fallback(curve, point, data, signature_der)
+            end
           rescue
-             _ -> verify_crypto_fallback(curve, point, data, signature_der)
+            _ -> verify_crypto_fallback(curve, point, data, signature_der)
           end
       end
     else
       {:error, {:unsupported_curve, crv}}
     end
   rescue
-    e -> 
+    e ->
       Logger.error("[WebAuthn] EC Verify crash: #{inspect(e)}")
       {:error, {:ec_verify_error, e}}
   end
@@ -478,28 +520,31 @@ defmodule Friends.WebAuthn do
     # Key for ECDSA is [Point, CurveParams]
     # Try with atom first, then OID fallback
     case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve]) do
-      true -> :ok
-      false -> 
+      true ->
+        :ok
+
+      false ->
         case :crypto.verify(:ecdsa, :sha256, data, signature, [point, curve_oid(curve)]) do
-           true -> :ok
-           false -> {:error, :invalid_signature}
+          true -> :ok
+          false -> {:error, :invalid_signature}
         end
     end
   rescue
-    e -> 
+    e ->
       Logger.error("[WebAuthn] crypto.verify crash: #{inspect(e)}")
       {:error, :invalid_signature}
   end
-  
+
   defp normalize_der(signature) do
     # Try to decode the signature as DER sequence of two integers (R, S)
     # Then re-encode strictly to satisfy Erlang's picky crypto lib
     case decode_der_sequence(signature) do
-      {:ok, r, s} -> 
+      {:ok, r, s} ->
         # Re-encode strictly by normalizing R and S to 32 bytes then passing to raw_to_der
         r_32 = fix_coordinate_size(r, 32)
         s_32 = fix_coordinate_size(s, 32)
         raw_to_der(r_32 <> s_32)
+
       _ ->
         # If decode fails, check if it's already a raw 64-byte signature
         if byte_size(signature) == 64 do
@@ -514,6 +559,7 @@ defmodule Friends.WebAuthn do
   defp decode_der_sequence(<<0x30, len, rest::binary>>) when byte_size(rest) >= len do
     # Take exactly len bytes for the sequence content
     sequence_content = binary_part(rest, 0, len)
+
     with {:ok, r, rest_s} <- decode_der_integer(sequence_content),
          {:ok, s, _trailing} <- decode_der_integer(rest_s) do
       {:ok, r, s}
@@ -521,11 +567,13 @@ defmodule Friends.WebAuthn do
       _ -> :error
     end
   end
+
   defp decode_der_sequence(_), do: :error
 
   defp decode_der_integer(<<0x02, len, val::binary-size(len), rest::binary>>) do
     {:ok, val, rest}
   end
+
   defp decode_der_integer(_), do: :error
 
   defp raw_to_der(<<r::binary-size(32), s::binary-size(32)>>) do
@@ -533,37 +581,39 @@ defmodule Friends.WebAuthn do
     # Integers must be positive, so prepend 0x00 if MSB is 1
     enc_r = der_integer(r)
     enc_s = der_integer(s)
-    
+
     # Sequence tag (0x30) + length + R + S
     content = enc_r <> enc_s
     <<0x30, byte_size(content)>> <> content
   end
+
   defp raw_to_der(sig), do: sig
-  
+
   defp der_integer(bin) do
     # Remove leading zeros to check MSB of significant byte
     bin_trimmed = drop_leading_zeros(bin)
-    
+
     # If MSB is 1 (>= 0x80), we must prepend 0x00 to make it positive in two's complement
     case bin_trimmed do
-      <<b, _::binary>> when b >= 0x80 -> 
+      <<b, _::binary>> when b >= 0x80 ->
         content = <<0>> <> bin_trimmed
         <<0x02, byte_size(content)>> <> content
+
       _ ->
         content = if bin_trimmed == <<>>, do: <<0>>, else: bin_trimmed
         <<0x02, byte_size(content)>> <> content
     end
   end
-  
+
   defp drop_leading_zeros(<<0, rest::binary>>), do: drop_leading_zeros(rest)
   defp drop_leading_zeros(bin), do: bin
 
-  
   defp fix_coordinate_size(binary, size) do
     len = byte_size(binary)
+
     cond do
       len == size -> binary
-      len < size -> <<0::size((size - len)*8)>> <> binary
+      len < size -> <<0::size((size - len) * 8)>> <> binary
       len > size -> binary_part(binary, len - size, size)
     end
   end
@@ -571,7 +621,6 @@ defmodule Friends.WebAuthn do
   defp curve_oid(:secp256r1), do: {1, 2, 840, 10045, 3, 1, 7}
   defp curve_oid(:secp384r1), do: {1, 3, 132, 0, 34}
   defp curve_oid(:secp521r1), do: {1, 3, 132, 0, 35}
-
 
   defp verify_rsa_signature(n, e, data, signature) do
     # Build RSA public key
@@ -586,7 +635,8 @@ defmodule Friends.WebAuthn do
   end
 
   defp verify_sign_count(authenticator_data, stored_sign_count) do
-    <<_rp_id_hash::binary-size(32), _flags::8, sign_count::32-big, _rest::binary>> = authenticator_data
+    <<_rp_id_hash::binary-size(32), _flags::8, sign_count::32-big, _rest::binary>> =
+      authenticator_data
 
     # Sign count should be greater than stored value (protects against cloned authenticators)
     # Some authenticators always return 0, so we allow that
@@ -625,10 +675,11 @@ defmodule Friends.WebAuthn do
   Store a verified credential in the database.
   """
   def store_credential(credential_data, name \\ nil) do
-    attrs = Map.merge(credential_data, %{
-      name: name || "Hardware Key",
-      last_used_at: DateTime.utc_now()
-    })
+    attrs =
+      Map.merge(credential_data, %{
+        name: name || "Hardware Key",
+        last_used_at: DateTime.utc_now()
+      })
 
     %WebAuthnCredential{}
     |> WebAuthnCredential.changeset(attrs)

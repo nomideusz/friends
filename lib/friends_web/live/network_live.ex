@@ -11,21 +11,22 @@ defmodule FriendsWeb.NetworkLive do
     user_id = session["user_id"]
     user = if user_id, do: Social.get_user(user_id)
 
-    color = if user do
-      # Simple consistent color hash
-      case Integer.parse(to_string(user.id)) do
-        {int_id, _} -> Enum.at(@colors, rem(int_id, length(@colors)))
-        _ -> Enum.at(@colors, 0)
+    color =
+      if user do
+        # Simple consistent color hash
+        case Integer.parse(to_string(user.id)) do
+          {int_id, _} -> Enum.at(@colors, rem(int_id, length(@colors)))
+          _ -> Enum.at(@colors, 0)
+        end
+      else
+        "#888"
       end
-    else
-      "#888"
-    end
 
     if connected?(socket) && user do
       Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{user.id}")
     end
 
-    {:ok, 
+    {:ok,
      socket
      |> assign(:current_user, user)
      |> assign(:user_color, color)
@@ -33,10 +34,11 @@ defmodule FriendsWeb.NetworkLive do
   end
 
   def handle_params(params, _url, socket) do
-    view = params["view"] || "list" # list or graph
-    
-    {:noreply, 
-     socket 
+    # list or graph
+    view = params["view"] || "list"
+
+    {:noreply,
+     socket
      |> assign(:view, view)
      |> load_data()}
   end
@@ -54,7 +56,7 @@ defmodule FriendsWeb.NetworkLive do
 
   defp load_data(socket) do
     user = socket.assigns.current_user
-    
+
     if user do
       socket
       |> assign(:friends, Social.list_friends(user.id))
@@ -66,7 +68,10 @@ defmodule FriendsWeb.NetworkLive do
       |> assign(:invites, Social.list_user_invites(user.id))
       |> assign(:user_rooms, Social.list_user_rooms(user.id))
       # For graph view
-      |> assign(:graph_data, if(socket.assigns.view == "graph", do: build_graph_data(user), else: nil))
+      |> assign(
+        :graph_data,
+        if(socket.assigns.view == "graph", do: build_graph_data(user), else: nil)
+      )
     else
       socket
       |> put_flash(:error, "You must be logged in")
@@ -75,7 +80,6 @@ defmodule FriendsWeb.NetworkLive do
   end
 
   # --- Event Handlers ---
-
 
   # --- Event Handlers ---
 
@@ -103,19 +107,21 @@ defmodule FriendsWeb.NetworkLive do
   def handle_event("add_friend", %{"user_id" => user_id}, socket) do
     case Social.add_friend(socket.assigns.current_user.id, user_id) do
       {:ok, _} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Contact request sent!")
          |> assign(:friend_search, "")
          |> assign(:friend_search_results, [])
          |> load_data()}
-         
+
       {:error, reason} ->
-        msg = case reason do
-          :already_friends -> "You are already contacts"
-          :request_already_sent -> "Request already sent"
-          _ -> "Could not add contact"
-        end
+        msg =
+          case reason do
+            :already_friends -> "You are already contacts"
+            :request_already_sent -> "Request already sent"
+            _ -> "Could not add contact"
+          end
+
         {:noreply, put_flash(socket, :error, msg)}
     end
   end
@@ -123,10 +129,11 @@ defmodule FriendsWeb.NetworkLive do
   def handle_event("accept_friend", %{"user_id" => user_id}, socket) do
     case Social.accept_friend(socket.assigns.current_user.id, user_id) do
       {:ok, _} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Contact accepted!")
          |> load_data()}
+
       _ ->
         {:noreply, put_flash(socket, :error, "Could not accept contact")}
     end
@@ -135,10 +142,11 @@ defmodule FriendsWeb.NetworkLive do
   def handle_event("remove_friend", %{"user_id" => user_id}, socket) do
     case Social.remove_friend(socket.assigns.current_user.id, user_id) do
       {:ok, _} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Contact removed")
          |> load_data()}
+
       _ ->
         {:noreply, put_flash(socket, :error, "Could not remove contact")}
     end
@@ -148,25 +156,28 @@ defmodule FriendsWeb.NetworkLive do
     # Declining a request removes the pending friendship
     case Social.remove_friend(socket.assigns.current_user.id, user_id) do
       {:ok, _} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Friend request declined")
          |> load_data()}
+
       _ ->
         {:noreply, put_flash(socket, :error, "Could not decline request")}
     end
   end
-  
+
   # Trusted friend handlers (keep existing logic)
   def handle_event("add_trusted_friend", %{"user_id" => user_id}, socket) do
     case Social.add_trusted_friend(socket.assigns.current_user.id, user_id) do
       {:ok, _} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Trusted contact request sent")
          |> load_data()}
+
       {:error, :max_trusted_friends} ->
         {:noreply, put_flash(socket, :error, "You can only have 5 trusted contacts")}
+
       _ ->
         {:noreply, put_flash(socket, :error, "Could not add trusted contact")}
     end
@@ -175,10 +186,11 @@ defmodule FriendsWeb.NetworkLive do
   def handle_event("confirm_trust", %{"user_id" => user_id}, socket) do
     case Social.confirm_trusted_friend(socket.assigns.current_user.id, user_id) do
       {:ok, _} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Trusted friend confirmed")
          |> load_data()}
+
       _ ->
         {:noreply, put_flash(socket, :error, "Could not confirm trusted friend")}
     end
@@ -189,31 +201,33 @@ defmodule FriendsWeb.NetworkLive do
   def handle_event("create_invite", _, socket) do
     case Social.create_invite(socket.assigns.current_user.id) do
       {:ok, _invite} ->
-        {:noreply, 
-         socket 
+        {:noreply,
+         socket
          |> put_flash(:info, "Invite code created")
          |> load_data()}
+
       _ ->
         {:noreply, put_flash(socket, :error, "Could not create invite")}
     end
   end
 
   def handle_event("revoke_invite", %{"code" => code}, socket) do
-     # We need a function to revoke invite, assumes existing delete or update
-     # For now, let's assume we can just ignore or impl later if strictly needed functionality not in Social
-     # But wait, checking context... Social.update_invite?
-     # Let's verify context first. Actually, create_invite exists.
-     # Let's check Social module for revoke/delete/update logic.
-     # Assuming standard pattern or omit for now if not critical. 
-     # Actually let's assume update_invite(invite, %{status: "revoked"}) logic
-     
-     invite = Social.get_invite_by_code(code)
-     if invite && invite.created_by_id == socket.assigns.current_user.id do
-        Social.update_invite(invite, %{status: "revoked"})
-        {:noreply, put_flash(socket, :info, "Invite revoked") |> load_data()}
-     else
-        {:noreply, put_flash(socket, :error, "Cannot revoke invite")}
-     end
+    # We need a function to revoke invite, assumes existing delete or update
+    # For now, let's assume we can just ignore or impl later if strictly needed functionality not in Social
+    # But wait, checking context... Social.update_invite?
+    # Let's verify context first. Actually, create_invite exists.
+    # Let's check Social module for revoke/delete/update logic.
+    # Assuming standard pattern or omit for now if not critical. 
+    # Actually let's assume update_invite(invite, %{status: "revoked"}) logic
+
+    invite = Social.get_invite_by_code(code)
+
+    if invite && invite.created_by_id == socket.assigns.current_user.id do
+      Social.update_invite(invite, %{status: "revoked"})
+      {:noreply, put_flash(socket, :info, "Invite revoked") |> load_data()}
+    else
+      {:noreply, put_flash(socket, :error, "Cannot revoke invite")}
+    end
   end
 
   # --- Header Dropdown ---
@@ -239,7 +253,7 @@ defmodule FriendsWeb.NetworkLive do
   end
 
   # --- Real-time Updates ---
-  
+
   def handle_info({:friend_request, _}, socket), do: {:noreply, load_data(socket)}
   def handle_info({:friend_accepted, _}, socket), do: {:noreply, load_data(socket)}
   def handle_info({:friend_removed, _}, socket), do: {:noreply, load_data(socket)}
@@ -335,8 +349,10 @@ defmodule FriendsWeb.NetworkLive do
       Enum.reduce(people_who_trust_me, edges, fn tf, acc ->
         # Check if reverse edge exists (bidirectional trust)
         has_reverse = Enum.any?(my_trusted, fn t -> t.trusted_user.id == tf.user.id end)
+
         if has_reverse do
-          acc # Already handled by bidirectional logic in JS
+          # Already handled by bidirectional logic in JS
+          acc
         else
           [%{from: tf.user.id, to: user.id, type: "trusts_me"} | acc]
         end
@@ -380,11 +396,13 @@ defmodule FriendsWeb.NetworkLive do
   # Get all friendships between a list of user IDs
   # Returns list of {user_id_1, user_id_2} tuples where both are friends
   defp get_friendships_between(user_ids) when length(user_ids) < 2, do: []
+
   defp get_friendships_between(user_ids) do
     # Query friendships where BOTH users are in our friend list
     Repo.all(
       from f in Friends.Social.Friendship,
-        where: f.user_id in ^user_ids and f.friend_user_id in ^user_ids and f.status == "accepted",
+        where:
+          f.user_id in ^user_ids and f.friend_user_id in ^user_ids and f.status == "accepted",
         select: {f.user_id, f.friend_user_id}
     )
     |> Enum.map(fn {id1, id2} ->
@@ -393,7 +411,7 @@ defmodule FriendsWeb.NetworkLive do
     end)
     |> Enum.uniq()
   end
-  
+
   defp trusted_user_color(%{id: id}) when is_integer(id) do
     Enum.at(@colors, rem(id, length(@colors)))
   end
@@ -404,101 +422,146 @@ defmodule FriendsWeb.NetworkLive do
     ~H"""
     <div class="min-h-screen text-white pb-20">
       <div class="max-w-[1200px] mx-auto px-4 sm:px-8 py-8">
-        
         <div class="flex items-center justify-between mb-8">
           <h1 class="text-3xl font-bold">Contacts</h1>
-          <%!-- View Toggle --%>
+           <%!-- View Toggle --%>
           <div class="flex p-1 bg-neutral-900 rounded-lg border border-white/5">
-            <button phx-click="set_view" phx-value-view="list" class={"px-3 py-1 text-sm rounded-md transition-all cursor-pointer #{if @view == "list", do: "bg-neutral-800 text-white shadow-sm", else: "text-neutral-500 hover:text-neutral-300"}"}>
+            <button
+              phx-click="set_view"
+              phx-value-view="list"
+              class={"px-3 py-1 text-sm rounded-md transition-all cursor-pointer #{if @view == "list", do: "bg-neutral-800 text-white shadow-sm", else: "text-neutral-500 hover:text-neutral-300"}"}
+            >
               List
             </button>
-            <button phx-click="set_view" phx-value-view="graph" class={"px-3 py-1 text-sm rounded-md transition-all cursor-pointer #{if @view == "graph", do: "bg-neutral-800 text-white shadow-sm", else: "text-neutral-500 hover:text-neutral-300"}"}>
+            <button
+              phx-click="set_view"
+              phx-value-view="graph"
+              class={"px-3 py-1 text-sm rounded-md transition-all cursor-pointer #{if @view == "graph", do: "bg-neutral-800 text-white shadow-sm", else: "text-neutral-500 hover:text-neutral-300"}"}
+            >
               Graph
             </button>
           </div>
         </div>
-          
+        
         <%= if @view == "list" do %>
           <div class="space-y-12">
-            
             <%!-- Trusted Contacts --%>
             <section>
               <div class="flex items-center gap-2 mb-4">
                 <h2 class="text-xl font-semibold text-green-400 flex items-center gap-2">
                   <span>🔐</span> Trusted Contacts
                 </h2>
-                <span class="text-xs text-neutral-500 bg-neutral-900 px-2 py-1 rounded-full border border-white/5">Recovery</span>
+                
+                <span class="text-xs text-neutral-500 bg-neutral-900 px-2 py-1 rounded-full border border-white/5">
+                  Recovery
+                </span>
               </div>
               
               <%= if @pending_trust_requests != [] do %>
-                 <div class="mb-4 space-y-2">
+                <div class="mb-4 space-y-2">
                   <%= for req <- @pending_trust_requests do %>
                     <div class="flex items-center justify-between p-4 glass rounded-xl border border-amber-500/20 bg-amber-500/5">
                       <div>
                         <div class="font-medium">@{req.user.username}</div>
+                        
                         <div class="text-xs text-amber-400">wants to trust you for recovery</div>
                       </div>
-                      <button phx-click="confirm_trust" phx-value-user_id={req.user.id} class="px-4 py-2 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 transition-colors pointer-events-auto cursor-pointer">Confirm</button>
+                      
+                      <button
+                        phx-click="confirm_trust"
+                        phx-value-user_id={req.user.id}
+                        class="px-4 py-2 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 transition-colors pointer-events-auto cursor-pointer"
+                      >
+                        Confirm
+                      </button>
                     </div>
                   <% end %>
-                 </div>
+                </div>
               <% end %>
-
+              
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                 <%= for tf <- @trusted_friends do %>
+                <%= for tf <- @trusted_friends do %>
                   <div class="flex items-center justify-between p-4 glass rounded-xl border border-green-500/30 border-l-4 border-l-green-500 hover:bg-white/5 transition-colors">
                     <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full presence-dot" style={"background-color: #{trusted_user_color(tf.trusted_user)}; color: #{trusted_user_color(tf.trusted_user)}"} />
+                      <div
+                        class="w-10 h-10 rounded-full presence-dot"
+                        style={"background-color: #{trusted_user_color(tf.trusted_user)}; color: #{trusted_user_color(tf.trusted_user)}"}
+                      />
                       <div>
                         <div class="font-medium">@{tf.trusted_user.username}</div>
+                        
                         <div class="text-xs text-green-400">Confirmed</div>
                       </div>
                     </div>
                   </div>
-                 <% end %>
-                 
-                 <%= if length(@trusted_friends) < 5 do %>
-                   <div class="p-4 border border-dashed border-white/10 rounded-xl text-neutral-500 flex items-center justify-center text-sm">
-                     Select a contact below to add as trusted
-                   </div>
-                 <% end %>
+                <% end %>
+                
+                <%= if length(@trusted_friends) < 5 do %>
+                  <div class="p-4 border border-dashed border-white/10 rounded-xl text-neutral-500 flex items-center justify-center text-sm">
+                    Select a contact below to add as trusted
+                  </div>
+                <% end %>
               </div>
             </section>
-
-            <%!-- All Contacts --%>
+             <%!-- All Contacts --%>
             <section>
               <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <span>👥</span> All Contacts
               </h2>
-              
-              <%!-- Friend Requests --%>
+               <%!-- Friend Requests --%>
               <%= if @friend_requests != [] do %>
                 <div class="mb-6 space-y-2">
-                  <div class="text-sm font-medium text-blue-400 uppercase tracking-wider mb-2">Pending Requests</div>
+                  <div class="text-sm font-medium text-blue-400 uppercase tracking-wider mb-2">
+                    Pending Requests
+                  </div>
+                  
                   <%= for req <- @friend_requests do %>
                     <div class="flex items-center justify-between p-4 glass rounded-xl border border-blue-500/20 bg-blue-500/5">
                       <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full presence-dot" style={"background-color: #{trusted_user_color(req.user)}; color: #{trusted_user_color(req.user)}"} />
+                        <div
+                          class="w-8 h-8 rounded-full presence-dot"
+                          style={"background-color: #{trusted_user_color(req.user)}; color: #{trusted_user_color(req.user)}"}
+                        />
                         <div>
                           <div class="font-medium">@{req.user.username}</div>
+                          
                           <div class="text-xs text-neutral-400">wants to connect</div>
                         </div>
                       </div>
+                      
                       <div class="flex gap-2">
-                        <button phx-click="accept_friend" phx-value-user_id={req.user.id} class="px-3 py-1.5 bg-blue-500 text-black text-sm font-medium rounded-lg hover:bg-blue-400 transition-colors pointer-events-auto cursor-pointer">Accept</button>
-                        <button phx-click="decline_friend" phx-value-user_id={req.user.id} class="px-3 py-1.5 border border-neutral-700 text-neutral-400 text-sm rounded-lg hover:text-red-400 transition-colors pointer-events-auto cursor-pointer">Decline</button>
+                        <button
+                          phx-click="accept_friend"
+                          phx-value-user_id={req.user.id}
+                          class="px-3 py-1.5 bg-blue-500 text-black text-sm font-medium rounded-lg hover:bg-blue-400 transition-colors pointer-events-auto cursor-pointer"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          phx-click="decline_friend"
+                          phx-value-user_id={req.user.id}
+                          class="px-3 py-1.5 border border-neutral-700 text-neutral-400 text-sm rounded-lg hover:text-red-400 transition-colors pointer-events-auto cursor-pointer"
+                        >
+                          Decline
+                        </button>
                       </div>
                     </div>
                   <% end %>
                 </div>
               <% end %>
-
-              <%!-- Add Contact Search --%>
+               <%!-- Add Contact Search --%>
               <div class="mb-6 p-4 glass rounded-xl border border-white/5">
                 <form phx-change="search_friends" phx-submit="search_friends" class="flex gap-2">
                   <div class="relative flex-1">
-                    <input type="text" name="query" value={@friend_search} placeholder="Add new contact by username..." autocomplete="off" phx-debounce="300" 
-                           class="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-white/30 transition-colors" />
+                    <input
+                      type="text"
+                      name="query"
+                      value={@friend_search}
+                      placeholder="Add new contact by username..."
+                      autocomplete="off"
+                      phx-debounce="300"
+                      class="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-white/30 transition-colors"
+                    />
                   </div>
                 </form>
                 
@@ -507,10 +570,17 @@ defmodule FriendsWeb.NetworkLive do
                     <%= for user <- @friend_search_results do %>
                       <div class="flex items-center justify-between p-2 bg-neutral-800/50 rounded-lg border border-white/5">
                         <div class="flex items-center gap-2">
-                          <div class="w-6 h-6 rounded-full" style={"background-color: #{trusted_user_color(user)}"} />
-                          <span class="text-sm font-medium">@{user.username}</span>
+                          <div
+                            class="w-6 h-6 rounded-full"
+                            style={"background-color: #{trusted_user_color(user)}"}
+                          /> <span class="text-sm font-medium">@{user.username}</span>
                         </div>
-                        <button phx-click="add_friend" phx-value-user_id={user.id} class="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors pointer-events-auto cursor-pointer">
+                        
+                        <button
+                          phx-click="add_friend"
+                          phx-value-user_id={user.id}
+                          class="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors pointer-events-auto cursor-pointer"
+                        >
                           Add Contact
                         </button>
                       </div>
@@ -518,30 +588,48 @@ defmodule FriendsWeb.NetworkLive do
                   </div>
                 <% end %>
               </div>
-
+              
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <%= for f <- @friends do %>
-                  <% is_trusted = Enum.any?(@trusted_friends, fn tf -> tf.trusted_user.id == f.user.id end) %>
+                  <% is_trusted =
+                    Enum.any?(@trusted_friends, fn tf -> tf.trusted_user.id == f.user.id end) %>
                   <%!-- Filter out if already shown in trusted section? User guidelines implied show all below. I'll show all but mark trusted. --%>
                   <div class={"flex items-center justify-between p-3 glass rounded-xl border transition-all #{if is_trusted, do: "border-green-500/20 bg-green-500/5", else: "border-white/5 hover:border-white/10"}"}>
                     <div class="flex items-center gap-3">
                       <div class="relative">
-                        <div class="w-10 h-10 rounded-full" style={"background: linear-gradient(135deg, #{trusted_user_color(f.user)} 0%, #{trusted_user_color(f.user)}88 100%)"} />
+                        <div
+                          class="w-10 h-10 rounded-full"
+                          style={"background: linear-gradient(135deg, #{trusted_user_color(f.user)} 0%, #{trusted_user_color(f.user)}88 100%)"}
+                        />
                         <%= if is_trusted do %>
-                          <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-[10px]">✓</span>
+                          <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-[10px]">
+                            ✓
+                          </span>
                         <% end %>
                       </div>
+                      
                       <div>
                         <div class="font-medium text-white">@{f.user.username}</div>
                       </div>
                     </div>
+                    
                     <div class="flex gap-2 text-sm">
                       <%= if not is_trusted do %>
-                         <button phx-click="add_trusted_friend" phx-value-user_id={f.user.id} class="text-green-500 hover:text-green-400 hover:underline transition-colors pointer-events-auto cursor-pointer">
-                           Trust
-                         </button>
+                        <button
+                          phx-click="add_trusted_friend"
+                          phx-value-user_id={f.user.id}
+                          class="text-green-500 hover:text-green-400 hover:underline transition-colors pointer-events-auto cursor-pointer"
+                        >
+                          Trust
+                        </button>
                       <% end %>
-                      <button phx-click="remove_friend" phx-value-user_id={f.user.id} data-confirm="Remove friend?" class="text-neutral-500 hover:text-red-400 transition-colors pointer-events-auto cursor-pointer">
+                      
+                      <button
+                        phx-click="remove_friend"
+                        phx-value-user_id={f.user.id}
+                        data-confirm="Remove friend?"
+                        class="text-neutral-500 hover:text-red-400 transition-colors pointer-events-auto cursor-pointer"
+                      >
                         Remove
                       </button>
                     </div>
@@ -549,83 +637,100 @@ defmodule FriendsWeb.NetworkLive do
                 <% end %>
               </div>
             </section>
-            
-            <%!-- Invites Section --%>
+             <%!-- Invites Section --%>
             <section class="pt-8 border-t border-white/5">
               <div class="flex items-center justify-between mb-4">
-                 <h2 class="text-lg font-semibold text-purple-400 flex items-center gap-2">
+                <h2 class="text-lg font-semibold text-purple-400 flex items-center gap-2">
                   <span>🎟️</span> Invites
                 </h2>
-                <button phx-click="create_invite" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-sm hover:bg-purple-500/30 transition-colors pointer-events-auto cursor-pointer">
+                
+                <button
+                  phx-click="create_invite"
+                  class="px-3 py-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-sm hover:bg-purple-500/30 transition-colors pointer-events-auto cursor-pointer"
+                >
                   + Create Code
                 </button>
               </div>
               
               <%= if @invites != [] do %>
-                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                   <%= for invite <- @invites do %>
-                     <div class="p-3 glass rounded-xl border border-white/5 flex items-center justify-between">
-                        <div>
-                          <div class="font-mono text-lg tracking-wider text-purple-300 select-all cursor-pointer" phx-click={JS.dispatch("friends:copy", to: "#code-#{invite.id}")} id={"code-#{invite.id}"} data-copy={invite.code}>
-                            {invite.code}
-                          </div>
-                          <div class="text-[10px] text-neutral-500">
-                            {invite.status}
-                          </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <%= for invite <- @invites do %>
+                    <div class="p-3 glass rounded-xl border border-white/5 flex items-center justify-between">
+                      <div>
+                        <div
+                          class="font-mono text-lg tracking-wider text-purple-300 select-all cursor-pointer"
+                          phx-click={JS.dispatch("friends:copy", to: "#code-#{invite.id}")}
+                          id={"code-#{invite.id}"}
+                          data-copy={invite.code}
+                        >
+                          {invite.code}
                         </div>
-                        <%= if invite.status == "active" do %>
-                          <button phx-click="revoke_invite" phx-value-code={invite.code} class="text-xs text-red-500/70 hover:text-red-400 pointer-events-auto cursor-pointer">Revoke</button>
-                        <% end %>
-                     </div>
-                   <% end %>
-                 </div>
+                        
+                        <div class="text-[10px] text-neutral-500">{invite.status}</div>
+                      </div>
+                      
+                      <%= if invite.status == "active" do %>
+                        <button
+                          phx-click="revoke_invite"
+                          phx-value-code={invite.code}
+                          class="text-xs text-red-500/70 hover:text-red-400 pointer-events-auto cursor-pointer"
+                        >
+                          Revoke
+                        </button>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
               <% else %>
-                 <p class="text-neutral-600 text-sm">No active invite codes.</p>
+                <p class="text-neutral-600 text-sm">No active invite codes.</p>
               <% end %>
             </section>
-
           </div>
         <% else %>
           <%!-- Graph View --%>
           <div class="relative">
             <%= if @graph_data.stats.total_connections > 0 do %>
               <div class="h-[75vh] min-h-[500px] glass rounded-2xl overflow-hidden border border-white/5 relative">
-                 <div
+                <div
                   id="network-graph"
                   phx-hook="FriendGraph"
                   phx-update="ignore"
                   data-graph={Jason.encode!(@graph_data)}
                   class="w-full h-full"
-                ></div>
-                
-                <%!-- Overlay Stats --%>
+                >
+                </div>
+                 <%!-- Overlay Stats --%>
                 <div class="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 pointer-events-none">
-                   <%= if @graph_data.stats.i_trust > 0 do %>
+                  <%= if @graph_data.stats.i_trust > 0 do %>
                     <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-green-500/30 flex items-center gap-2">
-                       <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                       <span class="text-xs text-white">I trust: {@graph_data.stats.i_trust}</span>
+                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                      <span class="text-xs text-white">I trust: {@graph_data.stats.i_trust}</span>
                     </div>
-                   <% end %>
-                   <%= if @graph_data.stats.friends > 0 do %>
+                  <% end %>
+                  
+                  <%= if @graph_data.stats.friends > 0 do %>
                     <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2">
-                       <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                       <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
+                      <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                      <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
                     </div>
-                   <% end %>
+                  <% end %>
                 </div>
               </div>
             <% else %>
               <div class="h-[70vh] glass rounded-2xl flex items-center justify-center border border-white/5">
                 <div class="text-center">
                   <div class="text-4xl mb-4">🕸️</div>
+                  
                   <h3 class="text-lg font-medium">Your network is empty</h3>
-                  <p class="text-neutral-500 mt-2">Add contacts or trusted contacts to see your graph.</p>
+                  
+                  <p class="text-neutral-500 mt-2">
+                    Add contacts or trusted contacts to see your graph.
+                  </p>
                 </div>
               </div>
             <% end %>
           </div>
         <% end %>
-        
       </div>
     </div>
     """

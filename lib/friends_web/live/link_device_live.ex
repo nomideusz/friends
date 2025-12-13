@@ -14,10 +14,11 @@ defmodule FriendsWeb.LinkDeviceLive do
 
   @impl true
   def mount(_params, session, socket) do
-    user = case session["user_id"] do
-      nil -> nil
-      user_id -> Social.get_user(user_id)
-    end
+    user =
+      case session["user_id"] do
+        nil -> nil
+        user_id -> Social.get_user(user_id)
+      end
 
     {:ok,
      socket
@@ -59,7 +60,8 @@ defmodule FriendsWeb.LinkDeviceLive do
   @impl true
   def handle_event("webauthn_link_response", %{"credential" => credential_data}, socket) do
     case socket.assigns do
-      %{current_user: user, webauthn_challenge: challenge} when not is_nil(user) and not is_nil(challenge) ->
+      %{current_user: user, webauthn_challenge: challenge}
+      when not is_nil(user) and not is_nil(challenge) ->
         case Social.verify_and_store_webauthn_credential(user.id, credential_data, challenge) do
           {:ok, _credential} ->
             {:noreply,
@@ -90,14 +92,20 @@ defmodule FriendsWeb.LinkDeviceLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id="link-device-app" class="min-h-screen flex items-center justify-center p-4" phx-hook="LinkDeviceApp">
+    <div
+      id="link-device-app"
+      class="min-h-screen flex items-center justify-center p-4"
+      phx-hook="LinkDeviceApp"
+    >
       <div class="w-full max-w-md">
         <%= if @success do %>
           <div class="text-center">
             <div class="text-4xl mb-4">✓</div>
+            
             <h1 class="text-2xl font-medium text-white mb-2">Passkey Added!</h1>
+            
             <p class="text-neutral-500 text-sm mb-8">You can now sign in with this device</p>
-
+            
             <a
               href="/"
               class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
@@ -108,18 +116,20 @@ defmodule FriendsWeb.LinkDeviceLive do
         <% else %>
           <div class="text-center mb-8">
             <h1 class="text-2xl font-medium text-white mb-2">Access Your Account</h1>
+            
             <p class="text-neutral-500 text-sm">Options for signing in on this device</p>
           </div>
-
+          
           <div class="space-y-4">
             <%= if @current_user do %>
               <%!-- User is logged in - can add a new passkey --%>
               <div class="bg-neutral-900 border border-neutral-800 p-4">
                 <h2 class="text-white font-medium mb-2">Add a Passkey</h2>
+                
                 <p class="text-xs text-neutral-500 mb-4">
-                  Register a new passkey on this device for @<%= @current_user.username %>
+                  Register a new passkey on this device for @{@current_user.username}
                 </p>
-
+                
                 <%= if @webauthn_available do %>
                   <button
                     type="button"
@@ -138,14 +148,19 @@ defmodule FriendsWeb.LinkDeviceLive do
               <%!-- User is not logged in - show options --%>
               <div class="bg-neutral-900 border border-neutral-800 p-4">
                 <h2 class="text-white font-medium mb-2">Passkey Sync</h2>
+                
                 <p class="text-xs text-neutral-500 mb-2">
                   If you use the same platform account on both devices, your passkey may already be synced:
                 </p>
+                
                 <ul class="text-xs text-neutral-400 space-y-1 mb-4">
                   <li>• Apple devices: iCloud Keychain</li>
+                  
                   <li>• Android/Chrome: Google Password Manager</li>
+                  
                   <li>• Windows: Microsoft Account</li>
                 </ul>
+                
                 <a
                   href="/login"
                   class="block w-full px-4 py-3 bg-white text-black font-medium text-center hover:bg-neutral-200"
@@ -153,12 +168,14 @@ defmodule FriendsWeb.LinkDeviceLive do
                   Try Signing In
                 </a>
               </div>
-
+              
               <div class="bg-neutral-900 border border-neutral-800 p-4">
                 <h2 class="text-white font-medium mb-2">Account Recovery</h2>
+                
                 <p class="text-xs text-neutral-500 mb-4">
                   Lost access to your passkey? Your trusted friends can help you recover your account.
                 </p>
+                
                 <a
                   href="/recover"
                   class="block w-full px-4 py-3 bg-neutral-800 text-white font-medium text-center hover:bg-neutral-700"
@@ -166,12 +183,12 @@ defmodule FriendsWeb.LinkDeviceLive do
                   Start Recovery
                 </a>
               </div>
-
+              
               <div class="bg-neutral-900 border border-neutral-800 p-4">
                 <h2 class="text-white font-medium mb-2">New User?</h2>
-                <p class="text-xs text-neutral-500 mb-4">
-                  Create a new account with a passkey.
-                </p>
+                
+                <p class="text-xs text-neutral-500 mb-4">Create a new account with a passkey.</p>
+                
                 <a
                   href="/register"
                   class="block w-full px-4 py-3 bg-neutral-800 text-white font-medium text-center hover:bg-neutral-700"
@@ -180,18 +197,14 @@ defmodule FriendsWeb.LinkDeviceLive do
                 </a>
               </div>
             <% end %>
-
+            
             <%= if @error do %>
-              <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
-                <%= @error %>
-              </div>
+              <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">{@error}</div>
             <% end %>
           </div>
-
+          
           <div class="mt-8 text-center">
-            <a href="/" class="text-xs text-neutral-600 hover:text-white">
-              ← back to friends
-            </a>
+            <a href="/" class="text-xs text-neutral-600 hover:text-white">← back to friends</a>
           </div>
         <% end %>
       </div>

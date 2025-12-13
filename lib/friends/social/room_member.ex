@@ -10,8 +10,9 @@ defmodule Friends.Social.RoomMember do
     belongs_to :room, Friends.Social.Room
     belongs_to :user, Friends.Social.User
     belongs_to :invited_by, Friends.Social.User
-    
-    field :role, :string, default: "member"  # owner, admin, member
+
+    # owner, admin, member
+    field :role, :string, default: "member"
 
     timestamps()
   end
@@ -24,4 +25,3 @@ defmodule Friends.Social.RoomMember do
     |> unique_constraint([:room_id, :user_id])
   end
 end
-

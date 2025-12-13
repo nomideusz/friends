@@ -15,7 +15,8 @@ config :friends, FriendsWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "dev_secret_key_base_for_friends_app_must_be_at_least_64_bytes_long_1234567890",
+  secret_key_base:
+    "dev_secret_key_base_for_friends_app_must_be_at_least_64_bytes_long_1234567890",
   watchers: [
     tailwind: {Tailwind, :install_and_run, [:friends, ~w(--watch)]},
     node: ["build.js", "--watch", cd: Path.expand("../assets", __DIR__)]
@@ -47,4 +48,3 @@ config :phoenix_live_view,
 config :friends, :webauthn_rp_id, "localhost"
 # WebAuthn origin for dev server (matches Bandit on port 4001)
 config :friends, :webauthn_origin, "http://localhost:4001"
-

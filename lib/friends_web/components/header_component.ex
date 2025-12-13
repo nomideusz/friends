@@ -23,63 +23,85 @@ defmodule FriendsWeb.HeaderComponent do
               <% else %>
                 <div class="w-3 h-3 rounded-full opal-dot"></div>
               <% end %>
-              <span class="font-medium tracking-wide">{@page_title}</span>
-              <span class="text-neutral-500 text-sm group-hover:text-neutral-300 transition-colors">▼</span>
+               <span class="font-medium tracking-wide">{@page_title}</span>
+              <span class="text-neutral-500 text-sm group-hover:text-neutral-300 transition-colors">
+                ▼
+              </span>
             </button>
-
             <%= if @show_dropdown do %>
               <div class="absolute top-10 left-0 w-72 bg-neutral-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div class="p-2 space-y-1 max-h-[80vh] overflow-y-auto">
                   <%!-- Public Square --%>
-                  <.link navigate={~p"/r/lobby"} class={"flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer #{if @current_route == "/r/lobby", do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}>
+                  <.link
+                    navigate={~p"/r/lobby"}
+                    class={"flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer #{if @current_route == "/r/lobby", do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}
+                  >
                     <span>🏙️</span> Public Square
                   </.link>
-                  
                   <%= if @current_user do %>
                     <%!-- My Spaces --%>
                     <%= if @user_rooms != [] do %>
                       <div class="h-px bg-white/5 my-1"></div>
-                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider">My Spaces</div>
+                      
+                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                        My Spaces
+                      </div>
+                      
                       <%= for room <- @user_rooms do %>
-                         <.link navigate={~p"/r/#{room.code}"} class={"w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left group cursor-pointer #{if @room && @room.code == room.code, do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}>
-                           <span>🔒</span>
-                           <span class="truncate">{if(room.name && room.name != "", do: room.name, else: room.code)}</span>
-                         </.link>
+                        <.link
+                          navigate={~p"/r/#{room.code}"}
+                          class={"w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left group cursor-pointer #{if @room && @room.code == room.code, do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}
+                        >
+                          <span>🔒</span>
+                          <span class="truncate">
+                            {if(room.name && room.name != "", do: room.name, else: room.code)}
+                          </span>
+                        </.link>
                       <% end %>
                     <% end %>
-
-                    <%!-- Public Spaces --%>
+                     <%!-- Public Spaces --%>
                     <%= if @public_rooms != [] do %>
                       <div class="h-px bg-white/5 my-1"></div>
-                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider">Public Spaces</div>
+                      
+                      <div class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                        Public Spaces
+                      </div>
+                      
                       <%= for room <- @public_rooms do %>
-                         <%= if room.code != "lobby" do %>
-                           <.link navigate={~p"/r/#{room.code}"} class={"w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left group cursor-pointer #{if @room && @room.code == room.code, do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}>
-                             <span>🌐</span>
-                             <div class="flex-1 min-w-0">
-                               <div class="truncate">{if(room.name && room.name != "", do: room.name, else: room.code)}</div>
-                             </div>
-                           </.link>
-                         <% end %>
+                        <%= if room.code != "lobby" do %>
+                          <.link
+                            navigate={~p"/r/#{room.code}"}
+                            class={"w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left group cursor-pointer #{if @room && @room.code == room.code, do: "bg-neutral-800 text-white", else: "text-neutral-300 hover:bg-white/5 hover:text-white"}"}
+                          >
+                            <span>🌐</span>
+                            <div class="flex-1 min-w-0">
+                              <div class="truncate">
+                                {if(room.name && room.name != "", do: room.name, else: room.code)}
+                              </div>
+                            </div>
+                          </.link>
+                        <% end %>
                       <% end %>
                     <% end %>
-                    
-                    <%!-- Actions --%>
+                     <%!-- Actions --%>
                     <div class="h-px bg-white/5 my-1"></div>
-                    <button phx-click="open_room_modal" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors text-left cursor-pointer">
-                       <span>✨</span> Create / Join Space
+                    
+                    <button
+                      phx-click="open_room_modal"
+                      class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors text-left cursor-pointer"
+                    >
+                      <span>✨</span> Create / Join Space
                     </button>
                   <% end %>
                 </div>
               </div>
             <% end %>
           </div>
-
-          <%!-- Identity + Viewers --%>
+           <%!-- Identity + Viewers --%>
           <div class="flex items-center gap-6">
             <%!-- Viewers with opal glow --%>
             <%= if @viewers && @viewers != [] do %>
-            <div class="hidden sm:flex items-center gap-2">
+              <div class="hidden sm:flex items-center gap-2">
                 <%= for {viewer, idx} <- Enum.with_index(Enum.take(@viewers, 5)) do %>
                   <div
                     class="w-2.5 h-2.5 rounded-full presence-dot"
@@ -87,11 +109,10 @@ defmodule FriendsWeb.HeaderComponent do
                     title={viewer.user_name || "anonymous"}
                   />
                 <% end %>
-                <span class="text-sm text-neutral-500 ml-2">{length(@viewers)} here</span>
+                 <span class="text-sm text-neutral-500 ml-2">{length(@viewers)} here</span>
               </div>
             <% end %>
-
-            <%!-- User identity --%>
+             <%!-- User identity --%>
             <%= if @auth_status == :pending do %>
               <span class="text-sm text-neutral-500">checking identity…</span>
             <% else %>
@@ -100,15 +121,13 @@ defmodule FriendsWeb.HeaderComponent do
                   navigate={~p"/messages"}
                   class="flex items-center gap-2 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20"
                 >
-                  <span>💬</span>
-                  <span class="hidden sm:inline">Messages</span>
+                  <span>💬</span> <span class="hidden sm:inline">Messages</span>
                 </.link>
                 <.link
                   navigate={~p"/network"}
                   class="flex items-center gap-2 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20 relative"
                 >
-                  <span>👥</span>
-                  <span class="hidden sm:inline">Network</span>
+                  <span>👥</span> <span class="hidden sm:inline">Network</span>
                   <%= if @pending_count && @pending_count > 0 do %>
                     <span class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-black text-[10px] font-bold rounded-full flex items-center justify-center">
                       {@pending_count}
@@ -123,8 +142,7 @@ defmodule FriendsWeb.HeaderComponent do
                   <div
                     class="w-3 h-3 rounded-full presence-dot opal-glow-subtle"
                     style={"background-color: #{@user_color || "#666"}"}
-                  />
-                  <span class="text-neutral-200 username-glow">@{@current_user.username}</span>
+                  /> <span class="text-neutral-200 username-glow">@{@current_user.username}</span>
                 </button>
               <% else %>
                 <div class="flex items-center gap-2">
