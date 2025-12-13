@@ -152,10 +152,11 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   def handle_new_public_photo(socket, photo) do
     item = %{
       id: photo.id,
-      type: "photo",
+      type: :photo,
       user_id: photo.user_id,
       user_color: photo.user_color,
       user_name: photo.user_name,
+      image_data: photo.image_data,
       thumbnail_data: photo.thumbnail_data,
       content_type: photo.content_type,
       file_size: photo.file_size,

@@ -137,6 +137,17 @@ defmodule FriendsWeb.HomeLive do
     NoteEvents.post_public_voice(socket, params)
   end
 
+  def handle_event("save_grid_voice_note", params, socket) do
+    NoteEvents.save_grid_voice_note(socket, params)
+  end
+
+  def handle_event("stop_room_recording", _, socket) do
+    {:noreply,
+     socket
+     |> assign(:recording_voice, false)
+     |> push_event("stop_room_voice_recording", %{})}
+  end
+
   def handle_event("open_dm", %{"user_id" => friend_user_id}, socket) do
     RoomEvents.open_dm(socket, friend_user_id)
   end
