@@ -59,8 +59,11 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           end
         end)
 
+      require Logger
+      Logger.debug("Room photo upload results: #{inspect(results)}")
+
       case List.first(results) do
-        {:ok, photo} ->
+        %Friends.Social.Photo{} = photo ->
           photo_with_type =
             photo
             |> Map.put(:type, :photo)
@@ -77,7 +80,9 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
            |> stream_insert(:items, photo_with_type, at: 0)
            |> push_event("photo_uploaded", %{photo_id: photo.id})}
 
-        _ ->
+        other ->
+          require Logger
+          Logger.error("Room photo upload result pattern mismatch: #{inspect(other)}")
           {:noreply,
            socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
       end
@@ -130,8 +135,11 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           end
         end)
 
+      require Logger
+      Logger.debug("Feed photo upload results: #{inspect(results)}")
+
       case List.first(results) do
-        {:ok, photo} ->
+        %Friends.Social.Photo{} = photo ->
           photo_with_type =
             photo
             |> Map.put(:type, :photo)
@@ -144,7 +152,9 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
            |> stream_insert(:feed_items, photo_with_type, at: 0)
            |> push_event("photo_uploaded", %{photo_id: photo.id})}
 
-        _ ->
+        other ->
+          require Logger
+          Logger.error("Feed photo upload result pattern mismatch: #{inspect(other)}")
           {:noreply,
            socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
       end

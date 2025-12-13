@@ -230,13 +230,15 @@ defmodule FriendsWeb.HomeLive.Helpers do
               end
 
             if can_view? do
-              raw = photo.image_data || photo.thumbnail_data
+              # Prefer image_url_large for modal (best quality), fallback to image_data, then thumbnail_data
+              raw = photo.image_url_large || photo.image_data || photo.thumbnail_data
               content_type = photo.content_type || "image/jpeg"
 
               src =
                 cond do
                   is_nil(raw) -> nil
                   String.starts_with?(raw, "data:") -> raw
+                  String.starts_with?(raw, "http://") or String.starts_with?(raw, "https://") -> raw
                   true -> "data:#{content_type};base64,#{raw}"
                 end
 

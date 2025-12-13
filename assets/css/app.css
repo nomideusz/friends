@@ -237,13 +237,16 @@ body {
       rgba(179, 136, 255, 0.5));
 }
 
-/* Image loading */
-img {
+/* Image loading - fade in effect for lazy loading */
+/* Note: Images with .loaded class or in modals should be visible immediately */
+img:not(.loaded):not([src^="http"]):not([src^="data:"]) {
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
-img.loaded {
+img.loaded,
+img[src^="http"],
+img[src^="data:"] {
   opacity: 1;
 }
 
