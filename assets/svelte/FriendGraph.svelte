@@ -102,25 +102,40 @@
     // Build nodes
     graphData.nodes.forEach(node => {
       const isSelf = node.type === 'self'
+      
+      // Aether Colors
+      let color = '#888888'
+      if (isSelf) color = '#ffffff' // Photon
+      else if (node.type === 'trusted') color = '#34d399' // Emerald
+      else if (node.type === 'trusts_me') color = '#a78bfa' // Amethyst
+      else if (node.type === 'friend') color = '#3b82f6' // Sapphire
+
       nodes.push({
         id: node.id,
         label: node.display_name || node.username,
         color: {
-          background: node.color || '#888888',
-          border: isSelf ? '#ffffff' : 'rgba(255,255,255,0.5)',
-          highlight: { background: node.color || '#888888', border: '#ffffff' },
-          hover: { background: node.color || '#888888', border: 'rgba(255,255,255,0.8)' }
+          background: isSelf ? '#ffffff' : 'rgba(0,0,0,0.8)', // Self is solid light, others are dark void orbs
+          border: color,
+          highlight: { background: isSelf ? '#ffffff' : color, border: '#ffffff' },
+          hover: { background: isSelf ? '#ffffff' : color, border: '#ffffff' }
         },
         shadow: {
           enabled: true,
-          color: node.color || '#888888', // Use node color for glow
-          size: 15, // Large glow
+          color: color,
+          size: isSelf ? 25 : 15,
           x: 0,
           y: 0
         },
         title: `@${node.username}`,
-        size: isSelf ? 16 : 10,
-        font: isSelf ? { size: 16, bold: true, color: '#ffffff' } : { size: 14, color: '#ffffff' }
+        size: isSelf ? 20 : 12,
+        borderWidth: isSelf ? 0 : 2,
+        font: { 
+          size: isSelf ? 16 : 14, 
+          color: '#ffffff',
+          face: 'Outfit, sans-serif',
+          strokeWidth: 3,
+          strokeColor: '#000000'
+        }
       })
     })
 
@@ -135,21 +150,28 @@
         }
 
         const isPending = edge.type === 'pending_outgoing' || edge.type === 'pending_incoming'
-        const isFriendToFriend = edge.type === 'mutual' // Friend-to-friend connections
-        const color = isMutualTrust ? edgeColors.mutual : edgeColors[edge.type] || 'rgba(255,255,255,0.3)'
+        const isFriendToFriend = edge.type === 'mutual'
+        
+        // Edge Colors (Aether Light Beams)
+        let baseColor = 'rgba(255,255,255,0.15)'
+        if (edge.type === 'trusted') baseColor = 'rgba(52, 211, 153, 0.4)'
+        if (edge.type === 'friend') baseColor = 'rgba(59, 130, 246, 0.3)'
+        
+        const color = isMutualTrust ? '#ffffff' : baseColor
 
         edges.push({
           id: `edge-${index}`,
           from: edge.from,
           to: edge.to,
           color: { 
-            color: isFriendToFriend ? 'rgba(150,150,150,0.4)' : color, 
+            color: isFriendToFriend ? 'rgba(255,255,255,0.05)' : color, 
             highlight: '#ffffff', 
-            hover: isFriendToFriend ? 'rgba(200,200,200,0.6)' : color 
+            hover: '#ffffff'
           },
-          dashes: isPending || isFriendToFriend ? [3, 3] : false,
-          width: isMutualTrust ? 3 : (isFriendToFriend ? 1 : 2),
-          arrows: isMutualTrust || isFriendToFriend ? undefined : { to: { enabled: true, scaleFactor: 0.5 } }
+          dashes: isPending || isFriendToFriend ? [5, 5] : false,
+          width: isMutualTrust ? 2 : (isFriendToFriend ? 1 : 1),
+          arrows: isMutualTrust || isFriendToFriend ? undefined : { to: { enabled: true, scaleFactor: 0.5, type: 'arrow' } },
+          smooth: { type: 'continuous', roundness: 0.3 }
         })
       })
     }

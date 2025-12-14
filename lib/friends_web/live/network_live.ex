@@ -425,18 +425,18 @@ defmodule FriendsWeb.NetworkLive do
         <div class="flex items-center justify-between mb-8">
           <h1 class="text-3xl font-bold">Contacts</h1>
            <%!-- View Toggle --%>
-          <div class="flex p-1 bg-neutral-900 rounded md:rounded-lg border border-neutral-200 shadow-sm">
+          <div class="flex p-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
             <button
               phx-click="set_view"
               phx-value-view="list"
-              class={"px-3 py-1 text-sm rounded-md transition-all cursor-pointer #{if @view == "list", do: "bg-neutral-800 text-white shadow-sm", else: "text-neutral-500 hover:text-neutral-300"}"}
+              class={"px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer #{if @view == "list", do: "bg-white/10 text-white shadow-inner", else: "text-neutral-500 hover:text-neutral-300"}"}
             >
               List
             </button>
             <button
               phx-click="set_view"
               phx-value-view="graph"
-              class={"px-3 py-1 text-sm rounded-md transition-all cursor-pointer #{if @view == "graph", do: "bg-neutral-800 text-white shadow-sm", else: "text-neutral-500 hover:text-neutral-300"}"}
+              class={"px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer #{if @view == "graph", do: "bg-white/10 text-white shadow-inner", else: "text-neutral-500 hover:text-neutral-300"}"}
             >
               Graph
             </button>
@@ -448,11 +448,11 @@ defmodule FriendsWeb.NetworkLive do
             <%!-- Trusted Contacts --%>
             <section>
               <div class="flex items-center gap-2 mb-4">
-                <h2 class="text-xl font-semibold text-green-400 flex items-center gap-2">
+                <h2 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600 flex items-center gap-2">
                   <span>🔐</span> Trusted Contacts
                 </h2>
                 
-                <span class="text-xs font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full border border-neutral-300">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/30">
                   Recovery
                 </span>
               </div>
@@ -568,20 +568,20 @@ defmodule FriendsWeb.NetworkLive do
                 <%= if @friend_search_results != [] do %>
                   <div class="mt-2 space-y-2">
                     <%= for user <- @friend_search_results do %>
-                      <div class="flex items-center justify-between p-2 bg-neutral-800 rounded md:rounded-lg border border-neutral-200">
+                      <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg border border-transparent hover:border-white/10 transition-all">
                         <div class="flex items-center gap-2">
                           <div
-                            class="w-6 h-6 rounded-full"
+                            class="w-8 h-8 rounded-full border border-white/10"
                             style={"background-color: #{trusted_user_color(user)}"}
-                          /> <span class="text-sm font-medium">@{user.username}</span>
+                          /> <span class="text-sm font-medium text-white">@{user.username}</span>
                         </div>
                         
                         <button
                           phx-click="add_friend"
                           phx-value-user_id={user.id}
-                          class="px-3 py-1 bg-neutral-200 hover:bg-neutral-300 rounded text-xs font-bold text-neutral-900 transition-colors pointer-events-auto cursor-pointer border border-neutral-300 shadow-sm active:translate-y-px"
+                          class="px-3 py-1.5 btn-aether text-xs"
                         >
-                          Add Contact
+                          Add
                         </button>
                       </div>
                     <% end %>
@@ -594,9 +594,10 @@ defmodule FriendsWeb.NetworkLive do
                   <% is_trusted =
                     Enum.any?(@trusted_friends, fn tf -> tf.trusted_user.id == f.user.id end) %>
                   <%!-- Filter out if already shown in trusted section? User guidelines implied show all below. I'll show all but mark trusted. --%>
+                  <%!-- Filter out if already shown in trusted section? User guidelines implied show all below. I'll show all but mark trusted. --%>
                   <div class={
-                    "flex items-center justify-between p-3 bg-neutral-900 rounded md:rounded-lg border transition-all shadow-sm " <>
-                    if is_trusted, do: "border-green-500 bg-green-50", else: "border-neutral-200 hover:border-neutral-300"
+                    "flex items-center justify-between p-4 rounded-xl border transition-all shadow-lg " <>
+                    if is_trusted, do: "border-emerald-500/30 bg-emerald-500/5 backdrop-blur-sm", else: "aether-card border-white/5 hover:border-white/20"
                   }>
                     <div class="flex items-center gap-3">
                       <div class="relative">
@@ -712,7 +713,7 @@ defmodule FriendsWeb.NetworkLive do
                   <% end %>
                   
                   <%= if @graph_data.stats.friends > 0 do %>
-                    <div class="px-3 py-1.5 bg-neutral-100/90 backdrop-blur rounded border border-neutral-300 flex items-center gap-2 shadow-lg">
+                    <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2 shadow-lg">
                       <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                       <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
                     </div>
@@ -720,14 +721,16 @@ defmodule FriendsWeb.NetworkLive do
                 </div>
               </div>
             <% else %>
-              <div class="h-[70vh] bg-neutral-100 rounded md:rounded-lg flex items-center justify-center border border-neutral-200">
-                <div class="text-center">
-                  <div class="text-4xl mb-4">🕸️</div>
+              <div class="h-[70vh] flex flex-col items-center justify-center aether-card border-white/5">
+                <div class="text-center p-8">
+                  <div class="text-5xl mb-4 opacity-50 blur-[1px]">🕸️</div>
                   
-                  <h3 class="text-lg font-medium">Your network is empty</h3>
+                  <h3 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-500">
+                    Your network is quiet
+                  </h3>
                   
-                  <p class="text-neutral-500 mt-2">
-                    Add contacts or trusted contacts to see your graph.
+                  <p class="text-neutral-500 mt-2 max-w-xs mx-auto">
+                    Add friends or trusted contacts to visualize your constellation.
                   </p>
                 </div>
               </div>
