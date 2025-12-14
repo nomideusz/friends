@@ -95,6 +95,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       |> assign(:show_image_modal, false)
       |> assign(:full_image_data, nil)
       |> assign(:feed_item_count, length(feed_items))
+      |> assign(:photo_order, photo_ids(feed_items))
       |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
 
     # Allow uploads for the public feed
@@ -141,13 +142,15 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       can_access = Social.can_access_room?(room, session_user && session_user.id)
 
       # Load initial batch only if access is allowed
-      {_photos, _notes, items} =
+      {_photos, _notes, items, friends} =
         if can_access do
           photos = Social.list_photos(room.id, @initial_batch, offset: 0)
           notes = Social.list_notes(room.id, @initial_batch, offset: 0)
-          {photos, notes, build_items(photos, notes)}
+          # Fetch friends for invite modal
+          friends_list = if session_user, do: Social.list_friends(session_user.id), else: []
+          {photos, notes, build_items(photos, notes), friends_list}
         else
-          {[], [], []}
+          {[], [], [], []}
         end
 
       # Subscribe when connected
@@ -235,6 +238,10 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
           :user_private_rooms,
           if(session_user, do: Social.list_user_rooms(session_user.id), else: [])
         )
+        |> assign(
+          :user_rooms,
+          if(session_user, do: Social.list_user_rooms(session_user.id), else: [])
+        )
         |> assign(:public_rooms, Social.list_public_rooms())
         |> assign(:show_header_dropdown, false)
         |> assign(:show_invite_modal, false)
@@ -245,6 +252,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:full_image_data, nil)
         |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
         |> assign(:current_photo_id, nil)
+        |> assign(:friends, friends)
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")
         |> maybe_allow_upload(can_access)
 
@@ -256,8 +264,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
 
   # --- Handle Params ---
 
-  def handle_params(%{"room" => room_code}, _uri, socket) do
+  def handle_params(%{"room" => room_code} = params, _uri, socket) do
     current_room_code = socket.assigns[:room] && socket.assigns.room.code
+    
+    # Check for actions (e.g. auto open invite modal)
+    show_invite = params["action"] == "invite"
 
     if current_room_code != room_code do
       old_room = socket.assigns[:room]
@@ -333,6 +344,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
          if(room.is_private and can_access, do: Social.list_room_messages(room.id, 50), else: [])
        )
        |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
+       |> assign(:user_rooms, private_rooms)
        |> assign(:user_private_rooms, private_rooms)
        |> assign(:public_rooms, public_rooms)
        |> assign(:feed_mode, "room")
@@ -344,10 +356,12 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
          :room_members,
          if(room.is_private and can_access, do: Social.list_room_members(room.id), else: [])
        )
-       |> maybe_allow_upload(can_access)
+       |> assign(:show_invite_modal, show_invite)
        |> stream(:items, items, reset: true, dom_id: &"item-#{&1.unique_id}")}
     else
-      {:noreply, socket}
+      # Update invite modal even if room didn't change (e.g. navigating to same room with ?action=invite)
+      show_invite = params["action"] == "invite"
+      {:noreply, assign(socket, :show_invite_modal, show_invite)}
     end
   end
 

@@ -18,9 +18,7 @@ defmodule Friends.Social do
 
   alias Friends.Social.{
     User,
-    Room,
-    Device,
-    Invite
+    Device
   }
 
   # Delegate sub-modules
@@ -283,7 +281,7 @@ defmodule Friends.Social do
 
   # --- Users (Identity) ---
 
-  alias Friends.Social.TrustedFriend
+  # alias Friends.Social.TrustedFriend
 
   def register_user(attrs) do
     invite_code = attrs[:invite_code] || attrs["invite_code"]

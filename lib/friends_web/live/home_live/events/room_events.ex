@@ -97,7 +97,7 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
          |> assign(:show_room_modal, false)
          |> assign(:new_room_name, "")
          |> assign(:create_private_room, false)
-         |> push_navigate(to: ~p"/r/#{code}")}
+         |> push_navigate(to: ~p"/r/#{code}?action=invite")}
 
       {:error, :not_registered} ->
         {:noreply, put_flash(socket, :error, "register to create private rooms")}
@@ -131,7 +131,7 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
              socket
              |> assign(:create_group_modal, false)
              |> assign(:new_room_name, "")
-             |> push_navigate(to: ~p"/r/#{code}")}
+             |> push_navigate(to: ~p"/r/#{code}?action=invite")}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "failed to create group")}

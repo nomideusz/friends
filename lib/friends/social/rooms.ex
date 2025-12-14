@@ -345,7 +345,7 @@ defmodule Friends.Social.Rooms do
         on: m.room_id == r.id,
         where: m.user_id == ^user_id,
         order_by: [desc: m.inserted_at],
-        preload: [:owner]
+        preload: [:owner, :members]
     )
   end
 

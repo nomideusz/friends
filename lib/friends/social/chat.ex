@@ -5,7 +5,7 @@ defmodule Friends.Social.Chat do
   import Ecto.Query, warn: false
   alias Friends.Repo
   alias Friends.Social.{Message, Conversation, ConversationParticipant}
-  alias Friends.Social.Rooms
+  # alias Friends.Social.Rooms
 
   defp conversation_topic(conversation_id), do: "friends:conversation:#{conversation_id}"
 

@@ -57,11 +57,12 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         phx-submit="create_group"
         phx-change="update_room_form"
         class="glass rounded-2xl p-6 border border-white/5"
+        novalidate
       >
         <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-4">Groups</h3>
         
         <div class="space-y-3 mb-6">
-          <%= for room <- @rooms do %>
+          <%= for room <- Enum.reject(@rooms, &(&1.room_type == "dm")) do %>
             <.link
               navigate={~p"/r/#{room.code}"}
               class="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group text-left"
@@ -491,81 +492,56 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     """
   end
 
-  def desktop_action_cards(assigns) do
+  def room_actions_bar(assigns) do
     ~H"""
     <%= if not is_nil(@current_user) and not @room_access_denied and @uploads do %>
-      <%!-- Add Photo Card (desktop only) --%>
-      <form id="upload-form" phx-change="validate" phx-submit="save" class="hidden sm:contents">
-        <label
-          for={@uploads.photo.ref}
-          class="group relative aspect-square rounded-2xl cursor-pointer flex flex-col items-center justify-center gap-2 transition-all border-2 border-dashed border-neutral-700 hover:border-rose-500/50 hover:bg-rose-500/5"
+      <div class="hidden sm:flex items-stretch gap-3 mb-6">
+        <%!-- Photo Upload --%>
+        <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
+          <label
+            for={@uploads.photo.ref}
+            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border border-white/10 hover:border-white/20 cursor-pointer transition-all"
+          >
+            <div class="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            
+            <span class="text-sm text-neutral-400 group-hover:text-rose-400">
+              {if @uploading, do: "Uploading...", else: "Photo"}
+            </span> <.live_file_input upload={@uploads.photo} class="sr-only" />
+          </label>
+        </form>
+         <%!-- Note Button --%>
+        <button
+          type="button"
+          phx-click="open_note_modal"
+          class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border border-white/10 hover:border-white/20 cursor-pointer transition-all"
         >
-          <div class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:bg-rose-500/20">
-            <svg
-              class="w-4 h-4 text-neutral-500 group-hover:text-rose-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-          </div>
-          
-          <span class="text-xs font-medium text-neutral-500 group-hover:text-rose-400">
-            {if @uploading, do: "Uploading...", else: "Photo"}
-          </span> <.live_file_input upload={@uploads.photo} class="sr-only" />
-        </label>
-      </form>
-       <%!-- Add Note Card (desktop only) --%>
-      <button
-        type="button"
-        phx-click="open_note_modal"
-        class="hidden sm:flex group relative aspect-square rounded-2xl cursor-pointer flex-col items-center justify-center gap-2 transition-all border-2 border-dashed border-neutral-700 hover:border-cyan-500/50 hover:bg-cyan-500/5"
-      >
-        <div class="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:bg-cyan-500/20">
-          <svg
-            class="w-4 h-4 text-neutral-500 group-hover:text-cyan-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-        </div>
-         <span class="text-xs font-medium text-neutral-500 group-hover:text-cyan-400">Note</span>
-      </button> <%!-- Add Voice Card (desktop only) --%>
-      <button
-        type="button"
-        id="grid-voice-record"
-        phx-hook="GridVoiceRecorder"
-        data-room-id={@room.id}
-        class={"hidden sm:flex group relative aspect-square rounded-2xl cursor-pointer flex-col items-center justify-center gap-2 transition-all border-2 border-dashed #{if @recording_voice, do: "border-red-500 bg-red-500/10 animate-pulse", else: "border-neutral-700 hover:border-amber-500/50 hover:bg-amber-500/5"}"}
-      >
-        <div class={"w-8 h-8 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform #{if @recording_voice, do: "bg-red-500", else: "bg-neutral-800 group-hover:bg-amber-500/20"}"}>
-          <svg
-            class={"w-4 h-4 #{if @recording_voice, do: "text-white", else: "text-neutral-500 group-hover:text-amber-400"}"}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-            />
-          </svg>
-        </div>
-        
-        <span class={"text-xs font-medium #{if @recording_voice, do: "text-red-400", else: "text-neutral-500 group-hover:text-amber-400"}"}>
-          {if @recording_voice, do: "Recording...", else: "Voice"}
-        </span>
-      </button>
+          <span class="text-lg text-neutral-400">+</span>
+          <span class="text-sm text-neutral-400">Note</span>
+        </button> <%!-- Voice Button --%>
+        <button
+          type="button"
+          id="grid-voice-record"
+          phx-hook="GridVoiceRecorder"
+          data-room-id={@room.id}
+          class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border cursor-pointer transition-all #{if @recording_voice, do: "border-red-500 bg-red-500/10", else: "border-white/10 hover:border-white/20"}"}
+        >
+          <span class={"text-lg #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
+            {if @recording_voice, do: "●", else: "+"}
+          </span>
+          <span class={"text-sm #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
+            {if @recording_voice, do: "Recording...", else: "Voice"}
+          </span>
+        </button>
+      </div>
     <% end %>
     """
   end

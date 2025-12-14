@@ -10,7 +10,7 @@ defmodule Friends.Social.Photos do
   # We will probably need to alias Friends.Social.Relationships if we move get_friend_network_ids there.
   # OR we delegate list_friends_photos in the Facade to this module, but this module needs helper from Relationships.
   # Decided: list_friends_photos stays here, but calls Relationships.get_friend_network_ids.
-  alias Friends.Social.Relationships
+  # alias Friends.Social.Relationships
 
   def list_photos(room_id, limit \\ 50, opts \\ []) do
     offset_val = Keyword.get(opts, :offset, 0)

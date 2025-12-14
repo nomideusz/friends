@@ -16,6 +16,7 @@ defmodule FriendsWeb.HomeLive do
   alias FriendsWeb.HomeLive.Events.NetworkEvents
   alias FriendsWeb.HomeLive.Events.SettingsEvents
   alias FriendsWeb.HomeLive.Events.SessionEvents
+  alias FriendsWeb.HomeLive.Events.ChatEvents
   alias FriendsWeb.HomeLive.PubSubHandlers
   alias FriendsWeb.HomeLive.Lifecycle
 
@@ -62,6 +63,10 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("set_thumbnail", %{"photo_id" => photo_id, "thumbnail" => thumbnail}, socket) do
     PhotoEvents.set_thumbnail(socket, photo_id, thumbnail)
+  end
+
+  def handle_event("save_note", %{"note" => content}, socket) do
+    NoteEvents.save_note(socket, content)
   end
 
   def handle_event("delete_note", %{"id" => id}, socket) do
@@ -527,6 +532,10 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("vote_recovery", params, socket) do
     NetworkEvents.vote_recovery(socket, params)
+  end
+
+  def handle_event("toggle_mobile_chat", _params, socket) do
+    ChatEvents.toggle_mobile_chat(socket)
   end
 
   # --- Progress Handler ---

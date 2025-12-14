@@ -986,6 +986,7 @@ const Hooks = {
                         }
                         await this.voiceRecorder.start()
                         this.isRecording = true
+                        this.pushEvent("start_voice_recording", {})
                     } catch (e) {
                         console.error("Failed to start recording:", e)
                         this.pushEvent("recording_error", { error: e.message })

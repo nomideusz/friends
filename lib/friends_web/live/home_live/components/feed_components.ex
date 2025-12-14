@@ -3,7 +3,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
   Function components for the home feed UI.
   """
   use FriendsWeb, :html
-  alias Phoenix.LiveView.JS
+  # alias Phoenix.LiveView.JS
 
   # --- Components ---
 
@@ -151,17 +151,26 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
         phx-value-photo_id={@item.id}
       >
         <%= if String.starts_with?(@item.content_type || "", "audio/") do %>
-          <div class="w-full h-full flex flex-col items-center justify-center p-4 bg-neutral-900/50 opal-aurora text-center">
-            <div class="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center mb-2">
-              <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
+          <div class="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-neutral-900 to-neutral-800 opal-aurora text-center relative overflow-hidden">
+            <!-- Decorative wave background -->
+            <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMTBoMThNMTAgMXYxOCIgc3Ryb2tlPSJjdXJyZW50Q29xvciBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIC8+PC9zdmc+');"></div>
+            
+            <div class="relative z-10 flex flex-col items-center w-full">
+              <div class="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mb-4 ring-1 ring-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] group-hover:scale-110 transition-transform duration-300">
+                <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+              
+              <span class="text-xs font-medium text-cyan-200/70 uppercase tracking-widest mb-3">Voice Note</span>
+              
+              <audio controls src={@item.image_data} class="w-full h-8 max-w-[180px] opacity-90 hover:opacity-100 transition-opacity" onclick="event.stopPropagation();" />
+              
+              <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name}</span>
+              </div>
             </div>
-            <span class="text-xs text-neutral-400 mb-2">Voice Note</span>
-            
-            <audio controls src={@item.image_data} class="w-full h-8 max-w-[140px]" />
-            
-            <span class="text-[10px] text-neutral-600 mt-2">@{@item.user_name}</span>
           </div>
         <% else %>
           <img

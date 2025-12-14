@@ -1,5 +1,18 @@
 import Config
 
+# Load .env file if it exists (for local development)
+if File.exists?(".env") do
+  File.stream!(".env")
+  |> Stream.map(&String.trim/1)
+  |> Stream.reject(&(&1 == "" or String.starts_with?(&1, "#")))
+  |> Enum.each(fn line ->
+    case String.split(line, "=", parts: 2) do
+      [key, value] -> System.put_env(key, String.trim(value))
+      _ -> :ok
+    end
+  end)
+end
+
 if System.get_env("PHX_SERVER") do
   config :friends, FriendsWeb.Endpoint, server: true
 end

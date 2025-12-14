@@ -11,15 +11,16 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
   attr :room_messages, :list, default: []
   attr :new_chat_message, :string, default: ""
   attr :show_mobile_chat, :boolean, default: false
-  # Event names are hardcoded in template (e.g. toggle_mobile_chat, update_chat_message)
+  attr :container_class, :string, default: nil
 
   def chat_panel(assigns) do
     ~H"""
     <div class={
-      if @show_mobile_chat,
-        do:
-          "fixed inset-0 z-50 bg-neutral-900 w-full pt-safe animate-in slide-in-from-right duration-300",
-        else: "hidden lg:flex lg:flex-col fixed top-[84px] right-4 bottom-4 w-[380px] z-30"
+      @container_class ||
+        if @show_mobile_chat,
+          do:
+            "fixed inset-0 z-50 bg-neutral-900 w-full pt-safe animate-in slide-in-from-right duration-300",
+          else: "hidden lg:flex lg:flex-col fixed top-[84px] right-4 bottom-4 w-[380px] z-30"
     }>
       <%= if @show_mobile_chat do %>
         <button

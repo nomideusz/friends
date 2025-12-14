@@ -117,12 +117,12 @@ defmodule FriendsWeb.HeaderComponent do
               <span class="text-sm text-neutral-500">checking identity…</span>
             <% else %>
               <%= if @current_user do %>
-                <.link
+                <%!-- <.link
                   navigate={~p"/messages"}
                   class="flex items-center gap-2 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20"
                 >
                   <span>💬</span> <span class="hidden sm:inline">Messages</span>
-                </.link>
+                </.link> --%>
                 <.link
                   navigate={~p"/network"}
                   class="flex items-center gap-2 text-sm hover:text-white transition-all cursor-pointer px-4 py-2 rounded-full glass border border-white/10 hover:border-white/20 relative"

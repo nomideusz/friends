@@ -54,6 +54,13 @@ config :friends, :webauthn_origin, "http://localhost:4001"
 # On Linux production, this defaults to true
 config :friends, :enable_image_processing, false
 
+# MinIO configuration for development
+config :ex_aws,
+  access_key_id: "minioadmin",
+  secret_access_key: "minioadmin"
+
+config :friends, :media_bucket, "friends-images"
+
 # Import secret configuration for development (gitignored)
 if File.exists?(Path.join(__DIR__, "dev.secret.exs")) do
   import_config "dev.secret.exs"

@@ -75,7 +75,14 @@ defmodule FriendsWeb.HomeLive.Helpers do
 
   def photo_ids(items) do
     items
-    |> Enum.filter(&(Map.get(&1, :type) == :photo))
+    |> Enum.filter(fn item -> 
+      type = Map.get(item, :type)
+      content_type = Map.get(item, :content_type) || ""
+      
+      (type == :photo or type == "photo") and 
+        not String.starts_with?(content_type, "audio/") and
+        not String.starts_with?(content_type, "video/")
+    end)
     |> Enum.map(& &1.id)
   end
 

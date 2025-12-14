@@ -158,6 +158,7 @@ defmodule FriendsWeb.DevicesLive do
     end
   end
 
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen p-4 md:p-8 text-neutral-200">

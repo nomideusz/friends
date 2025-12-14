@@ -1,5 +1,6 @@
 defmodule FriendsWeb.HomeLive.Components.ModalComponents do
   use FriendsWeb, :html
+  import FriendsWeb.HomeLive.Helpers
 
   # --- Photo Modal ---
   attr :show, :boolean, default: false
@@ -10,7 +11,6 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
     <%= if @show and @photo do %>
       <div
         class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-        phx-click="close_image_modal"
         phx-window-keydown="close_image_modal"
         phx-key="escape"
       >
@@ -58,7 +58,6 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
     <%= if @show do %>
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        phx-click="close_note_modal"
       >
         <div class="opal-card w-full max-w-lg rounded-2xl p-6" phx-click-away="close_note_modal">
           <h3 class="text-lg font-semibold text-white mb-4">
@@ -97,15 +96,13 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
 
   # --- Invite Modal ---
   attr :show, :boolean, default: false
-  attr :room, :map, required: true
-  attr :invite_username, :string, default: ""
+  attr :friends, :list, default: []
 
   def invite_modal(assigns) do
     ~H"""
     <%= if @show do %>
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        phx-click="close_invite_modal"
       >
         <div class="opal-card w-full max-w-md rounded-2xl p-6" phx-click-away="close_invite_modal">
           <div class="flex items-center justify-between mb-6">
@@ -157,7 +154,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
               <form
                 phx-submit="add_room_member"
                 phx-change="update_room_invite_username"
-                class="flex gap-2"
+                class="flex gap-2 mb-4"
               >
                 <input
                   type="text"
@@ -165,6 +162,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
                   value={@invite_username}
                   placeholder="Enter username"
                   class="flex-1 px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-cyan-500/50"
+                  autocomplete="off"
                 />
                 <button
                   type="submit"
@@ -173,6 +171,38 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
                   Add
                 </button>
               </form>
+              
+              <%= if @friends != [] do %>
+                <div class="mt-4 border-t border-white/5 pt-4">
+                   <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                    Quick Add
+                  </label>
+                  <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                    <%= for friend <- @friends do %>
+                      <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 group">
+                        <div class="flex items-center gap-2">
+                          <div
+                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white relative z-10"
+                            style={"background-color: #{friend_color(friend.user)}"}
+                          >
+                            {String.first(friend.user.username)}
+                          </div>
+                          <span class="text-sm text-neutral-300">@{friend.user.username}</span>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          phx-click="add_room_member"
+                          phx-value-username={friend.user.username}
+                          class="text-xs text-cyan-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                        >
+                          Add +
+                        </button>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
             </div>
           </div>
         </div>

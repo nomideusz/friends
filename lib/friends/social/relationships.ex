@@ -374,7 +374,7 @@ defmodule Friends.Social.Relationships do
   
   # --- Recovery ---
   
-  def request_recovery(username) do
+  def request_recovery(_username) do
     # Requires User alias or Repo + Ecto query to find User
     # Assuming get_user_by_username logic is needed here too?
     # Or just query directly.
