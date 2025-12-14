@@ -151,7 +151,7 @@ defmodule FriendsWeb.RecoverLive do
                   placeholder="@username"
                   autocomplete="off"
                   autofocus
-                  class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 font-mono"
+                  class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
                 />
               </div>
               
@@ -180,7 +180,7 @@ defmodule FriendsWeb.RecoverLive do
               <p class="text-neutral-500 text-sm">we'll notify your trusted friends</p>
             </div>
             
-            <div class="bg-neutral-900 border border-neutral-800 p-4 mb-6">
+            <div class="aether-card p-4 mb-6 bg-black/50">
               <p class="text-sm text-neutral-300 mb-2">
                 recovering: <span class="text-white">@{@user.username}</span>
               </p>
@@ -234,7 +234,7 @@ defmodule FriendsWeb.RecoverLive do
             </div>
             
             <%= if @recovery_status do %>
-              <div class="bg-neutral-900 border border-neutral-800 p-4 mb-6">
+              <div class="aether-card p-4 mb-6 bg-black/50">
                 <div class="flex items-center justify-between mb-3">
                   <span class="text-sm text-neutral-400">confirmations</span>
                   <span class="text-lg font-mono text-white">
@@ -259,7 +259,7 @@ defmodule FriendsWeb.RecoverLive do
               </button>
             <% end %>
             
-            <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800">
+            <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg">
               <p class="text-xs text-neutral-500 mb-2">what to tell your friends:</p>
               
               <p class="text-xs text-neutral-400">
@@ -280,7 +280,7 @@ defmodule FriendsWeb.RecoverLive do
               >
                 enter friends
               </a>
-              <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800 text-left">
+              <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg text-left">
                 <p class="text-xs text-neutral-500 mb-2">what happened:</p>
                 
                 <ul class="text-xs text-neutral-400 space-y-1">

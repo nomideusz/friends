@@ -15,7 +15,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
         phx-key="escape"
       >
         <div
-          class="max-w-4xl max-h-[90vh] relative bg-neutral-900 p-4 rounded-xl"
+          class="max-w-4xl max-h-[90vh] relative aether-card bg-black/90 p-4 rounded-xl shadow-2xl"
           phx-click-away="close_image_modal"
         >
           <%= if @photo.data do %>
@@ -59,8 +59,8 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       >
-        <div class="opal-card w-full max-w-lg rounded-2xl p-6" phx-click-away="close_note_modal">
-          <h3 class="text-lg font-semibold text-white mb-4">
+        <div class="aether-card w-full max-w-lg rounded-2xl p-6 shadow-2xl bg-black/90" phx-click-away="close_note_modal">
+          <h3 class="text-lg font-bold uppercase tracking-wider text-neutral-400 mb-4">
             <%= if @action == "post_feed_note", do: "Create a Public Note", else: "Create a Room Note" %>
           </h3>
           
@@ -68,7 +68,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
             <textarea
               name="note"
               rows="4"
-              class="w-full bg-neutral-900/50 border border-white/10 rounded-xl p-4 text-neutral-200 placeholder-neutral-500 focus:border-cyan-500/50 focus:outline-none resize-none"
+              class="w-full bg-white border border-neutral-300 rounded md:rounded-lg p-4 text-neutral-900 placeholder-neutral-500 focus:border-opal-rose focus:outline-none resize-none shadow-inner"
               placeholder="What's on your mind?"
               autofocus
             ></textarea>
@@ -104,9 +104,9 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
       <div
         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       >
-        <div class="opal-card w-full max-w-md rounded-2xl p-6" phx-click-away="close_invite_modal">
+        <div class="aether-card w-full max-w-md rounded-2xl p-6 shadow-2xl bg-black/90" phx-click-away="close_invite_modal">
           <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-semibold text-white">Invite to {@room.name || @room.code}</h3>
+            <h3 class="text-lg font-bold uppercase tracking-wider text-neutral-400">Invite to {@room.name || @room.code}</h3>
             
             <button
               phx-click="close_invite_modal"
@@ -134,13 +134,13 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
                   type="text"
                   value={url(~p"/r/#{@room.code}")}
                   readonly
-                  class="flex-1 px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-sm text-neutral-300 font-mono select-all focus:outline-none"
+                  class="flex-1 px-3 py-2 bg-neutral-100 border border-neutral-300 rounded text-sm text-neutral-600 font-mono select-all focus:outline-none"
                 />
                 <button
                   id="copy-invite-link"
                   phx-hook="CopyToClipboard"
                   data-copy={url(~p"/r/#{@room.code}")}
-                  class="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors cursor-pointer"
+                  class="px-3 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-900 font-bold uppercase tracking-wider text-xs rounded border border-neutral-300 transition-colors cursor-pointer active:translate-y-px shadow-sm"
                 >
                   Copy
                 </button>
@@ -161,7 +161,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
                   name="username"
                   value={@invite_username}
                   placeholder="Enter username"
-                  class="flex-1 px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-cyan-500/50"
+                  class="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded text-sm text-neutral-900 placeholder-neutral-500 focus:outline-none focus:border-opal-rose"
                   autocomplete="off"
                 />
                 <button
@@ -173,13 +173,13 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
               </form>
               
               <%= if @friends != [] do %>
-                <div class="mt-4 border-t border-white/5 pt-4">
+                <div class="mt-4 border-t border-neutral-200 pt-4">
                    <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
                     Quick Add
                   </label>
                   <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
                     <%= for friend <- @friends do %>
-                      <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 group">
+                      <div class="flex items-center justify-between p-2 rounded hover:bg-neutral-800 group transition-colors">
                         <div class="flex items-center gap-2">
                           <div
                             class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white relative z-10"

@@ -33,14 +33,14 @@ defmodule FriendsWeb.Layouts do
         assigns[:room] -> assigns[:room].name || assigns[:room].code
         assigns[:page_title] == "Contacts" -> "Contacts"
         assigns[:page_title] == "Devices" -> "Devices"
-        assigns[:page_title] == "Home" -> "Home"
+        assigns[:page_title] == "Home" -> "Friends"
         true -> assigns[:page_title] || "Friends"
       end
 
     assigns = Phoenix.Component.assign(assigns, :context_title, context_title)
 
     ~H"""
-    <header class="header-opal glass-strong border-b border-white/5 sticky top-0 z-40">
+    <header class="backdrop-blur-xl bg-black/60 border-b border-white/10 sticky top-0 z-40">
       <div class="max-w-[1600px] mx-auto px-4 sm:px-8 py-3">
         <div class="flex items-center justify-between gap-6 relative">
           <%!-- Left: Home Button (Dot) --%>
@@ -48,10 +48,11 @@ defmodule FriendsWeb.Layouts do
             <%= if @current_user do %>
               <.link
                 navigate={~p"/"}
-                class="group relative flex items-center justify-center w-10 h-10 -ml-2 rounded-full hover:bg-white/5 transition-all"
+                class="group relative flex items-center justify-center w-10 h-10 -ml-2 rounded-full hover:bg-neutral-800 transition-all"
                 title="Home"
               >
-                <div class="w-3 h-3 rounded-full opal-dot group-hover:scale-110 transition-all"></div>
+                <%!-- Aether Orb Logo --%>
+                <div class="w-4 h-4 rounded-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)] group-hover:scale-110 transition-transform"></div>
               </.link>
             <% end %>
           </div>
@@ -81,7 +82,7 @@ defmodule FriendsWeb.Layouts do
                     <span class="username-glow">@{@current_user.username}</span>
                   </button>
                   <%= if @show_user_dropdown do %>
-                    <div class="absolute top-10 right-0 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 py-1">
+                    <div class="absolute top-10 right-0 w-48 aether-card bg-black/90 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 py-1">
                       <.link
                         navigate={~p"/network"}
                         class="flex items-center gap-3 px-3 py-2 text-xs text-neutral-300 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"

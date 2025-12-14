@@ -15,7 +15,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     ~H"""
     <div class="w-full lg:w-80 flex-shrink-0 space-y-8">
       <%!-- Contacts --%>
-      <div class="glass rounded-2xl p-6 border border-white/5">
+      <div class="aether-card p-6">
         <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-4">Contacts</h3>
         
         <div class="space-y-3">
@@ -28,7 +28,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               <div class="flex items-center gap-3">
                 <div class="relative">
                   <div
-                    class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg"
+                    class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm border border-neutral-200"
                     style={"background-color: #{friend_color(friend.user)}"}
                   >
                     {String.first(friend.user.username)}
@@ -36,13 +36,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                 </div>
                 
                 <div>
-                  <p class="text-sm font-medium text-neutral-200 group-hover:text-white transition-colors">
+                  <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 transition-colors">
                     {friend.user.username}
                   </p>
                 </div>
               </div>
               
-              <div class="w-2 h-2 rounded-full bg-neutral-800 group-hover:bg-neutral-700 transition-colors">
+              <div class="w-2 h-2 rounded-full bg-neutral-300 group-hover:bg-opal-rose transition-colors">
               </div>
             </div>
           <% end %>
@@ -55,8 +55,10 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
        <%!-- Groups --%>
       <form
         phx-submit="create_group"
+      <form
+        phx-submit="create_group"
         phx-change="update_room_form"
-        class="glass rounded-2xl p-6 border border-white/5"
+        class="aether-card p-6"
         novalidate
       >
         <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-4">Groups</h3>
@@ -65,14 +67,14 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           <%= for room <- Enum.reject(@rooms, &(&1.room_type == "dm")) do %>
             <.link
               navigate={~p"/r/#{room.code}"}
-              class="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors group text-left"
+              class="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-colors group text-left"
             >
-              <div class="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center text-lg group-hover:scale-105 transition-transform">
+              <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-lg font-bold text-neutral-400 group-hover:text-white group-hover:border-white/30 group-hover:scale-105 transition-all">
                 #
               </div>
               
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-neutral-300 group-hover:text-white truncate">
+                <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 truncate">
                   {room.name || room.code}
                 </p>
                 
@@ -82,18 +84,18 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           <% end %>
         </div>
         
-        <div class="pt-4 border-t border-white/5">
+        <div class="pt-4 border-t border-neutral-200">
           <input
             type="text"
             name="name"
             value={@new_room_name}
             placeholder="New Group Name"
             required
-            class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-neutral-600 mb-3"
+            class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500 mb-3"
           />
           <button
             type="submit"
-            class="w-full py-2 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-medium rounded-lg transition-colors"
+            class="w-full py-2 btn-aether text-neutral-400 hover:text-white hover:border-white/30 text-xs font-bold uppercase tracking-wider cursor-pointer"
           >
             Create Group
           </button>
@@ -101,11 +103,11 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
       </form>
        <%!-- Info footer --%>
       <div class="px-6 pb-6">
-        <div class="p-4 bg-neutral-950/50 border border-neutral-800/50 rounded-xl">
-          <div class="flex items-start gap-3">
-            <span class="text-lg">🔒</span>
+        <div class="p-4 border border-white/5 rounded-2xl">
+          <div class="flex items-start gap-3 opacity-60 hover:opacity-100 transition-opacity">
+            <span class="text-lg grayscale">🔒</span>
             <div class="text-xs text-neutral-500">
-              <p class="font-medium text-neutral-400 mb-1">Private by default</p>
+              <p class="font-bold uppercase tracking-wide mb-1 text-neutral-400">Private by default</p>
               
               <p>
                 Only people you invite can access your group. Share the link or add members directly.
@@ -128,14 +130,14 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
   def network_info_card(assigns) do
     ~H"""
     <%= if @feed_mode == "friends" && @current_user do %>
-      <div class="mb-10 p-6 opal-card opal-aurora rounded-2xl">
+      <div class="mb-10 p-6 aether-card shadow-sm">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-xs text-neutral-500">your trust network</div>
+          <div class="text-xs font-bold uppercase tracking-wider text-neutral-500">your trust network</div>
           
           <button
             type="button"
             phx-click="open_network_modal"
-            class="text-xs text-green-500 hover:text-green-400 cursor-pointer"
+            class="text-xs font-bold uppercase tracking-wider text-opal-azure hover:text-opal-cyan cursor-pointer hover:underline"
           >
             manage →
           </button>
@@ -183,7 +185,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               <div class="text-xs text-neutral-600">they'll appear here after they confirm</div>
             </div>
           <% else %>
-            <div class="flex items-center gap-3 p-4 bg-neutral-900/50 border border-neutral-800 rounded-lg">
+            <div class="flex items-center gap-3 p-4 bg-black/30 border border-white/10 rounded-lg">
               <div class="text-neutral-600">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -391,9 +393,9 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               </svg>
             </div>
             
-            <p class="text-neutral-500 text-base font-medium mb-2">no activity from your network</p>
+            <p class="text-neutral-900 text-base font-bold mb-2">no activity from your network</p>
             
-            <p class="text-neutral-600 text-sm">
+            <p class="text-neutral-800 text-sm font-medium">
               add trusted connections to see their photos and notes
             </p>
           <% end %>
@@ -415,9 +417,9 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
             </svg>
           </div>
           
-          <p class="text-neutral-500 text-base font-medium mb-2">this space is empty</p>
+          <p class="text-neutral-900 text-base font-bold mb-2">this space is empty</p>
           
-          <p class="text-neutral-600 text-sm">share a photo or note to get started</p>
+          <p class="text-neutral-800 text-sm font-medium">share a photo or note to get started</p>
         <% end %>
       </div>
     <% end %>
@@ -500,20 +502,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
           <label
             for={@uploads.photo.ref}
-            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border border-white/10 hover:border-white/20 cursor-pointer transition-all"
+            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer"
           >
-            <div class="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
+            <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5">
+              <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
             </div>
             
-            <span class="text-sm text-neutral-400 group-hover:text-rose-400">
+            <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">
               {if @uploading, do: "Uploading...", else: "Photo"}
             </span> <.live_file_input upload={@uploads.photo} class="sr-only" />
           </label>
@@ -522,22 +517,26 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <button
           type="button"
           phx-click="open_note_modal"
-          class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border border-white/10 hover:border-white/20 cursor-pointer transition-all"
+          class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group"
         >
-          <span class="text-lg text-neutral-400">+</span>
-          <span class="text-sm text-neutral-400">Note</span>
+          <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
+              <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
+          </div>
+          <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">Note</span>
         </button> <%!-- Voice Button --%>
         <button
           type="button"
           id="grid-voice-record"
           phx-hook="GridVoiceRecorder"
           data-room-id={@room.id}
-          class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border cursor-pointer transition-all #{if @recording_voice, do: "border-red-500 bg-red-500/10", else: "border-white/10 hover:border-white/20"}"}
+          class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group #{if @recording_voice, do: "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]", else: ""}"}
         >
-          <span class={"text-lg #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
-            {if @recording_voice, do: "●", else: "+"}
-          </span>
-          <span class={"text-sm #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
+          <div class={"w-8 h-8 rounded-full flex items-center justify-center border #{if @recording_voice, do: "bg-blue-600 border-blue-500 animate-pulse", else: "bg-white/5 border-white/20"}"}>
+              <span class={"text-lg font-bold #{if @recording_voice, do: "text-white", else: "text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]"}"}>
+              {if @recording_voice, do: "●", else: "+"}
+              </span>
+          </div>
+          <span class={"text-sm font-bold uppercase tracking-wider #{if @recording_voice, do: "text-blue-400", else: "text-neutral-400 group-hover:text-white"}"}>
             {if @recording_voice, do: "Recording...", else: "Voice"}
           </span>
         </button>
@@ -577,13 +576,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     <%= if Map.get(@item, :type) == :photo do %>
       <div
         id={@id}
-        class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10 animate-in fade-in zoom-in-95 duration-300"
+        class="photo-item group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/50 cursor-pointer transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
         phx-click={if Map.get(@item, :content_type) != "audio/encrypted", do: "view_full_image"}
         phx-value-photo_id={@item.id}
       >
         <%= if Map.get(@item, :content_type) == "audio/encrypted" do %>
           <div
-            class="w-full h-full flex flex-col items-center justify-center p-4 bg-neutral-900/50 opal-aurora text-center relative z-10"
+            class="w-full h-full flex flex-col items-center justify-center p-4 bg-black/30 backdrop-blur-sm text-center relative z-10"
             id={"grid-voice-player-#{@item.id}"}
             data-item-id={@item.id}
             data-room-id={@room.id}

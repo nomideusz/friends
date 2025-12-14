@@ -15,17 +15,17 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
     ~H"""
     <%= if @uploads && @uploads[:feed_photo] do %>
       <%= for entry <- @uploads.feed_photo.entries do %>
-        <div class="mb-4 bg-neutral-900 p-3 rounded-lg border border-white/5">
+        <div class="mb-4 aether-card p-3">
           <div class="flex items-center gap-3">
-            <div class="flex-1 bg-neutral-800 h-1 rounded-full overflow-hidden">
-              <div class="bg-cyan-500 h-full transition-all duration-300" style={"width: #{entry.progress}%"} />
+            <div class="flex-1 bg-white/10 h-2 rounded-full overflow-hidden border border-white/5">
+              <div class="bg-blue-500 h-full transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={"width: #{entry.progress}%"} />
             </div>
-            <span class="text-xs text-neutral-500 font-mono">{entry.progress}%</span>
+            <span class="text-xs text-neutral-400 font-bold font-mono">{entry.progress}%</span>
             <button
               type="button"
               phx-click="cancel_upload"
               phx-value-ref={entry.ref}
-              class="text-neutral-500 hover:text-white text-xs cursor-pointer"
+              class="text-neutral-500 hover:text-white text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors"
             >
               cancel
             </button>
@@ -49,20 +49,13 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
         >
           <label
             for={@uploads.feed_photo.ref}
-            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border border-white/10 hover:border-white/20 cursor-pointer transition-all"
+            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer"
           >
-            <div class="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
+            <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5">
+              <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
             </div>
             
-            <span class="text-sm text-neutral-400 group-hover:text-rose-400">
+            <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">
               {if @uploading, do: "Uploading...", else: "Photo"}
             </span> <.live_file_input upload={@uploads.feed_photo} class="sr-only" />
           </label>
@@ -72,21 +65,25 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
       <button
         type="button"
         phx-click="open_feed_note_modal"
-        class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border border-white/10 hover:border-white/20 cursor-pointer transition-all"
+        class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group"
       >
-        <span class="text-lg text-neutral-400">+</span>
-        <span class="text-sm text-neutral-400">Note</span>
+        <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
+            <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
+        </div>
+        <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">Note</span>
       </button> <%!-- Voice Button --%>
       <button
         type="button"
         id="feed-voice-record"
         phx-hook="FeedVoiceRecorder"
-        class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl glass border cursor-pointer transition-all #{if @recording_voice, do: "border-red-500 bg-red-500/10", else: "border-white/10 hover:border-white/20"}"}
+        class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group #{if @recording_voice, do: "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]", else: ""}"}
       >
-        <span class={"text-lg #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
-          {if @recording_voice, do: "●", else: "+"}
-        </span>
-        <span class={"text-sm #{if @recording_voice, do: "text-red-400", else: "text-neutral-400"}"}>
+        <div class={"w-8 h-8 rounded-full flex items-center justify-center border #{if @recording_voice, do: "bg-blue-600 border-blue-500 animate-pulse", else: "bg-white/5 border-white/20"}"}>
+            <span class={"text-lg font-bold #{if @recording_voice, do: "text-white", else: "text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]"}"}>
+            {if @recording_voice, do: "●", else: "+"}
+            </span>
+        </div>
+        <span class={"text-sm font-bold uppercase tracking-wider #{if @recording_voice, do: "text-blue-400", else: "text-neutral-400 group-hover:text-white"}"}>
           {if @recording_voice, do: "Recording...", else: "Voice"}
         </span>
       </button>
@@ -96,10 +93,10 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
 
   def empty_feed(assigns) do
     ~H"""
-    <div class="text-center py-20 opal-card rounded-2xl">
-      <div class="mb-4 opacity-40">
+    <div class="text-center py-20 aether-card shadow-inner">
+      <div class="mb-4">
         <svg
-          class="w-16 h-16 mx-auto text-neutral-500"
+          class="w-16 h-16 mx-auto text-neutral-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -114,9 +111,9 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
         </svg>
       </div>
       
-      <p class="text-neutral-500 text-base font-medium mb-2">Your feed is empty</p>
+      <p class="text-neutral-200 text-lg font-bold uppercase tracking-wide mb-2">Your feed is empty</p>
       
-      <p class="text-neutral-600 text-sm">Post a photo, note, or voice message to get started</p>
+      <p class="text-neutral-500 text-sm">Post a photo, note, or voice message to get started</p>
     </div>
     """
   end
@@ -146,7 +143,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
     <%= if @item.type == :photo or @item.type == "photo" do %>
       <div
         id={@id}
-        class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-white/20 cursor-pointer transition-all hover:shadow-xl hover:shadow-violet-500/10 animate-in fade-in zoom-in-95 duration-300"
+        class="photo-item group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/50 cursor-pointer transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
         phx-click="view_feed_photo"
         phx-value-photo_id={@item.id}
       >
@@ -166,7 +163,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
               
               <audio controls src={@item.image_data} class="w-full h-8 max-w-[180px] opacity-90 hover:opacity-100 transition-opacity" onclick="event.stopPropagation();" />
               
-              <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5">
+              <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-200 shadow-sm">
                 <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                 <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name}</span>
               </div>
@@ -180,7 +177,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
           />
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
             <div class="absolute bottom-2 left-2 right-2">
-              <div class="text-xs text-white/80 truncate">@{@item.user_name}</div>
+              <div class="text-xs font-bold text-neutral-500 truncate">@{@item.user_name}</div>
             </div>
           </div>
         <% end %>
@@ -198,7 +195,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
             <p class="text-sm text-neutral-200 line-clamp-6">{@item.content}</p>
           </div>
           
-          <div class="mt-2 pt-2 border-t border-white/5">
+          <div class="mt-2 pt-2 border-t border-neutral-200">
             <div class="flex items-center gap-2">
               <div
                 class="w-5 h-5 rounded-full"

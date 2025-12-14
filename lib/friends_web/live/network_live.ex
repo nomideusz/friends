@@ -425,7 +425,7 @@ defmodule FriendsWeb.NetworkLive do
         <div class="flex items-center justify-between mb-8">
           <h1 class="text-3xl font-bold">Contacts</h1>
            <%!-- View Toggle --%>
-          <div class="flex p-1 bg-neutral-900 rounded-lg border border-white/5">
+          <div class="flex p-1 bg-neutral-900 rounded md:rounded-lg border border-neutral-200 shadow-sm">
             <button
               phx-click="set_view"
               phx-value-view="list"
@@ -452,7 +452,7 @@ defmodule FriendsWeb.NetworkLive do
                   <span>🔐</span> Trusted Contacts
                 </h2>
                 
-                <span class="text-xs text-neutral-500 bg-neutral-900 px-2 py-1 rounded-full border border-white/5">
+                <span class="text-xs font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full border border-neutral-300">
                   Recovery
                 </span>
               </div>
@@ -481,7 +481,7 @@ defmodule FriendsWeb.NetworkLive do
               
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <%= for tf <- @trusted_friends do %>
-                  <div class="flex items-center justify-between p-4 glass rounded-xl border border-green-500/30 border-l-4 border-l-green-500 hover:bg-white/5 transition-colors">
+                  <div class="flex items-center justify-between p-4 aether-card hover:bg-white/5 transition-colors shadow-lg">
                     <div class="flex items-center gap-3">
                       <div
                         class="w-10 h-10 rounded-full presence-dot"
@@ -497,7 +497,7 @@ defmodule FriendsWeb.NetworkLive do
                 <% end %>
                 
                 <%= if length(@trusted_friends) < 5 do %>
-                  <div class="p-4 border border-dashed border-white/10 rounded-xl text-neutral-500 flex items-center justify-center text-sm">
+                  <div class="p-4 border border-dashed border-neutral-400 rounded md:rounded-lg text-neutral-500 flex items-center justify-center text-sm font-bold uppercase tracking-wide">
                     Select a contact below to add as trusted
                   </div>
                 <% end %>
@@ -550,7 +550,7 @@ defmodule FriendsWeb.NetworkLive do
                 </div>
               <% end %>
                <%!-- Add Contact Search --%>
-              <div class="mb-6 p-4 glass rounded-xl border border-white/5">
+              <div class="mb-6 p-4 aether-card shadow-lg">
                 <form phx-change="search_friends" phx-submit="search_friends" class="flex gap-2">
                   <div class="relative flex-1">
                     <input
@@ -560,7 +560,7 @@ defmodule FriendsWeb.NetworkLive do
                       placeholder="Add new contact by username..."
                       autocomplete="off"
                       phx-debounce="300"
-                      class="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-white/30 transition-colors"
+                      class="w-full bg-white border border-neutral-300 rounded px-4 py-2 text-sm text-neutral-900 focus:outline-none focus:border-opal-rose transition-colors"
                     />
                   </div>
                 </form>
@@ -568,7 +568,7 @@ defmodule FriendsWeb.NetworkLive do
                 <%= if @friend_search_results != [] do %>
                   <div class="mt-2 space-y-2">
                     <%= for user <- @friend_search_results do %>
-                      <div class="flex items-center justify-between p-2 bg-neutral-800/50 rounded-lg border border-white/5">
+                      <div class="flex items-center justify-between p-2 bg-neutral-800 rounded md:rounded-lg border border-neutral-200">
                         <div class="flex items-center gap-2">
                           <div
                             class="w-6 h-6 rounded-full"
@@ -579,7 +579,7 @@ defmodule FriendsWeb.NetworkLive do
                         <button
                           phx-click="add_friend"
                           phx-value-user_id={user.id}
-                          class="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors pointer-events-auto cursor-pointer"
+                          class="px-3 py-1 bg-neutral-200 hover:bg-neutral-300 rounded text-xs font-bold text-neutral-900 transition-colors pointer-events-auto cursor-pointer border border-neutral-300 shadow-sm active:translate-y-px"
                         >
                           Add Contact
                         </button>
@@ -594,7 +594,10 @@ defmodule FriendsWeb.NetworkLive do
                   <% is_trusted =
                     Enum.any?(@trusted_friends, fn tf -> tf.trusted_user.id == f.user.id end) %>
                   <%!-- Filter out if already shown in trusted section? User guidelines implied show all below. I'll show all but mark trusted. --%>
-                  <div class={"flex items-center justify-between p-3 glass rounded-xl border transition-all #{if is_trusted, do: "border-green-500/20 bg-green-500/5", else: "border-white/5 hover:border-white/10"}"}>
+                  <div class={
+                    "flex items-center justify-between p-3 bg-neutral-900 rounded md:rounded-lg border transition-all shadow-sm " <>
+                    if is_trusted, do: "border-green-500 bg-green-50", else: "border-neutral-200 hover:border-neutral-300"
+                  }>
                     <div class="flex items-center gap-3">
                       <div class="relative">
                         <div
@@ -638,7 +641,7 @@ defmodule FriendsWeb.NetworkLive do
               </div>
             </section>
              <%!-- Invites Section --%>
-            <section class="pt-8 border-t border-white/5">
+            <section class="pt-8 border-t border-neutral-200">
               <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-purple-400 flex items-center gap-2">
                   <span>🎟️</span> Invites
@@ -655,7 +658,7 @@ defmodule FriendsWeb.NetworkLive do
               <%= if @invites != [] do %>
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <%= for invite <- @invites do %>
-                    <div class="p-3 glass rounded-xl border border-white/5 flex items-center justify-between">
+                    <div class="p-3 aether-card flex items-center justify-between shadow-lg">
                       <div>
                         <div
                           class="font-mono text-lg tracking-wider text-purple-300 select-all cursor-pointer"
@@ -690,7 +693,7 @@ defmodule FriendsWeb.NetworkLive do
           <%!-- Graph View --%>
           <div class="relative">
             <%= if @graph_data.stats.total_connections > 0 do %>
-              <div class="h-[75vh] min-h-[500px] glass rounded-2xl overflow-hidden border border-white/5 relative">
+              <div class="h-[75vh] min-h-[500px] aether-card overflow-hidden relative shadow-inner">
                 <div
                   id="network-graph"
                   phx-hook="FriendGraph"
@@ -709,7 +712,7 @@ defmodule FriendsWeb.NetworkLive do
                   <% end %>
                   
                   <%= if @graph_data.stats.friends > 0 do %>
-                    <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2">
+                    <div class="px-3 py-1.5 bg-neutral-100/90 backdrop-blur rounded border border-neutral-300 flex items-center gap-2 shadow-lg">
                       <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                       <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
                     </div>
@@ -717,7 +720,7 @@ defmodule FriendsWeb.NetworkLive do
                 </div>
               </div>
             <% else %>
-              <div class="h-[70vh] glass rounded-2xl flex items-center justify-center border border-white/5">
+              <div class="h-[70vh] bg-neutral-100 rounded md:rounded-lg flex items-center justify-center border border-neutral-200">
                 <div class="text-center">
                   <div class="text-4xl mb-4">🕸️</div>
                   

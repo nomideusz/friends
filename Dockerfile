@@ -49,6 +49,7 @@ RUN node build.js --deploy
 
 # Tailwind (if configured via mix)
 WORKDIR /app
+RUN mix tailwind.install --if-missing
 RUN mix assets.deploy
 
 # Compile

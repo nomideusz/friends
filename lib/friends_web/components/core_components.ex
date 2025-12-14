@@ -20,8 +20,8 @@ defmodule FriendsWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "px-4 py-2 text-sm font-medium transition-colors",
-        "bg-white text-black hover:bg-neutral-200",
+        "px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all border border-neutral-200",
+        "bg-neutral-200 text-neutral-950 hover:bg-neutral-300 hover:text-neutral-950 shadow-sm",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         @class
       ]}
@@ -45,8 +45,8 @@ defmodule FriendsWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "px-4 py-2 text-sm font-medium transition-colors",
-        "border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white",
+        "px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all",
+        "border border-neutral-200 text-neutral-200 hover:bg-neutral-200 hover:text-neutral-950",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         @class
       ]}

@@ -20,8 +20,8 @@ config :tailwind,
   version: "4.0.0",
   friends: [
     args: ~w(
-      --input=css/app.css
-      --output=../priv/static/assets/app.css
+      -i c:/cmder/apps/friends/assets/css/app.css
+      -o c:/cmder/apps/friends/priv/static/assets/app.css
     ),
     cd: Path.expand("../assets", __DIR__)
   ]

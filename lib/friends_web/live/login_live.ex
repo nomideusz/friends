@@ -117,7 +117,7 @@ defmodule FriendsWeb.LoginLive do
           <p class="text-neutral-400">Sign in with your passkey</p>
         </div>
         
-        <div class="bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 p-6 space-y-6">
+        <div class="aether-card p-6 space-y-6 bg-black/50">
           <%= case @step do %>
             <% :username -> %>
               <form phx-submit="check_username" class="space-y-4">
@@ -130,7 +130,7 @@ defmodule FriendsWeb.LoginLive do
                     placeholder="@username"
                     autocomplete="username"
                     autofocus
-                    class="w-full px-4 py-3 bg-black border border-neutral-700 text-white placeholder-neutral-600 focus:border-white focus:outline-none"
+                    class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
                   />
                 </div>
                 
@@ -142,7 +142,7 @@ defmodule FriendsWeb.LoginLive do
                 
                 <button
                   type="submit"
-                  class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 transition-colors"
+                  class="w-full py-3 btn-aether btn-aether-primary font-bold uppercase tracking-wider transition-all"
                 >
                   Continue with Passkey
                 </button>

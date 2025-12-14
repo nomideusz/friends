@@ -1,880 +1,166 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../css";
 @source "../js";
 @source "../../lib/friends_web";
 
-/* Custom theme - Opalescent Future */
+/* =========================================================================================
+   PROJECT AETHER: THE VOID & LIGHT
+   Design: Deep Space, Liquid Glass, Photonic Borders
+   ========================================================================================= */
+
 :root {
+  --font-family-display: 'Outfit', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
   --font-family-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  /* Deep space background */
-  --color-neutral-950: #050508;
-  --color-neutral-900: #0a0a0f;
-  --color-neutral-800: #12121a;
-  --color-neutral-700: #1a1a24;
-  --color-neutral-600: #2a2a38;
-  --color-neutral-500: #4a4a5a;
-  --color-neutral-400: #8888a0;
-  --color-neutral-300: #b8b8d0;
-  --color-neutral-200: #d8d8e8;
-  --color-neutral-100: #f0f0f8;
+  /* THE AETHER PALETTE */
+  --color-void: #030303;
+  /* Deepest Black */
+  --color-abyss: #0A0A0A;
+  /* Secondary Black */
+  --color-matter: #121212;
+  /* Tertiary Black (Cards) */
 
-  /* Opal spectrum */
-  --opal-rose: #ff6b9d;
-  --opal-coral: #ff8a65;
-  --opal-gold: #ffd54f;
-  --opal-mint: #64ffda;
-  --opal-cyan: #4dd0e1;
-  --opal-azure: #82b1ff;
-  --opal-violet: #b388ff;
-  --opal-pink: #ff80ab;
+  --color-light: #EAE6DD;
+  /* Primary Text (Starlight) */
+  --color-dim: #888888;
+  /* Secondary Text */
+
+  --color-photon: #FFFFFF;
+  /* Pure Light (Borders/Accents) */
+  --color-energy: #3B82F6;
+  /* Blue Energy (Interactions) */
 }
 
 @theme {
+  --font-family-display: var(--font-family-display);
+  --font-family-body: var(--font-family-body);
   --font-family-mono: var(--font-family-mono);
-  --color-neutral-950: var(--color-neutral-950);
-  --color-neutral-900: var(--color-neutral-900);
-  --color-neutral-800: var(--color-neutral-800);
-  --color-neutral-700: var(--color-neutral-700);
-  --color-neutral-600: var(--color-neutral-600);
-  --color-neutral-500: var(--color-neutral-500);
-  --color-neutral-400: var(--color-neutral-400);
-  --color-neutral-300: var(--color-neutral-300);
-  --color-neutral-200: var(--color-neutral-200);
-  --color-neutral-100: var(--color-neutral-100);
+
+  --color-void: var(--color-void);
+  --color-abyss: var(--color-abyss);
+  --color-matter: var(--color-matter);
+  --color-light: var(--color-light);
+  --color-dim: var(--color-dim);
+  --color-photon: var(--color-photon);
+  --color-energy: var(--color-energy);
 }
 
-/* Base styles */
+/* =========================================================================================
+   BASE LAYOUT
+   ========================================================================================= */
+
 html {
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family-body);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-void);
+  color: var(--color-light);
 }
 
 body {
-  background: var(--color-neutral-950);
-}
-
-/* Animated opalescent background */
-.opal-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
+  background-color: var(--color-void);
+  color: var(--color-light);
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse at 20% 20%, rgba(255, 107, 157, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(130, 177, 255, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 80%, rgba(100, 255, 218, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(179, 136, 255, 0.04) 0%, transparent 50%),
-    var(--color-neutral-950);
-  animation: opalShift 20s ease-in-out infinite;
 }
 
-@keyframes opalShift {
-
-  0%,
-  100% {
-    background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%;
-  }
-
-  25% {
-    background-position: 20% 10%, 80% 20%, 20% 80%, 80% 90%;
-  }
-
-  50% {
-    background-position: 10% 20%, 90% 10%, 30% 90%, 70% 80%;
-  }
-
-  75% {
-    background-position: 15% 5%, 85% 15%, 10% 85%, 90% 85%;
-  }
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-photon);
 }
 
-/* Opalescent glow effects */
-.opal-glow {
-  box-shadow:
-    0 0 30px rgba(130, 177, 255, 0.1),
-    0 0 60px rgba(179, 136, 255, 0.05),
-    0 0 90px rgba(100, 255, 218, 0.03);
-}
+/* =========================================================================================
+   AETHER COMPONENTS (Glass & Light)
+   ========================================================================================= */
 
-.opal-glow-subtle {
-  box-shadow:
-    0 0 10px rgba(130, 177, 255, 0.2),
-    0 0 20px rgba(179, 136, 255, 0.1);
-}
-
-/* Opal branding dot */
-.opal-dot {
-  background: linear-gradient(135deg, var(--opal-rose), var(--opal-azure), var(--opal-mint)) !important;
-  background-size: 200% 200%;
-  animation: opalShift 3s ease infinite;
-  box-shadow: 0 0 15px rgba(130, 177, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.username-glow {
-  color: white !important;
-  text-shadow: 0 0 10px rgba(130, 177, 255, 0.6), 0 0 20px rgba(179, 136, 255, 0.4);
-  font-weight: 500;
-}
-
-/* Glassmorphism with opal tint */
-.glass {
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.glass-strong {
-  background: rgba(10, 10, 15, 0.85);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+/* The Aether Card: Glass on Void */
+.aether-card {
+  background-color: rgba(18, 18, 18, 0.6);
+  /* Semi-transparent Matter */
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Subtle Light Border */
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-/* Opalescent border - animated gradient */
-.opal-border {
-  position: relative;
-  background: var(--color-neutral-900);
-  border-radius: 12px;
+.aether-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  /* Brighter Border on Hover */
 }
 
-.opal-border::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 13px;
-  background: linear-gradient(135deg,
-      rgba(255, 107, 157, 0.3),
-      rgba(130, 177, 255, 0.3),
-      rgba(100, 255, 218, 0.3),
-      rgba(179, 136, 255, 0.3),
-      rgba(255, 128, 171, 0.3));
-  background-size: 300% 300%;
-  animation: opalBorder 8s ease infinite;
-  z-index: -1;
-  opacity: 0.6;
-}
+/* Buttons: Photonic Interfaces */
+.btn-aether {
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
 
-@keyframes opalBorder {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-/* Soft opal text gradient */
-.opal-text {
-  background: linear-gradient(135deg,
-      var(--opal-rose),
-      var(--opal-azure),
-      var(--opal-mint),
-      var(--opal-violet));
-  background-size: 200% 200%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: opalText 6s ease infinite;
-}
-
-@keyframes opalText {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-/* Focus styles - opal ring */
-*:focus {
-  outline: none;
-}
-
-*:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--color-neutral-950),
-    0 0 0 4px rgba(130, 177, 255, 0.5);
-}
-
-/* Selection - opal */
-::selection {
-  background: rgba(130, 177, 255, 0.3);
-  color: #fff;
-}
-
-/* Scrollbar - subtle opal */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
+  /* Default: Ghost/Outline */
   background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-light);
 }
 
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg,
-      rgba(130, 177, 255, 0.3),
-      rgba(179, 136, 255, 0.3));
-  border-radius: 4px;
+.btn-aether:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-photon);
+  color: var(--color-photon);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+  /* Glow */
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg,
-      rgba(130, 177, 255, 0.5),
-      rgba(179, 136, 255, 0.5));
+.btn-aether-primary {
+  background: var(--color-photon);
+  color: var(--color-void);
+  border: 1px solid var(--color-photon);
 }
 
-/* Image loading - fade in effect for lazy loading */
-/* Note: Images with .loaded class or in modals should be visible immediately */
-img:not(.loaded):not([src^="http"]):not([src^="data:"]) {
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.btn-aether-primary:hover {
+  background: white;
+  /* Brighter */
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  /* Strong Glow */
+  transform: translateY(-1px);
 }
 
-img.loaded,
-img[src^="http"],
-img[src^="data:"] {
-  opacity: 1;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-opal {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(130, 177, 255, 0.2);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(179, 136, 255, 0.3);
-  }
-}
-
-/* Photo grid items - opal hover */
-.photo-item {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.photo-item:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(130, 177, 255, 0.1);
-}
-
-/* Buttons with opal effect */
-.btn-opal {
-  position: relative;
-  background: linear-gradient(135deg, rgba(130, 177, 255, 0.2), rgba(179, 136, 255, 0.2));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-}
-
-.btn-opal:hover {
-  background: linear-gradient(135deg, rgba(130, 177, 255, 0.3), rgba(179, 136, 255, 0.3));
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 30px rgba(130, 177, 255, 0.2);
-}
-
-/* Input fields - opal focus */
+/* Inputs */
 input,
 textarea {
-  transition: all 0.3s ease;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-photon) !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
 }
 
 input:focus,
 textarea:focus {
-  border-color: rgba(130, 177, 255, 0.5) !important;
-  box-shadow: 0 0 20px rgba(130, 177, 255, 0.1);
+  border-color: var(--color-energy) !important;
+  box-shadow: 0 0 0 1px var(--color-energy), 0 0 12px rgba(59, 130, 246, 0.2) !important;
+  outline: none;
 }
 
-/* Accessible text links - WCAG compliant */
-a.text-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+/* Scrollbar (Minimal) */
+::-webkit-scrollbar {
+  width: 8px;
+  background: var(--color-void);
 }
 
-/* Focus visible states for keyboard navigation */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--opal-azure);
-  outline-offset: 2px;
-  border-radius: 2px;
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
-/* Progress bar - opal gradient */
-#topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  z-index: 9999;
-  background: linear-gradient(90deg,
-      var(--opal-rose),
-      var(--opal-azure),
-      var(--opal-mint),
-      var(--opal-violet));
-  background-size: 200% 100%;
-  animation: opalProgress 2s linear infinite;
-}
-
-@keyframes opalProgress {
-  0% {
-    background-position: 0% 0%;
-  }
-
-  100% {
-    background-position: 200% 0%;
-  }
-}
-
-/* Modal backdrop - deeper blur */
-.modal-backdrop {
-  background: rgba(5, 5, 8, 0.85);
-  backdrop-filter: blur(10px);
-}
-
-/* Network/presence indicators */
-.presence-dot {
-  box-shadow: 0 0 10px currentColor;
-}
-
-/* Card hover states */
-.card-hover {
-  transition: all 0.3s ease;
-}
-
-.card-hover:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(130, 177, 255, 0.2);
-}
-
-/* Skeleton loading animation */
-@keyframes skeleton-pulse {
-
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.skeleton {
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-  background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.03) 0%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.03) 100%);
-  background-size: 200% 100%;
-  animation: skeleton-pulse 1.5s ease-in-out infinite, skeleton-shimmer 2s ease-in-out infinite;
-}
-
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Loading spinner animation */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spinner {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-.spinner-lg {
-  width: 1.5em;
-  height: 1.5em;
-  border-width: 3px;
-}
-
-/* Pulsing dot animation for loading states */
-@keyframes pulse-dot {
-
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.loading-dots::after {
-  content: '...';
-  display: inline-block;
-  animation: pulse-dot 1.5s ease-in-out infinite;
-}
-
-/* Photo loading state */
-.photo-item.loading {
-  background: var(--color-neutral-800);
-}
-
-.photo-item.loading::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-  background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.05) 50%,
-      transparent 100%);
-}
-
-/* ======================================
-   OPALESCENT FUTURE - Enhanced Effects
-   ====================================== */
-
-/* Iridescent shimmer - subtle rainbow wash that moves across surfaces */
-.opal-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.opal-shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(120deg,
-      transparent 0%,
-      rgba(255, 107, 157, 0.08) 20%,
-      rgba(130, 177, 255, 0.12) 40%,
-      rgba(100, 255, 218, 0.08) 60%,
-      rgba(179, 136, 255, 0.1) 80%,
-      transparent 100%);
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.opal-shimmer:hover::after {
-  opacity: 1;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Aurora - flowing opalescent background like northern lights */
-.opal-aurora {
-  background:
-    linear-gradient(135deg,
-      rgba(255, 107, 157, 0.15) 0%,
-      rgba(130, 177, 255, 0.1) 25%,
-      rgba(100, 255, 218, 0.12) 50%,
-      rgba(179, 136, 255, 0.15) 75%,
-      rgba(255, 128, 171, 0.1) 100%);
-  background-size: 400% 400%;
-  animation: aurora 12s ease-in-out infinite;
-}
-
-@keyframes aurora {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  25% {
-    background-position: 50% 0%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  75% {
-    background-position: 50% 100%;
-  }
-}
-
-/* Prismatic glow - rainbow outer glow */
-.opal-prismatic {
-  box-shadow:
-    0 0 20px rgba(255, 107, 157, 0.15),
-    0 0 40px rgba(130, 177, 255, 0.1),
-    0 0 60px rgba(100, 255, 218, 0.08),
-    0 0 80px rgba(179, 136, 255, 0.05);
-}
-
-.opal-prismatic-hover:hover {
-  box-shadow:
-    0 0 25px rgba(255, 107, 157, 0.25),
-    0 0 50px rgba(130, 177, 255, 0.15),
-    0 0 75px rgba(100, 255, 218, 0.12),
-    0 0 100px rgba(179, 136, 255, 0.08);
-}
-
-/* Opalescent card - premium card with iridescent border on hover */
-.opal-card {
-  position: relative;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  transition: all 0.4s ease;
-}
-
-.opal-card::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 17px;
-  background: linear-gradient(135deg,
-      rgba(255, 107, 157, 0.3),
-      rgba(130, 177, 255, 0.3),
-      rgba(100, 255, 218, 0.3),
-      rgba(179, 136, 255, 0.3),
-      rgba(255, 128, 171, 0.3));
-  background-size: 300% 300%;
-  animation: opalBorder 8s ease infinite;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.opal-card:hover::before {
-  opacity: 0.8;
-}
-
-.opal-card:hover {
-  transform: translateY(-2px);
-  border-color: transparent;
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.3),
-    0 0 40px rgba(130, 177, 255, 0.1);
-}
-
-/* Primary opal button - gradient with glow */
-.btn-opal-primary {
-  position: relative;
-  background: linear-gradient(135deg,
-      var(--opal-azure) 0%,
-      var(--opal-violet) 50%,
-      var(--opal-mint) 100%);
-  background-size: 200% 200%;
-  color: #000;
-  font-weight: 600;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 24px;
-  transition: all 0.3s ease;
-  animation: opalButton 6s ease infinite;
-  box-shadow: 0 4px 20px rgba(130, 177, 255, 0.3);
-}
-
-@keyframes opalButton {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-.btn-opal-primary:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 8px 30px rgba(130, 177, 255, 0.4),
-    0 0 40px rgba(179, 136, 255, 0.2);
-}
-
-.btn-opal-primary:active {
-  transform: translateY(0);
-}
-
-/* Secondary opal button - ghost with border */
-.btn-opal-secondary {
-  position: relative;
-  background: transparent;
-  color: #fff;
-  border: 1px solid rgba(130, 177, 255, 0.3);
-  border-radius: 12px;
-  padding: 12px 24px;
-  transition: all 0.3s ease;
-}
-
-.btn-opal-secondary:hover {
-  background: rgba(130, 177, 255, 0.1);
-  border-color: rgba(130, 177, 255, 0.5);
-  box-shadow: 0 0 30px rgba(130, 177, 255, 0.15);
-}
-
-/* Opal input - prismatic focus ring */
-.opal-input {
-  background: rgba(10, 10, 15, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-
-.opal-input:focus {
-  border-color: transparent;
-  box-shadow:
-    0 0 0 1px rgba(130, 177, 255, 0.5),
-    0 0 0 4px rgba(130, 177, 255, 0.1),
-    0 0 30px rgba(179, 136, 255, 0.1);
-}
-
-/* Floating orbs - decorative background elements */
-.opal-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
-  animation: float 10s ease-in-out infinite;
-}
-
-.opal-orb-1 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, var(--opal-rose) 0%, transparent 70%);
-  top: 10%;
-  left: 10%;
-  animation-delay: 0s;
-}
-
-.opal-orb-2 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, var(--opal-azure) 0%, transparent 70%);
-  top: 60%;
-  right: 10%;
-  animation-delay: -3s;
-}
-
-.opal-orb-3 {
-  width: 250px;
-  height: 250px;
-  background: radial-gradient(circle, var(--opal-mint) 0%, transparent 70%);
-  bottom: 20%;
-  left: 30%;
-  animation-delay: -6s;
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-
-  25% {
-    transform: translate(20px, -30px) scale(1.05);
-  }
-
-  50% {
-    transform: translate(-10px, 20px) scale(0.95);
-  }
-
-  75% {
-    transform: translate(30px, 10px) scale(1.02);
-  }
-}
-
-/* Opal avatar ring */
-.opal-avatar {
-  position: relative;
-}
-
-.opal-avatar::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: linear-gradient(135deg,
-      var(--opal-rose),
-      var(--opal-azure),
-      var(--opal-mint),
-      var(--opal-violet));
-  background-size: 200% 200%;
-  animation: opalBorder 4s linear infinite;
-  z-index: -1;
-}
-
-/* Header with subtle aurora */
-.header-opal {
-  background: linear-gradient(90deg,
-      rgba(255, 107, 157, 0.03) 0%,
-      rgba(130, 177, 255, 0.05) 50%,
-      rgba(179, 136, 255, 0.03) 100%);
-  backdrop-filter: blur(30px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* Notification badge with pulse */
-.opal-badge {
-  background: linear-gradient(135deg, var(--opal-rose), var(--opal-coral));
-  animation: pulse-opal 2s ease-in-out infinite;
-}
-
-/* Message bubble with iridescent tint */
-.opal-message {
-  background: linear-gradient(135deg,
-      rgba(130, 177, 255, 0.08) 0%,
-      rgba(179, 136, 255, 0.05) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px 16px 16px 4px;
-}
-
-.opal-message.sent {
-  background: linear-gradient(135deg,
-      rgba(100, 255, 218, 0.1) 0%,
-      rgba(130, 177, 255, 0.08) 100%);
-  border-radius: 16px 16px 4px 16px;
-}
-
-/* Loading skeleton with opal shimmer */
-.skeleton-opal {
-  background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.02) 0%,
-      rgba(130, 177, 255, 0.08) 25%,
-      rgba(179, 136, 255, 0.08) 50%,
-      rgba(100, 255, 218, 0.08) 75%,
-      rgba(255, 255, 255, 0.02) 100%);
-  background-size: 400% 100%;
-  animation: skeleton-opal 2s ease-in-out infinite;
-}
-
-@keyframes skeleton-opal {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Divider with gradient */
-.opal-divider {
-  height: 1px;
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(130, 177, 255, 0.3),
-      rgba(179, 136, 255, 0.3),
-      transparent);
-}
-
-/* Tooltip with glow */
-.opal-tooltip {
-  background: rgba(10, 10, 15, 0.95);
-  border: 1px solid rgba(130, 177, 255, 0.2);
-  box-shadow: 0 0 20px rgba(130, 177, 255, 0.1);
-}
-
-/* ======================================
-   MOBILE OPTIMIZATIONS
-   ====================================== */
-
-/* Prevent iOS zoom on input focus - requires 16px minimum */
-@media (max-width: 640px) {
-
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
-  }
-
-  /* Compact action buttons on mobile */
-  .action-compact {
-    gap: 0.5rem !important;
-  }
-
-  /* Better touch targets */
-  button,
-  a,
-  label[for] {
-    min-height: 44px;
-  }
-
-  /* Reduce card padding on mobile */
-  .opal-card {
-    padding: 0.75rem;
-  }
-}
-
-/* Safe area padding for notched iPhones */
-@supports (padding-top: env(safe-area-inset-top)) {
-  .pt-safe {
-    padding-top: max(1rem, env(safe-area-inset-top));
-  }
-
-  .pb-safe {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }

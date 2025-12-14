@@ -219,7 +219,7 @@ defmodule FriendsWeb.RegisterLive do
                   phx-input="update_invite_code"
                   placeholder="word-word-123"
                   autocomplete="off"
-                  class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 font-mono"
+                  class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
                 />
                 <p class="mt-1 text-xs text-neutral-600">
                   enter an invite for automatic trusted friend connection
@@ -239,7 +239,7 @@ defmodule FriendsWeb.RegisterLive do
                       autocomplete="off"
                       autofocus
                       class={[
-                        "w-full px-4 py-3 bg-neutral-900 border text-white placeholder:text-neutral-700 focus:outline-none font-mono",
+                        "w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none font-mono transition-all",
                         @username_available == true && "border-green-600",
                         @username_available == false && "border-red-600",
                         @username_available == nil && "border-neutral-800 focus:border-neutral-600"
@@ -267,7 +267,7 @@ defmodule FriendsWeb.RegisterLive do
                   phx-input="update_display_name"
                   placeholder="Your Name"
                   maxlength="50"
-                  class="w-full px-4 py-3 bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600"
+                  class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500"
                 />
               </div>
               
@@ -288,7 +288,7 @@ defmodule FriendsWeb.RegisterLive do
                     Uses Touch ID, Face ID, Windows Hello, or security key
                   </p>
                 <% else %>
-                  <div class="w-full p-4 bg-neutral-900 border border-red-900 text-red-400 text-center">
+                  <div class="w-full p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 text-center">
                     <p class="font-medium mb-1">Passkeys not available</p>
                     
                     <p class="text-xs text-neutral-500">
@@ -326,7 +326,7 @@ defmodule FriendsWeb.RegisterLive do
                   enter friends
                 <% end %>
               </a>
-              <div class="mt-8 p-4 bg-neutral-900 border border-neutral-800 text-left">
+              <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg text-left">
                 <p class="text-xs text-neutral-500 mb-2">next steps:</p>
                 
                 <ul class="text-xs text-neutral-400 space-y-1">

@@ -192,7 +192,7 @@ defmodule FriendsWeb.DevicesLive do
             </div>
           </div>
           
-          <div class="bg-neutral-900 rounded-2xl border border-white/5 overflow-hidden">
+          <div class="aether-card rounded-2xl border border-white/5 overflow-hidden">
             <%= if @webauthn_credentials == [] do %>
               <div class="p-4 text-center text-sm text-neutral-500">No keys added.</div>
             <% else %>
