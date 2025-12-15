@@ -340,7 +340,8 @@ defmodule FriendsWeb.NetworkLive do
       username: user.username,
       display_name: user.display_name,
       color: trusted_user_color(user),
-      type: "self"
+      type: "self",
+      connected_at: user.inserted_at
     }
 
     nodes_map = Map.put(nodes_map, user.id, current_user_node)
@@ -348,53 +349,67 @@ defmodule FriendsWeb.NetworkLive do
     # Add trusted users
     nodes_map =
       Enum.reduce(my_trusted, nodes_map, fn tf, acc ->
-        Map.put_new(acc, tf.trusted_user.id, %{
+        Map.put(acc, tf.trusted_user.id, %{
           id: tf.trusted_user.id,
           username: tf.trusted_user.username,
           display_name: tf.trusted_user.display_name,
           color: trusted_user_color(tf.trusted_user),
-          type: "trusted"
+          type: "trusted",
+          connected_at: tf.inserted_at
         })
       end)
 
     # Add people who trust me
     nodes_map =
       Enum.reduce(people_who_trust_me, nodes_map, fn tf, acc ->
-        Map.put_new(acc, tf.user.id, %{
-          id: tf.user.id,
-          username: tf.user.username,
-          display_name: tf.user.display_name,
-          color: trusted_user_color(tf.user),
-          type: "trusts_me"
-        })
+        Map.update(acc, tf.user.id, 
+          # New node if not exists
+          %{
+            id: tf.user.id,
+            username: tf.user.username,
+            display_name: tf.user.display_name,
+            color: trusted_user_color(tf.user),
+            type: "trusts_me",
+            connected_at: tf.inserted_at
+          },
+          # If exists (e.g. was "trusted"), keep existing type but ensure connected_at is set if missing
+          fn existing -> existing end
+        )
       end)
 
     # Add social friends (with mutual count)
     nodes_map =
       Enum.reduce(friends, nodes_map, fn f, acc ->
-        # Calculate mutual friends count
         mutual_count = count_mutual_friends(user_id, f.user.id)
-
-        Map.put_new(acc, f.user.id, %{
-          id: f.user.id,
-          username: f.user.username,
-          display_name: f.user.display_name,
-          color: trusted_user_color(f.user),
-          type: "friend",
-          mutual_count: mutual_count
-        })
+        
+        Map.update(acc, f.user.id,
+          # New node (Friend only)
+          %{
+            id: f.user.id,
+            username: f.user.username,
+            display_name: f.user.display_name,
+            color: trusted_user_color(f.user),
+            type: "friend",
+            mutual_count: mutual_count,
+            connected_at: f.friendship.accepted_at
+          },
+          # If exists (Trusted), update with mutual count
+          fn existing -> 
+            Map.put(existing, :mutual_count, mutual_count)
+          end
+        )
       end)
 
     # Add second degree connections (friends of friends)
     nodes_map =
       Enum.reduce(second_degree_friends, nodes_map, fn friend, acc ->
-        # Only add if not already in the map (not a direct connection)
         Map.put_new(acc, friend.id, %{
           id: friend.id,
           username: friend.username,
           display_name: friend.display_name,
           color: trusted_user_color(friend),
-          type: "second_degree"
+          type: "second_degree",
+          connected_at: user.inserted_at # Always visible based on user start time
         })
       end)
 
@@ -404,7 +419,7 @@ defmodule FriendsWeb.NetworkLive do
     # Edges for people I trust
     edges =
       Enum.reduce(my_trusted, edges, fn tf, acc ->
-        [%{from: user.id, to: tf.trusted_user.id, type: "trusted"} | acc]
+        [%{from: user.id, to: tf.trusted_user.id, type: "trusted", connected_at: tf.inserted_at} | acc]
       end)
 
     # Edges for people who trust me
@@ -417,7 +432,7 @@ defmodule FriendsWeb.NetworkLive do
           # Already handled by bidirectional logic in JS
           acc
         else
-          [%{from: tf.user.id, to: user.id, type: "trusts_me"} | acc]
+          [%{from: tf.user.id, to: user.id, type: "trusts_me", connected_at: tf.inserted_at} | acc]
         end
       end)
 
@@ -425,13 +440,13 @@ defmodule FriendsWeb.NetworkLive do
     edges =
       Enum.reduce(friends, edges, fn f, acc ->
         mutual_count = count_mutual_friends(user_id, f.user.id)
-        [%{from: user.id, to: f.user.id, type: "friend", mutual_count: mutual_count} | acc]
+        [%{from: user.id, to: f.user.id, type: "friend", mutual_count: mutual_count, connected_at: f.friendship.accepted_at} | acc]
       end)
 
     # Edges between my friends (social network connections!)
     edges =
       Enum.reduce(friend_to_friend_edges, edges, fn {id1, id2}, acc ->
-        [%{from: id1, to: id2, type: "mutual"} | acc]
+        [%{from: id1, to: id2, type: "mutual", connected_at: NaiveDateTime.utc_now()} | acc]
       end)
 
     # Add second degree edges (from my friends to their friends)
@@ -445,7 +460,7 @@ defmodule FriendsWeb.NetworkLive do
 
     %{
       current_user: current_user_node,
-      nodes: Map.values(nodes_map),
+      nodes: Map.values(nodes_map) |> Enum.uniq_by(& &1.id),
       edges: edges,
       stats: %{
         total_connections: map_size(nodes_map) - 1,
@@ -459,6 +474,14 @@ defmodule FriendsWeb.NetworkLive do
         invited: 0
       }
     }
+  end
+
+  defp get_timestamp(val) do
+    case val do
+      %NaiveDateTime{} -> val
+      %DateTime{} -> val
+      _ -> NaiveDateTime.utc_now()
+    end
   end
 
   # Get all friendships between a list of user IDs
@@ -549,7 +572,7 @@ defmodule FriendsWeb.NetworkLive do
       second_degree_map
       |> Enum.flat_map(fn {second_degree_id, data} ->
         Enum.map(data.connections, fn friend_id ->
-          %{from: friend_id, to: second_degree_id, type: "second_degree"}
+          %{from: friend_id, to: second_degree_id, type: "second_degree", connected_at: NaiveDateTime.utc_now()}
         end)
       end)
 
@@ -627,7 +650,7 @@ defmodule FriendsWeb.NetworkLive do
               </div>
 
               <%= if !@graph_collapsed do %>
-                <div class="relative h-[50vh] min-h-[400px]">
+                <div class="relative h-[80vh] min-h-[600px]">
                   <%!-- Graph Container --%>
                   <div class="absolute inset-0 aether-card overflow-hidden shadow-inner">
                     <div
@@ -640,20 +663,7 @@ defmodule FriendsWeb.NetworkLive do
                     </div>
                   </div>
                   <%!-- Stats Overlay --%>
-                  <div class="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 pointer-events-none z-10">
-                    <%= if @graph_data.stats.friends > 0 do %>
-                      <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                        <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
-                      </div>
-                    <% end %>
-                    <%= if @graph_data.stats.second_degree > 0 do %>
-                      <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-gray-500/30 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                        <span class="text-xs text-white">Click gray nodes to add: {@graph_data.stats.second_degree}</span>
-                      </div>
-                    <% end %>
-                  </div>
+
                 </div>
               <% end %>
             </section>

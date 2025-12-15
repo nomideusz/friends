@@ -8,14 +8,13 @@
     "deploy": "node build.js --deploy"
   },
   "dependencies": {
+    "d3": "^7.9.0",
     "live_svelte": "file:../deps/live_svelte",
     "phoenix": "file:../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html",
     "phoenix_live_view": "file:../deps/phoenix_live_view",
     "qrcode": "^1.5.4",
-    "svelte": "^5.45.6",
-    "vis-data": "^8.0.3",
-    "vis-network": "^10.0.2"
+    "svelte": "^5.45.6"
   },
   "devDependencies": {
     "esbuild": "^0.27.1",
