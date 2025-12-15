@@ -600,7 +600,7 @@
                 multiple
                 class="hidden"
                 phx-change={if @live_action == :index, do: "validate_feed", else: "validate"}
-                phx-drop-target={if @live_action == :index, do: @uploads.feed_photos.ref, else: @uploads.photos.ref}
+                phx-drop-target={if @live_action == :index, do: @uploads.feed_photo.ref, else: @uploads.photo.ref}
               />
 
               <%!-- Note Button --%>
