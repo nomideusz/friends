@@ -482,11 +482,13 @@
             <div id="public-feed-app" phx-hook="FriendsApp">
               <%!-- Upload progress --%>
               <.feed_upload_progress uploads={assigns[:uploads]} />
-              <.feed_actions_bar
-                uploads={assigns[:uploads]}
-                uploading={@uploading}
-                recording_voice={@recording_voice}
-              /> 
+              <div class="hidden lg:block">
+                <.feed_actions_bar
+                  uploads={assigns[:uploads]}
+                  uploading={@uploading}
+                  recording_voice={@recording_voice}
+                />
+              </div> 
               <%!-- Feed Grid --%>
               <%= if @feed_item_count == 0 do %>
                 <.empty_feed />
@@ -535,14 +537,16 @@
               <%!-- Content Grid --%>
               <%= if not @room_access_denied do %>
                 <%!-- New Action Bar (replaces desktop_action_cards) --%>
-                <.room_actions_bar
-                  current_user={@current_user}
-                  room_access_denied={@room_access_denied}
-                  uploads={assigns[:uploads]}
-                  uploading={@uploading}
-                  recording_voice={@recording_voice}
-                  room={@room}
-                />
+                <div class="hidden lg:block">
+                  <.room_actions_bar
+                    current_user={@current_user}
+                    room_access_denied={@room_access_denied}
+                    uploads={assigns[:uploads]}
+                    uploading={@uploading}
+                    recording_voice={@recording_voice}
+                    room={@room}
+                  />
+                </div>
               
                 <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   <.room_grid items={@streams.items} room={@room} current_user={@current_user} />
@@ -589,12 +593,19 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </label>
-              <input type="file" id="fab-photo-upload" accept="image/*" multiple class="hidden" phx-change="validate" phx-drop-target={@uploads.photos.ref} />
+              <input
+                type="file"
+                id="fab-photo-upload"
+                accept="image/*"
+                multiple
+                class="hidden"
+                phx-change={if @live_action == :index, do: "validate_feed", else: "validate"}
+                phx-drop-target={if @live_action == :index, do: @uploads.feed_photos.ref, else: @uploads.photos.ref}
+              />
 
               <%!-- Note Button --%>
               <button
-                phx-click="open_note_modal"
-                phx-value-action="post_feed_note"
+                phx-click={if @live_action == :index, do: "open_feed_note_modal", else: "open_note_modal"}
                 class="w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-emerald-400 transition-all active:scale-95"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,8 +615,10 @@
 
               <%!-- Voice Button --%>
               <button
-                phx-click="toggle_voice_recording"
-                class="w-14 h-14 rounded-full bg-purple-500 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-purple-400 transition-all active:scale-95"
+                id="fab-voice-record"
+                phx-hook={if @live_action == :index, do: "FeedVoiceRecorder", else: "GridVoiceRecorder"}
+                data-room-id={if @live_action != :index && assigns[:room], do: @room.id, else: nil}
+                class={"w-14 h-14 rounded-full bg-purple-500 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-purple-400 transition-all active:scale-95 #{if @recording_voice, do: "animate-pulse", else: ""}"}
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />

@@ -564,22 +564,39 @@ defmodule FriendsWeb.NetworkLive do
 
   # Count mutual friends between two users
   defp count_mutual_friends(user_id1, user_id2) do
-    # Get friends of both users
-    friends1_ids =
+    # Get friends of user 1 (both directions)
+    friends1_as_user =
       Repo.all(
         from f in Friends.Social.Friendship,
           where: f.user_id == ^user_id1 and f.status == "accepted",
           select: f.friend_user_id
       )
-      |> MapSet.new()
 
-    friends2_ids =
+    friends1_as_friend =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.friend_user_id == ^user_id1 and f.status == "accepted",
+          select: f.user_id
+      )
+
+    friends1_ids = MapSet.new(friends1_as_user ++ friends1_as_friend)
+
+    # Get friends of user 2 (both directions)
+    friends2_as_user =
       Repo.all(
         from f in Friends.Social.Friendship,
           where: f.user_id == ^user_id2 and f.status == "accepted",
           select: f.friend_user_id
       )
-      |> MapSet.new()
+
+    friends2_as_friend =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.friend_user_id == ^user_id2 and f.status == "accepted",
+          select: f.user_id
+      )
+
+    friends2_ids = MapSet.new(friends2_as_user ++ friends2_as_friend)
 
     # Count intersection
     MapSet.intersection(friends1_ids, friends2_ids)
