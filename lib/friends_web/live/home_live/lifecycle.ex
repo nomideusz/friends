@@ -204,6 +204,10 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Collapsible chat panel, default open for private
         |> assign(:show_chat_panel, room.is_private)
         |> assign(:show_mobile_chat, false)
+        # FAB and collapsible UI state
+        |> assign(:fab_expanded, false)
+        |> assign(:contacts_collapsed, false)
+        |> assign(:groups_collapsed, false)
         |> assign(:show_room_modal, false)
         |> assign(:show_name_modal, false)
         |> assign(:show_note_modal, false)
