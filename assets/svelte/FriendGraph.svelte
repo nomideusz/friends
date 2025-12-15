@@ -279,15 +279,80 @@
     }
   }
 
+  // Handle real-time graph updates from LiveView
+  function handleGraphUpdate(event) {
+    if (!nodesDataSet || !edgesDataSet || !event.detail || !event.detail.graph_data) {
+      console.warn('[FriendGraph] No DataSets or graph_data in update event')
+      return
+    }
+
+    const newGraphData = event.detail.graph_data
+    const { nodes: newNodes, edges: newEdges } = buildGraphData(newGraphData)
+
+    // Get current IDs
+    const currentNodeIds = new Set(nodesDataSet.getIds())
+    const currentEdgeIds = new Set(edgesDataSet.getIds())
+    const newNodeIds = new Set(newNodes.map(n => n.id))
+    const newEdgeIds = new Set(newEdges.map(e => e.id))
+
+    // Find nodes to add, update, and remove
+    const nodesToAdd = newNodes.filter(n => !currentNodeIds.has(n.id))
+    const nodesToUpdate = newNodes.filter(n => currentNodeIds.has(n.id))
+    const nodesToRemove = Array.from(currentNodeIds).filter(id => !newNodeIds.has(id))
+
+    // Find edges to add, update, and remove
+    const edgesToAdd = newEdges.filter(e => !currentEdgeIds.has(e.id))
+    const edgesToUpdate = newEdges.filter(e => currentEdgeIds.has(e.id))
+    const edgesToRemove = Array.from(currentEdgeIds).filter(id => !newEdgeIds.has(id))
+
+    console.log('[FriendGraph] Update:', {
+      nodesToAdd: nodesToAdd.length,
+      nodesToUpdate: nodesToUpdate.length,
+      nodesToRemove: nodesToRemove.length,
+      edgesToAdd: edgesToAdd.length,
+      edgesToUpdate: edgesToUpdate.length,
+      edgesToRemove: edgesToRemove.length
+    })
+
+    // Apply updates (order matters: remove first, then update, then add)
+    if (nodesToRemove.length > 0) nodesDataSet.remove(nodesToRemove)
+    if (edgesToRemove.length > 0) edgesDataSet.remove(edgesToRemove)
+    if (nodesToUpdate.length > 0) nodesDataSet.update(nodesToUpdate)
+    if (edgesToUpdate.length > 0) edgesDataSet.update(edgesToUpdate)
+    if (nodesToAdd.length > 0) nodesDataSet.add(nodesToAdd)
+    if (edgesToAdd.length > 0) edgesDataSet.add(edgesToAdd)
+
+    // Smooth re-fit if significant changes
+    if (nodesToAdd.length > 0 || nodesToRemove.length > 0) {
+      setTimeout(() => {
+        if (network) {
+          network.fit({
+            animation: { duration: 300, easingFunction: 'easeInOutQuad' }
+          })
+        }
+      }, 500)
+    }
+  }
+
   onMount(() => {
     // Small delay to ensure container is rendered
     setTimeout(initNetwork, 50)
+
+    // Listen for real-time graph updates from LiveView
+    if (live) {
+      window.addEventListener('phx:graph-updated', handleGraphUpdate)
+    }
   })
 
   onDestroy(() => {
     if (network) {
       network.destroy()
       network = null
+    }
+
+    // Clean up event listener
+    if (live) {
+      window.removeEventListener('phx:graph-updated', handleGraphUpdate)
     }
   })
 
