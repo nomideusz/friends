@@ -102,19 +102,27 @@
     // Build nodes
     graphData.nodes.forEach(node => {
       const isSelf = node.type === 'self'
-      
+      const isSecondDegree = node.type === 'second_degree'
+
       // Aether Colors
       let color = '#888888'
       if (isSelf) color = '#ffffff' // Photon
       else if (node.type === 'trusted') color = '#34d399' // Emerald
       else if (node.type === 'trusts_me') color = '#a78bfa' // Amethyst
       else if (node.type === 'friend') color = '#3b82f6' // Sapphire
+      else if (isSecondDegree) color = '#6b7280' // Gray for 2nd degree
+
+      // Build title (tooltip) with mutual count if available
+      let title = `@${node.username}`
+      if (node.mutual_count && node.mutual_count > 0) {
+        title += `\n${node.mutual_count} mutual friend${node.mutual_count > 1 ? 's' : ''}`
+      }
 
       nodes.push({
         id: node.id,
         label: node.display_name || node.username,
         color: {
-          background: isSelf ? '#ffffff' : 'rgba(0,0,0,0.8)', // Self is solid light, others are dark void orbs
+          background: isSelf ? '#ffffff' : (isSecondDegree ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.8)'),
           border: color,
           highlight: { background: isSelf ? '#ffffff' : color, border: '#ffffff' },
           hover: { background: isSelf ? '#ffffff' : color, border: '#ffffff' }
@@ -122,20 +130,21 @@
         shadow: {
           enabled: true,
           color: color,
-          size: isSelf ? 25 : 15,
+          size: isSelf ? 25 : (isSecondDegree ? 8 : 15),
           x: 0,
           y: 0
         },
-        title: `@${node.username}`,
-        size: isSelf ? 20 : 12,
+        title: title,
+        size: isSelf ? 20 : (isSecondDegree ? 8 : 12),
         borderWidth: isSelf ? 0 : 2,
-        font: { 
-          size: isSelf ? 16 : 14, 
-          color: '#ffffff',
+        font: {
+          size: isSelf ? 16 : (isSecondDegree ? 11 : 14),
+          color: isSecondDegree ? '#9ca3af' : '#ffffff',
           face: 'Outfit, sans-serif',
           strokeWidth: 3,
           strokeColor: '#000000'
-        }
+        },
+        opacity: isSecondDegree ? 0.6 : 1.0
       })
     })
 
@@ -151,27 +160,43 @@
 
         const isPending = edge.type === 'pending_outgoing' || edge.type === 'pending_incoming'
         const isFriendToFriend = edge.type === 'mutual'
-        
+        const isSecondDegree = edge.type === 'second_degree'
+
         // Edge Colors (Aether Light Beams)
         let baseColor = 'rgba(255,255,255,0.15)'
         if (edge.type === 'trusted') baseColor = 'rgba(52, 211, 153, 0.4)'
         if (edge.type === 'friend') baseColor = 'rgba(59, 130, 246, 0.3)'
-        
+        if (isSecondDegree) baseColor = 'rgba(107, 114, 128, 0.15)' // Faded gray
+
         const color = isMutualTrust ? '#ffffff' : baseColor
+
+        // Build edge label for mutual count
+        let label = undefined
+        if (edge.mutual_count && edge.mutual_count > 0) {
+          label = `${edge.mutual_count}`
+        }
 
         edges.push({
           id: `edge-${index}`,
           from: edge.from,
           to: edge.to,
-          color: { 
-            color: isFriendToFriend ? 'rgba(255,255,255,0.05)' : color, 
-            highlight: '#ffffff', 
+          color: {
+            color: isFriendToFriend ? 'rgba(255,255,255,0.05)' : color,
+            highlight: '#ffffff',
             hover: '#ffffff'
           },
-          dashes: isPending || isFriendToFriend ? [5, 5] : false,
-          width: isMutualTrust ? 2 : (isFriendToFriend ? 1 : 1),
-          arrows: isMutualTrust || isFriendToFriend ? undefined : { to: { enabled: true, scaleFactor: 0.5, type: 'arrow' } },
-          smooth: { type: 'continuous', roundness: 0.3 }
+          dashes: isPending || isFriendToFriend || isSecondDegree ? [5, 5] : false,
+          width: isMutualTrust ? 2 : (isFriendToFriend || isSecondDegree ? 1 : 1),
+          arrows: isMutualTrust || isFriendToFriend || isSecondDegree ? undefined : { to: { enabled: true, scaleFactor: 0.5, type: 'arrow' } },
+          smooth: { type: 'continuous', roundness: 0.3 },
+          label: label,
+          font: {
+            size: 10,
+            color: '#60a5fa',
+            background: 'rgba(0,0,0,0.8)',
+            strokeWidth: 0,
+            face: 'Outfit, sans-serif'
+          }
         })
       })
     }

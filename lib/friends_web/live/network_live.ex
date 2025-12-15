@@ -285,6 +285,9 @@ defmodule FriendsWeb.NetworkLive do
     # This shows connections like: if A is friends with B and C, and B is friends with C
     friend_to_friend_edges = get_friendships_between(friend_ids)
 
+    # 5. NEW: Get friends of friends (2nd degree connections)
+    {second_degree_friends, second_degree_edges} = get_second_degree_connections(friend_ids, user_id)
+
     # Build nodes map to avoid duplicates
     nodes_map = %{}
 
@@ -323,15 +326,32 @@ defmodule FriendsWeb.NetworkLive do
         })
       end)
 
-    # Add social friends
+    # Add social friends (with mutual count)
     nodes_map =
       Enum.reduce(friends, nodes_map, fn f, acc ->
+        # Calculate mutual friends count
+        mutual_count = count_mutual_friends(user_id, f.user.id)
+
         Map.put_new(acc, f.user.id, %{
           id: f.user.id,
           username: f.user.username,
           display_name: f.user.display_name,
           color: trusted_user_color(f.user),
-          type: "friend"
+          type: "friend",
+          mutual_count: mutual_count
+        })
+      end)
+
+    # Add second degree connections (friends of friends)
+    nodes_map =
+      Enum.reduce(second_degree_friends, nodes_map, fn friend, acc ->
+        # Only add if not already in the map (not a direct connection)
+        Map.put_new(acc, friend.id, %{
+          id: friend.id,
+          username: friend.username,
+          display_name: friend.display_name,
+          color: trusted_user_color(friend),
+          type: "second_degree"
         })
       end)
 
@@ -358,10 +378,11 @@ defmodule FriendsWeb.NetworkLive do
         end
       end)
 
-    # Edges for my direct friends
+    # Edges for my direct friends (with mutual count)
     edges =
       Enum.reduce(friends, edges, fn f, acc ->
-        [%{from: user.id, to: f.user.id, type: "friend"} | acc]
+        mutual_count = count_mutual_friends(user_id, f.user.id)
+        [%{from: user.id, to: f.user.id, type: "friend", mutual_count: mutual_count} | acc]
       end)
 
     # Edges between my friends (social network connections!)
@@ -369,6 +390,9 @@ defmodule FriendsWeb.NetworkLive do
       Enum.reduce(friend_to_friend_edges, edges, fn {id1, id2}, acc ->
         [%{from: id1, to: id2, type: "mutual"} | acc]
       end)
+
+    # Add second degree edges (from my friends to their friends)
+    edges = edges ++ second_degree_edges
 
     # Stats
     mutual_count =
@@ -387,6 +411,7 @@ defmodule FriendsWeb.NetworkLive do
         trust_me: length(people_who_trust_me),
         friends: length(friends),
         friend_connections: length(friend_to_friend_edges),
+        second_degree: length(second_degree_friends),
         pending_in: 0,
         invited: 0
       }
@@ -417,6 +442,88 @@ defmodule FriendsWeb.NetworkLive do
   end
 
   defp trusted_user_color(_), do: Enum.at(@colors, 0)
+
+  # Get friends of friends (2nd degree connections)
+  # Returns {list_of_users, list_of_edges}
+  defp get_second_degree_connections(friend_ids, user_id) when length(friend_ids) == 0 do
+    {[], []}
+  end
+
+  defp get_second_degree_connections(friend_ids, user_id) do
+    # Get all friends of my friends
+    friends_of_friends =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.user_id in ^friend_ids and f.status == "accepted",
+          preload: [:friend_user]
+      )
+
+    # Build set of existing connections (including self)
+    existing_ids = MapSet.new([user_id | friend_ids])
+
+    # Filter out duplicates and existing connections
+    second_degree_map =
+      friends_of_friends
+      |> Enum.reduce(%{}, fn friendship, acc ->
+        friend_of_friend = friendship.friend_user
+
+        # Skip if already in our network or if it's us
+        if MapSet.member?(existing_ids, friend_of_friend.id) do
+          acc
+        else
+          # Track which of my friends connects to this 2nd degree person
+          Map.update(
+            acc,
+            friend_of_friend.id,
+            %{user: friend_of_friend, connections: [friendship.user_id]},
+            fn existing ->
+              %{existing | connections: [friendship.user_id | existing.connections]}
+            end
+          )
+        end
+      end)
+
+    # Build edges from my friends to their friends (2nd degree)
+    edges =
+      second_degree_map
+      |> Enum.flat_map(fn {second_degree_id, data} ->
+        Enum.map(data.connections, fn friend_id ->
+          %{from: friend_id, to: second_degree_id, type: "second_degree"}
+        end)
+      end)
+
+    # Extract unique second degree users
+    second_degree_users =
+      second_degree_map
+      |> Map.values()
+      |> Enum.map(fn data -> data.user end)
+
+    {second_degree_users, edges}
+  end
+
+  # Count mutual friends between two users
+  defp count_mutual_friends(user_id1, user_id2) do
+    # Get friends of both users
+    friends1_ids =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.user_id == ^user_id1 and f.status == "accepted",
+          select: f.friend_user_id
+      )
+      |> MapSet.new()
+
+    friends2_ids =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.user_id == ^user_id2 and f.status == "accepted",
+          select: f.friend_user_id
+      )
+      |> MapSet.new()
+
+    # Count intersection
+    MapSet.intersection(friends1_ids, friends2_ids)
+    |> MapSet.size()
+  end
 
   def render(assigns) do
     ~H"""
@@ -711,11 +818,18 @@ defmodule FriendsWeb.NetworkLive do
                       <span class="text-xs text-white">I trust: {@graph_data.stats.i_trust}</span>
                     </div>
                   <% end %>
-                  
+
                   <%= if @graph_data.stats.friends > 0 do %>
                     <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2 shadow-lg">
                       <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                       <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
+                    </div>
+                  <% end %>
+
+                  <%= if @graph_data.stats.second_degree > 0 do %>
+                    <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-gray-500/30 flex items-center gap-2 shadow-lg">
+                      <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                      <span class="text-xs text-white">Friends of friends: {@graph_data.stats.second_degree}</span>
                     </div>
                   <% end %>
                 </div>
