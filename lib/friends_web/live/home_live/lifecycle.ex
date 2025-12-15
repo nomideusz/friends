@@ -89,6 +89,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       |> assign(:friends, friends)
       |> assign(:contacts_collapsed, false)
       |> assign(:groups_collapsed, false)
+      |> assign(:fab_expanded, false)
       |> assign(:note_input, "")
       |> assign(:recording_voice, false)
       |> assign(:uploading, false)

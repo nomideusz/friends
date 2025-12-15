@@ -11,110 +11,131 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
   attr :users, :list, required: true
   attr :rooms, :list, required: true
   attr :new_room_name, :string, default: nil
+  attr :contacts_collapsed, :boolean, default: false
+  attr :groups_collapsed, :boolean, default: false
 
   def sidebar(assigns) do
     ~H"""
-    <div class="w-full lg:w-80 flex-shrink-0 space-y-8">
+    <div class="w-full lg:w-80 flex-shrink-0 space-y-4">
       <%!-- Contacts --%>
-      <div class="aether-card p-6">
-        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-4">Contacts</h3>
-        
-        <div class="space-y-3">
-          <%= for friend <- @users do %>
-            <div
-              class="flex items-center justify-between group cursor-pointer"
-              phx-click="open_dm"
-              phx-value-user_id={friend.user.id}
-            >
-              <div class="flex items-center gap-3">
-                <div class="relative">
-                  <div
-                    class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm border border-neutral-200"
-                    style={"background-color: #{friend_color(friend.user)}"}
-                  >
-                    {String.first(friend.user.username)}
+      <div class="aether-card">
+        <button
+          phx-click="toggle_contacts"
+          class="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-white/5 transition-colors"
+        >
+          <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+            Contacts ({length(@users)})
+          </h3>
+          <span class="text-neutral-500 text-sm">
+            <%= if @contacts_collapsed, do: "▼", else: "▲" %>
+          </span>
+        </button>
+
+        <%= if !@contacts_collapsed do %>
+          <div class="px-6 pb-6">
+            <div class="space-y-3 mb-4">
+              <%= for friend <- Enum.take(@users, 5) do %>
+                <div
+                  class="flex items-center justify-between group cursor-pointer"
+                  phx-click="open_dm"
+                  phx-value-user_id={friend.user.id}
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="relative">
+                      <div
+                        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm border border-neutral-200"
+                        style={"background-color: #{friend_color(friend.user)}"}
+                      >
+                        {String.first(friend.user.username)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 transition-colors">
+                        {friend.user.username}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="w-2 h-2 rounded-full bg-neutral-300 group-hover:bg-opal-rose transition-colors">
                   </div>
                 </div>
-                
-                <div>
-                  <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 transition-colors">
-                    {friend.user.username}
-                  </p>
-                </div>
-              </div>
-              
-              <div class="w-2 h-2 rounded-full bg-neutral-300 group-hover:bg-opal-rose transition-colors">
-              </div>
+              <% end %>
+
+              <%= if @users == [] do %>
+                <p class="text-xs text-neutral-600 italic">No contacts yet</p>
+              <% end %>
             </div>
-          <% end %>
-          
-          <%= if @users == [] do %>
-            <p class="text-xs text-neutral-600 italic">No contacts yet</p>
-          <% end %>
-        </div>
+
+            <%= if length(@users) > 0 do %>
+              <.link
+                navigate="/network"
+                class="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors underline"
+              >
+                View all contacts →
+              </.link>
+            <% end %>
+          </div>
+        <% end %>
       </div>
        <%!-- Groups --%>
-      <form
-        phx-submit="create_group"
-      <form
-        phx-submit="create_group"
-        phx-change="update_room_form"
-        class="aether-card p-6"
-        novalidate
-      >
-        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-4">Groups</h3>
-        
-        <div class="space-y-3 mb-6">
-          <%= for room <- Enum.reject(@rooms, &(&1.room_type == "dm")) do %>
-            <.link
-              navigate={~p"/r/#{room.code}"}
-              class="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-colors group text-left"
-            >
-              <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-lg font-bold text-neutral-400 group-hover:text-white group-hover:border-white/30 group-hover:scale-105 transition-all">
-                #
+      <div class="aether-card">
+        <button
+          phx-click="toggle_groups"
+          class="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-white/5 transition-colors"
+        >
+          <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+            Groups ({length(Enum.reject(@rooms, &(&1.room_type == "dm")))})
+          </h3>
+          <span class="text-neutral-500 text-sm">
+            <%= if @groups_collapsed, do: "▼", else: "▲" %>
+          </span>
+        </button>
+
+        <%= if !@groups_collapsed do %>
+          <div class="px-6 pb-6">
+            <div class="space-y-3 mb-6">
+              <%= for room <- Enum.reject(@rooms, &(&1.room_type == "dm")) do %>
+                <.link
+                  navigate={~p"/r/#{room.code}"}
+                  class="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-colors group text-left"
+                >
+                  <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-lg font-bold text-neutral-400 group-hover:text-white group-hover:border-white/30 group-hover:scale-105 transition-all">
+                    #
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 truncate">
+                      {room.name || room.code}
+                    </p>
+
+                    <p class="text-xs text-neutral-600 truncate">{length(room.members)} members</p>
+                  </div>
+                </.link>
+              <% end %>
+            </div>
+
+            <form phx-submit="create_group" phx-change="update_room_form" novalidate>
+              <div class="pt-4 border-t border-neutral-200">
+                <input
+                  type="text"
+                  name="name"
+                  value={@new_room_name}
+                  placeholder="New Group Name"
+                  required
+                  class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500 mb-3"
+                />
+                <button
+                  type="submit"
+                  class="w-full py-2 btn-aether text-neutral-400 hover:text-white hover:border-white/30 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Create Group
+                </button>
               </div>
-              
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 truncate">
-                  {room.name || room.code}
-                </p>
-                
-                <p class="text-xs text-neutral-600 truncate">{length(room.members)} members</p>
-              </div>
-            </.link>
-          <% end %>
-        </div>
-        
-        <div class="pt-4 border-t border-neutral-200">
-          <input
-            type="text"
-            name="name"
-            value={@new_room_name}
-            placeholder="New Group Name"
-            required
-            class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500 mb-3"
-          />
-          <button
-            type="submit"
-            class="w-full py-2 btn-aether text-neutral-400 hover:text-white hover:border-white/30 text-xs font-bold uppercase tracking-wider cursor-pointer"
-          >
-            Create Group
-          </button>
-        </div>
-      </form>
-       <%!-- Info footer --%>
-    <div class="aether-card p-6">
-      <div class="flex items-start gap-3 opacity-60 hover:opacity-100 transition-opacity">
-        <span class="text-lg grayscale">🔒</span>
-        <div class="text-xs text-neutral-500">
-          <p class="font-bold uppercase tracking-wide mb-1 text-neutral-400">Private by default</p>
-          
-          <p>
-            Only people you invite can access your group. Share the link or add members directly.
-          </p>
-        </div>
+            </form>
+          </div>
+        <% end %>
       </div>
-    </div>
     </div>
     """
   end
