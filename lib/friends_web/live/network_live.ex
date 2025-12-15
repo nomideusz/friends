@@ -254,13 +254,27 @@ defmodule FriendsWeb.NetworkLive do
 
   # --- Real-time Updates ---
 
-  def handle_info({:friend_request, _}, socket), do: {:noreply, load_data(socket)}
-  def handle_info({:friend_accepted, _}, socket), do: {:noreply, load_data(socket)}
-  def handle_info({:friend_removed, _}, socket), do: {:noreply, load_data(socket)}
+  def handle_info({:friend_request, _}, socket), do: {:noreply, refresh_graph_if_needed(socket)}
+  def handle_info({:friend_accepted, _}, socket), do: {:noreply, refresh_graph_if_needed(socket)}
+  def handle_info({:friend_removed, _}, socket), do: {:noreply, refresh_graph_if_needed(socket)}
+  def handle_info({:trust_added, _}, socket), do: {:noreply, refresh_graph_if_needed(socket)}
+  def handle_info({:trust_confirmed, _}, socket), do: {:noreply, refresh_graph_if_needed(socket)}
   # Room events - refresh user_rooms list
   def handle_info({:room_created, _room}, socket), do: {:noreply, load_data(socket)}
   # Catch-all for any other broadcasts we don't need to handle
   def handle_info(_, socket), do: {:noreply, socket}
+
+  # Refresh graph data if in graph view
+  defp refresh_graph_if_needed(socket) do
+    socket = load_data(socket)
+
+    # If in graph view, push updated graph data to client
+    if socket.assigns.view == "graph" && socket.assigns.graph_data do
+      push_event(socket, "graph-updated", %{graph_data: socket.assigns.graph_data})
+    else
+      socket
+    end
+  end
 
   # --- Graph Helper (Extended Social Network) ---
   defp build_graph_data(user) do
@@ -799,9 +813,10 @@ defmodule FriendsWeb.NetworkLive do
           </div>
         <% else %>
           <%!-- Graph View --%>
-          <div class="relative">
+          <div class="relative h-[75vh] min-h-[500px]">
             <%= if @graph_data.stats.total_connections > 0 do %>
-              <div class="h-[75vh] min-h-[500px] aether-card overflow-hidden relative shadow-inner">
+              <%!-- Graph Container (ignored by LiveView for performance) --%>
+              <div class="absolute inset-0 aether-card overflow-hidden shadow-inner">
                 <div
                   id="network-graph"
                   phx-hook="FriendGraph"
@@ -810,29 +825,30 @@ defmodule FriendsWeb.NetworkLive do
                   class="w-full h-full"
                 >
                 </div>
-                 <%!-- Overlay Stats --%>
-                <div class="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 pointer-events-none">
-                  <%= if @graph_data.stats.i_trust > 0 do %>
-                    <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-green-500/30 flex items-center gap-2">
-                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                      <span class="text-xs text-white">I trust: {@graph_data.stats.i_trust}</span>
-                    </div>
-                  <% end %>
+              </div>
 
-                  <%= if @graph_data.stats.friends > 0 do %>
-                    <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2 shadow-lg">
-                      <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                      <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
-                    </div>
-                  <% end %>
+              <%!-- Overlay Stats (outside phx-update="ignore" so they update in real-time) --%>
+              <div class="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 pointer-events-none z-10">
+                <%= if @graph_data.stats.i_trust > 0 do %>
+                  <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-green-500/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span class="text-xs text-white">I trust: {@graph_data.stats.i_trust}</span>
+                  </div>
+                <% end %>
 
-                  <%= if @graph_data.stats.second_degree > 0 do %>
-                    <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-gray-500/30 flex items-center gap-2 shadow-lg">
-                      <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                      <span class="text-xs text-white">Friends of friends: {@graph_data.stats.second_degree}</span>
-                    </div>
-                  <% end %>
-                </div>
+                <%= if @graph_data.stats.friends > 0 do %>
+                  <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2 shadow-lg">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
+                  </div>
+                <% end %>
+
+                <%= if @graph_data.stats.second_degree > 0 do %>
+                  <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-gray-500/30 flex items-center gap-2 shadow-lg">
+                    <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                    <span class="text-xs text-white">Friends of friends: {@graph_data.stats.second_degree}</span>
+                  </div>
+                <% end %>
               </div>
             <% else %>
               <div class="h-[70vh] flex flex-col items-center justify-center aether-card border-white/5">
