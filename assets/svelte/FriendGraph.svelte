@@ -251,8 +251,18 @@
         if (params.nodes.length > 0) {
           const nodeId = params.nodes[0]
           const currentUserId = graphData?.current_user?.id
+
           if (live && nodeId !== currentUserId) {
-            live.pushEvent('node_clicked', { user_id: nodeId })
+            // Find the clicked node to check its type
+            const clickedNode = graphData.nodes.find(n => n.id === nodeId)
+
+            if (clickedNode && clickedNode.type === 'second_degree') {
+              // Second degree node clicked - send friend request
+              live.pushEvent('add_friend_from_graph', { user_id: String(nodeId) })
+            } else {
+              // Regular node clicked - just notify
+              live.pushEvent('node_clicked', { user_id: nodeId })
+            }
           }
         }
       })

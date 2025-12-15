@@ -52,14 +52,23 @@ defmodule FriendsWeb.NetworkLive do
     |> assign(:show_user_dropdown, false)
     |> assign(:current_route, "/network")
     |> assign(:user_rooms, [])
+    |> assign(:graph_collapsed, false)
   end
 
   defp load_data(socket) do
     user = socket.assigns.current_user
 
     if user do
+      friends = Social.list_friends(user.id)
+
+      # Calculate mutual friends count for each friend
+      friends_with_mutual = Enum.map(friends, fn f ->
+        mutual_count = count_mutual_friends(user.id, f.user.id)
+        Map.put(f, :mutual_count, mutual_count)
+      end)
+
       socket
-      |> assign(:friends, Social.list_friends(user.id))
+      |> assign(:friends, friends_with_mutual)
       |> assign(:friend_requests, Social.list_friend_requests(user.id))
       |> assign(:sent_requests, Social.list_sent_friend_requests(user.id))
       |> assign(:trusted_friends, Social.list_trusted_friends(user.id))
@@ -67,11 +76,8 @@ defmodule FriendsWeb.NetworkLive do
       |> assign(:outgoing_trust_requests, Social.list_sent_trust_requests(user.id))
       |> assign(:invites, Social.list_user_invites(user.id))
       |> assign(:user_rooms, Social.list_user_rooms(user.id))
-      # For graph view
-      |> assign(
-        :graph_data,
-        if(socket.assigns.view == "graph", do: build_graph_data(user), else: nil)
-      )
+      # Always load graph data (graph is always visible now)
+      |> assign(:graph_data, build_graph_data(user))
     else
       socket
       |> put_flash(:error, "You must be logged in")
@@ -91,8 +97,31 @@ defmodule FriendsWeb.NetworkLive do
     {:noreply, assign(socket, :show_user_dropdown, false)}
   end
 
-  def handle_event("set_view", %{"view" => view}, socket) do
-    {:noreply, socket |> assign(:view, view) |> load_data()}
+  def handle_event("toggle_graph", _params, socket) do
+    {:noreply, assign(socket, :graph_collapsed, !socket.assigns.graph_collapsed)}
+  end
+
+  def handle_event("add_friend_from_graph", %{"user_id" => user_id}, socket) do
+    # Convert string user_id to integer
+    user_id = String.to_integer(user_id)
+
+    case Social.add_friend(socket.assigns.current_user.id, user_id) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Friend request sent!")
+         |> load_data()}
+
+      {:error, reason} ->
+        msg =
+          case reason do
+            :already_friends -> "You are already contacts"
+            :request_already_sent -> "Request already sent"
+            _ -> "Could not add contact"
+          end
+
+        {:noreply, put_flash(socket, :error, msg)}
+    end
   end
 
   def handle_event("search_friends", %{"query" => query}, socket) do
@@ -264,12 +293,12 @@ defmodule FriendsWeb.NetworkLive do
   # Catch-all for any other broadcasts we don't need to handle
   def handle_info(_, socket), do: {:noreply, socket}
 
-  # Refresh graph data if in graph view
+  # Refresh graph data (graph is always visible now)
   defp refresh_graph_if_needed(socket) do
     socket = load_data(socket)
 
-    # If in graph view, push updated graph data to client
-    if socket.assigns.view == "graph" && socket.assigns.graph_data do
+    # Always push updated graph data to client (graph is always visible)
+    if socket.assigns.graph_data do
       push_event(socket, "graph-updated", %{graph_data: socket.assigns.graph_data})
     else
       socket
@@ -542,184 +571,184 @@ defmodule FriendsWeb.NetworkLive do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen text-white pb-20">
-      <div class="max-w-[1200px] mx-auto px-4 sm:px-8 py-8">
-        <div class="flex items-center justify-between mb-8">
-          <h1 class="text-3xl font-bold">Contacts</h1>
-           <%!-- View Toggle --%>
-          <div class="flex p-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
-            <button
-              phx-click="set_view"
-              phx-value-view="list"
-              class={"px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer #{if @view == "list", do: "bg-white/10 text-white shadow-inner", else: "text-neutral-500 hover:text-neutral-300"}"}
-            >
-              List
-            </button>
-            <button
-              phx-click="set_view"
-              phx-value-view="graph"
-              class={"px-4 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer #{if @view == "graph", do: "bg-white/10 text-white shadow-inner", else: "text-neutral-500 hover:text-neutral-300"}"}
-            >
-              Graph
-            </button>
-          </div>
+      <div class="max-w-[1400px] mx-auto px-4 sm:px-8 py-8">
+        <%!-- Header --%>
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-3xl font-bold">Network</h1>
         </div>
-        
-        <%= if @view == "list" do %>
-          <div class="space-y-12">
-            <%!-- Trusted Contacts --%>
+
+        <div class="space-y-6">
+          <%!-- Network Graph (Collapsible, Always Visible) --%>
+          <%= if @graph_data && @graph_data.stats.total_connections > 0 do %>
             <section>
-              <div class="flex items-center gap-2 mb-4">
-                <h2 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600 flex items-center gap-2">
-                  <span>🔐</span> Trusted Contacts
-                </h2>
-                
-                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/30">
-                  Recovery
-                </span>
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold text-white">Your Constellation</h2>
+                <button
+                  phx-click="toggle_graph"
+                  class="text-sm text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <%= if @graph_collapsed, do: "Expand ▼", else: "Collapse ▲" %>
+                </button>
               </div>
-              
-              <%= if @pending_trust_requests != [] do %>
-                <div class="mb-4 space-y-2">
-                  <%= for req <- @pending_trust_requests do %>
-                    <div class="flex items-center justify-between p-4 glass rounded-xl border border-amber-500/20 bg-amber-500/5">
-                      <div>
-                        <div class="font-medium">@{req.user.username}</div>
-                        
-                        <div class="text-xs text-amber-400">wants to trust you for recovery</div>
+
+              <%= if !@graph_collapsed do %>
+                <div class="relative h-[50vh] min-h-[400px]">
+                  <%!-- Graph Container --%>
+                  <div class="absolute inset-0 aether-card overflow-hidden shadow-inner">
+                    <div
+                      id="network-graph"
+                      phx-hook="FriendGraph"
+                      phx-update="ignore"
+                      data-graph={Jason.encode!(@graph_data)}
+                      class="w-full h-full"
+                    >
+                    </div>
+                  </div>
+                  <%!-- Stats Overlay --%>
+                  <div class="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 pointer-events-none z-10">
+                    <%= if @graph_data.stats.friends > 0 do %>
+                      <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
                       </div>
-                      
+                    <% end %>
+                    <%= if @graph_data.stats.second_degree > 0 do %>
+                      <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-gray-500/30 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                        <span class="text-xs text-white">Click gray nodes to add: {@graph_data.stats.second_degree}</span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </section>
+          <% end %>
+
+          <%!-- Search & Add Friends --%>
+          <section>
+            <h2 class="text-lg font-semibold text-white mb-3">Add Contact</h2>
+            <div class="p-4 aether-card shadow-lg">
+              <form phx-change="search_friends" phx-submit="search_friends" class="flex gap-2">
+                <div class="relative flex-1">
+                  <input
+                    type="text"
+                    name="query"
+                    value={@friend_search}
+                    placeholder="Search by username..."
+                    autocomplete="off"
+                    phx-debounce="300"
+                    class="w-full bg-white border border-neutral-300 rounded px-4 py-2 text-sm text-neutral-900 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </form>
+
+              <%= if @friend_search_results != [] do %>
+                <div class="mt-3 space-y-2">
+                  <%= for user <- @friend_search_results do %>
+                    <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg border border-transparent hover:border-white/10 transition-all">
+                      <div class="flex items-center gap-2">
+                        <div
+                          class="w-8 h-8 rounded-full border border-white/10"
+                          style={"background-color: #{trusted_user_color(user)}"}
+                        />
+                        <span class="text-sm font-medium text-white">@{user.username}</span>
+                      </div>
                       <button
-                        phx-click="confirm_trust"
-                        phx-value-user_id={req.user.id}
-                        class="px-4 py-2 bg-amber-500 text-black font-semibold rounded-lg hover:bg-amber-400 transition-colors pointer-events-auto cursor-pointer"
+                        phx-click="add_friend"
+                        phx-value-user_id={user.id}
+                        class="px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-lg hover:bg-blue-400 transition-colors cursor-pointer"
                       >
-                        Confirm
+                        Add
                       </button>
                     </div>
                   <% end %>
                 </div>
               <% end %>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <%= for tf <- @trusted_friends do %>
-                  <div class="flex items-center justify-between p-4 aether-card hover:bg-white/5 transition-colors shadow-lg">
+            </div>
+          </section>
+
+          <%!-- Pending Requests --%>
+          <%= if @friend_requests != [] || @sent_requests != [] do %>
+            <section>
+              <h2 class="text-lg font-semibold text-white mb-3">Pending Requests</h2>
+              <div class="space-y-2">
+                <%!-- Incoming Requests --%>
+                <%= for req <- @friend_requests do %>
+                  <div class="flex items-center justify-between p-4 aether-card border border-blue-500/20 bg-blue-500/5">
                     <div class="flex items-center gap-3">
                       <div
-                        class="w-10 h-10 rounded-full presence-dot"
-                        style={"background-color: #{trusted_user_color(tf.trusted_user)}; color: #{trusted_user_color(tf.trusted_user)}"}
+                        class="w-10 h-10 rounded-full"
+                        style={"background-color: #{trusted_user_color(req.user)}"}
                       />
                       <div>
-                        <div class="font-medium">@{tf.trusted_user.username}</div>
-                        
-                        <div class="text-xs text-green-400">Confirmed</div>
+                        <div class="font-medium text-white">@{req.user.username}</div>
+                        <div class="text-xs text-blue-400">wants to connect</div>
                       </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        phx-click="accept_friend"
+                        phx-value-user_id={req.user.id}
+                        class="px-3 py-1.5 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-400 transition-colors cursor-pointer"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        phx-click="decline_friend"
+                        phx-value-user_id={req.user.id}
+                        class="px-3 py-1.5 border border-neutral-700 text-neutral-400 text-sm rounded-lg hover:text-red-400 transition-colors cursor-pointer"
+                      >
+                        Decline
+                      </button>
                     </div>
                   </div>
                 <% end %>
-                
-                <%= if length(@trusted_friends) < 5 do %>
-                  <div class="p-4 border border-dashed border-neutral-400 rounded md:rounded-lg text-neutral-500 flex items-center justify-center text-sm font-bold uppercase tracking-wide">
-                    Select a contact below to add as trusted
+
+                <%!-- Sent Requests (Waiting for Response) --%>
+                <%= for req <- @sent_requests do %>
+                  <div class="flex items-center justify-between p-4 aether-card border border-amber-500/20 bg-amber-500/5">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-10 h-10 rounded-full"
+                        style={"background-color: #{trusted_user_color(req.friend_user)}"}
+                      />
+                      <div>
+                        <div class="font-medium text-white">@{req.friend_user.username}</div>
+                        <div class="text-xs text-amber-400">waiting for response</div>
+                      </div>
+                    </div>
+                    <button
+                      phx-click="remove_friend"
+                      phx-value-user_id={req.friend_user.id}
+                      class="px-3 py-1.5 text-neutral-500 hover:text-red-400 text-sm transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 <% end %>
               </div>
             </section>
-             <%!-- All Contacts --%>
-            <section>
-              <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                <span>👥</span> All Contacts
-              </h2>
-               <%!-- Friend Requests --%>
-              <%= if @friend_requests != [] do %>
-                <div class="mb-6 space-y-2">
-                  <div class="text-sm font-medium text-blue-400 uppercase tracking-wider mb-2">
-                    Pending Requests
-                  </div>
-                  
-                  <%= for req <- @friend_requests do %>
-                    <div class="flex items-center justify-between p-4 glass rounded-xl border border-blue-500/20 bg-blue-500/5">
-                      <div class="flex items-center gap-3">
-                        <div
-                          class="w-8 h-8 rounded-full presence-dot"
-                          style={"background-color: #{trusted_user_color(req.user)}; color: #{trusted_user_color(req.user)}"}
-                        />
-                        <div>
-                          <div class="font-medium">@{req.user.username}</div>
-                          
-                          <div class="text-xs text-neutral-400">wants to connect</div>
-                        </div>
-                      </div>
-                      
-                      <div class="flex gap-2">
-                        <button
-                          phx-click="accept_friend"
-                          phx-value-user_id={req.user.id}
-                          class="px-3 py-1.5 bg-blue-500 text-black text-sm font-medium rounded-lg hover:bg-blue-400 transition-colors pointer-events-auto cursor-pointer"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          phx-click="decline_friend"
-                          phx-value-user_id={req.user.id}
-                          class="px-3 py-1.5 border border-neutral-700 text-neutral-400 text-sm rounded-lg hover:text-red-400 transition-colors pointer-events-auto cursor-pointer"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  <% end %>
+          <% end %>
+
+          <%!-- All Contacts --%>
+          <section>
+            <h2 class="text-lg font-semibold text-white mb-3">
+              All Contacts ({length(@friends)})
+            </h2>
+
+            <%= if @friends == [] do %>
+              <div class="p-8 aether-card text-center">
+                <div class="text-neutral-500 text-sm">
+                  No contacts yet. Search above to add some!
                 </div>
-              <% end %>
-               <%!-- Add Contact Search --%>
-              <div class="mb-6 p-4 aether-card shadow-lg">
-                <form phx-change="search_friends" phx-submit="search_friends" class="flex gap-2">
-                  <div class="relative flex-1">
-                    <input
-                      type="text"
-                      name="query"
-                      value={@friend_search}
-                      placeholder="Add new contact by username..."
-                      autocomplete="off"
-                      phx-debounce="300"
-                      class="w-full bg-white border border-neutral-300 rounded px-4 py-2 text-sm text-neutral-900 focus:outline-none focus:border-opal-rose transition-colors"
-                    />
-                  </div>
-                </form>
-                
-                <%= if @friend_search_results != [] do %>
-                  <div class="mt-2 space-y-2">
-                    <%= for user <- @friend_search_results do %>
-                      <div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg border border-transparent hover:border-white/10 transition-all">
-                        <div class="flex items-center gap-2">
-                          <div
-                            class="w-8 h-8 rounded-full border border-white/10"
-                            style={"background-color: #{trusted_user_color(user)}"}
-                          /> <span class="text-sm font-medium text-white">@{user.username}</span>
-                        </div>
-                        
-                        <button
-                          phx-click="add_friend"
-                          phx-value-user_id={user.id}
-                          class="px-3 py-1.5 btn-aether text-xs"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
               </div>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <% else %>
+              <div class="grid grid-cols-1 gap-3">
                 <%= for f <- @friends do %>
                   <% is_trusted =
                     Enum.any?(@trusted_friends, fn tf -> tf.trusted_user.id == f.user.id end) %>
-                  <%!-- Filter out if already shown in trusted section? User guidelines implied show all below. I'll show all but mark trusted. --%>
-                  <%!-- Filter out if already shown in trusted section? User guidelines implied show all below. I'll show all but mark trusted. --%>
-                  <div class={
-                    "flex items-center justify-between p-4 rounded-xl border transition-all shadow-lg " <>
-                    if is_trusted, do: "border-emerald-500/30 bg-emerald-500/5 backdrop-blur-sm", else: "aether-card border-white/5 hover:border-white/20"
-                  }>
+
+                  <div class={"flex items-center justify-between p-4 rounded-xl border transition-all shadow-lg #{if is_trusted, do: "border-emerald-500/30 bg-emerald-500/5", else: "aether-card border-white/5 hover:border-white/20"}"}>
                     <div class="flex items-center gap-3">
                       <div class="relative">
                         <div
@@ -727,33 +756,43 @@ defmodule FriendsWeb.NetworkLive do
                           style={"background: linear-gradient(135deg, #{trusted_user_color(f.user)} 0%, #{trusted_user_color(f.user)}88 100%)"}
                         />
                         <%= if is_trusted do %>
-                          <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-[10px]">
-                            ✓
-                          </span>
+                          <span class="absolute -top-1 -right-1 text-sm">🔒</span>
                         <% end %>
                       </div>
-                      
+
                       <div>
-                        <div class="font-medium text-white">@{f.user.username}</div>
+                        <div class="font-medium text-white flex items-center gap-2">
+                          @{f.user.username}
+                          <%= if is_trusted do %>
+                            <span class="text-[10px] text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                              TRUSTED
+                            </span>
+                          <% end %>
+                        </div>
+                        <%= if f.mutual_count && f.mutual_count > 0 do %>
+                          <div class="text-xs text-neutral-400">
+                            {f.mutual_count} mutual {if f.mutual_count == 1, do: "friend", else: "friends"}
+                          </div>
+                        <% end %>
                       </div>
                     </div>
-                    
+
                     <div class="flex gap-2 text-sm">
-                      <%= if not is_trusted do %>
+                      <%= if not is_trusted and length(@trusted_friends) < 5 do %>
                         <button
                           phx-click="add_trusted_friend"
                           phx-value-user_id={f.user.id}
-                          class="text-green-500 hover:text-green-400 hover:underline transition-colors pointer-events-auto cursor-pointer"
+                          class="text-emerald-500 hover:text-emerald-400 hover:underline transition-colors cursor-pointer"
                         >
                           Trust
                         </button>
                       <% end %>
-                      
+
                       <button
                         phx-click="remove_friend"
                         phx-value-user_id={f.user.id}
-                        data-confirm="Remove friend?"
-                        class="text-neutral-500 hover:text-red-400 transition-colors pointer-events-auto cursor-pointer"
+                        data-confirm="Remove contact?"
+                        class="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
                       >
                         Remove
                       </button>
@@ -761,112 +800,54 @@ defmodule FriendsWeb.NetworkLive do
                   </div>
                 <% end %>
               </div>
-            </section>
-             <%!-- Invites Section --%>
-            <section class="pt-8 border-t border-neutral-200">
-              <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-purple-400 flex items-center gap-2">
-                  <span>🎟️</span> Invites
-                </h2>
-                
-                <button
-                  phx-click="create_invite"
-                  class="px-3 py-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-sm hover:bg-purple-500/30 transition-colors pointer-events-auto cursor-pointer"
-                >
-                  + Create Code
-                </button>
-              </div>
-              
-              <%= if @invites != [] do %>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  <%= for invite <- @invites do %>
-                    <div class="p-3 aether-card flex items-center justify-between shadow-lg">
-                      <div>
-                        <div
-                          class="font-mono text-lg tracking-wider text-purple-300 select-all cursor-pointer"
-                          phx-click={JS.dispatch("friends:copy", to: "#code-#{invite.id}")}
-                          id={"code-#{invite.id}"}
-                          data-copy={invite.code}
-                        >
-                          {invite.code}
-                        </div>
-                        
-                        <div class="text-[10px] text-neutral-500">{invite.status}</div>
+            <% end %>
+          </section>
+
+          <%!-- Invites Section (Kept at Bottom) --%>
+          <section class="pt-4 border-t border-neutral-800">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-purple-400">Invite Codes</h2>
+              <button
+                phx-click="create_invite"
+                class="px-3 py-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-sm hover:bg-purple-500/30 transition-colors cursor-pointer"
+              >
+                + Create Code
+              </button>
+            </div>
+
+            <%= if @invites != [] do %>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <%= for invite <- @invites do %>
+                  <div class="p-3 aether-card flex items-center justify-between shadow-lg">
+                    <div>
+                      <div
+                        class="font-mono text-lg tracking-wider text-purple-300 select-all cursor-pointer"
+                        phx-click={JS.dispatch("friends:copy", to: "#code-#{invite.id}")}
+                        id={"code-#{invite.id}"}
+                        data-copy={invite.code}
+                      >
+                        {invite.code}
                       </div>
-                      
-                      <%= if invite.status == "active" do %>
-                        <button
-                          phx-click="revoke_invite"
-                          phx-value-code={invite.code}
-                          class="text-xs text-red-500/70 hover:text-red-400 pointer-events-auto cursor-pointer"
-                        >
-                          Revoke
-                        </button>
-                      <% end %>
+                      <div class="text-[10px] text-neutral-500">{invite.status}</div>
                     </div>
-                  <% end %>
-                </div>
-              <% else %>
-                <p class="text-neutral-600 text-sm">No active invite codes.</p>
-              <% end %>
-            </section>
-          </div>
-        <% else %>
-          <%!-- Graph View --%>
-          <div class="relative h-[75vh] min-h-[500px]">
-            <%= if @graph_data.stats.total_connections > 0 do %>
-              <%!-- Graph Container (ignored by LiveView for performance) --%>
-              <div class="absolute inset-0 aether-card overflow-hidden shadow-inner">
-                <div
-                  id="network-graph"
-                  phx-hook="FriendGraph"
-                  phx-update="ignore"
-                  data-graph={Jason.encode!(@graph_data)}
-                  class="w-full h-full"
-                >
-                </div>
-              </div>
 
-              <%!-- Overlay Stats (outside phx-update="ignore" so they update in real-time) --%>
-              <div class="absolute bottom-4 left-4 right-4 flex flex-wrap gap-2 pointer-events-none z-10">
-                <%= if @graph_data.stats.i_trust > 0 do %>
-                  <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-green-500/30 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span class="text-xs text-white">I trust: {@graph_data.stats.i_trust}</span>
-                  </div>
-                <% end %>
-
-                <%= if @graph_data.stats.friends > 0 do %>
-                  <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-blue-500/30 flex items-center gap-2 shadow-lg">
-                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <span class="text-xs text-white">Contacts: {@graph_data.stats.friends}</span>
-                  </div>
-                <% end %>
-
-                <%= if @graph_data.stats.second_degree > 0 do %>
-                  <div class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg border border-gray-500/30 flex items-center gap-2 shadow-lg">
-                    <span class="w-2 h-2 rounded-full bg-gray-500"></span>
-                    <span class="text-xs text-white">Friends of friends: {@graph_data.stats.second_degree}</span>
+                    <%= if invite.status == "active" do %>
+                      <button
+                        phx-click="revoke_invite"
+                        phx-value-code={invite.code}
+                        class="text-xs text-red-500/70 hover:text-red-400 cursor-pointer"
+                      >
+                        Revoke
+                      </button>
+                    <% end %>
                   </div>
                 <% end %>
               </div>
             <% else %>
-              <div class="h-[70vh] flex flex-col items-center justify-center aether-card border-white/5">
-                <div class="text-center p-8">
-                  <div class="text-5xl mb-4 opacity-50 blur-[1px]">🕸️</div>
-                  
-                  <h3 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-500">
-                    Your network is quiet
-                  </h3>
-                  
-                  <p class="text-neutral-500 mt-2 max-w-xs mx-auto">
-                    Add friends or trusted contacts to visualize your constellation.
-                  </p>
-                </div>
-              </div>
+              <p class="text-neutral-600 text-sm">No active invite codes.</p>
             <% end %>
-          </div>
-        <% end %>
+          </section>
+        </div>
       </div>
     </div>
     """
