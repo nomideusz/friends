@@ -69,8 +69,16 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
             |> Map.put(:type, :photo)
             |> Map.put(:unique_id, "photo-#{photo.id}")
 
+          # Get all remaining entries to cancel
+          remaining_entries = socket.assigns.uploads.photo.entries
+
+          socket_with_cancels =
+            Enum.reduce(remaining_entries, socket, fn entry, acc ->
+              cancel_upload(acc, :photo, entry.ref)
+            end)
+
           {:noreply,
-           socket
+           socket_with_cancels
            |> assign(:uploading, false)
            |> assign(:item_count, socket.assigns.item_count + 1)
            |> assign(
@@ -83,8 +91,17 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
         other ->
           require Logger
           Logger.error("Room photo upload result pattern mismatch: #{inspect(other)}")
+
+          # Cancel all uploads on error too
+          remaining_entries = socket.assigns.uploads.photo.entries
+
+          socket_with_cancels =
+            Enum.reduce(remaining_entries, socket, fn entry, acc ->
+              cancel_upload(acc, :photo, entry.ref)
+            end)
+
           {:noreply,
-           socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
+           socket_with_cancels |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
       end
     end
   end
@@ -145,8 +162,16 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
             |> Map.put(:type, :photo)
             |> Map.put(:unique_id, "photo-#{photo.id}")
 
+          # Get all remaining entries to cancel
+          remaining_entries = socket.assigns.uploads.feed_photo.entries
+
+          socket_with_cancels =
+            Enum.reduce(remaining_entries, socket, fn entry, acc ->
+              cancel_upload(acc, :feed_photo, entry.ref)
+            end)
+
           {:noreply,
-           socket
+           socket_with_cancels
            |> assign(:uploading, false)
            |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
            |> stream_insert(:feed_items, photo_with_type, at: 0)
@@ -155,8 +180,17 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
         other ->
           require Logger
           Logger.error("Feed photo upload result pattern mismatch: #{inspect(other)}")
+
+          # Cancel all uploads on error too
+          remaining_entries = socket.assigns.uploads.feed_photo.entries
+
+          socket_with_cancels =
+            Enum.reduce(remaining_entries, socket, fn entry, acc ->
+              cancel_upload(acc, :feed_photo, entry.ref)
+            end)
+
           {:noreply,
-           socket |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
+           socket_with_cancels |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
       end
     end
   end
