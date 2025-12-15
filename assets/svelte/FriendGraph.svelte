@@ -92,12 +92,18 @@
         const source = nodeMap.get(String(edge.from));
         const target = nodeMap.get(String(edge.to));
         if (source && target) {
+          // Edge appears when BOTH connected nodes are visible
+          // Use max of the two node timestamps for realistic behavior
+          const effectiveTime = Math.max(
+            source.connectedAt,
+            target.connectedAt,
+          );
           links.push({
             source: source.id,
             target: target.id,
             type: edge.type,
             color: colors[edge.type] || "#ffffff",
-            connectedAt: edgeTime, // Store timestamp for visibility filtering
+            connectedAt: effectiveTime, // Use later of the two node timestamps
           });
         }
       });
@@ -400,21 +406,41 @@
     animationFrame = requestAnimationFrame(animate);
   }
 
+  // Debounced resize handler - only reinitialize on significant width changes
+  let resizeTimeout;
+  let lastWidth = 0;
+  function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (!container) return;
+      const newWidth = container.getBoundingClientRect().width;
+      // Only reinitialize if width changed by more than 50px (ignore mobile address bar height changes)
+      if (Math.abs(newWidth - lastWidth) > 50) {
+        lastWidth = newWidth;
+        initGraph();
+      }
+    }, 250); // 250ms debounce
+  }
+
   onMount(() => {
     initGraph();
+    if (container) {
+      lastWidth = container.getBoundingClientRect().width;
+    }
     window.addEventListener("phx:graph-updated", (e) => {
       if (e.detail.graph_data) {
         graphData = e.detail.graph_data;
         initGraph();
       }
     });
-    window.addEventListener("resize", initGraph);
+    window.addEventListener("resize", handleResize);
   });
 
   onDestroy(() => {
     if (simulation) simulation.stop();
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    window.removeEventListener("resize", initGraph);
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    window.removeEventListener("resize", handleResize);
   });
 </script>
 
