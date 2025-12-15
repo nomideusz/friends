@@ -499,18 +499,22 @@ defmodule FriendsWeb.NetworkLive do
       Repo.all(
         from f in Friends.Social.Friendship,
           where: f.user_id in ^friend_ids and f.status == "accepted",
-          preload: [:friend_user],
-          select: %{friend_id: f.friend_user_id, connector_id: f.user_id, friend_user: f.friend_user}
+          preload: [:friend_user]
       )
+      |> Enum.map(fn f ->
+        %{friend_id: f.friend_user_id, connector_id: f.user_id, friend_user: f.friend_user}
+      end)
 
     # Direction 2: where my friends are the "friend_user"
     friends_of_friends_2 =
       Repo.all(
         from f in Friends.Social.Friendship,
           where: f.friend_user_id in ^friend_ids and f.status == "accepted",
-          preload: [:user],
-          select: %{friend_id: f.user_id, connector_id: f.friend_user_id, friend_user: f.user}
+          preload: [:user]
       )
+      |> Enum.map(fn f ->
+        %{friend_id: f.user_id, connector_id: f.friend_user_id, friend_user: f.user}
+      end)
 
     # Combine both directions
     all_friends_of_friends = friends_of_friends_1 ++ friends_of_friends_2

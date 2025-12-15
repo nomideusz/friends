@@ -41,6 +41,18 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_user_dropdown, false)}
   end
 
+  def handle_event("toggle_contacts", _params, socket) do
+    {:noreply, assign(socket, :contacts_collapsed, !socket.assigns[:contacts_collapsed])}
+  end
+
+  def handle_event("toggle_groups", _params, socket) do
+    {:noreply, assign(socket, :groups_collapsed, !socket.assigns[:groups_collapsed])}
+  end
+
+  def handle_event("toggle_fab", _params, socket) do
+    {:noreply, assign(socket, :fab_expanded, !socket.assigns[:fab_expanded])}
+  end
+
   def handle_event(
         "set_user_id",
         %{"browser_id" => browser_id, "fingerprint" => fingerprint},

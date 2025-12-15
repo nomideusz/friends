@@ -469,6 +469,8 @@
             users={assigns[:friends] || []}
             rooms={assigns[:user_rooms] || []}
             new_room_name={@new_room_name}
+            contacts_collapsed={@contacts_collapsed}
+            groups_collapsed={@groups_collapsed}
           />
         <% end %>
 
@@ -571,6 +573,58 @@
           <% end %>
         </div>
       </div>
+
+      <%!-- Floating Action Button (Mobile Only) --%>
+      <%= if @current_user do %>
+        <div class="lg:hidden">
+          <%!-- FAB Buttons (Expanded State) --%>
+          <%= if @fab_expanded do %>
+            <div class="fixed bottom-24 right-4 flex flex-col gap-3 z-40">
+              <%!-- Photo Button --%>
+              <label
+                for="fab-photo-upload"
+                class="w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-blue-400 transition-all active:scale-95"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </label>
+              <input type="file" id="fab-photo-upload" accept="image/*" multiple class="hidden" phx-change="validate" phx-drop-target={@uploads.photos.ref} />
+
+              <%!-- Note Button --%>
+              <button
+                phx-click="open_note_modal"
+                phx-value-action="post_feed_note"
+                class="w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-emerald-400 transition-all active:scale-95"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+
+              <%!-- Voice Button --%>
+              <button
+                phx-click="toggle_voice_recording"
+                class="w-14 h-14 rounded-full bg-purple-500 text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-purple-400 transition-all active:scale-95"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </button>
+            </div>
+          <% end %>
+
+          <%!-- Main FAB Button --%>
+          <button
+            phx-click="toggle_fab"
+            class={"fixed bottom-6 right-4 w-16 h-16 rounded-full shadow-lg flex items-center justify-center cursor-pointer transition-all z-50 #{if @fab_expanded, do: "bg-red-500 hover:bg-red-400 rotate-45", else: "bg-blue-600 hover:bg-blue-500"}"}
+          >
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+      <% end %>
     <% else %>
       <%!-- Guests Landing --%>
       <div class="max-w-md mx-auto mt-20 text-center">
