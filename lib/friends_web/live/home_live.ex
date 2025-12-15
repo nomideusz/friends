@@ -114,13 +114,7 @@ defmodule FriendsWeb.HomeLive do
     PhotoEvents.validate_feed_photo(socket)
   end
 
-  def handle_event("open_feed_note_modal", _, socket) do
-    {:noreply, assign(socket, :show_note_modal, true)}
-  end
-
-  def handle_event("close_note_modal", _, socket) do
-    {:noreply, assign(socket, :show_note_modal, false)}
-  end
+  # open_feed_note_modal and close_note_modal delegated to NoteEvents module (lines 203-205)
 
   def handle_event("view_feed_photo", %{"photo_id" => photo_id}, socket) do
     PhotoEvents.view_feed_photo(socket, photo_id)
@@ -203,12 +197,26 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("open_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
   def handle_event("open_feed_note_modal", _params, socket), do: NoteEvents.open_feed_note_modal(socket)
   def handle_event("close_note_modal", _params, socket), do: NoteEvents.close_note_modal(socket)
+  
+  def handle_event("view_feed_note", %{"note_id" => note_id}, socket) do
+    NoteEvents.view_feed_note(socket, note_id)
+  end
 
-  def handle_event("update_note", %{"content" => content}, socket) do
+  def handle_event("view_full_note", %{"id" => _id, "content" => content, "user" => user, "time" => time}, socket) do
+    # For room notes, we already have the data in params, just display it
+    note_data = %{
+      content: content,
+      user: %{username: user},
+      inserted_at: time
+    }
+    {:noreply, assign(socket, :viewing_note, note_data)}
+  end
+
+  def handle_event("update_note", %{"note" => content}, socket) do
     NoteEvents.update_note(socket, content)
   end
 
-  def handle_event("save_note", %{"content" => content}, socket) do
+  def handle_event("save_note", %{"note" => content}, socket) do
     NoteEvents.save_note(socket, content)
   end
 

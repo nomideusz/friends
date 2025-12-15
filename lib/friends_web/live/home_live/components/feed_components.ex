@@ -36,58 +36,21 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
     """
   end
 
+  # Delegate to shared CardComponents
+  alias FriendsWeb.HomeLive.Components.CardComponents
+
   def feed_actions_bar(assigns) do
+    assigns = assign(assigns, :upload_key, :feed_photo)
     ~H"""
-    <div class="mb-6 flex items-stretch gap-3">
-      <%!-- Photo Upload --%>
-      <%= if @uploads && @uploads[:feed_photo] do %>
-        <form
-          id="feed-upload-form"
-          phx-change="validate_feed_photo"
-          phx-submit="save_feed_photo"
-          class="contents"
-        >
-          <label
-            for={@uploads.feed_photo.ref}
-            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer"
-          >
-            <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5">
-              <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
-            </div>
-            
-            <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">
-              {if @uploading, do: "Uploading...", else: "Photo"}
-            </span> <.live_file_input upload={@uploads.feed_photo} class="sr-only" />
-          </label>
-        </form>
-      <% end %>
-       <%!-- Note Button --%>
-      <button
-        type="button"
-        phx-click="open_feed_note_modal"
-        class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group"
-      >
-        <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
-            <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
-        </div>
-        <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">Note</span>
-      </button> <%!-- Voice Button --%>
-      <button
-        type="button"
-        id="feed-voice-record"
-        phx-hook="FeedVoiceRecorder"
-        class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group #{if @recording_voice, do: "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]", else: ""}"}
-      >
-        <div class={"w-8 h-8 rounded-full flex items-center justify-center border #{if @recording_voice, do: "bg-blue-600 border-blue-500 animate-pulse", else: "bg-white/5 border-white/20"}"}>
-            <span class={"text-lg font-bold #{if @recording_voice, do: "text-white", else: "text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]"}"}>
-            {if @recording_voice, do: "●", else: "+"}
-            </span>
-        </div>
-        <span class={"text-sm font-bold uppercase tracking-wider #{if @recording_voice, do: "text-blue-400", else: "text-neutral-400 group-hover:text-white"}"}>
-          {if @recording_voice, do: "Recording...", else: "Voice"}
-        </span>
-      </button>
-    </div>
+    <CardComponents.actions_bar
+      uploads={@uploads}
+      uploading={@uploading}
+      recording_voice={@recording_voice}
+      note_event="open_feed_note_modal"
+      voice_button_id="feed-voice-record"
+      voice_hook="FeedVoiceRecorder"
+      upload_key={:feed_photo}
+    />
     """
   end
 
@@ -143,29 +106,29 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
     <%= if @item.type == :photo or @item.type == "photo" do %>
       <div
         id={@id}
-        class="photo-item group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/50 cursor-pointer transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
+        class="photo-item aether-card group relative aspect-square overflow-hidden cursor-pointer transition-all hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
         phx-click="view_feed_photo"
         phx-value-photo_id={@item.id}
       >
-        <%= if String.starts_with?(@item.content_type || "", "audio/") do %>
-          <div class="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-neutral-900 to-neutral-800 opal-aurora text-center relative overflow-hidden">
+        <%= if is_binary(@item[:content_type]) && String.starts_with?(@item.content_type, "audio/") do %>
+          <div class="w-full h-full flex flex-col items-center justify-center p-3 sm:p-4 text-center relative overflow-hidden" onclick="event.stopPropagation();">
             <!-- Decorative wave background -->
             <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMTBoMThNMTAgMXYxOCIgc3Ryb2tlPSJjdXJyZW50Q29xvciBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIC8+PC9zdmc+');"></div>
             
             <div class="relative z-10 flex flex-col items-center w-full">
-              <div class="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mb-4 ring-1 ring-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 sm:mb-3 ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-300">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
               
-              <span class="text-xs font-medium text-cyan-200/70 uppercase tracking-widest mb-3">Voice Note</span>
+              <span class="text-[10px] font-medium text-neutral-400 uppercase tracking-widest mb-2">Voice Note</span>
               
-              <audio controls src={@item.image_data} class="w-full h-8 max-w-[180px] opacity-90 hover:opacity-100 transition-opacity" onclick="event.stopPropagation();" />
+              <audio controls src={@item.image_data} class="w-full h-6 sm:h-7 max-w-[120px] sm:max-w-[140px] opacity-90 hover:opacity-100 transition-opacity" style="transform: scale(0.85);" onclick="event.stopPropagation();" />
               
-              <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-200 shadow-sm">
-                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name}</span>
+              <div class="mt-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-900 border border-white/10 shadow-sm">
+                <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name || "unknown"}</span>
               </div>
             </div>
           </div>
@@ -177,7 +140,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
           />
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
             <div class="absolute bottom-2 left-2 right-2">
-              <div class="text-xs font-bold text-neutral-500 truncate">@{@item.user_name}</div>
+              <div class="text-xs font-bold text-neutral-500 truncate">@{@item.user_name || "unknown"}</div>
             </div>
           </div>
         <% end %>
@@ -186,13 +149,13 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
       <%!-- Note item --%>
       <div
         id={@id}
-        class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-cyan-500/20 transition-all hover:shadow-xl hover:shadow-cyan-500/10 animate-in fade-in zoom-in-95 duration-300 cursor-pointer"
+        class="note-item aether-card group relative aspect-square overflow-hidden cursor-pointer transition-all hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
         phx-click="view_feed_note"
         phx-value-note_id={@item.id}
       >
-        <div class="w-full h-full p-4 flex flex-col opal-aurora">
+        <div class="w-full h-full p-4 flex flex-col">
           <div class="flex-1 overflow-hidden">
-            <p class="text-sm text-neutral-200 line-clamp-6">{@item.content}</p>
+            <p class="text-sm text-neutral-200 line-clamp-6">{@item.content || ""}</p>
           </div>
           
           <div class="mt-2 pt-2 border-t border-neutral-200">
@@ -202,7 +165,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
                 style={"background-color: #{@item.user_color || "#888"}"}
               >
               </div>
-               <span class="text-xs text-neutral-500 truncate">@{@item.user_name}</span>
+               <span class="text-xs text-neutral-500 truncate">@{@item.user_name || "unknown"}</span>
             </div>
           </div>
         </div>

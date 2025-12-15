@@ -10,14 +10,21 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
     ~H"""
     <%= if @show and @photo do %>
       <div
-        class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+        class="fixed inset-0 z-[100]"
         phx-window-keydown="close_image_modal"
         phx-key="escape"
       >
-        <div
-          class="max-w-4xl max-h-[90vh] relative aether-card bg-black/90 p-4 rounded-xl shadow-2xl"
-          phx-click-away="close_image_modal"
-        >
+        <!-- Backdrop -->
+        <div 
+          class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity" 
+          phx-click="close_image_modal"
+        ></div>
+
+        <!-- Modal Content Container -->
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            class="max-w-4xl max-h-[90vh] relative aether-card bg-black/90 p-4 rounded-xl shadow-2xl pointer-events-auto"
+          >
           <%= if @photo.data do %>
             <img
               src={@photo.data}
@@ -44,6 +51,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
             </svg>
           </button>
         </div>
+        </div>
       </div>
     <% end %>
     """
@@ -57,37 +65,59 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
     ~H"""
     <%= if @show do %>
       <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-50"
+        phx-mounted={JS.add_class("overflow-hidden", to: "body")}
+        phx-remove={JS.remove_class("overflow-hidden", to: "body")}
+        phx-window-keydown="close_note_modal"
+        phx-key="escape"
       >
-        <div class="aether-card w-full max-w-lg rounded-2xl p-6 shadow-2xl bg-black/90" phx-click-away="close_note_modal">
+        <!-- Backdrop -->
+        <div 
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+          phx-click="close_note_modal"
+        ></div>
+
+        <!-- Modal Content Container -->
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <div class="aether-card w-full max-w-lg rounded-2xl p-6 shadow-2xl bg-black/90 pointer-events-auto relative">
           <h3 class="text-lg font-bold uppercase tracking-wider text-neutral-400 mb-4">
             <%= if @action == "post_feed_note", do: "Create a Public Note", else: "Create a Room Note" %>
           </h3>
           
-          <form phx-submit={@action}>
+          <form phx-submit={@action} class="relative">
+            <div class="relative">
             <textarea
+              id="note-textarea"
               name="note"
-              rows="4"
-              class="w-full bg-white border border-neutral-300 rounded md:rounded-lg p-4 text-neutral-900 placeholder-neutral-500 focus:border-opal-rose focus:outline-none resize-none shadow-inner"
+              rows="5"
+              maxlength="500"
+              phx-mounted={JS.focus()}
+              oninput="document.getElementById('note-char-count').textContent = this.value.length"
+              class="w-full bg-neutral-900/50 border border-white/10 rounded-xl p-4 text-white placeholder-neutral-600 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 focus:outline-none resize-none transition-all"
               placeholder="What's on your mind?"
-              autofocus
             ></textarea>
-            <div class="flex justify-end gap-3 mt-4">
+              <div class="absolute bottom-3 right-3 text-xs text-neutral-600 font-mono pointer-events-none">
+                <span id="note-char-count" class="text-neutral-500">0</span>/500
+              </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-6">
               <button
                 type="button"
                 phx-click="close_note_modal"
-                class="px-4 py-2 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                class="px-5 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider text-neutral-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                class="px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-medium rounded-lg transition-colors cursor-pointer"
+                class="px-6 py-2.5 rounded-lg bg-white hover:bg-neutral-100 text-black text-sm font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg active:translate-y-px"
               >
-                Post
+                Post Note
               </button>
             </div>
           </form>
+        </div>
         </div>
       </div>
     <% end %>

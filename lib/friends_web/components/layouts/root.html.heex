@@ -11,6 +11,56 @@
     
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+      /* AETHER OVERRIDES (Inline Fallback) */
+      :root {
+        --color-photon: #FFFFFF;
+        --color-energy: #3B82F6;
+        --color-light: #EAE6DD;
+        --color-void: #030303;
+        --font-family-display: 'Outfit', sans-serif;
+      }
+      
+      .aether-card {
+        background-color: rgba(18, 18, 18, 0.6) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+        transition: border-color 0.2s ease, transform 0.2s ease !important;
+      }
+      .aether-card:hover {
+        border-color: rgba(255, 255, 255, 0.15) !important;
+        transform: translateY(-2px) !important;
+      }
+      
+      .btn-aether {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #EAE6DD;
+      }
+      .btn-aether:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #FFFFFF;
+        color: #FFFFFF;
+        box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+      }
+      
+      .btn-aether-primary {
+        background: #FFFFFF;
+        color: #030303;
+        border: 1px solid #FFFFFF;
+      }
+      .btn-aether-primary:hover {
+        background: white;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+      }
     </style>
   </head>
   

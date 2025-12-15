@@ -4,6 +4,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
   """
   use FriendsWeb, :html
   import FriendsWeb.HomeLive.Helpers
+  alias FriendsWeb.HomeLive.Components.CardComponents
 
   # --- Sidebar (Dashboard) ---
 
@@ -102,20 +103,18 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         </div>
       </form>
        <%!-- Info footer --%>
-      <div class="px-6 pb-6">
-        <div class="p-4 border border-white/5 rounded-2xl">
-          <div class="flex items-start gap-3 opacity-60 hover:opacity-100 transition-opacity">
-            <span class="text-lg grayscale">🔒</span>
-            <div class="text-xs text-neutral-500">
-              <p class="font-bold uppercase tracking-wide mb-1 text-neutral-400">Private by default</p>
-              
-              <p>
-                Only people you invite can access your group. Share the link or add members directly.
-              </p>
-            </div>
-          </div>
+    <div class="aether-card p-6">
+      <div class="flex items-start gap-3 opacity-60 hover:opacity-100 transition-opacity">
+        <span class="text-lg grayscale">🔒</span>
+        <div class="text-xs text-neutral-500">
+          <p class="font-bold uppercase tracking-wide mb-1 text-neutral-400">Private by default</p>
+          
+          <p>
+            Only people you invite can access your group. Share the link or add members directly.
+          </p>
         </div>
       </div>
+    </div>
     </div>
     """
   end
@@ -438,57 +437,19 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
   def mobile_action_bar(assigns) do
     ~H"""
     <%= if not is_nil(@current_user) and not @room_access_denied and @uploads do %>
-      <div class="sm:hidden flex items-stretch gap-2 mb-4">
-        <%!-- Mobile Photo Button (triggers the desktop file input) --%>
-        <label
-          for={@uploads.photo.ref}
-          class="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-neutral-800/80 hover:bg-white/10 transition-all cursor-pointer active:scale-95"
-        >
-          <svg class="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span class="text-[10px] font-medium text-neutral-500">
-            {if @uploading, do: "...", else: "Photo"}
-          </span>
-        </label> <%!-- Mobile Note Button --%>
-        <button
-          type="button"
-          phx-click="open_note_modal"
-          class="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl bg-neutral-800/80 hover:bg-white/10 transition-all cursor-pointer active:scale-95"
-        >
-          <svg class="w-6 h-6 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg> <span class="text-[10px] font-medium text-neutral-500">Note</span>
-        </button> <%!-- Mobile Voice Button --%>
-        <button
-          type="button"
-          id="grid-voice-record-mobile"
-          phx-hook="GridVoiceRecorder"
-          data-room-id={@room.id}
-          class={"flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all cursor-pointer active:scale-95 #{if @recording_voice, do: "bg-red-500/30 animate-pulse", else: "bg-neutral-800/80 hover:bg-white/10"}"}
-        >
-          <%= if @recording_voice do %>
-            <div class="w-4 h-4 bg-red-500 rounded-sm"></div>
-          <% else %>
-            <svg
-              class="w-6 h-6 text-neutral-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-          <% end %>
-          
-          <span class={"text-[10px] font-medium #{if @recording_voice, do: "text-red-400", else: "text-neutral-500"}"}>
-            {if @recording_voice, do: "Stop", else: "Voice"}
-          </span>
-        </button>
+      <div class="sm:hidden">
+        <CardComponents.actions_bar
+          uploads={@uploads}
+          uploading={@uploading}
+          recording_voice={@recording_voice}
+          note_event="open_note_modal"
+          voice_button_id="grid-voice-record-mobile"
+          voice_hook="GridVoiceRecorder"
+          room_id={@room.id}
+          upload_key={:photo}
+          id_prefix="mobile"
+          skip_file_input={true}
+        />
       </div>
     <% end %>
     """
@@ -497,49 +458,18 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
   def room_actions_bar(assigns) do
     ~H"""
     <%= if not is_nil(@current_user) and not @room_access_denied and @uploads do %>
-      <div class="hidden sm:flex items-stretch gap-3 mb-6">
-        <%!-- Photo Upload --%>
-        <form id="upload-form" phx-change="validate" phx-submit="save" class="contents">
-          <label
-            for={@uploads.photo.ref}
-            class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer"
-          >
-            <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:scale-105 transition-transform bg-white/5">
-              <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
-            </div>
-            
-            <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">
-              {if @uploading, do: "Uploading...", else: "Photo"}
-            </span> <.live_file_input upload={@uploads.photo} class="sr-only" />
-          </label>
-        </form>
-         <%!-- Note Button --%>
-        <button
-          type="button"
-          phx-click="open_note_modal"
-          class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group"
-        >
-          <div class="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center bg-white/5">
-              <span class="text-lg text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] font-bold">+</span>
-          </div>
-          <span class="text-sm font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">Note</span>
-        </button> <%!-- Voice Button --%>
-        <button
-          type="button"
-          id="grid-voice-record"
-          phx-hook="GridVoiceRecorder"
-          data-room-id={@room.id}
-          class={"flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg btn-aether cursor-pointer group #{if @recording_voice, do: "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]", else: ""}"}
-        >
-          <div class={"w-8 h-8 rounded-full flex items-center justify-center border #{if @recording_voice, do: "bg-blue-600 border-blue-500 animate-pulse", else: "bg-white/5 border-white/20"}"}>
-              <span class={"text-lg font-bold #{if @recording_voice, do: "text-white", else: "text-white group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]"}"}>
-              {if @recording_voice, do: "●", else: "+"}
-              </span>
-          </div>
-          <span class={"text-sm font-bold uppercase tracking-wider #{if @recording_voice, do: "text-blue-400", else: "text-neutral-400 group-hover:text-white"}"}>
-            {if @recording_voice, do: "Recording...", else: "Voice"}
-          </span>
-        </button>
+      <div class="hidden sm:block">
+        <CardComponents.actions_bar
+          uploads={@uploads}
+          uploading={@uploading}
+          recording_voice={@recording_voice}
+          note_event="open_note_modal"
+          voice_button_id="grid-voice-record"
+          voice_hook="GridVoiceRecorder"
+          room_id={@room.id}
+          upload_key={:photo}
+          id_prefix="desktop"
+        />
       </div>
     <% end %>
     """
@@ -576,13 +506,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     <%= if Map.get(@item, :type) == :photo do %>
       <div
         id={@id}
-        class="photo-item group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/50 cursor-pointer transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
+        class="photo-item group relative aspect-square overflow-hidden aether-card cursor-pointer transition-all hover:border-white/20 hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
         phx-click={if Map.get(@item, :content_type) != "audio/encrypted", do: "view_full_image"}
         phx-value-photo_id={@item.id}
       >
         <%= if Map.get(@item, :content_type) == "audio/encrypted" do %>
           <div
-            class="w-full h-full flex flex-col items-center justify-center p-4 bg-black/30 backdrop-blur-sm text-center relative z-10"
+            class="w-full h-full flex flex-col items-center justify-center p-3 sm:p-4 text-center relative z-10"
             id={"grid-voice-player-#{@item.id}"}
             data-item-id={@item.id}
             data-room-id={@room.id}
@@ -596,19 +526,33 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
             >
             </div>
             
-            <button class="grid-voice-play-btn w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xl transition-colors mb-3 group-hover:scale-110 active:scale-95 cursor-pointer z-20">
-              ▶
-            </button>
-            <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-              <div class="grid-voice-progress h-full bg-emerald-500 w-0 transition-all"></div>
-            </div>
+            <!-- Decorative wave background -->
+            <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMTBoMThNMTAgMXYxOCIgc3Ryb2tlPSJjdXJyZW50Q29xb3Igc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiAvPjwvc3ZnPg==');"></div>
             
-            <p class="text-xs text-neutral-400 mt-2 font-mono">
-              {case Integer.parse(@item.description || "0") do
-                {ms, _} -> format_voice_duration(ms)
-                _ -> "0:00"
-              end}
-            </p>
+            <div class="relative z-10 flex flex-col items-center w-full">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 sm:mb-3 ring-1 ring-white/20">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+              
+              <span class="text-[10px] font-medium text-neutral-400 uppercase tracking-widest mb-2">Voice Note</span>
+              
+              <button class="grid-voice-play-btn w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 flex items-center justify-center text-white transition-all group-hover:scale-110 active:scale-95 cursor-pointer z-20 mb-2">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </button>
+              
+              <div class="w-full max-w-[120px] h-1.5 bg-neutral-900/50 rounded-full overflow-hidden border border-white/5">
+                <div class="grid-voice-progress h-full bg-blue-500 w-0 transition-all"></div>
+              </div>
+              
+              <div class="mt-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-900 border border-white/10 shadow-sm">
+                <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name || "unknown"}</span>
+              </div>
+            </div>
           </div>
         <% else %>
           <%= if @item.thumbnail_data do %>
@@ -639,84 +583,69 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
             </div>
           <% end %>
         <% end %>
-         <%!-- Overlay on hover --%>
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-          <div class="flex items-center gap-2 text-xs">
-            <div
-              class="w-2 h-2 rounded-full"
-              style={"background-color: #{@item.user_color}"}
-            />
-            <span class="text-neutral-300">
-              {@item.user_name || String.slice(@item.user_id, 0, 6)}
-            </span> <span class="text-neutral-600">{format_time(@item.uploaded_at)}</span>
+         <%!-- Overlay on hover (only for photos, not voice) --%>
+        <%= if Map.get(@item, :content_type) != "audio/encrypted" do %>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="absolute bottom-2 left-2 right-2">
+              <div class="text-xs font-bold text-neutral-500 truncate">@{@item.user_name || "unknown"}</div>
+            </div>
+            
+            <%= if @item.user_id == @current_user.id do %>
+              <button
+                type="button"
+                phx-click="delete_photo"
+                phx-value-id={@item.id}
+                data-confirm="delete?"
+                class="absolute top-2 right-2 text-neutral-500 hover:text-red-500 text-xs cursor-pointer"
+              >
+                delete
+              </button>
+            <% end %>
           </div>
-          
-          <%= if @item.description do %>
-            <p class="text-neutral-400 text-xs mt-1 line-clamp-2">{@item.description}</p>
-          <% end %>
-          
-          <%= if @item.user_id == @current_user.id do %>
-            <button
-              type="button"
-              phx-click="delete_photo"
-              phx-value-id={@item.id}
-              data-confirm="delete?"
-              class="absolute top-2 right-2 text-neutral-500 hover:text-red-500 text-xs cursor-pointer"
-            >
-              delete
-            </button>
-          <% end %>
-        </div>
+        <% end %>
       </div>
     <% else %>
-      <%!-- Note card (clickable to expand) --%>
+      <%!-- Note card (matching feed style) --%>
       <div
         id={@id}
-        class="photo-item opal-shimmer group relative aspect-square overflow-hidden rounded-2xl border border-white/5 hover:border-cyan-500/20 transition-all hover:shadow-xl hover:shadow-cyan-500/10 animate-in fade-in zoom-in-95 duration-300 cursor-pointer"
-        phx-click="view_note"
-        phx-value-note_id={@item.id}
+        class="note-item aether-card group relative aspect-square overflow-hidden cursor-pointer transition-all hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
+        phx-click="view_full_note"
+        phx-value-id={@item.id}
+        phx-value-content={@item.content}
+        phx-value-user={@item.user_name}
+        phx-value-time={format_time(@item.inserted_at)}
       >
-        <div class="w-full h-full p-4 flex flex-col opal-aurora">
+        <div class="w-full h-full p-4 flex flex-col">
           <div class="flex-1 overflow-hidden">
             <p class="text-sm text-neutral-200 line-clamp-6">{@item.content}</p>
           </div>
           
-          <div class="mt-2 pt-2 border-t border-white/5">
+          <div class="mt-2 pt-2 border-t border-neutral-200">
             <div class="flex items-center gap-2">
               <div
                 class="w-5 h-5 rounded-full"
-                style={"background-color: #{@item.user_color}"}
-              />
-              <span class="text-xs text-neutral-500 truncate mobile-only">
-                {@item.user_name || String.slice(@item.user_id, 0, 6)}
-              </span>
-              <span class="text-neutral-600 text-[10px] ml-auto">
-                {format_time(@item.inserted_at)}
-              </span>
+                style={"background-color: #{@item.user_color || "#888"}"}
+              >
+              </div>
+               <span class="text-xs text-neutral-500 truncate">@{@item.user_name || "unknown"}</span>
             </div>
           </div>
-          
-          <%= if @item.user_id == @current_user.id do %>
-            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                type="button"
-                phx-click="delete_note"
-                phx-value-id={@item.id}
-                data-confirm="delete?"
-                class="text-neutral-500 hover:text-red-500 text-xs p-1"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
-            </div>
-          <% end %>
         </div>
+
+        <%= if @item.user_id == @current_user.id do %>
+          <button
+            type="button"
+            phx-click="delete_note"
+            phx-value-id={@item.id}
+            data-confirm="delete?"
+            class="absolute top-2 right-2 text-neutral-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-2 z-10"
+            phx-click-stop
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        <% end %>
       </div>
     <% end %>
     """

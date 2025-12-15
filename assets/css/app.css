@@ -80,21 +80,23 @@ h6 {
    AETHER COMPONENTS (Glass & Light)
    ========================================================================================= */
 
-/* The Aether Card: Glass on Void */
-.aether-card {
-  background-color: rgba(18, 18, 18, 0.6);
-  /* Semi-transparent Matter */
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  /* Subtle Light Border */
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
+@layer components {
+  /* The Aether Card: Glass on Void */
+  .aether-card {
+    background-color: rgba(18, 18, 18, 0.6);
+    /* Semi-transparent Matter */
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Subtle Light Border */
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
 
-.aether-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  /* Brighter Border on Hover */
+  .aether-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    /* Brighter Border on Hover */
+  }
 }
 
 /* Buttons: Photonic Interfaces */

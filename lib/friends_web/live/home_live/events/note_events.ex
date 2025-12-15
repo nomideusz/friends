@@ -28,10 +28,17 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
 
   def save_note(socket, content) do
     content = String.trim(content)
-
-    # Only registered users can create notes
-    if content != "" && socket.assigns.current_user && not socket.assigns.room_access_denied do
-      case Social.create_note(
+    content_length = String.length(content)
+    
+    cond do
+      content == "" -> 
+        {:noreply, socket}
+        
+      content_length > 500 ->
+        {:noreply, put_flash(socket, :error, "Note is too long (max 500 characters)")}
+        
+      socket.assigns.current_user && not socket.assigns.room_access_denied ->
+        case Social.create_note(
              %{
                user_id: socket.assigns.user_id,
                user_color: socket.assigns.user_color,
@@ -55,8 +62,9 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "failed")}
       end
-    else
-      {:noreply, socket}
+      
+      true ->
+        {:noreply, socket}
     end
   end
 
@@ -94,30 +102,67 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
     {:noreply, assign(socket, :viewing_note, nil)}
   end
 
+  def view_feed_note(socket, note_id) do
+    note_id = if is_binary(note_id), do: String.to_integer(note_id), else: note_id
+    case Friends.Social.Notes.get_note(note_id) do
+      nil -> 
+        {:noreply, socket}
+      note ->
+        viewing_note = %{
+          id: note.id,
+          content: note.content,
+          user: %{username: note.user_name, id: note.user_id},
+          time: format_note_time(note.inserted_at)
+        }
+        {:noreply, assign(socket, :viewing_note, viewing_note)}
+    end
+  end
+
+  defp format_note_time(nil), do: "Just now"
+  defp format_note_time(datetime) do
+    now = NaiveDateTime.utc_now()
+    diff = NaiveDateTime.diff(now, datetime, :second)
+    cond do
+      diff < 60 -> "Just now"
+      diff < 3600 -> "#{div(diff, 60)}m ago"
+      diff < 86400 -> "#{div(diff, 3600)}h ago"
+      true -> "#{div(diff, 86400)}d ago"
+    end
+  end
+
   # --- Feed Notes (Public) ---
 
   def open_feed_note_modal(socket) do
-    {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_modal_action, "post_feed_note")}
+    {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "") |> assign(:note_modal_action, "post_feed_note")}
   end
 
   def post_feed_note(socket, content) do
     require Logger
     Logger.debug("post_feed_note called with content: #{inspect(content)}")
     
+    content_length = String.length(content)
     user = socket.assigns.current_user
     Logger.debug("post_feed_note user: #{inspect(user && user.id)}")
 
-    if user && String.trim(content) != "" do
-      attrs = %{
-        content: content,
-        user_id: "user-#{user.id}",
-        user_color: socket.assigns.user_color,
-        user_name: user.display_name || user.username
-      }
+    cond do
+      user == nil or String.trim(content) == "" ->
+        Logger.debug("post_feed_note skipped - user nil or empty content")
+        {:noreply, socket}
+        
+      content_length > 500 ->
+        {:noreply, put_flash(socket, :error, "Note is too long (max 500 characters)")}
 
-      Logger.debug("post_feed_note creating note with attrs: #{inspect(attrs)}")
+      true ->
+        attrs = %{
+          content: content,
+          user_id: "user-#{user.id}",
+          user_color: socket.assigns.user_color,
+          user_name: user.display_name || user.username
+        }
 
-      case Social.create_public_note(attrs, user.id) do
+        Logger.debug("post_feed_note creating note with attrs: #{inspect(attrs)}")
+
+        case Social.create_public_note(attrs, user.id) do
         {:ok, note} ->
           Logger.info("post_feed_note SUCCESS - note created: #{inspect(note.id)}")
           
@@ -137,9 +182,6 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
           Logger.error("post_feed_note FAILED: #{inspect(reason)}")
           {:noreply, put_flash(socket, :error, "Failed to post note")}
       end
-    else
-      Logger.debug("post_feed_note skipped - user nil or empty content")
-      {:noreply, socket}
     end
   end
 

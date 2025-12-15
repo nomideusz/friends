@@ -12,6 +12,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
   attr :new_chat_message, :string, default: ""
   attr :show_mobile_chat, :boolean, default: false
   attr :container_class, :string, default: nil
+  attr :id_prefix, :string, default: "desktop"
 
   def chat_panel(assigns) do
     ~H"""
@@ -62,7 +63,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
           <div class="relative px-3 py-2 border-b border-white/10 shrink-0 bg-black/40 backdrop-blur-md z-40">
             <button 
               type="button"
-              phx-click={Phoenix.LiveView.JS.toggle(to: "#chat-members-list", in: "fade-in", out: "fade-out")}
+              phx-click={Phoenix.LiveView.JS.toggle(to: "##{@id_prefix}-chat-members-list", in: "fade-in", out: "fade-out")}
               class="flex items-center gap-2 text-xs font-bold text-neutral-400 hover:text-white transition-colors w-full group"
             >
               <span class="p-1 rounded bg-white/10 group-hover:bg-white/20 transition-colors">👥</span>
@@ -72,7 +73,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
 
             <%!-- Toggleable Member List Overlay --%>
             <div 
-              id="chat-members-list" 
+              id={"#{@id_prefix}-chat-members-list"} 
               class="hidden absolute top-full left-0 right-0 mt-1 mx-2 p-2 aether-card bg-black/95 shadow-2xl max-h-60 overflow-y-auto"
             >
               <div class="space-y-1">
@@ -100,7 +101,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
         <% end %>
          <%!-- Messages --%>
         <div
-          id="room-messages-container"
+          id={"#{@id_prefix}-room-messages-container"}
           class="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3 min-h-0"
           phx-hook="RoomChatScroll"
           data-room-id={@room.id}
@@ -173,7 +174,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
          <%!-- Message Input --%>
         <div class="p-3 border-t border-white/10 shrink-0">
           <div
-            id="room-message-input-area"
+            id={"#{@id_prefix}-room-message-input-area"}
             class="flex items-center gap-2"
             phx-hook="RoomChatEncryption"
             data-room-id={@room.id}
@@ -184,11 +185,11 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
               phx-keyup="update_chat_message"
               placeholder="Message..."
               class="flex-1 bg-black/30 border border-white/10 rounded-full px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 text-white placeholder-neutral-500 transition-all"
-              id="room-message-input"
+              id={"#{@id_prefix}-room-message-input"}
               autocomplete="off"
             />
             <button
-              id="send-room-message-btn"
+              id={"#{@id_prefix}-send-room-message-btn"}
               class="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center transition-colors cursor-pointer text-sm"
             >
               ➤
