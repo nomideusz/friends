@@ -493,34 +493,48 @@ defmodule FriendsWeb.NetworkLive do
   end
 
   defp get_second_degree_connections(friend_ids, user_id) do
-    # Get all friends of my friends
-    friends_of_friends =
+    # Get all friends of my friends (BOTH directions)
+    # Direction 1: where my friends are the "user"
+    friends_of_friends_1 =
       Repo.all(
         from f in Friends.Social.Friendship,
           where: f.user_id in ^friend_ids and f.status == "accepted",
-          preload: [:friend_user]
+          preload: [:friend_user],
+          select: %{friend_id: f.friend_user_id, connector_id: f.user_id, friend_user: f.friend_user}
       )
+
+    # Direction 2: where my friends are the "friend_user"
+    friends_of_friends_2 =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.friend_user_id in ^friend_ids and f.status == "accepted",
+          preload: [:user],
+          select: %{friend_id: f.user_id, connector_id: f.friend_user_id, friend_user: f.user}
+      )
+
+    # Combine both directions
+    all_friends_of_friends = friends_of_friends_1 ++ friends_of_friends_2
 
     # Build set of existing connections (including self)
     existing_ids = MapSet.new([user_id | friend_ids])
 
     # Filter out duplicates and existing connections
     second_degree_map =
-      friends_of_friends
+      all_friends_of_friends
       |> Enum.reduce(%{}, fn friendship, acc ->
         friend_of_friend = friendship.friend_user
 
         # Skip if already in our network or if it's us
-        if MapSet.member?(existing_ids, friend_of_friend.id) do
+        if MapSet.member?(existing_ids, friendship.friend_id) do
           acc
         else
           # Track which of my friends connects to this 2nd degree person
           Map.update(
             acc,
-            friend_of_friend.id,
-            %{user: friend_of_friend, connections: [friendship.user_id]},
+            friendship.friend_id,
+            %{user: friend_of_friend, connections: [friendship.connector_id]},
             fn existing ->
-              %{existing | connections: [friendship.user_id | existing.connections]}
+              %{existing | connections: [friendship.connector_id | existing.connections]}
             end
           )
         end
