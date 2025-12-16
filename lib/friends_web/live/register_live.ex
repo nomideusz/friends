@@ -15,14 +15,20 @@ defmodule FriendsWeb.RegisterLive do
      |> assign(:error, nil)
      |> assign(:username_available, nil)
      |> assign(:checking_username, false)
-     |> assign(:pending_room_code, nil)}
+     |> assign(:pending_room_code, nil)
+     |> assign(:referrer, nil)}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
     # Check for join param (room to auto-join after registration)
     pending_room = params["join"]
-    {:noreply, assign(socket, :pending_room_code, pending_room)}
+    # Check for ref param (referrer username for auto-friendship)
+    referrer = params["ref"]
+    {:noreply,
+     socket
+     |> assign(:pending_room_code, pending_room)
+     |> assign(:referrer, referrer)}
   end
 
   @impl true
@@ -66,7 +72,8 @@ defmodule FriendsWeb.RegisterLive do
       username: username,
       display_name: display_name,
       invite_code: invite_code,
-      webauthn_challenge: challenge
+      webauthn_challenge: challenge,
+      referrer: referrer
     } = socket.assigns
 
     # Create user without public_key (WebAuthn-only user)
@@ -74,7 +81,8 @@ defmodule FriendsWeb.RegisterLive do
       username: username,
       display_name: if(display_name == "", do: nil, else: display_name),
       public_key: nil,
-      invite_code: invite_code
+      invite_code: invite_code,
+      referrer: referrer
     }
 
     cond do
@@ -224,7 +232,7 @@ defmodule FriendsWeb.RegisterLive do
                   class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
                 />
                 <p class="mt-1 text-xs text-neutral-600">
-                  enter an invite for automatic trusted friend connection
+                  enter an invite for automatic recovery contact connection
                 </p>
               </div>
               
@@ -332,7 +340,7 @@ defmodule FriendsWeb.RegisterLive do
                 <p class="text-xs text-neutral-500 mb-2">next steps:</p>
                 
                 <ul class="text-xs text-neutral-400 space-y-1">
-                  <li>• add trusted friends for account recovery</li>
+                  <li>• add recovery contacts for account recovery</li>
                   
                   <li>• register additional passkeys on other devices</li>
                   

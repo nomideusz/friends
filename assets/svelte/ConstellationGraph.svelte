@@ -15,6 +15,10 @@
   // Context menu state
   let contextMenu = { show: false, x: 0, y: 0, user: null };
 
+  // Empty state tracking
+  let showEmptyState = false;
+  let inviteCopied = false;
+
   // Animation time (for orbital motion)
   let time = 0;
 
@@ -258,8 +262,8 @@
       .text(data.self?.display_name || data.self?.username || "You");
 
     // Show empty state message if no discoverable users
-    const users = data.others || [];
     if (users.length === 0) {
+      showEmptyState = true;
       svg.append("text")
         .attr("class", "empty-message")
         .attr("x", centerX)
@@ -268,7 +272,7 @@
         .attr("fill", "rgba(255, 255, 255, 0.5)")
         .attr("font-size", "14px")
         .attr("font-family", "Outfit, sans-serif")
-        .text("No new people to discover right now.");
+        .text("You've connected with everyone here!");
 
       svg.append("text")
         .attr("class", "empty-submessage")
@@ -278,7 +282,7 @@
         .attr("fill", "rgba(255, 255, 255, 0.3)")
         .attr("font-size", "12px")
         .attr("font-family", "Outfit, sans-serif")
-        .text("Check back later or invite your friends!");
+        .text("New users will appear as they join.");
     }
 
     // Start animation loop
@@ -319,6 +323,8 @@
           .style("opacity", 0)
           .on("end", function() {
             d3.select(this).remove();
+            // Check if all dots are gone and show empty message
+            checkAndShowEmptyState();
           });
       }
       
@@ -326,6 +332,65 @@
       live.pushEvent("constellation_invite", { user_id: String(userId) });
     }
     contextMenu = { show: false, x: 0, y: 0, user: null };
+  }
+
+  function checkAndShowEmptyState() {
+    // Count only visible dots (opacity > 0.1)
+    let visibleDots = 0;
+    svg.selectAll(".orbiting-user").each(function() {
+      const opacity = parseFloat(d3.select(this).style("opacity") || "1");
+      if (opacity > 0.1) visibleDots++;
+    });
+    
+    const existingMessage = svg.select(".empty-message");
+    
+    if (visibleDots === 0 && existingMessage.empty()) {
+      showEmptyState = true;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      svg.append("text")
+        .attr("class", "empty-message")
+        .attr("x", centerX)
+        .attr("y", centerY + 80)
+        .attr("text-anchor", "middle")
+        .attr("fill", "rgba(255, 255, 255, 0)")
+        .attr("font-size", "14px")
+        .attr("font-family", "Outfit, sans-serif")
+        .text("You've connected with everyone here!")
+        .transition()
+        .duration(800)
+        .attr("fill", "rgba(255, 255, 255, 0.5)");
+
+      svg.append("text")
+        .attr("class", "empty-submessage")
+        .attr("x", centerX)
+        .attr("y", centerY + 105)
+        .attr("text-anchor", "middle")
+        .attr("fill", "rgba(255, 255, 255, 0)")
+        .attr("font-size", "12px")
+        .attr("font-family", "Outfit, sans-serif")
+        .text("New users will appear as they join.")
+        .transition()
+        .duration(800)
+        .delay(200)
+        .attr("fill", "rgba(255, 255, 255, 0.3)");
+    }
+  }
+
+  async function shareInviteLink() {
+    // Get personalized invite link with current user's username
+    const username = data.self?.username || '';
+    const inviteUrl = `${window.location.origin}/register?ref=${username}`;
+    
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      inviteCopied = true;
+      setTimeout(() => inviteCopied = false, 2000);
+    } catch (err) {
+      // Fallback for browsers that don't support clipboard API
+      prompt('Copy this link:', inviteUrl);
+    }
   }
 
   // Resize handler
@@ -484,10 +549,19 @@
   {/if}
 
   <!-- Bottom hint -->
-  <div class="absolute bottom-6 left-0 right-0 text-center pointer-events-none">
-    <p class="text-neutral-500 text-xs">
-      Click on a dot to connect
-    </p>
+  <div class="absolute bottom-6 left-0 right-0 text-center">
+    {#if showEmptyState}
+      <button
+        on:click={shareInviteLink}
+        class="px-6 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-full text-white text-sm transition-all cursor-pointer"
+      >
+        {inviteCopied ? '✓ Link Copied!' : 'Share Invite Link'}
+      </button>
+    {:else}
+      <p class="text-neutral-500 text-xs pointer-events-none">
+        Click on a dot to connect
+      </p>
+    {/if}
   </div>
 </div>
 

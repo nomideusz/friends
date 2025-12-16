@@ -182,6 +182,30 @@ const Hooks = {
         }
     },
 
+    CopyToClipboard: {
+        mounted() {
+            this.el.addEventListener('click', async () => {
+                const targetId = this.el.dataset.copyTarget
+                const input = document.getElementById(targetId)
+                if (input) {
+                    try {
+                        await navigator.clipboard.writeText(input.value)
+                        const originalText = this.el.textContent
+                        this.el.textContent = '✓ Copied!'
+                        setTimeout(() => {
+                            this.el.textContent = originalText
+                        }, 2000)
+                    } catch (err) {
+                        // Fallback: select the input
+                        input.select()
+                        input.setSelectionRange(0, 99999)
+                        document.execCommand('copy')
+                    }
+                }
+            })
+        }
+    },
+
     ConstellationGraph: {
         mounted() {
             // Check localStorage for opt-out preference

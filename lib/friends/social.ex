@@ -303,6 +303,7 @@ defmodule Friends.Social do
 
   def register_user(attrs) do
     invite_code = attrs[:invite_code] || attrs["invite_code"]
+    referrer = attrs[:referrer] || attrs["referrer"]
     username = attrs[:username] || attrs["username"]
 
     cond do
@@ -319,16 +320,32 @@ defmodule Friends.Social do
             |> Repo.update()
         end
 
+      referrer && referrer != "" ->
+        # New simplified referral: username-based, creates regular friendship
+        referrer_username = String.trim(referrer) |> String.downcase() |> String.replace_prefix("@", "")
+        
+        case Repo.get_by(User, username: referrer_username) do
+          nil ->
+            # Referrer not found - still allow registration
+            create_user(attrs, %{created_by_id: nil})
+
+          referrer_user ->
+            # Create user and establish friendship with referrer
+            with {:ok, user} <- create_user(attrs, %{created_by_id: referrer_user.id}) do
+              # Create mutual friendship (not trusted - regular friends)
+              Relationships.create_mutual_friendship(referrer_user.id, user.id)
+              {:ok, user}
+            end
+        end
+
       invite_code && invite_code != "" ->
-        # Registration with invite code - creates mutual trust with inviter
-        # Using Relationships.validate_invite
+        # Legacy invite code path - creates mutual trust with inviter
         with {:ok, invite} <- Relationships.validate_invite(invite_code),
              {:ok, user} <- create_user(attrs, invite) do
           # Mark invite as used (skip for admin invite which has no ID)
           if invite.id, do: Relationships.use_invite(invite, user)
           # Create mutual trust between inviter and invitee
           if invite.created_by_id do
-            # Using Relationships helper (was create_mutual_trust in original)
             Relationships.create_mutual_trust(invite.created_by_id, user.id)
           end
 

@@ -201,14 +201,14 @@ defmodule FriendsWeb.NetworkLive do
       {:ok, _} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Trusted contact request sent")
+         |> put_flash(:info, "Recovery contact request sent")
          |> load_data()}
 
       {:error, :max_trusted_friends} ->
-        {:noreply, put_flash(socket, :error, "You can only have 5 trusted contacts")}
+        {:noreply, put_flash(socket, :error, "You can only have 5 recovery contacts")}
 
       _ ->
-        {:noreply, put_flash(socket, :error, "Could not add trusted contact")}
+        {:noreply, put_flash(socket, :error, "Could not add recovery contact")}
     end
   end
 
@@ -217,11 +217,11 @@ defmodule FriendsWeb.NetworkLive do
       {:ok, _} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Trusted friend confirmed")
+         |> put_flash(:info, "Recovery contact confirmed")
          |> load_data()}
 
       _ ->
-        {:noreply, put_flash(socket, :error, "Could not confirm trusted friend")}
+        {:noreply, put_flash(socket, :error, "Could not confirm recovery contact")}
     end
   end
 
@@ -625,14 +625,45 @@ defmodule FriendsWeb.NetworkLive do
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen text-white pb-20">
-      <div class="max-w-[1400px] mx-auto px-4 sm:px-8 py-8">
+    <div class="min-h-screen text-white pb-20 relative">
+      <div class="opal-bg"></div>
+      
+      <div class="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 relative z-10">
         <%!-- Header --%>
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-3xl font-bold">Network</h1>
         </div>
 
         <div class="space-y-6">
+          <%!-- Personalized Invite Link (New Simplified Section) --%>
+          <section class="aether-card p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 class="text-lg font-semibold text-white mb-1">Invite Friends</h2>
+                <p class="text-sm text-neutral-400">Share your personal link - they'll automatically become your friend!</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="flex-1 sm:flex-none">
+                  <input
+                    type="text"
+                    readonly
+                    id="invite-link-input"
+                    value={"#{FriendsWeb.Endpoint.url()}/register?ref=#{@current_user.username}"}
+                    class="w-full sm:w-80 bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-sm text-white font-mono select-all"
+                  />
+                </div>
+                <button
+                  id="copy-invite-link"
+                  phx-hook="CopyToClipboard"
+                  data-copy-target="invite-link-input"
+                  class="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm text-white transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </section>
+
           <%!-- Network Graph (Collapsible, Always Visible) --%>
           <%= if @graph_data && @graph_data.stats.total_connections > 0 do %>
             <section>
@@ -679,7 +710,7 @@ defmodule FriendsWeb.NetworkLive do
                     placeholder="Search by username..."
                     autocomplete="off"
                     phx-debounce="300"
-                    class="w-full bg-white border border-neutral-300 rounded px-4 py-2 text-sm text-neutral-900 focus:outline-none focus:border-blue-500 transition-colors"
+                    class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-sm text-white placeholder-neutral-400 focus:outline-none focus:border-white/40 transition-colors"
                   />
                 </div>
               </form>
@@ -807,7 +838,7 @@ defmodule FriendsWeb.NetworkLive do
                           @{f.user.username}
                           <%= if is_trusted do %>
                             <span class="text-[10px] text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                              TRUSTED
+                              RECOVERY
                             </span>
                           <% end %>
                         </div>
@@ -826,7 +857,7 @@ defmodule FriendsWeb.NetworkLive do
                           phx-value-user_id={f.user.id}
                           class="text-emerald-500 hover:text-emerald-400 hover:underline transition-colors cursor-pointer"
                         >
-                          Trust
+                          + Recovery
                         </button>
                       <% end %>
 
@@ -845,50 +876,22 @@ defmodule FriendsWeb.NetworkLive do
             <% end %>
           </section>
 
-          <%!-- Invites Section (Kept at Bottom) --%>
-          <section class="pt-4 border-t border-neutral-800">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold text-purple-400">Invite Codes</h2>
-              <button
-                phx-click="create_invite"
-                class="px-3 py-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-lg text-sm hover:bg-purple-500/30 transition-colors cursor-pointer"
-              >
-                + Create Code
-              </button>
-            </div>
-
-            <%= if @invites != [] do %>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <%!-- Legacy Invite Codes (Collapsed) --%>
+          <%= if @invites != [] do %>
+            <details class="pt-4 border-t border-neutral-800">
+              <summary class="text-sm text-neutral-500 cursor-pointer hover:text-neutral-300">
+                Legacy invite codes ({length(@invites)})
+              </summary>
+              <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <%= for invite <- @invites do %>
-                  <div class="p-3 aether-card flex items-center justify-between shadow-lg">
-                    <div>
-                      <div
-                        class="font-mono text-lg tracking-wider text-purple-300 select-all cursor-pointer"
-                        phx-click={JS.dispatch("friends:copy", to: "#code-#{invite.id}")}
-                        id={"code-#{invite.id}"}
-                        data-copy={invite.code}
-                      >
-                        {invite.code}
-                      </div>
-                      <div class="text-[10px] text-neutral-500">{invite.status}</div>
-                    </div>
-
-                    <%= if invite.status == "active" do %>
-                      <button
-                        phx-click="revoke_invite"
-                        phx-value-code={invite.code}
-                        class="text-xs text-red-500/70 hover:text-red-400 cursor-pointer"
-                      >
-                        Revoke
-                      </button>
-                    <% end %>
+                  <div class="p-3 bg-white/5 rounded-lg flex items-center justify-between text-sm">
+                    <div class="font-mono text-purple-300">{invite.code}</div>
+                    <span class="text-xs text-neutral-500">{invite.status}</span>
                   </div>
                 <% end %>
               </div>
-            <% else %>
-              <p class="text-neutral-600 text-sm">No active invite codes.</p>
-            <% end %>
-          </section>
+            </details>
+          <% end %>
         </div>
       </div>
     </div>

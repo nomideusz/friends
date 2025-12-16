@@ -209,6 +209,48 @@ defmodule Friends.Social.Relationships do
     end
   end
 
+  @doc """
+  Creates an instant mutual friendship between two users.
+  Used when someone registers via a referral link.
+  The friendship is already accepted (no pending state).
+  """
+  def create_mutual_friendship(user_id, friend_user_id) do
+    if user_id == friend_user_id do
+      {:error, :cannot_friend_self}
+    else
+      # Check if friendship already exists
+      existing =
+        get_friendship(user_id, friend_user_id) || get_friendship(friend_user_id, user_id)
+
+      case existing do
+        nil ->
+          result = %Friendship{}
+          |> Friendship.changeset(%{
+            user_id: user_id,
+            friend_user_id: friend_user_id,
+            status: "accepted",
+            accepted_at: DateTime.utc_now()
+          })
+          |> Repo.insert()
+
+          # Also create DM room for the new friends
+          case result do
+            {:ok, _} ->
+              Rooms.get_or_create_dm_room(user_id, friend_user_id)
+            _ ->
+              :ok
+          end
+
+          result
+          |> broadcast_friend_update(:friend_accepted, [user_id, friend_user_id])
+
+        _ ->
+          # Already friends or pending - just return ok
+          {:ok, existing}
+      end
+    end
+  end
+
   defp broadcast_friend_update({:ok, result}, event, user_ids) when is_list(user_ids) do
     Enum.each(user_ids, fn uid ->
       Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{uid}", {event, result})

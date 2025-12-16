@@ -5,7 +5,7 @@ defmodule FriendsWeb.RecoverLive do
   The process:
   1. User enters their username
   2. They get a new crypto key generated
-  3. Their trusted friends are notified
+  3. Their recovery contacts are notified
   4. 4 out of 5 friends must confirm to restore access
   """
   use FriendsWeb, :live_view
@@ -50,7 +50,7 @@ defmodule FriendsWeb.RecoverLive do
         trusted_friends = Social.list_trusted_friends(user.id)
 
         if length(trusted_friends) < 4 do
-          {:noreply, assign(socket, :error, "not enough trusted friends (need 4+)")}
+          {:noreply, assign(socket, :error, "not enough recovery contacts (need 4+)")}
         else
           {:noreply,
            socket
@@ -179,7 +179,7 @@ defmodule FriendsWeb.RecoverLive do
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">confirm recovery</h1>
               
-              <p class="text-neutral-500 text-sm">we'll notify your trusted friends</p>
+              <p class="text-neutral-500 text-sm">we'll notify your recovery contacts</p>
             </div>
             
             <div class="aether-card p-4 mb-6 bg-black/50">
@@ -188,14 +188,14 @@ defmodule FriendsWeb.RecoverLive do
               </p>
               
               <p class="text-xs text-neutral-500">a new crypto key will be generated for this browser.
-                your trusted friends will vote to confirm it's really you.</p>
+                your recovery contacts will vote to confirm it's really you.</p>
             </div>
             
             <div class="bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
               <p class="text-sm text-amber-400">⚠️ important</p>
               
               <p class="text-xs text-amber-500/80 mt-1">
-                contact your trusted friends outside this app and ask them to confirm your recovery.
+                contact your recovery contacts outside this app and ask them to confirm your recovery.
                 you need 4 confirmations.
               </p>
             </div>
@@ -232,7 +232,7 @@ defmodule FriendsWeb.RecoverLive do
               
               <h1 class="text-2xl font-medium text-white mb-2">waiting for friends</h1>
               
-              <p class="text-neutral-500 text-sm">ask your trusted friends to confirm</p>
+              <p class="text-neutral-500 text-sm">ask your recovery contacts to confirm</p>
             </div>
             
             <%= if @recovery_status do %>
@@ -286,7 +286,7 @@ defmodule FriendsWeb.RecoverLive do
                 <p class="text-xs text-neutral-500 mb-2">what happened:</p>
                 
                 <ul class="text-xs text-neutral-400 space-y-1">
-                  <li>• your trusted friends confirmed your identity</li>
+                  <li>• your recovery contacts confirmed your identity</li>
                   
                   <li>• a new crypto key was linked to your account</li>
                   
