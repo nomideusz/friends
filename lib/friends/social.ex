@@ -190,6 +190,49 @@ defmodule Friends.Social do
         |> Repo.update()
     end
   end
+
+  @recovery_timeout_days 7
+
+  @doc """
+  Check if a recovery request has expired (older than 7 days).
+  """
+  def recovery_expired?(%{recovery_requested_at: nil}), do: false
+  def recovery_expired?(%{status: status}) when status != "recovering", do: false
+  def recovery_expired?(%{recovery_requested_at: requested_at}) do
+    DateTime.diff(DateTime.utc_now(), requested_at, :day) > @recovery_timeout_days
+  end
+
+  @doc """
+  Cancel an expired or abandoned recovery request.
+  """
+  def cancel_recovery(user) do
+    user
+    |> User.changeset(%{status: "active", recovery_requested_at: nil})
+    |> Repo.update()
+  end
+
+  @doc """
+  Check and auto-cancel recovery if expired, returns updated user.
+  """
+  def check_recovery_expiry(user) do
+    if recovery_expired?(user) do
+      case cancel_recovery(user) do
+        {:ok, updated_user} -> {:expired, updated_user}
+        _ -> {:ok, user}
+      end
+    else
+      {:ok, user}
+    end
+  end
+
+  @doc """
+  Get days remaining for a recovery request.
+  """
+  def recovery_days_remaining(%{recovery_requested_at: nil}), do: nil
+  def recovery_days_remaining(%{recovery_requested_at: requested_at}) do
+    days_elapsed = DateTime.diff(DateTime.utc_now(), requested_at, :day)
+    max(@recovery_timeout_days - days_elapsed, 0)
+  end
   
   defdelegate cast_recovery_vote(recovering_user_id, voting_user_id, vote, new_public_key), to: Relationships
   defdelegate check_recovery_threshold(user_id, new_public_key), to: Relationships
@@ -666,6 +709,61 @@ defmodule Friends.Social do
   end
 
   defdelegate has_webauthn_credentials?(user_id), to: Friends.WebAuthn, as: :has_credentials?
+
+  @doc """
+  Atomically register a user WITH their WebAuthn credential.
+  Uses Ecto.Multi to ensure both user and credential are created together,
+  or neither is created if WebAuthn verification fails.
+  
+  This prevents orphaned users when WebAuthn fails.
+  """
+  def register_user_with_webauthn(attrs, credential_data, challenge) do
+    alias Ecto.Multi
+    
+    Multi.new()
+    |> Multi.run(:user, fn _repo, _changes ->
+      # Create the user first
+      register_user(attrs)
+    end)
+    |> Multi.run(:webauthn_verify, fn _repo, %{user: user} ->
+      # Verify the WebAuthn credential (doesn't store yet)
+      attestation_response = %{
+        "clientDataJSON" => credential_data["response"]["clientDataJSON"],
+        "attestationObject" => credential_data["response"]["attestationObject"],
+        "id" => credential_data["rawId"],
+        "transports" => credential_data["transports"] || []
+      }
+      
+      case Friends.WebAuthn.verify_registration(attestation_response, challenge, user.id) do
+        {:ok, cred_data} -> {:ok, cred_data}
+        {:error, reason} -> {:error, {:webauthn_failed, reason}}
+      end
+    end)
+    |> Multi.run(:credential, fn _repo, %{webauthn_verify: cred_data} ->
+      # Store the verified credential
+      Friends.WebAuthn.store_credential(cred_data, nil)
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: user, credential: _credential}} ->
+        {:ok, user}
+        
+      {:error, :user, %Ecto.Changeset{} = changeset, _changes} ->
+        {:error, changeset}
+        
+      {:error, :user, :invalid_invite, _changes} ->
+        {:error, :invalid_invite}
+        
+      {:error, :webauthn_verify, {:webauthn_failed, reason}, _changes} ->
+        {:error, {:webauthn, reason}}
+        
+      {:error, :credential, reason, _changes} ->
+        {:error, {:credential_storage, reason}}
+        
+      {:error, step, reason, _changes} ->
+        {:error, {step, reason}}
+    end
+  end
   
   # --- Public Feed Aggregator ---
   

@@ -312,15 +312,11 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         
         <%= if is_nil(@current_user) do %>
           <a
-            href={"/register?join=#{@room.code}"}
+            href={"/auth?join=#{@room.code}"}
             class="inline-block mt-4 px-4 py-2 bg-emerald-500 text-black text-sm font-medium rounded-lg hover:bg-emerald-400 transition-colors"
           >
-            register to join
+            sign in to join
           </a>
-          <p class="text-neutral-600 text-xs mt-2">
-            or <a href="/login" class="text-emerald-400 hover:text-emerald-300">login</a>
-            if you have an account
-          </p>
         <% else %>
           <p class="text-neutral-700 text-xs mt-4">ask the owner to invite you</p>
         <% end %>

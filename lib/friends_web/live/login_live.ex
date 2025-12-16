@@ -60,21 +60,14 @@ defmodule FriendsWeb.LoginLive do
 
     case Social.verify_webauthn_assertion(user.id, credential_data, challenge) do
       {:ok, _credential} ->
-        # Create session token
-        token = Base.encode64(:crypto.strong_rand_bytes(32))
-
         # Register device session
-        # Use credential ID as fingerprint for now
         device_fingerprint = credential_data["rawId"]
         Social.register_user_device(user.id, device_fingerprint, "Web Browser", nil)
 
         {:noreply,
          socket
          |> assign(:step, :success)
-         |> push_event("login_success", %{
-           user_id: user.id,
-           token: token
-         })}
+         |> push_event("login_success", %{user_id: user.id})}
 
       {:error, reason} ->
         require Logger

@@ -147,16 +147,10 @@ defmodule FriendsWeb.HeaderComponent do
               <% else %>
                 <div class="flex items-center gap-2">
                   <a
-                    href="/login"
-                    class="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-all px-4 py-2 rounded-full glass border border-white/5 hover:border-white/15"
-                  >
-                    <span>Login</span>
-                  </a>
-                  <a
-                    href="/register"
+                    href="/auth"
                     class="flex items-center gap-2 text-sm px-4 py-2 rounded-full btn-opal"
                   >
-                    <span class="opal-text font-medium">Create Account</span>
+                    <span class="opal-text font-medium">Sign In</span>
                   </a>
                 </div>
               <% end %>

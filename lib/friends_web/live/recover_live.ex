@@ -20,6 +20,7 @@ defmodule FriendsWeb.RecoverLive do
      |> assign(:user, nil)
      |> assign(:new_public_key, nil)
      |> assign(:recovery_status, nil)
+     |> assign(:days_remaining, nil)
      |> assign(:error, nil)}
   end
 
@@ -95,26 +96,44 @@ defmodule FriendsWeb.RecoverLive do
   @impl true
   def handle_event("check_status", _params, socket) do
     user = socket.assigns.user
-    recovery_status = Social.get_recovery_status(user.id)
+    
+    # Check for expiry first
+    case Social.check_recovery_expiry(user) do
+      {:expired, _updated_user} ->
+        {:noreply,
+         socket
+         |> assign(:step, :username)
+         |> assign(:error, "Recovery request expired. Please start again.")}
 
-    if recovery_status.can_recover do
-      # Recovery successful - update public key
-      new_public_key = socket.assigns.new_public_key
+      {:ok, _user} ->
+        recovery_status = Social.get_recovery_status(user.id)
+        days_remaining = Social.recovery_days_remaining(user)
 
-      case Social.check_recovery_threshold(user.id, new_public_key) do
-        {:ok, :threshold_met, _count} ->
-          updated_user = Social.get_user(user.id)
+        if recovery_status.can_recover do
+          # Recovery successful - update public key
+          new_public_key = socket.assigns.new_public_key
 
+          case Social.check_recovery_threshold(user.id, new_public_key) do
+            {:ok, :threshold_met, _count} ->
+              updated_user = Social.get_user(user.id)
+
+              {:noreply,
+               socket
+               |> assign(:step, :complete)
+               |> assign(:user, updated_user)}
+
+            {:ok, :votes_recorded, _count} ->
+              {:noreply,
+               socket
+               |> assign(:recovery_status, recovery_status)
+               |> assign(:days_remaining, days_remaining)}
+          end
+        else
           {:noreply,
            socket
-           |> assign(:step, :complete)
-           |> assign(:user, updated_user)}
-
-        {:ok, :votes_recorded, _count} ->
-          {:noreply, assign(socket, :recovery_status, recovery_status)}
-      end
-    else
-      {:noreply, assign(socket, :recovery_status, recovery_status)}
+           |> assign(:recovery_status, recovery_status)
+           |> assign(:days_remaining, days_remaining)}
+        end
     end
   end
 
@@ -133,46 +152,56 @@ defmodule FriendsWeb.RecoverLive do
     >
       <div class="opal-bg"></div>
       
-      <div class="w-full max-w-md relative z-10">
+      <div class="w-full max-w-sm relative z-10">
         <%= case @step do %>
           <% :username -> %>
             <div class="text-center mb-8">
-              <h1 class="text-2xl font-medium text-white mb-2">recover account</h1>
-              
-              <p class="text-neutral-500 text-sm">lost your device? your friends can help</p>
+              <h1 class="text-3xl font-bold text-white" style="text-shadow: 0 0 40px rgba(255,255,255,0.3), 0 0 80px rgba(255,255,255,0.1); animation: gentle-pulse 3s ease-in-out infinite;">
+                Network Recovery
+              </h1>
             </div>
             
-            <form phx-submit="lookup_user" class="space-y-4">
-              <div>
-                <label class="block text-xs text-neutral-500 mb-2">your username</label>
+            <style>
+              @keyframes gentle-pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+              }
+            </style>
+            
+            <form phx-submit="lookup_user">
+              <div class="relative mb-4">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">@</span>
                 <input
                   type="text"
                   name="username"
                   value={@username}
                   phx-change="update_username"
-                  placeholder="@username"
+                  placeholder="username"
                   autocomplete="off"
                   autofocus
-                  class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
+                  class="w-full pl-8 pr-4 py-4 bg-black/30 border border-white/10 rounded-xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/30 font-mono text-lg transition-all"
                 />
               </div>
               
               <%= if @error do %>
-                <p class="text-red-500 text-xs">{@error}</p>
+                <p class="text-red-500 text-xs mb-4 text-center">{@error}</p>
               <% end %>
               
               <button
                 type="submit"
                 disabled={String.trim(@username) == ""}
-                class="w-full px-4 py-3 bg-white text-black font-medium hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                class={[
+                  "w-full py-4 font-semibold rounded-xl text-lg transition-all",
+                  if(String.trim(@username) == "", do: "bg-neutral-700 text-neutral-400 cursor-not-allowed", else: "bg-white text-black hover:bg-neutral-200 cursor-pointer")
+                ]}
               >
-                find account
+                Continue
               </button>
             </form>
             
-            <div class="mt-8 text-center">
-              <a href="/register" class="text-xs text-neutral-600 hover:text-white">
-                don't have an account? register →
+            <div class="text-center mt-6">
+              <a href="/auth" class="text-xs text-neutral-500 hover:text-white transition-colors">
+                ← Back to Sign In
               </a>
             </div>
           <% :confirm -> %>
@@ -251,6 +280,14 @@ defmodule FriendsWeb.RecoverLive do
                   />
                 </div>
               </div>
+              
+              <%= if @days_remaining do %>
+                <div class="mt-4 text-center">
+                  <span class="text-xs text-amber-400">
+                    ⏰ {@days_remaining} days remaining before request expires
+                  </span>
+                </div>
+              <% end %>
               
               <button
                 type="button"

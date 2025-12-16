@@ -105,39 +105,54 @@
           // Path completion time = max(Me->Source time, Source->Target time).
           // We take the MINIMUM of all path completion times (earliest discovery).
 
+          // Calculate effective edge timestamp based on ego-centric view
+          let effectiveEdgeTime = edgeTime;
+
           if (source.type === "self" && target.type !== "self") {
-            // Direct connection: Visible at edge time (which is Me->Target time)
+            // Direct connection from Me: Visible at edge time
             target.connectedAt = Math.min(target.connectedAt, edgeTime);
           } else if (target.type === "self" && source.type !== "self") {
+            // Direct connection to Me: Visible at edge time
             source.connectedAt = Math.min(source.connectedAt, edgeTime);
           } else if (
             source.type !== "second_degree" &&
             target.type === "second_degree"
           ) {
-            // 1st -> 2nd
+            // 1st -> 2nd degree: Edge visible when path completes
             const pathCompleteAt = Math.max(source.connectedAt, edgeTime);
             target.connectedAt = Math.min(target.connectedAt, pathCompleteAt);
+            // Edge should appear at path completion time (when 2nd degree node is discovered)
+            effectiveEdgeTime = pathCompleteAt;
           } else if (
             target.type !== "second_degree" &&
             source.type === "second_degree"
           ) {
-            // 1st -> 2nd (Reverse)
+            // 2nd -> 1st degree (Reverse): Edge visible when path completes
             const pathCompleteAt = Math.max(target.connectedAt, edgeTime);
             source.connectedAt = Math.min(source.connectedAt, pathCompleteAt);
+            // Edge should appear at path completion time
+            effectiveEdgeTime = pathCompleteAt;
+          } else if (
+            source.type !== "self" &&
+            target.type !== "self" &&
+            source.type !== "second_degree" &&
+            target.type !== "second_degree"
+          ) {
+            // Edge between two 1st-degree friends (mutual connections)
+            // Edge appears when BOTH friends are visible AND edge exists
+            effectiveEdgeTime = Math.max(
+              source.connectedAt,
+              target.connectedAt,
+              edgeTime,
+            );
           }
 
-          // Edge appears when BOTH connected nodes are visible AND the edge itself exists
-          const effectiveTime = Math.max(
-            source.connectedAt,
-            target.connectedAt,
-            edgeTime,
-          );
           links.push({
             source: source.id,
             target: target.id,
             type: edge.type,
             color: colors[edge.type] || "#ffffff",
-            connectedAt: effectiveTime, // Use later of: node A, node B, or the connection itself
+            connectedAt: effectiveEdgeTime, // Use ego-centric discovery time
           });
         }
       });

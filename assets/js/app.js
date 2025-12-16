@@ -6,6 +6,7 @@ import topbar from "../vendor/topbar"
 import { getHooks } from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
+import GlobalGraph from "../svelte/GlobalGraph.svelte"
 import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
 import { mount, unmount } from 'svelte'
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
@@ -13,7 +14,7 @@ import * as messageEncryption from "./message-encryption"
 import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
 import QRCode from "qrcode"
 
-const Components = { FriendsMap, FriendGraph, ConstellationGraph }
+const Components = { FriendsMap, FriendGraph, GlobalGraph, ConstellationGraph }
 
 // Generate device fingerprint - hardware characteristics that are consistent across browsers
 function generateFingerprint() {
@@ -182,6 +183,42 @@ const Hooks = {
         }
     },
 
+    GlobalGraph: {
+        mounted() {
+            const graphData = JSON.parse(this.el.dataset.graph || 'null')
+            const currentUserId = this.el.dataset.currentUserId || null
+
+            this.component = mount(GlobalGraph, {
+                target: this.el,
+                props: {
+                    graphData,
+                    currentUserId,
+                    live: this
+                }
+            })
+        },
+        updated() {
+            if (this.component) {
+                unmount(this.component)
+            }
+            const graphData = JSON.parse(this.el.dataset.graph || 'null')
+            const currentUserId = this.el.dataset.currentUserId || null
+            this.component = mount(GlobalGraph, {
+                target: this.el,
+                props: {
+                    graphData,
+                    currentUserId,
+                    live: this
+                }
+            })
+        },
+        destroyed() {
+            if (this.component) {
+                unmount(this.component)
+            }
+        }
+    },
+
     CopyToClipboard: {
         mounted() {
             this.el.addEventListener('click', async () => {
@@ -263,10 +300,84 @@ const Hooks = {
             }
             // Robust cleanup: ensure container is empty
             this.el.innerHTML = ''
-            
+
             // If the svelte component mounted to body or portal, we might need more aggressive cleanup
             // ensuring this element is hidden immediately
             this.el.style.display = 'none'
+        }
+    },
+
+    // WebAuthn Login hook for authentication flow
+    WebAuthnLogin: {
+        mounted() {
+            // Handle WebAuthn authentication challenge
+            this.handleEvent("webauthn_login_challenge", async ({ options }) => {
+                try {
+                    console.log('[WebAuthnLogin] Challenge received, authenticating...')
+                    const credential = await authenticateWithCredential(options)
+                    console.log('[WebAuthnLogin] Credential obtained, sending to server...')
+                    this.pushEvent("webauthn_login_response", { credential })
+                } catch (error) {
+                    console.error('[WebAuthnLogin] Authentication failed:', error)
+                    this.pushEvent("webauthn_login_error", {
+                        error: error.name === 'NotAllowedError'
+                            ? 'Authentication cancelled'
+                            : error.message || 'Unknown error'
+                    })
+                }
+            })
+
+            // Handle login success - set cookie and redirect
+            this.handleEvent("login_success", ({ user_id }) => {
+                console.log('[WebAuthnLogin] Login successful for user:', user_id)
+                // Set cookie for session persistence
+                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                // Redirect to home
+                window.location.href = '/'
+            })
+        }
+    },
+
+    // Unified WebAuthn hook for /auth page (handles both login and registration)
+    WebAuthnAuth: {
+        mounted() {
+            // Check WebAuthn availability on mount
+            const webauthnAvailable = isWebAuthnSupported()
+            console.log('[WebAuthnAuth] WebAuthn available:', webauthnAvailable)
+            this.pushEvent("webauthn_available", { available: webauthnAvailable })
+
+            // Handle WebAuthn challenge (works for both login and register)
+            this.handleEvent("webauthn_auth_challenge", async ({ mode, options }) => {
+                try {
+                    console.log(`[WebAuthnAuth] ${mode} challenge received`)
+
+                    if (mode === "login") {
+                        // Authentication flow
+                        const credential = await authenticateWithCredential(options)
+                        console.log('[WebAuthnAuth] Login credential obtained')
+                        this.pushEvent("webauthn_login_response", { credential })
+                    } else {
+                        // Registration flow
+                        const credential = await registerCredential(options)
+                        console.log('[WebAuthnAuth] Register credential created')
+                        this.pushEvent("webauthn_register_response", { credential })
+                    }
+                } catch (error) {
+                    console.error('[WebAuthnAuth] Error:', error)
+                    this.pushEvent("webauthn_error", {
+                        error: error.name === 'NotAllowedError'
+                            ? (mode === 'login' ? 'Authentication cancelled' : 'Registration cancelled')
+                            : error.message || 'Unknown error'
+                    })
+                }
+            })
+
+            // Handle auth success - set cookie and redirect
+            this.handleEvent("auth_success", ({ user_id }) => {
+                console.log('[WebAuthnAuth] Success for user:', user_id)
+                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+                window.location.href = '/'
+            })
         }
     },
 
@@ -465,7 +576,7 @@ const Hooks = {
         mounted() {
             // Initial check
             this.observeImages()
-            
+
             // Polling backup for Streams/Dynamic content
             // This is safer than MutationObserver for preventing crashes
             this.interval = setInterval(() => {
@@ -505,7 +616,7 @@ const Hooks = {
             this.currentY = 0
             this.isDragging = false
             this.closeEvent = this.el.dataset.closeEvent || "toggle_mobile_chat"
-            
+
             // Touch start
             this.el.addEventListener('touchstart', (e) => {
                 // Only track if touching the handle area (top 60px)
@@ -517,29 +628,29 @@ const Hooks = {
                     this.el.style.transition = 'none'
                 }
             }, { passive: true })
-            
+
             // Touch move
             this.el.addEventListener('touchmove', (e) => {
                 if (!this.isDragging) return
-                
+
                 this.currentY = e.touches[0].clientY
                 const deltaY = this.currentY - this.startY
-                
+
                 // Only allow dragging down
                 if (deltaY > 0) {
                     this.el.style.transform = `translateY(${deltaY}px)`
                 }
             }, { passive: true })
-            
+
             // Touch end
             this.el.addEventListener('touchend', () => {
                 if (!this.isDragging) return
-                
+
                 this.isDragging = false
                 this.el.style.transition = 'transform 0.3s ease-out'
-                
+
                 const deltaY = this.currentY - this.startY
-                
+
                 // If dragged more than 100px down, close the drawer
                 if (deltaY > 100) {
                     this.el.style.transform = 'translateY(100%)'
@@ -551,7 +662,7 @@ const Hooks = {
                     // Snap back
                     this.el.style.transform = 'translateY(0)'
                 }
-                
+
                 this.startY = 0
                 this.currentY = 0
             }, { passive: true })
@@ -1631,6 +1742,15 @@ document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && !liveSocket.isConnected()) {
         liveSocket.connect()
     }
+})
+
+// Handle global sign_out event (works on all pages)
+window.addEventListener("phx:sign_out", () => {
+    console.log('[SignOut] Clearing session and redirecting...')
+    // Clear the session cookie
+    document.cookie = "friends_user_id=; path=/; max-age=0; SameSite=Lax"
+    // Redirect to home
+    window.location.href = '/'
 })
 
 window.liveSocket = liveSocket

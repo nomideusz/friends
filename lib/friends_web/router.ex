@@ -19,11 +19,14 @@ defmodule FriendsWeb.Router do
     pipe_through :browser
 
     get "/r/public-square", RedirectController, :public_square
+    
+    # Redirects from old auth URLs to unified /auth
+    get "/login", RedirectController, :auth
+    get "/register", RedirectController, :auth
 
     # Auth pages - no shared header needed
     live_session :auth, layout: {FriendsWeb.Layouts, :auth} do
-      live "/login", LoginLive, :index
-      live "/register", RegisterLive, :index
+      live "/auth", AuthLive, :index
       live "/recover", RecoverLive, :index
       live "/link", LinkDeviceLive, :index
     end

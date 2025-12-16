@@ -109,8 +109,8 @@ defmodule FriendsWeb.Layouts do
                   <% end %>
                 </div>
               <% else %>
-                <a href="/login" class="text-sm text-neutral-400 hover:text-white transition-colors">
-                  Login
+                <a href="/auth" class="text-sm text-neutral-400 hover:text-white transition-colors">
+                  Sign In
                 </a>
               <% end %>
             <% end %>

@@ -37,98 +37,90 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
     {session_user, session_user_id, session_user_color, session_user_name} =
       load_session_user(session)
 
-    if connected?(socket) and session_user do
-      # Subscribe to user's personal channel
-      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{session_user.id}")
-      # Subscribe to public feed updates
-      Social.subscribe_to_public_feed(session_user.id)
-    end
-
-    # Load initial public feed items and contacts
-    {feed_items, friends} =
-      if session_user do
-        items = Social.list_public_feed_items(session_user.id, 20)
-        friends_list = Social.list_friends(session_user.id)
-        {items, friends_list}
-      else
-        {[], []}
+    # Redirect guests to auth page
+    if is_nil(session_user) do
+      {:ok, push_navigate(socket, to: ~p"/auth")}
+    else
+      if connected?(socket) do
+        # Subscribe to user's personal channel
+        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{session_user.id}")
+        # Subscribe to public feed updates
+        Social.subscribe_to_public_feed(session_user.id)
       end
 
-    socket =
-      socket
-      |> assign(:session_id, session_id)
-      |> assign(:room, nil)
-      |> assign(:page_title, "New Internet")
-      |> assign(:current_user, session_user)
-      |> assign(:user_id, session_user_id)
-      |> assign(:user_color, session_user_color)
-      |> assign(:user_name, session_user_name)
-      |> assign(:auth_status, if(session_user, do: :authed, else: :pending))
-      |> assign(:viewers, [])
-      |> assign(:show_chat_panel, false)
-      |> assign(:show_room_modal, false)
-      |> assign(:show_name_modal, false)
-      |> assign(:show_note_modal, false)
-      |> assign(:note_modal_action, nil)
-      |> assign(:show_settings_modal, false)
-      |> assign(:show_network_modal, false)
-      # Dashboard specific assigns
-      |> assign(
-        :user_rooms,
-        if(session_user, do: Social.list_user_rooms(session_user.id), else: [])
-      )
-      |> assign(:dashboard_tab, "contacts")
-      |> assign(:create_group_modal, false)
-      |> assign(:new_room_name, "")
-      |> assign(:join_code, "")
-      |> assign(:current_route, "/")
-      |> assign(:show_header_dropdown, false)
-      # Required for layout to not crash
-      |> assign(:room_access_denied, false)
-      |> assign(:feed_mode, "dashboard")
-      # Public feed assigns
-      |> assign(:friends, friends)
-      |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
-      # Constellation for users with < 3 friends (opt-out checked client-side via localStorage)
-      |> assign(:show_constellation, session_user != nil and length(friends) < 3)
-      |> assign(:constellation_data, if(session_user != nil and length(friends) < 3, do: GraphHelper.build_constellation_data(session_user), else: nil))
-      |> assign(:show_nav_drawer, false)
-      |> assign(:show_graph_drawer, false)
-      |> assign(:contacts_collapsed, false)
-      |> assign(:groups_collapsed, false)
-      |> assign(:fab_expanded, false)
-      |> assign(:show_mobile_chat, false)
-      |> assign(:note_input, "")
-      |> assign(:recording_voice, false)
-      |> assign(:uploading, false)
-      |> assign(:show_image_modal, false)
-      |> assign(:full_image_data, nil)
-      |> assign(:feed_item_count, length(feed_items))
-      |> assign(:photo_order, photo_ids(feed_items))
-      |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
+      # Load initial public feed items and contacts
+      feed_items = Social.list_public_feed_items(session_user.id, 20)
+      friends = Social.list_friends(session_user.id)
 
-    # Allow uploads for the public feed
-    socket =
-      if session_user do
+      socket =
+        socket
+        |> assign(:session_id, session_id)
+        |> assign(:room, nil)
+        |> assign(:page_title, "New Internet")
+        |> assign(:current_user, session_user)
+        |> assign(:user_id, session_user_id)
+        |> assign(:user_color, session_user_color)
+        |> assign(:user_name, session_user_name)
+        |> assign(:auth_status, :authed)
+        |> assign(:viewers, [])
+        |> assign(:show_chat_panel, false)
+        |> assign(:show_room_modal, false)
+        |> assign(:show_name_modal, false)
+        |> assign(:show_note_modal, false)
+        |> assign(:note_modal_action, nil)
+        |> assign(:show_settings_modal, false)
+        |> assign(:show_network_modal, false)
+        # Dashboard specific assigns
+        |> assign(:user_rooms, Social.list_user_rooms(session_user.id))
+        |> assign(:dashboard_tab, "contacts")
+        |> assign(:create_group_modal, false)
+        |> assign(:new_room_name, "")
+        |> assign(:join_code, "")
+        |> assign(:current_route, "/")
+        |> assign(:show_header_dropdown, false)
+        # Required for layout to not crash
+        |> assign(:room_access_denied, false)
+        |> assign(:feed_mode, "dashboard")
+        # Public feed assigns
+        |> assign(:friends, friends)
+        |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
+        # Constellation for users with < 3 friends (opt-out checked client-side via localStorage)
+        |> assign(:show_constellation, length(friends) < 3)
+        |> assign(:constellation_data, if(length(friends) < 3, do: GraphHelper.build_constellation_data(session_user), else: nil))
+        |> assign(:show_nav_drawer, false)
+        |> assign(:show_graph_drawer, false)
+        |> assign(:contacts_collapsed, false)
+        |> assign(:groups_collapsed, false)
+        |> assign(:fab_expanded, false)
+        |> assign(:show_mobile_chat, false)
+        |> assign(:note_input, "")
+        |> assign(:recording_voice, false)
+        |> assign(:uploading, false)
+        |> assign(:show_image_modal, false)
+        |> assign(:full_image_data, nil)
+        |> assign(:feed_item_count, length(feed_items))
+        |> assign(:photo_order, photo_ids(feed_items))
+        |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
+
+      # Allow uploads for the public feed
+      socket =
         allow_upload(socket, :feed_photo,
           accept: ~w(.jpg .jpeg .png .gif .webp),
           max_entries: 10,
           max_file_size: 20_000_000,
-          auto_upload: true, # Explicitly enabled for streaming
+          auto_upload: true,
           progress: &FriendsWeb.HomeLive.Events.PhotoEvents.handle_progress/3
         )
-      else
-        socket
+
+      socket = SessionEvents.maybe_bootstrap_identity(socket, get_connect_params(socket))
+
+      # Subscribe to new user signups if showing constellation
+      if connected?(socket) and socket.assigns[:show_constellation] do
+        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
       end
 
-    socket = SessionEvents.maybe_bootstrap_identity(socket, get_connect_params(socket))
-
-    # Subscribe to new user signups if showing constellation
-    if connected?(socket) and socket.assigns[:show_constellation] do
-      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
+      {:ok, socket}
     end
-
-    {:ok, socket}
   end
 
   defp mount_room(socket, room_code, session) do

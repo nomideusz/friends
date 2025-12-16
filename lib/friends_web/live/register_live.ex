@@ -93,49 +93,61 @@ defmodule FriendsWeb.RegisterLive do
         {:noreply, assign(socket, :error, "WebAuthn challenge expired, try again")}
 
       true ->
-        case Social.register_user(attrs) do
+        # Atomic registration: creates user AND credential together in a transaction
+        # If WebAuthn fails, the user is never created (rolled back)
+        case Social.register_user_with_webauthn(attrs, credential_data, challenge) do
           {:ok, user} ->
-            case Social.verify_and_store_webauthn_credential(user.id, credential_data, challenge) do
-              {:ok, _credential} ->
-                # Check if user should auto-join a room
-                pending_room = socket.assigns.pending_room_code
+            # Check if user should auto-join a room
+            pending_room = socket.assigns.pending_room_code
 
-                if pending_room do
-                  case Social.join_room(user, pending_room) do
-                    {:ok, _room} -> :ok
-                    # Silently ignore join failures
-                    _ -> :ok
-                  end
-                end
-
-                {:noreply,
-                 socket
-                 |> assign(:step, :complete)
-                 |> assign(:user, user)
-                 |> push_event("registration_complete", %{
-                   user: %{id: user.id, username: user.username}
-                 })}
-
-              {:error, reason} ->
-                Friends.Repo.delete(user)
-
-                {:noreply,
-                 assign(socket, :error, "WebAuthn registration failed: #{inspect(reason)}")}
+            if pending_room do
+              case Social.join_room(user, pending_room) do
+                {:ok, _room} -> :ok
+                # Silently ignore join failures
+                _ -> :ok
+              end
             end
+
+            {:noreply,
+             socket
+             |> assign(:step, :complete)
+             |> assign(:user, user)
+             |> push_event("registration_complete", %{
+               user: %{id: user.id, username: user.username}
+             })}
 
           {:error, :invalid_invite} ->
             {:noreply, assign(socket, :error, "invite code is no longer valid")}
 
-          {:error, changeset} ->
+          {:error, {:webauthn, reason}} ->
+            {:noreply,
+             assign(socket, :error, "Passkey registration failed: #{format_webauthn_error(reason)}")}
+
+          {:error, {:credential_storage, _reason}} ->
+            {:noreply,
+             assign(socket, :error, "Failed to save passkey. Please try again.")}
+
+          {:error, %Ecto.Changeset{} = changeset} ->
             error =
               changeset.errors
               |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
               |> Enum.join(", ")
 
             {:noreply, assign(socket, :error, error)}
+
+          {:error, reason} ->
+            {:noreply,
+             assign(socket, :error, "Registration failed: #{inspect(reason)}")}
         end
     end
   end
+
+  defp format_webauthn_error(:origin_mismatch), do: "Origin mismatch - please reload the page"
+  defp format_webauthn_error(:rp_id_hash_mismatch), do: "Security verification failed"
+  defp format_webauthn_error(:challenge_mismatch), do: "Challenge expired - please try again"
+  defp format_webauthn_error({:webauthn_failed, reason}), do: format_webauthn_error(reason)
+  defp format_webauthn_error(reason) when is_atom(reason), do: to_string(reason) |> String.replace("_", " ")
+  defp format_webauthn_error(reason), do: inspect(reason)
 
   @impl true
   def handle_event("webauthn_register_error", %{"error" => error}, socket) do
