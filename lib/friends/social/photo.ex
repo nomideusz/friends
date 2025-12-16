@@ -9,7 +9,7 @@ defmodule Friends.Social.Photo do
     field :user_name, :string
     field :image_data, :string  # Original URL (backwards compatible)
     field :thumbnail_data, :string  # Legacy field, kept for compatibility
-    field :image_url_thumb, :string  # 200px thumbnail
+    field :image_url_thumb, :string  # 400px thumbnail
     field :image_url_medium, :string  # 800px for feed
     field :image_url_large, :string  # 1600px for lightbox
     field :content_type, :string

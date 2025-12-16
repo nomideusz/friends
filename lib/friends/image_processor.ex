@@ -8,7 +8,7 @@ defmodule Friends.ImageProcessor do
   require Logger
 
   @sizes %{
-    thumb: 200,
+    thumb: 400,
     medium: 800,
     large: 1600
   }
