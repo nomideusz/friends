@@ -274,8 +274,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
         # 2. Upload thumbnail only
         uuid = Ecto.UUID.generate()
         base_path = if context == :room, 
-          do: "#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}",
-          else: "public/#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}"
+          do: "#{socket.assigns.current_user.id}/#{uuid}-#{Path.rootname(entry.client_name)}",
+          else: "public/#{socket.assigns.current_user.id}/#{uuid}-#{Path.rootname(entry.client_name)}"
           
         thumb_filename = "#{base_path}_thumb.jpg"
         
@@ -339,20 +339,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
     Task.start(fn ->
       try do
         file_content = File.read!(temp_path)
-        _base_filename = get_base_filename_from_url(photo.image_data)
-        
-        # Strip _thumb.jpg if present to get back to base
-        # Actually our base_path construction was arbitrary, let's reconstruct clean base
-        # But we need to use the SAME base so the variant naming logic works if we assume standard naming.
-        # Let's just use the filename we generated: uuid-client_name
-        # We can extract it from the temp_path basename actually
-        
-        # Better: we know the structure.
-        # process_upload returns variants.
+
         with {:ok, variants, processed} <- Friends.ImageProcessor.process_upload(file_content, client_type) do
-           # We need the base filename (virtual path in bucket)
-           # We can deduce it from the thumbnail url or store it.
-           # Let's extract from thumb url: .../uuid-name_thumb.jpg -> .../uuid-name
            bucket = Application.get_env(:friends, :media_bucket, "friends-images")
            path_segments = 
              photo.image_url_thumb
@@ -371,32 +359,22 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
              |> String.replace_suffix("_thumb", "")
              |> Path.rootname()
            
-           # Check if it was full url or just path? Storage.get_file_url returns full URL.
-           # If full URL, we need to be careful.
-           # Let's just pass the filename we want for the FULL, original version.
-           # Actually Storage.upload_with_variants uses build_variant_filename.
-           # If I pass "folder/file.jpg", it makes "folder/file_thumb.jpg".
-           
-           # Our temp thumb was "folder/file_thumb.jpg".
-           # So base should be "folder/file.jpg".
-           
-           # Let's just re-use the logic:
-           clean_base_path = String.replace(base_virtual_path, "_thumb", "")
-           # If original was .png, base needs extension? 
-           # upload_with_variants expects base_filename including extension
-           
-           # We don't know original extension from the thumb URL easily if we stripped it or conv to jpg.
-           # But client_type is reliable.
            ext = MIME.extensions(client_type) |> List.first() || "bin"
-           full_base_filename = "#{clean_base_path}.#{ext}"
+           full_base_filename = "#{base_virtual_path}.#{ext}"
            
-           with {:ok, urls} <- Friends.Storage.upload_with_variants(variants, full_base_filename, client_type, processed) do
-             # Update DB
-             Friends.Social.Photos.update_photo_urls(photo.id, urls, user_id)
+           case Friends.Storage.upload_with_variants(variants, full_base_filename, client_type, processed) do
+             {:ok, urls} ->
+               Logger.info("Background upload success. Updating DB for photo #{photo.id} with user_id #{user_id}")
+               case Friends.Social.Photos.update_photo_urls(photo.id, urls, user_id) do
+                 {:ok, _} -> Logger.info("DB update success")
+                 {:error, reason} -> Logger.error("DB update failed: #{inspect(reason)}")
+               end
+               
+             {:error, reason} ->
+               Logger.error("Storage upload failed: #{inspect(reason)}")
            end
         end
         
-        # Clean up
         File.rm(temp_path)
       rescue
         e -> 
@@ -407,11 +385,6 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
     end)
   end
   
-  defp get_base_filename_from_url(url) do
-    # Simple helper if needed, but logic moved inline
-    url
-  end
-
   # Generate thumbnail from base64 image data
   defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do
     try do
