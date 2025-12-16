@@ -67,17 +67,35 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   end
 
   def handle_photo_deleted(socket, id) do
-    {:noreply,
-     socket
-     |> assign(:item_count, max(0, socket.assigns.item_count - 1))
-     |> stream_delete(:items, %{id: id, unique_id: "photo-#{id}"})}
+    if socket.assigns[:feed_item_count] do
+      # Feed context
+      {:noreply,
+       socket
+       |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
+       |> assign(:photo_order, remove_photo_from_order(socket.assigns[:photo_order], id))
+       |> stream_delete(:feed_items, %{id: id, unique_id: "photo-#{id}"})}
+    else
+      # Room context
+      {:noreply,
+       socket
+       |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
+       |> assign(:photo_order, remove_photo_from_order(socket.assigns[:photo_order], id))
+       |> stream_delete(:items, %{id: id, unique_id: "photo-#{id}"})}
+    end
   end
 
   def handle_note_deleted(socket, id) do
-    {:noreply,
-     socket
-     |> assign(:item_count, max(0, socket.assigns.item_count - 1))
-     |> stream_delete(:items, %{id: id, unique_id: "note-#{id}"})}
+    if socket.assigns[:feed_item_count] do
+      {:noreply,
+       socket
+       |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
+       |> stream_delete(:feed_items, %{id: id, unique_id: "note-#{id}"})}
+    else
+      {:noreply,
+       socket
+       |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
+       |> stream_delete(:items, %{id: id, unique_id: "note-#{id}"})}
+    end
   end
 
   def handle_photo_thumbnail_updated(socket, photo_id, thumbnail_data) do

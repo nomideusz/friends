@@ -165,17 +165,28 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
 
           photo ->
             if photo.user_id == socket.assigns.user_id do
-              case Social.delete_photo(photo_id, socket.assigns.room.code) do
+              room_code = if socket.assigns[:room], do: socket.assigns.room.code, else: nil
+              case Social.delete_photo(photo_id, room_code) do
                 {:ok, _} ->
+                  # Update UI based on context (Feed vs Room)
+                  socket =
+                    if socket.assigns[:feed_item_count] do
+                      socket
+                      |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
+                      |> stream_delete(:feed_items, %{id: photo_id, unique_id: "photo-#{photo_id}"})
+                    else
+                      socket
+                      |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
+                      |> stream_delete(:items, %{id: photo_id, unique_id: "photo-#{photo_id}"})
+                    end
+
                   {:noreply,
                    socket
-                   |> assign(:item_count, max(0, socket.assigns.item_count - 1))
                    |> maybe_close_deleted_photo(photo_id)
                    |> assign(
                      :photo_order,
-                     remove_photo_from_order(socket.assigns.photo_order, photo_id)
-                   )
-                   |> stream_delete(:items, %{id: photo_id, unique_id: "photo-#{photo_id}"})}
+                     remove_photo_from_order(socket.assigns[:photo_order], photo_id)
+                   )}
 
                 {:error, _} ->
                   {:noreply, put_flash(socket, :error, "failed")}

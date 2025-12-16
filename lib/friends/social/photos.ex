@@ -349,11 +349,19 @@ defmodule Friends.Social.Photos do
       photo ->
         case Repo.delete(photo) do
           {:ok, _} ->
-            Phoenix.PubSub.broadcast(
-              Friends.PubSub, 
-              "friends:room:#{room_code}", 
-              {:photo_deleted, %{id: photo_id}}
-            )
+            if room_code do
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub, 
+                "friends:room:#{room_code}", 
+                {:photo_deleted, %{id: photo_id}}
+              )
+            else
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub, 
+                "friends:public_feed:#{photo.user_id}", 
+                {:photo_deleted, %{id: photo_id}}
+              )
+            end
             {:ok, photo}
 
           error ->
