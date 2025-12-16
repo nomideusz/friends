@@ -84,9 +84,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Public feed assigns
         |> assign(:friends, friends)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
-        # Constellation for users with < 3 friends (opt-out checked client-side via localStorage)
-        |> assign(:show_constellation, length(friends) < 3)
-        |> assign(:constellation_data, if(length(friends) < 3, do: GraphHelper.build_constellation_data(session_user), else: nil))
+        # Welcome graph for users with < 3 friends (opt-out checked client-side via localStorage)
+        |> assign(:show_welcome_graph, length(friends) < 3)
+        |> assign(:welcome_graph_data, if(length(friends) < 3, do: GraphHelper.build_welcome_graph_data(), else: nil))
         |> assign(:show_nav_drawer, false)
         |> assign(:show_graph_drawer, false)
         |> assign(:contacts_collapsed, false)
@@ -114,10 +114,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
 
       socket = SessionEvents.maybe_bootstrap_identity(socket, get_connect_params(socket))
 
-      # Subscribe to new user signups if showing constellation
-      if connected?(socket) and socket.assigns[:show_constellation] do
-        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
-      end
+      # No real-time updates for welcome graph for now to keep it minimal
+
 
       {:ok, socket}
     end

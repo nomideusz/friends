@@ -136,8 +136,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
         socket = 
           if length(results) > 0 do
             socket
-            |> assign(:show_constellation, false)
-            |> assign(:constellation_data, nil)
+            |> assign(:show_welcome_graph, false)
+            |> assign(:welcome_graph_data, nil)
           else
             socket
           end

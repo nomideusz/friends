@@ -8,13 +8,14 @@ import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
 import GlobalGraph from "../svelte/GlobalGraph.svelte"
 import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
+import WelcomeGraph from "../svelte/WelcomeGraph.svelte"
 import { mount, unmount } from 'svelte'
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
 import * as messageEncryption from "./message-encryption"
 import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
 import QRCode from "qrcode"
 
-const Components = { FriendsMap, FriendGraph, GlobalGraph, ConstellationGraph }
+const Components = { FriendsMap, FriendGraph, GlobalGraph, ConstellationGraph, WelcomeGraph }
 
 // Generate device fingerprint - hardware characteristics that are consistent across browsers
 function generateFingerprint() {
@@ -148,6 +149,34 @@ function optimizeImage(file, maxSize = 1200) {
 // Hooks
 const Hooks = {
     ...getHooks(Components),
+
+    WelcomeGraph: {
+        mounted() {
+            // Check localStorage for opt-out preference
+            if (localStorage.getItem('hideWelcomeGraph') === 'true') {
+                // User opted out - trigger skip
+                this.pushEvent('skip_welcome_graph', {})
+                this.el.style.display = 'none'
+                return
+            }
+
+            const graphData = JSON.parse(this.el.dataset.graphData || 'null')
+
+            // Svelte 5 mount
+            this.component = mount(WelcomeGraph, {
+                target: this.el,
+                props: {
+                    graphData,
+                    live: this
+                }
+            })
+        },
+        destroyed() {
+            if (this.component) {
+                unmount(this.component)
+            }
+        }
+    },
 
     FriendGraph: {
         mounted() {

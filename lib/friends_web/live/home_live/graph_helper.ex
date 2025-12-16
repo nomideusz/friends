@@ -319,4 +319,39 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
       end)
     }
   end
+
+  @doc """
+  Builds global network data for the welcome screen.
+  Fetches a sample of recent users and their mutual connections.
+  """
+  def build_welcome_graph_data do
+    # Get sample of active users
+    users =
+      Repo.all(
+        from u in Friends.Social.User,
+          order_by: [desc: u.inserted_at],
+          limit: 100,
+          select: %{id: u.id}
+      )
+
+    user_ids = Enum.map(users, & &1.id)
+
+    # Get edges between these users
+    edges =
+      Repo.all(
+        from f in Friends.Social.Friendship,
+          where: f.user_id in ^user_ids and f.friend_user_id in ^user_ids and f.status == "accepted",
+          select: %{from: f.user_id, to: f.friend_user_id}
+      )
+      |> Enum.map(fn %{from: from, to: to} ->
+        # Ensure consistent direction for uniqueness
+        if from < to, do: %{from: from, to: to}, else: %{from: to, to: from}
+      end)
+      |> Enum.uniq()
+
+    %{
+      nodes: Enum.map(user_ids, fn id -> %{id: id} end),
+      edges: edges
+    }
+  end
 end
