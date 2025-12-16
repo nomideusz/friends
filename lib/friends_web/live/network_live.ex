@@ -278,7 +278,10 @@ defmodule FriendsWeb.NetworkLive do
   end
 
   def handle_event("sign_out", _, socket) do
-    {:noreply, push_navigate(socket, to: ~p"/login?action=signout")}
+    {:noreply,
+     socket
+     |> push_event("sign_out", %{})
+     |> put_flash(:info, "Signing out...")}
   end
 
   # --- Real-time Updates ---

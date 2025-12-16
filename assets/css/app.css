@@ -130,6 +130,8 @@ h6 {
 .btn-aether-primary:hover {
   background: white;
   /* Brighter */
+  color: var(--color-void);
+  /* Keep dark text on white background */
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
   /* Strong Glow */
   transform: translateY(-1px);
