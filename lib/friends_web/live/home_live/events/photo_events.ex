@@ -7,6 +7,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   import FriendsWeb.HomeLive.Helpers
   alias Friends.Social
   alias Friends.Repo
+  require Logger
   import Ecto.Query
 
   # --- Upload Handlers ---
@@ -19,179 +20,121 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
     {:noreply, socket |> cancel_upload(:photo, ref) |> assign(:uploading, false)}
   end
 
-  def handle_progress(:photo, entry, socket) when entry.done? do
-    if is_nil(socket.assigns.current_user) or socket.assigns.room_access_denied do
-      {:noreply, put_flash(socket, :error, "Please register to upload photos")}
-    else
-      results =
-        consume_uploaded_entries(socket, :photo, fn %{path: path}, entry ->
-          file_content = File.read!(path)
-          filename = "#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
+  def handle_progress(:photo, _entry, socket) do
+    if Enum.all?(socket.assigns.uploads.photo.entries, & &1.done?) do
+      if is_nil(socket.assigns.current_user) or socket.assigns.room_access_denied do
+        {:noreply, put_flash(socket, :error, "Please register to upload photos")}
+      else
+        results =
+          consume_uploaded_entries(socket, :photo, fn %{path: path}, entry ->
+            Logger.info("PhotoEvents: Processing private photo entry #{entry.ref}")
+            process_photo_entry(socket, path, entry, :room)
+          end)
 
-          # Process image to generate variants
-          with {:ok, variants, processed} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
-               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type, processed) do
-            case Social.create_photo(
-                   %{
-                     user_id: socket.assigns.user_id,
-                     user_name: socket.assigns.current_user.username,
-                     user_color: socket.assigns.user_color,
-                     image_data: urls.original_url,
-                     thumbnail_data: urls[:thumb_url] || urls.original_url,
-                     image_url_thumb: urls[:thumb_url],
-                     image_url_medium: urls[:medium_url],
-                     image_url_large: urls[:large_url],
-                     content_type: entry.client_type,
-                     file_size: entry.client_size,
-                     description: "",
-                     room_id: socket.assigns.room.id
-                   },
-                   socket.assigns.room.code
-                 ) do
-              {:ok, photo} -> {:ok, photo}
-              {:error, reason} -> {:postpone, reason}
-            end
+        # Process successful uploads
+        # Note: consume_uploaded_entries unwraps {:ok, value} to just value
+        socket =
+          Enum.reduce(results, socket, fn
+            {photo, temp_path, client_type}, acc when is_struct(photo, Friends.Social.Photo) ->
+              Logger.info("PhotoEvents: stream_insert for photo #{photo.id}, thumbnail: #{photo.thumbnail_data}")
+              
+              # 1. Update UI immediately
+              photo_with_type =
+                photo
+                |> Map.from_struct()
+                |> Map.put(:type, :photo)
+                |> Map.put(:unique_id, "photo-#{photo.id}")
+
+              Logger.info("PhotoEvents: photo_with_type = #{inspect(Map.take(photo_with_type, [:id, :type, :unique_id, :thumbnail_data]))}")
+
+              acc =
+                acc
+                |> assign(:item_count, acc.assigns.item_count + 1)
+                |> assign(
+                  :photo_order,
+                  merge_photo_order(acc.assigns.photo_order, [photo.id], :front)
+                )
+                |> stream_insert(:items, photo_with_type, at: 0)
+
+              Logger.info("PhotoEvents: stream_insert DONE for photo #{photo.id}")
+
+              # 2. Start background task for full processing
+              start_background_processing(photo, temp_path, client_type, acc.assigns.user_id)
+
+              push_event(acc, "photo_uploaded", %{photo_id: photo.id})
+
+            error_result, acc -> 
+              Logger.warning("PhotoEvents: Non-ok result: #{inspect(error_result)}")
+              acc
+          end)
+
+        # Check for failures (simplistic check if any postponed)
+        failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
+
+        socket = 
+          if failed_count > 0 do
+            put_flash(socket, :error, "#{failed_count} uploads failed")
           else
-            {:error, reason} ->
-              require Logger
-              Logger.error("Room photo upload failed: #{inspect(reason)}")
-              {:postpone, :upload_failed}
+            socket
           end
-        end)
-
-      require Logger
-      Logger.debug("Room photo upload results: #{inspect(results)}")
-
-      case List.first(results) do
-        %Friends.Social.Photo{} = photo ->
-          photo_with_type =
-            photo
-            |> Map.put(:type, :photo)
-            |> Map.put(:unique_id, "photo-#{photo.id}")
-
-          # Get all remaining entries to cancel
-          remaining_entries = socket.assigns.uploads.photo.entries
-
-          socket_with_cancels =
-            Enum.reduce(remaining_entries, socket, fn entry, acc ->
-              cancel_upload(acc, :photo, entry.ref)
-            end)
-
-          {:noreply,
-           socket_with_cancels
-           |> assign(:uploading, false)
-           |> assign(:item_count, socket.assigns.item_count + 1)
-           |> assign(
-             :photo_order,
-             merge_photo_order(socket.assigns.photo_order, [photo.id], :front)
-           )
-           |> stream_insert(:items, photo_with_type, at: 0)
-           |> push_event("photo_uploaded", %{photo_id: photo.id})}
-
-        other ->
-          require Logger
-          Logger.error("Room photo upload result pattern mismatch: #{inspect(other)}")
-
-          # Cancel all uploads on error too
-          remaining_entries = socket.assigns.uploads.photo.entries
-
-          socket_with_cancels =
-            Enum.reduce(remaining_entries, socket, fn entry, acc ->
-              cancel_upload(acc, :photo, entry.ref)
-            end)
-
-          {:noreply,
-           socket_with_cancels |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
+        
+        {:noreply, assign(socket, :uploading, false)}
       end
+    else
+      {:noreply, assign(socket, :uploading, true)}
     end
   end
 
-  def handle_progress(:photo, _entry, socket) do
-    {:noreply, assign(socket, :uploading, true)}
-  end
 
-  def handle_progress(:feed_photo, entry, socket) when entry.done? do
-    if is_nil(socket.assigns.current_user) do
-      {:noreply, put_flash(socket, :error, "Please login to post photos")}
-    else
-      results =
-        consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, entry ->
-          file_content = File.read!(path)
-          filename = "public/#{socket.assigns.current_user.id}/#{Ecto.UUID.generate()}-#{entry.client_name}"
 
-          # Process image to generate variants
-          with {:ok, variants, processed} <- Friends.ImageProcessor.process_upload(file_content, entry.client_type),
-               {:ok, urls} <- Friends.Storage.upload_with_variants(variants, filename, entry.client_type, processed) do
-            case Social.create_public_photo(
-                   %{
-                     user_id: socket.assigns.user_id,
-                     user_name: socket.assigns.current_user.username,
-                     user_color: socket.assigns.user_color,
-                     image_data: urls.original_url,
-                     thumbnail_data: urls[:thumb_url] || urls.original_url,
-                     image_url_thumb: urls[:thumb_url],
-                     image_url_medium: urls[:medium_url],
-                     image_url_large: urls[:large_url],
-                     content_type: entry.client_type,
-                     file_size: entry.client_size,
-                     description: ""
-                   },
-                   socket.assigns.current_user.id
-                 ) do
-              {:ok, photo} -> {:ok, photo}
-              {:error, reason} ->
-                require Logger
-                Logger.error("Feed photo DB insert failed: #{inspect(reason)}")
-                {:postpone, reason}
-            end
+  def handle_progress(:feed_photo, _entry, socket) do
+    if Enum.all?(socket.assigns.uploads.feed_photo.entries, & &1.done?) do
+      if is_nil(socket.assigns.current_user) do
+        {:noreply, put_flash(socket, :error, "Please login to post photos")}
+      else
+        results =
+          consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, entry ->
+            process_photo_entry(socket, path, entry, :feed)
+          end)
+
+        # Process successful uploads
+        # Note: consume_uploaded_entries unwraps {:ok, value} to just value
+        socket =
+          Enum.reduce(results, socket, fn
+            {photo, temp_path, client_type}, acc when is_struct(photo, Friends.Social.Photo) ->
+              # 1. Update UI immediately
+              photo_with_type =
+                photo
+                |> Map.put(:type, :photo)
+                |> Map.put(:unique_id, "photo-#{photo.id}")
+
+              acc =
+                acc
+                |> assign(:feed_item_count, (acc.assigns[:feed_item_count] || 0) + 1)
+                |> stream_insert(:feed_items, photo_with_type, at: 0)
+
+              # 2. Start background task for full processing
+              start_background_processing(photo, temp_path, client_type, acc.assigns.user_id)
+
+              push_event(acc, "photo_uploaded", %{photo_id: photo.id})
+
+            _, acc -> acc
+          end)
+        
+        # Cleanup and flash for errors
+        failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
+
+        socket = 
+          if failed_count > 0 do
+            put_flash(socket, :error, "#{failed_count} uploads failed")
           else
-            {:error, reason} ->
-              require Logger
-              Logger.error("Feed photo upload failed: #{inspect(reason)}")
-              {:postpone, :upload_failed}
+            socket
           end
-        end)
-
-      require Logger
-      Logger.debug("Feed photo upload results: #{inspect(results)}")
-
-      case List.first(results) do
-        %Friends.Social.Photo{} = photo ->
-          photo_with_type =
-            photo
-            |> Map.put(:type, :photo)
-            |> Map.put(:unique_id, "photo-#{photo.id}")
-
-          # Get all remaining entries to cancel
-          remaining_entries = socket.assigns.uploads.feed_photo.entries
-
-          socket_with_cancels =
-            Enum.reduce(remaining_entries, socket, fn entry, acc ->
-              cancel_upload(acc, :feed_photo, entry.ref)
-            end)
-
-          {:noreply,
-           socket_with_cancels
-           |> assign(:uploading, false)
-           |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
-           |> stream_insert(:feed_items, photo_with_type, at: 0)
-           |> push_event("photo_uploaded", %{photo_id: photo.id})}
-
-        other ->
-          require Logger
-          Logger.error("Feed photo upload result pattern mismatch: #{inspect(other)}")
-
-          # Cancel all uploads on error too
-          remaining_entries = socket.assigns.uploads.feed_photo.entries
-
-          socket_with_cancels =
-            Enum.reduce(remaining_entries, socket, fn entry, acc ->
-              cancel_upload(acc, :feed_photo, entry.ref)
-            end)
-
-          {:noreply,
-           socket_with_cancels |> assign(:uploading, false) |> put_flash(:error, "Upload failed")}
+          
+        {:noreply, assign(socket, :uploading, false)}
       end
+    else
+      {:noreply, assign(socket, :uploading, true)}
     end
   end
 
@@ -306,6 +249,138 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   end
 
   # --- Private Helpers ---
+
+  # --- Private Helpers ---
+
+  defp process_photo_entry(socket, path, entry, context) do
+    file_content = File.read!(path)
+    
+    # 1. Generate fast thumbnail
+    with {:ok, thumb_binary, thumb_type} <- Friends.ImageProcessor.generate_thumbnail_only(file_content, entry.client_type) do
+      # 2. Upload thumbnail only
+      uuid = Ecto.UUID.generate()
+      base_path = if context == :room, 
+        do: "#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}",
+        else: "public/#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}"
+        
+      thumb_filename = "#{base_path}_thumb.jpg"
+      
+      with {:ok, thumb_url} <- Friends.Storage.upload_file(thumb_binary, thumb_filename, thumb_type) do
+        # 3. Create DB record with thumbnail and placeholder
+        attrs = %{
+          user_id: socket.assigns.user_id,
+          user_name: socket.assigns.current_user.username,
+          user_color: socket.assigns.user_color,
+          # Use thumbnail as temporary main image
+          image_data: thumb_url,
+          thumbnail_data: thumb_url,
+          image_url_thumb: thumb_url,
+          content_type: entry.client_type,
+          file_size: entry.client_size,
+          description: "",
+        }
+        
+        attrs = if context == :room,
+          do: Map.put(attrs, :room_id, socket.assigns.room.id),
+          else: attrs
+          
+        result = if context == :room,
+          do: Social.create_photo(attrs, socket.assigns.room.code),
+          else: Social.create_public_photo(attrs, socket.assigns.current_user.id)
+          
+        case result do
+          {:ok, photo} -> 
+            # Make a temp copy for background processing
+            temp_path = Path.join(System.tmp_dir!(), "#{uuid}-#{entry.client_name}")
+            File.cp!(path, temp_path)
+            
+            {:ok, {photo, temp_path, entry.client_type}}
+            
+          {:error, reason} -> 
+             require Logger
+             Logger.error("Photo create failed: #{inspect(reason)}")
+             {:postpone, reason}
+        end
+      else
+        {:error, reason} ->
+          require Logger
+          Logger.error("Thumbnail upload failed: #{inspect(reason)}")
+          {:postpone, :upload_failed}
+      end
+    else
+      {:error, reason} ->
+        require Logger
+        Logger.error("Fast thumbnail gen failed: #{inspect(reason)}")
+        {:postpone, :upload_failed}
+    end
+  end
+
+  defp start_background_processing(photo, temp_path, client_type, user_id) do
+    Task.start(fn ->
+      try do
+        file_content = File.read!(temp_path)
+        _base_filename = get_base_filename_from_url(photo.image_data)
+        
+        # Strip _thumb.jpg if present to get back to base
+        # Actually our base_path construction was arbitrary, let's reconstruct clean base
+        # But we need to use the SAME base so the variant naming logic works if we assume standard naming.
+        # Let's just use the filename we generated: uuid-client_name
+        # We can extract it from the temp_path basename actually
+        
+        # Better: we know the structure.
+        # process_upload returns variants.
+        with {:ok, variants, processed} <- Friends.ImageProcessor.process_upload(file_content, client_type) do
+           # We need the base filename (virtual path in bucket)
+           # We can deduce it from the thumbnail url or store it.
+           # Let's extract from thumb url: .../uuid-name_thumb.jpg -> .../uuid-name
+           base_virtual_path = 
+             photo.image_url_thumb
+             |> URI.parse()
+             |> Map.get(:path)
+             |> Path.rootname() # removes .jpg
+             |> String.replace_suffix("_thumb", "")
+             |> String.trim_leading("/") # remove leading slash
+           
+           # Check if it was full url or just path? Storage.get_file_url returns full URL.
+           # If full URL, we need to be careful.
+           # Let's just pass the filename we want for the FULL, original version.
+           # Actually Storage.upload_with_variants uses build_variant_filename.
+           # If I pass "folder/file.jpg", it makes "folder/file_thumb.jpg".
+           
+           # Our temp thumb was "folder/file_thumb.jpg".
+           # So base should be "folder/file.jpg".
+           
+           # Let's just re-use the logic:
+           clean_base_path = String.replace(base_virtual_path, "_thumb", "")
+           # If original was .png, base needs extension? 
+           # upload_with_variants expects base_filename including extension
+           
+           # We don't know original extension from the thumb URL easily if we stripped it or conv to jpg.
+           # But client_type is reliable.
+           ext = MIME.extensions(client_type) |> List.first() || "bin"
+           full_base_filename = "#{clean_base_path}.#{ext}"
+           
+           with {:ok, urls} <- Friends.Storage.upload_with_variants(variants, full_base_filename, client_type, processed) do
+             # Update DB
+             Friends.Social.Photos.update_photo_urls(photo.id, urls, user_id)
+           end
+        end
+        
+        # Clean up
+        File.rm(temp_path)
+      rescue
+        e -> 
+          require Logger
+          Logger.error("Background photo processing failed: #{inspect(e)}")
+          File.rm(temp_path)
+      end
+    end)
+  end
+  
+  defp get_base_filename_from_url(url) do
+    # Simple helper if needed, but logic moved inline
+    url
+  end
 
   # Generate thumbnail from base64 image data
   defp generate_thumbnail_from_data("data:" <> data, photo_id, user_id, room_code) do

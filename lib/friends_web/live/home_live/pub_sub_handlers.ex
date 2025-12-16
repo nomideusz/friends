@@ -6,6 +6,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   import Phoenix.LiveView
   import FriendsWeb.HomeLive.Helpers
   alias Friends.Social
+  require Logger
 
   # --- Room Creation ---
 
@@ -28,10 +29,12 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   # --- Room Items (Photos/Notes) ---
 
   def handle_new_photo(socket, photo) do
+    Logger.info("PubSubHandlers: Received new photo ID #{photo.id} from user #{photo.user_id} (My user: #{socket.assigns.user_id})")
     # Only insert if not from self (optimistic UI handles self)
     if photo.user_id != socket.assigns.user_id do
       photo_with_type =
         photo
+        |> Map.from_struct()
         |> Map.put(:type, :photo)
         |> Map.put(:unique_id, "photo-#{photo.id}")
         |> Map.put(:thumbnail_data, photo.thumbnail_data)
@@ -50,6 +53,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
     if note.user_id != socket.assigns.user_id do
       note_with_type =
         note
+        |> Map.from_struct()
         |> Map.put(:type, :note)
         |> Map.put(:unique_id, "note-#{note.id}")
 
@@ -106,6 +110,29 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
         {:noreply, socket}
     end
+  end
+
+  def handle_photo_updated(socket, photo) do
+    photo_with_type =
+      photo
+      |> Map.from_struct()
+      |> Map.put(:type, :photo)
+      |> Map.put(:unique_id, "photo-#{photo.id}")
+
+    # Update the appropriate stream based on photo type and current view
+    socket =
+      cond do
+        photo.room_id && socket.assigns[:item_count] ->
+          stream_insert(socket, :items, photo_with_type)
+
+        is_nil(photo.room_id) && socket.assigns[:feed_item_count] ->
+          stream_insert(socket, :feed_items, photo_with_type)
+
+        true ->
+          socket
+      end
+
+    {:noreply, socket}
   end
 
   # --- Chat ---

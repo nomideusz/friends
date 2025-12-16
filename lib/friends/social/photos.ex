@@ -274,6 +274,57 @@ defmodule Friends.Social.Photos do
     end
   end
 
+  def update_photo_urls(photo_id, urls, user_id) do
+    case Repo.get(Photo, photo_id) do
+      nil ->
+        {:error, :not_found}
+
+      photo ->
+        current_user_id_str = if is_integer(user_id), do: "user-#{user_id}", else: user_id
+
+        if photo.user_id == current_user_id_str do
+          changes = %{
+            image_data: urls.original,
+            image_url_thumb: urls.thumb,
+            image_url_medium: urls.medium,
+            image_url_large: urls.large
+          }
+
+          photo
+          |> Photo.changeset(changes)
+          |> Repo.update()
+          |> case do
+            {:ok, updated_photo} ->
+              # Broadcast update so UI refreshes with high-res images
+              if updated_photo.room_id do
+                room = Friends.Social.Rooms.get_room(updated_photo.room_id)
+                if room do
+                  Phoenix.PubSub.broadcast(
+                    Friends.PubSub,
+                    "friends:room:#{room.code}",
+                    {:photo_updated, updated_photo}
+                  )
+                end
+              else
+                 # Public photo
+                 case Integer.parse(String.replace(current_user_id_str, "user-", "")) do
+                   {int_id, ""} ->
+                      Friends.Social.Relationships.broadcast_to_contacts(int_id, :photo_updated, updated_photo)
+                   _ -> nil
+                 end
+              end
+
+              {:ok, updated_photo}
+
+            error ->
+              error
+          end
+        else
+          {:error, :unauthorized}
+        end
+    end
+  end
+
   def update_photo_description(photo_id, description, user_id) do
     case Repo.get(Photo, photo_id) do
       nil ->

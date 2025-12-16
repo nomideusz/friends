@@ -34,6 +34,26 @@ defmodule Friends.ImageProcessor do
     end
   end
 
+  @doc """
+  Quickly generates just a thumbnail variant.
+  Returns {:ok, binary, mime_type} or {:error, reason}
+  """
+  def generate_thumbnail_only(binary, content_type) do
+    if @image_available and image_processing_enabled?() do
+      with {:ok, image} <- apply(Image, :from_binary, [binary]),
+           {:ok, resized} <- apply(Image, :thumbnail, [image, @sizes.thumb, [crop: :none]]),
+           {:ok, thumb_binary} <- apply(Image, :write, [resized, :memory, [suffix: ".jpg", quality: 80]]) do
+        {:ok, thumb_binary, "image/jpeg"}
+      else
+        {:error, reason} ->
+          Logger.error("Fast thumbnail generation failed: #{inspect(reason)}")
+          {:error, reason}
+      end
+    else
+      {:ok, binary, content_type}
+    end
+  end
+
   defp process_with_image_library(binary, content_type) do
     with {:ok, image} <- apply(Image, :from_binary, [binary]) do
       variants = %{original: binary}

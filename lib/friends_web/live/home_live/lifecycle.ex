@@ -14,6 +14,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
   # Event modules needed for initial setup/subscriptions
   alias FriendsWeb.HomeLive.Events.SessionEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
+  require Logger
 
   @initial_batch 20
 
@@ -90,6 +91,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       |> assign(:contacts_collapsed, false)
       |> assign(:groups_collapsed, false)
       |> assign(:fab_expanded, false)
+      |> assign(:show_mobile_chat, false)
       |> assign(:note_input, "")
       |> assign(:recording_voice, false)
       |> assign(:uploading, false)
@@ -104,7 +106,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       if session_user do
         allow_upload(socket, :feed_photo,
           accept: ~w(.jpg .jpeg .png .gif .webp),
-          max_entries: 1,
+          max_entries: 10,
           max_file_size: 20_000_000,
           auto_upload: true,
           progress: &FriendsWeb.HomeLive.Events.PhotoEvents.handle_progress/3
@@ -156,6 +158,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
 
       # Subscribe when connected
       if connected?(socket) and can_access do
+        Logger.info("Subscribing to private room: friends:room:#{room.code} (is_private: #{room.is_private})")
         Social.subscribe(room.code)
         Phoenix.PubSub.subscribe(Friends.PubSub, "friends:presence:#{room.code}")
 
@@ -428,7 +431,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
   defp maybe_allow_upload(socket, true) do
     allow_upload(socket, :photo,
       accept: ~w(.jpg .jpeg .png .gif .webp),
-      max_entries: 1,
+      max_entries: 10,
       max_file_size: 20_000_000,
       auto_upload: true,
       progress: &FriendsWeb.HomeLive.Events.PhotoEvents.handle_progress/3

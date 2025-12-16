@@ -73,14 +73,6 @@ defmodule FriendsWeb.HomeLive do
     PhotoEvents.delete_photo(socket, id)
   end
 
-  def handle_event("set_thumbnail", %{"photo_id" => photo_id, "thumbnail" => thumbnail}, socket) do
-    PhotoEvents.set_thumbnail(socket, photo_id, thumbnail)
-  end
-
-  def handle_event("save_note", %{"note" => content}, socket) do
-    NoteEvents.save_note(socket, content)
-  end
-
   def handle_event("delete_note", %{"id" => id}, socket) do
     NoteEvents.delete_note(socket, id)
   end
@@ -242,12 +234,13 @@ defmodule FriendsWeb.HomeLive do
         photo_id_int = normalize_photo_id(photo_id)
 
         # Save to DB and broadcast to other clients
-        if socket.assigns.user_id && is_binary(thumbnail) do
+        room_code = socket.assigns[:room] && socket.assigns.room.code
+        if socket.assigns.user_id && is_binary(thumbnail) && room_code do
           Social.set_photo_thumbnail(
             photo_id_int,
             thumbnail,
             socket.assigns.user_id,
-            socket.assigns.room.code
+            room_code
           )
         end
 
@@ -264,7 +257,9 @@ defmodule FriendsWeb.HomeLive do
               |> Map.put(:unique_id, "photo-#{photo.id}")
               |> Map.put(:thumbnail_data, thumbnail)
 
-            {:noreply, stream_insert(socket, :items, photo_with_type)}
+            # Determine which stream to update based on context
+            stream_name = if socket.assigns[:room], do: :items, else: :feed_items
+            {:noreply, stream_insert(socket, stream_name, photo_with_type)}
         end
       rescue
         _e ->
@@ -599,6 +594,10 @@ defmodule FriendsWeb.HomeLive do
         socket
       ) do
     PubSubHandlers.handle_photo_thumbnail_updated(socket, photo_id, thumbnail_data)
+  end
+
+  def handle_info({:photo_updated, photo}, socket) do
+    PubSubHandlers.handle_photo_updated(socket, photo)
   end
 
   # Handle new room message from PubSub

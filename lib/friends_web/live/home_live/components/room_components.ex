@@ -456,23 +456,8 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
   attr :room, :map, required: true
 
   def mobile_action_bar(assigns) do
+    # Mobile uses FAB (Floating Action Button) for uploads, so this is now empty
     ~H"""
-    <%= if not is_nil(@current_user) and not @room_access_denied and @uploads do %>
-      <div class="sm:hidden">
-        <CardComponents.actions_bar
-          uploads={@uploads}
-          uploading={@uploading}
-          recording_voice={@recording_voice}
-          note_event="open_note_modal"
-          voice_button_id="grid-voice-record-mobile"
-          voice_hook="GridVoiceRecorder"
-          room_id={@room.id}
-          upload_key={:photo}
-          id_prefix="mobile"
-          skip_file_input={true}
-        />
-      </div>
-    <% end %>
     """
   end
 
@@ -507,7 +492,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     <div
       id="items-grid"
       phx-update="stream"
-      phx-hook="PhotoGrid"
+
       class="contents"
     >
       <%= for {dom_id, item} <- @items do %>
@@ -580,7 +565,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
             <img
               src={@item.thumbnail_data}
               alt=""
-              class="w-full h-full object-cover loaded"
+              class="w-full h-full object-cover"
               decoding="async"
             />
           <% else %>

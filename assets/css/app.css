@@ -166,3 +166,8 @@ textarea:focus {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
+
+/* Image Loading Transition */
+img.loaded {
+  opacity: 1;
+}

@@ -58,6 +58,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
   end
 
   # --- Note Modal ---
+  # Responsive: Drawer on mobile, centered modal on desktop
   attr :show, :boolean, default: false
   attr :action, :string, default: "post_feed_note"
 
@@ -71,14 +72,66 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
         phx-window-keydown="close_note_modal"
         phx-key="escape"
       >
-        <!-- Backdrop -->
+        <%!-- Backdrop --%>
         <div 
           class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
           phx-click="close_note_modal"
         ></div>
 
-        <!-- Modal Content Container -->
-        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <%!-- Mobile: Bottom Drawer --%>
+        <div class="lg:hidden fixed inset-x-0 bottom-0 z-50 animate-in slide-in-from-bottom duration-300">
+          <%!-- Tappable drag handle area --%>
+          <button
+            phx-click="close_note_modal"
+            class="w-full pt-3 pb-2 flex flex-col items-center cursor-pointer group bg-black/95 rounded-t-3xl border-t border-white/10"
+          >
+            <div class="w-12 h-1.5 bg-white/30 rounded-full group-hover:bg-white/50 transition-colors"></div>
+            <span class="text-[10px] text-neutral-600 mt-1">tap to close</span>
+          </button>
+          
+          <div class="aether-card rounded-t-3xl border-t-0 p-5 pb-8 bg-black/95">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-4">
+              <%= if @action == "post_feed_note", do: "Public Note", else: "Room Note" %>
+            </h3>
+            
+            <form phx-submit={@action}>
+              <div class="relative">
+                <textarea
+                  id="note-textarea-mobile"
+                  name="note"
+                  rows="4"
+                  maxlength="500"
+                  phx-mounted={JS.focus()}
+                  oninput="document.getElementById('note-char-count-mobile').textContent = this.value.length"
+                  class="w-full bg-neutral-900/50 border border-white/10 rounded-xl p-4 text-white placeholder-neutral-600 focus:border-blue-500/50 focus:outline-none resize-none"
+                  placeholder="What's on your mind?"
+                ></textarea>
+                <div class="absolute bottom-3 right-3 text-xs text-neutral-600 font-mono">
+                  <span id="note-char-count-mobile" class="text-neutral-500">0</span>/500
+                </div>
+              </div>
+              
+              <div class="flex gap-3 mt-4">
+                <button
+                  type="button"
+                  phx-click="close_note_modal"
+                  class="flex-1 py-3 rounded-xl text-sm font-bold uppercase tracking-wider text-neutral-400 hover:bg-white/5 transition-all cursor-pointer aether-card"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="flex-1 py-3 rounded-xl bg-white text-black text-sm font-bold uppercase tracking-wider cursor-pointer shadow-lg active:translate-y-px"
+                >
+                  Post
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <%!-- Desktop: Centered Modal --%>
+        <div class="hidden lg:flex absolute inset-0 items-center justify-center p-4 pointer-events-none">
           <div class="aether-card w-full max-w-lg rounded-2xl p-6 shadow-2xl bg-black/90 pointer-events-auto relative">
           <h3 class="text-lg font-bold uppercase tracking-wider text-neutral-400 mb-4">
             <%= if @action == "post_feed_note", do: "Create a Public Note", else: "Create a Room Note" %>
@@ -125,38 +178,39 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
   end
 
   # --- Invite Modal ---
+  # Responsive: Drawer on mobile, centered modal on desktop
   attr :show, :boolean, default: false
   attr :friends, :list, default: []
+  attr :invite_username, :string, default: ""
+  attr :room, :map, required: true
 
   def invite_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      >
-        <div class="aether-card w-full max-w-md rounded-2xl p-6 shadow-2xl bg-black/90" phx-click-away="close_invite_modal">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-bold uppercase tracking-wider text-neutral-400">Invite to {@room.name || @room.code}</h3>
-            
-            <button
-              phx-click="close_invite_modal"
-              class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
+      <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50">
+        <%!-- Backdrop for closing --%>
+        <div class="absolute inset-0 lg:flex lg:items-center lg:justify-center lg:p-4" phx-click="close_invite_modal">
+        </div>
+        
+        <%!-- Mobile: Bottom Drawer --%>
+        <div class="lg:hidden fixed inset-x-0 bottom-0 z-50 animate-in slide-in-from-bottom duration-300">
+          <%!-- Tappable drag handle area --%>
+          <button
+            phx-click="close_invite_modal"
+            class="w-full pt-3 pb-2 flex flex-col items-center cursor-pointer group bg-black/95 rounded-t-3xl border-t border-white/10"
+          >
+            <div class="w-12 h-1.5 bg-white/30 rounded-full group-hover:bg-white/50 transition-colors"></div>
+            <span class="text-[10px] text-neutral-600 mt-1">tap to close</span>
+          </button>
           
-          <div class="space-y-6">
+          <div class="aether-card rounded-t-3xl border-t-0 p-5 pb-8 bg-black/95 max-h-[70vh] overflow-y-auto">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-neutral-400 mb-4">
+              Invite to {@room.name || @room.code}
+            </h3>
+            
             <%!-- Copy Link --%>
-            <div>
-              <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+            <div class="mb-4">
+              <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
                 Room Link
               </label>
               <div class="flex gap-2">
@@ -164,75 +218,150 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
                   type="text"
                   value={url(~p"/r/#{@room.code}")}
                   readonly
-                  class="flex-1 px-3 py-2 bg-neutral-100 border border-neutral-300 rounded text-sm text-neutral-600 font-mono select-all focus:outline-none"
+                  class="flex-1 px-3 py-2 bg-neutral-900/50 border border-white/10 rounded-lg text-sm text-neutral-300 font-mono select-all focus:outline-none"
                 />
                 <button
-                  id="copy-invite-link"
+                  id="copy-invite-link-mobile"
                   phx-hook="CopyToClipboard"
                   data-copy={url(~p"/r/#{@room.code}")}
-                  class="px-3 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-900 font-bold uppercase tracking-wider text-xs rounded border border-neutral-300 transition-colors cursor-pointer active:translate-y-px shadow-sm"
+                  class="px-4 py-2 bg-white text-black font-bold uppercase tracking-wider text-xs rounded-lg transition-colors cursor-pointer active:translate-y-px shadow-sm"
                 >
                   Copy
                 </button>
               </div>
             </div>
-             <%!-- Invite User --%>
+            
+            <%!-- Add Member --%>
             <div>
-              <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+              <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
                 Add Member
               </label>
               <form
                 phx-submit="add_room_member"
                 phx-change="update_room_invite_username"
-                class="flex gap-2 mb-4"
+                class="flex gap-2"
               >
                 <input
                   type="text"
                   name="username"
                   value={@invite_username}
                   placeholder="Enter username"
-                  class="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded text-sm text-neutral-900 placeholder-neutral-500 focus:outline-none focus:border-opal-rose"
+                  class="flex-1 px-3 py-2.5 bg-neutral-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500/50"
                   autocomplete="off"
                 />
                 <button
                   type="submit"
-                  class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium rounded-lg transition-colors cursor-pointer"
+                  class="px-5 py-2.5 bg-cyan-500 text-black text-sm font-bold uppercase rounded-lg cursor-pointer"
                 >
                   Add
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+        
+        <%!-- Desktop: Centered Modal --%>
+        <div class="hidden lg:block absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <div class="aether-card w-full max-w-md rounded-2xl p-6 shadow-2xl bg-black/90 pointer-events-auto" phx-click-away="close_invite_modal">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-lg font-bold uppercase tracking-wider text-neutral-400">Invite to {@room.name || @room.code}</h3>
               
-              <%= if @friends != [] do %>
-                <div class="mt-4 border-t border-neutral-200 pt-4">
-                   <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
-                    Quick Add
-                  </label>
-                  <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
-                    <%= for friend <- @friends do %>
-                      <div class="flex items-center justify-between p-2 rounded hover:bg-neutral-800 group transition-colors">
-                        <div class="flex items-center gap-2">
-                          <div
-                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white relative z-10"
-                            style={"background-color: #{friend_color(friend.user)}"}
-                          >
-                            {String.first(friend.user.username)}
-                          </div>
-                          <span class="text-sm text-neutral-300">@{friend.user.username}</span>
-                        </div>
-                        
-                        <button
-                          type="button"
-                          phx-click="add_room_member"
-                          phx-value-username={friend.user.username}
-                          class="text-xs text-cyan-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all font-medium"
-                        >
-                          Add +
-                        </button>
-                      </div>
-                    <% end %>
-                  </div>
+              <button
+                phx-click="close_invite_modal"
+                class="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            
+            <div class="space-y-6">
+              <%!-- Copy Link --%>
+              <div>
+                <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                  Room Link
+                </label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    value={url(~p"/r/#{@room.code}")}
+                    readonly
+                    class="flex-1 px-3 py-2 bg-neutral-100 border border-neutral-300 rounded text-sm text-neutral-600 font-mono select-all focus:outline-none"
+                  />
+                  <button
+                    id="copy-invite-link"
+                    phx-hook="CopyToClipboard"
+                    data-copy={url(~p"/r/#{@room.code}")}
+                    class="px-3 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-900 font-bold uppercase tracking-wider text-xs rounded border border-neutral-300 transition-colors cursor-pointer active:translate-y-px shadow-sm"
+                  >
+                    Copy
+                  </button>
                 </div>
-              <% end %>
+              </div>
+               <%!-- Invite User --%>
+              <div>
+                <label class="block text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                  Add Member
+                </label>
+                <form
+                  phx-submit="add_room_member"
+                  phx-change="update_room_invite_username"
+                  class="flex gap-2 mb-4"
+                >
+                  <input
+                    type="text"
+                    name="username"
+                    value={@invite_username}
+                    placeholder="Enter username"
+                    class="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded text-sm text-neutral-900 placeholder-neutral-500 focus:outline-none focus:border-opal-rose"
+                    autocomplete="off"
+                  />
+                  <button
+                    type="submit"
+                    class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-medium rounded-lg transition-colors cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </form>
+                
+                <%= if @friends != [] do %>
+                  <div class="mt-4 border-t border-neutral-200 pt-4">
+                     <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                      Quick Add
+                    </label>
+                    <div class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                      <%= for friend <- @friends do %>
+                        <div class="flex items-center justify-between p-2 rounded hover:bg-neutral-800 group transition-colors">
+                          <div class="flex items-center gap-2">
+                            <div
+                              class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white relative z-10"
+                              style={"background-color: #{friend_color(friend.user)}"}
+                            >
+                              {String.first(friend.user.username)}
+                            </div>
+                            <span class="text-sm text-neutral-300">@{friend.user.username}</span>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            phx-click="add_room_member"
+                            phx-value-username={friend.user.username}
+                            class="text-xs text-cyan-500 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all font-medium"
+                          >
+                            Add +
+                          </button>
+                        </div>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
             </div>
           </div>
         </div>

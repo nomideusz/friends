@@ -363,21 +363,98 @@ const Hooks = {
 
     PhotoGrid: {
         mounted() {
+            // Initial check
             this.observeImages()
+            
+            // Polling backup for Streams/Dynamic content
+            // This is safer than MutationObserver for preventing crashes
+            this.interval = setInterval(() => {
+                this.observeImages()
+            }, 500)
         },
         updated() {
             this.observeImages()
         },
+        destroyed() {
+            if (this.interval) {
+                clearInterval(this.interval)
+            }
+        },
         observeImages() {
-            const images = this.el.querySelectorAll('img:not(.observed)')
-            images.forEach(img => {
-                img.classList.add('observed')
-                if (img.complete) {
-                    img.classList.add('loaded')
-                } else {
-                    img.addEventListener('load', () => img.classList.add('loaded'), { once: true })
+            try {
+                if (!this.el) return
+                const images = this.el.querySelectorAll('img:not(.observed)')
+                images.forEach(img => {
+                    img.classList.add('observed')
+                    if (img.complete) {
+                        img.classList.add('loaded')
+                    } else {
+                        img.addEventListener('load', () => img.classList.add('loaded'), { once: true })
+                    }
+                })
+            } catch (e) {
+                console.error("PhotoGrid error:", e)
+            }
+        }
+    },
+
+    // Swipeable drawer for mobile - enables drag-down-to-close
+    SwipeableDrawer: {
+        mounted() {
+            this.startY = 0
+            this.currentY = 0
+            this.isDragging = false
+            this.closeEvent = this.el.dataset.closeEvent || "toggle_mobile_chat"
+            
+            // Touch start
+            this.el.addEventListener('touchstart', (e) => {
+                // Only track if touching the handle area (top 60px)
+                const touch = e.touches[0]
+                const rect = this.el.getBoundingClientRect()
+                if (touch.clientY - rect.top < 60) {
+                    this.startY = touch.clientY
+                    this.isDragging = true
+                    this.el.style.transition = 'none'
                 }
-            })
+            }, { passive: true })
+            
+            // Touch move
+            this.el.addEventListener('touchmove', (e) => {
+                if (!this.isDragging) return
+                
+                this.currentY = e.touches[0].clientY
+                const deltaY = this.currentY - this.startY
+                
+                // Only allow dragging down
+                if (deltaY > 0) {
+                    this.el.style.transform = `translateY(${deltaY}px)`
+                }
+            }, { passive: true })
+            
+            // Touch end
+            this.el.addEventListener('touchend', () => {
+                if (!this.isDragging) return
+                
+                this.isDragging = false
+                this.el.style.transition = 'transform 0.3s ease-out'
+                
+                const deltaY = this.currentY - this.startY
+                
+                // If dragged more than 100px down, close the drawer
+                if (deltaY > 100) {
+                    this.el.style.transform = 'translateY(100%)'
+                    setTimeout(() => {
+                        this.pushEvent(this.closeEvent, {})
+                        this.el.style.transform = ''
+                    }, 300)
+                } else {
+                    // Snap back
+                    this.el.style.transform = 'translateY(0)'
+                }
+                
+                this.startY = 0
+                this.currentY = 0
+            }, { passive: true })
         }
     },
 
@@ -815,8 +892,8 @@ const Hooks = {
             this.roomId = this.el.dataset.roomId
             this.voiceRecorder = null
 
-            const sendBtn = this.el.querySelector('#send-room-message-btn')
-            const input = this.el.querySelector('#room-message-input')
+            const sendBtn = this.el.querySelector('button')
+            const input = this.el.querySelector('input')
 
             if (sendBtn && input) {
                 sendBtn.addEventListener('click', async () => {
@@ -897,7 +974,7 @@ const Hooks = {
                         playBtn.textContent = '...'
 
                         try {
-                            const msgEl = document.getElementById(`room-msg-${this.messageId}`)
+                            const msgEl = this.el.querySelector('.room-voice-data')
                             const encrypted = msgEl?.dataset.encrypted
                             const nonce = msgEl?.dataset.nonce
 
