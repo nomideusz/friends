@@ -284,10 +284,10 @@ defmodule Friends.Social.Photos do
 
         if photo.user_id == current_user_id_str do
           changes = %{
-            image_data: urls.original,
-            image_url_thumb: urls.thumb,
-            image_url_medium: urls.medium,
-            image_url_large: urls.large
+            image_data: urls.original_url,
+            image_url_thumb: urls.thumb_url,
+            image_url_medium: urls.medium_url,
+            image_url_large: urls.large_url
           }
 
           photo
