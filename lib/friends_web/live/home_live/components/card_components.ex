@@ -4,7 +4,7 @@ defmodule FriendsWeb.HomeLive.Components.CardComponents do
   Provides consistent styling and behavior for photo, note, and voice cards.
   """
   use Phoenix.Component
-  alias Phoenix.LiveView.JS
+
 
   # --- Photo Card ---
 

@@ -2,13 +2,14 @@ defmodule FriendsWeb.HomeLive do
   use FriendsWeb, :live_view
 
   alias Friends.Social
-  alias Friends.Social.Presence
-  alias Friends.Repo
+
   import FriendsWeb.HomeLive.Helpers
   import FriendsWeb.HomeLive.Components.FeedComponents
   import FriendsWeb.HomeLive.Components.RoomComponents
   import FriendsWeb.HomeLive.Components.ModalComponents
   import FriendsWeb.HomeLive.Components.ChatComponents
+  import FriendsWeb.HomeLive.Components.InviteComponents
+  import FriendsWeb.HomeLive.Components.DrawerComponents
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -20,7 +21,6 @@ defmodule FriendsWeb.HomeLive do
   alias FriendsWeb.HomeLive.PubSubHandlers
   alias FriendsWeb.HomeLive.Lifecycle
 
-  import Ecto.Query
   require Logger
 
   def mount(params, session, socket) do
@@ -47,6 +47,14 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("toggle_groups", _params, socket) do
     {:noreply, assign(socket, :groups_collapsed, !socket.assigns[:groups_collapsed])}
+  end
+
+  def handle_event("toggle_nav_drawer", _params, socket) do
+    {:noreply, assign(socket, :show_nav_drawer, !socket.assigns[:show_nav_drawer])}
+  end
+
+  def handle_event("toggle_graph_drawer", _params, socket) do
+    {:noreply, assign(socket, :show_graph_drawer, !socket.assigns[:show_graph_drawer])}
   end
 
   def handle_event("toggle_fab", _params, socket) do

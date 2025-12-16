@@ -10,6 +10,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
   import FriendsWeb.HomeLive.Helpers
   alias Friends.Social
   alias Friends.Social.Presence
+  alias FriendsWeb.HomeLive.GraphHelper
   
   # Event modules needed for initial setup/subscriptions
   alias FriendsWeb.HomeLive.Events.SessionEvents
@@ -88,6 +89,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       |> assign(:feed_mode, "dashboard")
       # Public feed assigns
       |> assign(:friends, friends)
+      |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
+      |> assign(:show_nav_drawer, false)
+      |> assign(:show_graph_drawer, false)
       |> assign(:contacts_collapsed, false)
       |> assign(:groups_collapsed, false)
       |> assign(:fab_expanded, false)
@@ -212,6 +216,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:contacts_collapsed, false)
         |> assign(:groups_collapsed, false)
         |> assign(:show_room_modal, false)
+        |> assign(:show_nav_drawer, false)
+        |> assign(:show_graph_drawer, false)
+        |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
         |> assign(:show_name_modal, false)
         |> assign(:show_note_modal, false)
         |> assign(:show_settings_modal, false)

@@ -445,7 +445,7 @@ const Hooks = {
                     this.el.style.transform = 'translateY(100%)'
                     setTimeout(() => {
                         this.pushEvent(this.closeEvent, {})
-                        this.el.style.transform = ''
+                        // Do not reset transform here, let LiveView remove the element
                     }, 300)
                 } else {
                     // Snap back

@@ -1,6 +1,67 @@
 <div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white pb-20">
-  <%!-- === TOP LEVEL MODALS === --%>
-  <%!-- These are placed here to ensure they are always available and not affected by z-index stacking in the layout --%>
+  <%!-- === DRAWER SYSTEM (Mobile) === --%>
+  <%!-- Stacked from bottom: Navigation (z-50), Graph (z-60), Chat (z-70), Invite (z-110) --%>
+  
+  <%!-- Navigation Drawer --%>
+  <.bottom_drawer
+    id="nav-drawer"
+    show={assigns[:show_nav_drawer] || false}
+    z_index={50}
+    height="h-[75vh]"
+    close_event="toggle_nav_drawer"
+    title="Menu"
+  >
+    <.navigation_drawer_content
+      users={assigns[:friends] || []}
+      rooms={assigns[:user_rooms] || []}
+      new_room_name={@new_room_name}
+      show_graph_drawer={assigns[:show_graph_drawer] || false}
+    />
+  </.bottom_drawer>
+
+  <%!-- Graph Drawer --%>
+  <.bottom_drawer
+    id="graph-drawer"
+    show={assigns[:show_graph_drawer] || false}
+    z_index={60}
+    height="h-[85vh]"
+    close_event="toggle_graph_drawer"
+    title="Your Constellation"
+  >
+    <:header_actions>
+      <.link
+        navigate="/network"
+        class="text-xs text-blue-400 hover:text-blue-300"
+      >
+        Full View →
+      </.link>
+    </:header_actions>
+    <div class="p-4 h-full">
+      <%= if assigns[:graph_data] do %>
+        <div
+          id="drawer-network-graph"
+          phx-hook="FriendGraph"
+          phx-update="ignore"
+          data-graph={Jason.encode!(assigns[:graph_data])}
+          class="w-full h-full min-h-[400px]"
+        >
+        </div>
+      <% else %>
+        <div class="flex items-center justify-center h-full text-neutral-500">
+          <div class="text-center">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <p class="text-sm">Add friends to see your constellation</p>
+            <.link navigate="/network" class="text-xs text-blue-400 hover:underline mt-2 inline-block">
+              Go to Network →
+            </.link>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </.bottom_drawer>
+
 
   <.note_modal show={assigns[:show_note_modal]} action={assigns[:note_modal_action] || "post_feed_note"} />
 
@@ -63,6 +124,7 @@
     room={assigns[:room]}
     invite_username={assigns[:room_invite_username] || ""}
     friends={assigns[:friends] || []}
+    search_query={assigns[:member_invite_search] || ""}
   />
   
   <%!-- Create Group Modal --%>
@@ -465,13 +527,15 @@
           </div>
         <% else %>
           <%!-- Dashboard/Public: Show Navigation Sidebar --%>
-          <.sidebar
-            users={assigns[:friends] || []}
-            rooms={assigns[:user_rooms] || []}
-            new_room_name={@new_room_name}
-            contacts_collapsed={@contacts_collapsed}
-            groups_collapsed={@groups_collapsed}
-          />
+          <div class="hidden lg:block">
+            <.sidebar
+              users={assigns[:friends] || []}
+              rooms={assigns[:user_rooms] || []}
+              new_room_name={@new_room_name}
+              contacts_collapsed={@contacts_collapsed}
+              groups_collapsed={@groups_collapsed}
+            />
+          </div>
         <% end %>
 
         <%!-- RIGHT: Main Content Area --%>
@@ -661,4 +725,22 @@
       </div>
     <% end %>
   </div>
+
+  <%!-- Bottom Drawer Trigger (Mobile) --%>
+  <%= if not is_nil(@current_user) and not assigns[:show_nav_drawer] and not assigns[:show_mobile_chat] do %>
+    <button
+      type="button"
+      phx-click="toggle_nav_drawer"
+      class="lg:hidden fixed bottom-0 inset-x-0 z-30 cursor-pointer group"
+    >
+      <div class="mx-auto max-w-md">
+        <div class="aether-card rounded-t-2xl rounded-b-none border-b-0 px-4 py-2 flex items-center justify-center gap-2 group-hover:border-white/20 group-active:bg-white/5 transition-all">
+          <svg class="w-4 h-4 text-neutral-500 group-hover:text-neutral-300 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 8l-6 6h12l-6-6z"/>
+          </svg>
+          <span class="text-xs font-bold text-neutral-500 uppercase tracking-wider group-hover:text-neutral-300 transition-colors">Menu</span>
+        </div>
+      </div>
+    </button>
+  <% end %>
 </div>

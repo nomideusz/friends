@@ -44,7 +44,8 @@ defmodule FriendsWeb.Layouts do
       <div class="max-w-[1600px] mx-auto px-4 sm:px-8 py-3">
         <div class="flex items-center justify-between gap-6 relative">
           <%!-- Left: Home Button (Dot) --%>
-          <div class="flex items-center w-[120px]">
+          <div class="flex items-center w-[120px] gap-4">
+            <%!-- Mobile Menu --%>
             <%= if @current_user do %>
               <.link
                 navigate={~p"/"}

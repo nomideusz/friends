@@ -62,13 +62,14 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
             </span>
           </div>
           
-          <%!-- Desktop Only Invite --%>
-          <%= if not @show_mobile_chat and @room.room_type != "dm" do %>
+          <%!-- Invite Button (Always visible) --%>
+          <%= if @room.room_type != "dm" do %>
             <button
               phx-click="open_invite_modal"
-              class="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white cursor-pointer transition-colors"
+              class="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-white cursor-pointer transition-colors flex items-center gap-1"
             >
-              + Invite
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+              <span class="hidden sm:inline">Invite</span>
             </button>
           <% end %>
         </div>
@@ -101,6 +102,9 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
                     </div>
                     <span class="text-xs text-neutral-300 group-hover:text-white truncate">
                       @{member.user.username}
+                      <%= if @room.owner_id == member.user.id do %>
+                        <span title="Owner" class="text-[10px] ml-1 text-yellow-500">👑</span>
+                      <% end %>
                     </span>
                   </div>
                 <% end %>

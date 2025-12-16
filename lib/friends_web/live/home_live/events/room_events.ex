@@ -149,8 +149,21 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
   # --- Member Logic ---
 
   def add_room_member(socket, username) do
+    do_add_room_member(socket, username)
+  end
+
+  def add_room_member_by_username(socket, %{"query" => username}) do
+    if username && String.trim(username) != "" do
+      do_add_room_member(socket, username)
+    else
+      {:noreply, put_flash(socket, :error, "please enter a username")}
+    end
+  end
+
+  defp do_add_room_member(socket, username) do
     room = socket.assigns.room
     owner_id = socket.assigns.current_user && socket.assigns.current_user.id
+    username = String.trim(username)
 
     cond do
       is_nil(owner_id) ->
@@ -170,12 +183,18 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
             {:noreply, put_flash(socket, :info, "@#{user.username} is already a member")}
 
           true ->
+            # Default role "member"
             case Social.add_room_member(room.id, user.id, "member", owner_id) do
               {:ok, _member} ->
+                # Update friends list logic removed as it was unused and caused warnings
+
+
                 {:noreply,
                  socket
                  |> put_flash(:info, "@#{user.username} added to space")
-                 |> assign(:room_invite_username, "")}
+                 |> assign(:invite_username, "") # Clear input
+                 |> assign(:room_invite_username, "") # Clear input (legacy)
+                 |> assign(:member_invite_search, "")}
 
               {:error, _} ->
                 {:noreply, put_flash(socket, :error, "failed to add user")}
@@ -208,25 +227,19 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
     end
   end
 
-  def search_member_invite(socket, query) do
+  def search_member_invite(socket, %{"query" => query}) do
     query = String.trim(query)
-    current_user = socket.assigns.current_user
-
-    results =
-      if String.length(query) >= 2 and current_user do
-        # Get current member IDs to exclude
-        member_ids = Enum.map(socket.assigns.room_members, & &1.user_id)
-
-        Social.search_users(query, current_user.id)
-        |> Enum.reject(fn user -> user.id in member_ids end)
-      else
-        []
-      end
-
-    {:noreply,
-     socket
-     |> assign(:member_invite_search, query)
-     |> assign(:member_invite_results, results)}
+    
+    # We update the search query. Filtering happens in the component for now 
+    # (or in a future real-time update if we had a separate filtered_friends assign).
+    # Since we don't want to lose the original friends list in :friends, we just
+    # pass the query down.
+    
+    {:noreply, 
+      socket 
+      |> assign(:member_invite_search, query)
+      |> assign(:invite_username, query)
+    } 
   end
 
   def update_room_invite_username(socket, username) do

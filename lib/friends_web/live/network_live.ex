@@ -476,13 +476,7 @@ defmodule FriendsWeb.NetworkLive do
     }
   end
 
-  defp get_timestamp(val) do
-    case val do
-      %NaiveDateTime{} -> val
-      %DateTime{} -> val
-      _ -> NaiveDateTime.utc_now()
-    end
-  end
+
 
   # Get all friendships between a list of user IDs
   # Returns list of {user_id_1, user_id_2} tuples where both are friends
@@ -511,7 +505,7 @@ defmodule FriendsWeb.NetworkLive do
 
   # Get friends of friends (2nd degree connections)
   # Returns {list_of_users, list_of_edges}
-  defp get_second_degree_connections(friend_ids, user_id) when length(friend_ids) == 0 do
+  defp get_second_degree_connections(friend_ids, _user_id) when length(friend_ids) == 0 do
     {[], []}
   end
 

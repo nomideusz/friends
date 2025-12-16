@@ -63,7 +63,15 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               <% end %>
 
               <%= if @users == [] do %>
-                <p class="text-xs text-neutral-600 italic">No contacts yet</p>
+                <div class="text-center py-4">
+                  <p class="text-xs text-neutral-600 italic mb-2">No contacts yet</p>
+                  <.link
+                    navigate="/network"
+                    class="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-300 font-medium transition-colors inline-block border border-white/5"
+                  >
+                    + Add Friends
+                  </.link>
+                </div>
               <% end %>
             </div>
 
@@ -295,11 +303,12 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     """
   end
 
+
   attr :item_count, :integer, required: true
   attr :current_user, :map, required: true
-  attr :room_access_denied, :boolean, required: true
-  attr :feed_mode, :string
-  attr :network_filter, :string
+  attr :room_access_denied, :boolean, default: false
+  attr :feed_mode, :string, default: "private"
+  attr :network_filter, :string, default: "all"
 
   def empty_room(assigns) do
     ~H"""
