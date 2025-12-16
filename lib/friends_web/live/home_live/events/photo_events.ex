@@ -115,7 +115,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
                 |> stream_insert(:feed_items, photo_with_type, at: 0)
 
               # 2. Start background task for full processing
-              start_background_processing(photo, temp_path, client_type, acc.assigns.user_id)
+              start_background_processing(photo, temp_path, client_type, photo.user_id)
 
               push_event(acc, "photo_uploaded", %{photo_id: photo.id})
 
@@ -363,6 +363,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
              |> Enum.join("/")
              |> Path.rootname()
              |> String.replace_suffix("_thumb", "")
+             |> Path.rootname()
            
            # Check if it was full url or just path? Storage.get_file_url returns full URL.
            # If full URL, we need to be careful.
