@@ -111,6 +111,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
               acc =
                 acc
                 |> assign(:feed_item_count, (acc.assigns[:feed_item_count] || 0) + 1)
+                |> assign(:photo_order, merge_photo_order(acc.assigns[:photo_order], [photo.id], :front))
                 |> stream_insert(:feed_items, photo_with_type, at: 0)
 
               # 2. Start background task for full processing

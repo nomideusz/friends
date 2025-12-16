@@ -13,6 +13,10 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
         class="fixed inset-0 z-[100]"
         phx-window-keydown="close_image_modal"
         phx-key="escape"
+        phx-keyup="prev_photo"
+        phx-key="ArrowLeft"
+        phx-keyup="next_photo"
+        phx-key="ArrowRight"
       >
         <!-- Backdrop -->
         <div 
@@ -22,6 +26,26 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
 
         <!-- Modal Content Container -->
         <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <!-- Navigation Arrows -->
+          <%= if length(@photo_order || []) > 1 do %>
+            <button
+              phx-click="prev_photo"
+              class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-md pointer-events-auto z-50 group"
+            >
+              <svg class="w-8 h-8 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              phx-click="next_photo"
+              class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer backdrop-blur-md pointer-events-auto z-50 group"
+            >
+              <svg class="w-8 h-8 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          <% end %>
+
           <div
             class="max-w-4xl max-h-[90vh] relative aether-card bg-black/90 p-4 rounded-xl shadow-2xl pointer-events-auto"
           >

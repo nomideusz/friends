@@ -193,6 +193,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
     {:noreply,
      socket
+     |> assign(:photo_order, merge_photo_order(socket.assigns[:photo_order], [photo.id], :front))
      |> stream_insert(:feed_items, item, at: 0)
      |> assign(:feed_item_count, socket.assigns.feed_item_count + 1)}
   end
