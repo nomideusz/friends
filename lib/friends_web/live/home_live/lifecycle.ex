@@ -114,7 +114,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
           accept: ~w(.jpg .jpeg .png .gif .webp),
           max_entries: 10,
           max_file_size: 20_000_000,
-          auto_upload: true,
+          auto_upload: true, # Explicitly enabled for streaming
           progress: &FriendsWeb.HomeLive.Events.PhotoEvents.handle_progress/3
         )
       else
