@@ -13,25 +13,51 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
 
   def feed_upload_progress(assigns) do
     ~H"""
-    <%= if @uploads && @uploads[:feed_photo] do %>
-      <%= for entry <- @uploads.feed_photo.entries do %>
-        <div class="mb-4 aether-card p-3">
-          <div class="flex items-center gap-3">
-            <div class="flex-1 bg-white/10 h-2 rounded-full overflow-hidden border border-white/5">
-              <div class="bg-blue-500 h-full transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={"width: #{entry.progress}%"} />
-            </div>
-            <span class="text-xs text-neutral-400 font-bold font-mono">{entry.progress}%</span>
-            <button
-              type="button"
-              phx-click="cancel_upload"
-              phx-value-ref={entry.ref}
-              class="text-neutral-500 hover:text-white text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors"
-            >
-              cancel
-            </button>
+    <%= if @uploads && @uploads[:feed_photo] && @uploads.feed_photo.entries != [] do %>
+      <% 
+        entries = @uploads.feed_photo.entries
+        count = length(entries)
+        avg_progress = div(Enum.reduce(entries, 0, & &1.progress + &2), count)
+      %>
+      <div class="mb-4 aether-card p-3 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
+            <svg class="w-5 h-5 text-blue-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
           </div>
+          
+          <div class="flex-1 min-w-0">
+             <div class="flex justify-between items-end mb-1.5">
+               <span class="text-xs font-bold text-neutral-300 uppercase tracking-wider">
+                 Uploading <%= count %> <%= if count == 1, do: "photo", else: "photos" %>...
+               </span>
+               <span class="text-xs font-mono font-bold text-blue-400"><%= avg_progress %>%</span>
+             </div>
+             
+             <div class="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+               <div 
+                 class="h-full bg-blue-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(59,130,246,0.6)]" 
+                 style={"width: #{avg_progress}%"}
+               ></div>
+             </div>
+          </div>
+          
+          <%= if count == 1 do %>
+             <button
+               type="button"
+               phx-click="cancel_upload"
+               phx-value-ref={hd(entries).ref}
+               class="text-neutral-500 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+               title="Cancel upload"
+             >
+               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+               </svg>
+             </button>
+          <% end %>
         </div>
-      <% end %>
+      </div>
     <% end %>
     """
   end

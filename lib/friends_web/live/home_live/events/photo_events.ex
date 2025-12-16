@@ -105,6 +105,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
               # 1. Update UI immediately
               photo_with_type =
                 photo
+                |> Map.from_struct()
                 |> Map.put(:type, :photo)
                 |> Map.put(:unique_id, "photo-#{photo.id}")
 
@@ -130,6 +131,12 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           else
             socket
           end
+          
+        # Hide constellation - user wants to see their feed now
+        socket = 
+          socket
+          |> assign(:show_constellation, false)
+          |> assign(:constellation_data, nil)
           
         {:noreply, assign(socket, :uploading, false)}
       end
@@ -253,65 +260,72 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   # --- Private Helpers ---
 
   defp process_photo_entry(socket, path, entry, context) do
-    file_content = File.read!(path)
-    
-    # 1. Generate fast thumbnail
-    with {:ok, thumb_binary, thumb_type} <- Friends.ImageProcessor.generate_thumbnail_only(file_content, entry.client_type) do
-      # 2. Upload thumbnail only
-      uuid = Ecto.UUID.generate()
-      base_path = if context == :room, 
-        do: "#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}",
-        else: "public/#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}"
-        
-      thumb_filename = "#{base_path}_thumb.jpg"
+    try do
+      file_content = File.read!(path)
       
-      with {:ok, thumb_url} <- Friends.Storage.upload_file(thumb_binary, thumb_filename, thumb_type) do
-        # 3. Create DB record with thumbnail and placeholder
-        attrs = %{
-          user_id: socket.assigns.user_id,
-          user_name: socket.assigns.current_user.username,
-          user_color: socket.assigns.user_color,
-          # Use thumbnail as temporary main image
-          image_data: thumb_url,
-          thumbnail_data: thumb_url,
-          image_url_thumb: thumb_url,
-          content_type: entry.client_type,
-          file_size: entry.client_size,
-          description: "",
-        }
+      # 1. Generate fast thumbnail
+      with {:ok, thumb_binary, thumb_type} <- Friends.ImageProcessor.generate_thumbnail_only(file_content, entry.client_type) do
+        # 2. Upload thumbnail only
+        uuid = Ecto.UUID.generate()
+        base_path = if context == :room, 
+          do: "#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}",
+          else: "public/#{socket.assigns.current_user.id}/#{uuid}-#{entry.client_name}"
+          
+        thumb_filename = "#{base_path}_thumb.jpg"
         
-        attrs = if context == :room,
-          do: Map.put(attrs, :room_id, socket.assigns.room.id),
-          else: attrs
+        with {:ok, thumb_url} <- Friends.Storage.upload_file(thumb_binary, thumb_filename, thumb_type) do
+          # 3. Create DB record with thumbnail and placeholder
+          attrs = %{
+            user_id: socket.assigns.user_id,
+            user_name: socket.assigns.current_user.username,
+            user_color: socket.assigns.user_color,
+            # Use thumbnail as temporary main image
+            image_data: thumb_url,
+            thumbnail_data: thumb_url,
+            image_url_thumb: thumb_url,
+            content_type: entry.client_type,
+            file_size: entry.client_size,
+            description: "",
+          }
           
-        result = if context == :room,
-          do: Social.create_photo(attrs, socket.assigns.room.code),
-          else: Social.create_public_photo(attrs, socket.assigns.current_user.id)
-          
-        case result do
-          {:ok, photo} -> 
-            # Make a temp copy for background processing
-            temp_path = Path.join(System.tmp_dir!(), "#{uuid}-#{entry.client_name}")
-            File.cp!(path, temp_path)
+          attrs = if context == :room,
+            do: Map.put(attrs, :room_id, socket.assigns.room.id),
+            else: attrs
             
-            {:ok, {photo, temp_path, entry.client_type}}
+          result = if context == :room,
+            do: Social.create_photo(attrs, socket.assigns.room.code),
+            else: Social.create_public_photo(attrs, socket.assigns.current_user.id)
             
-          {:error, reason} -> 
-             require Logger
-             Logger.error("Photo create failed: #{inspect(reason)}")
-             {:postpone, reason}
+          case result do
+            {:ok, photo} -> 
+              # Make a temp copy for background processing
+              temp_path = Path.join(System.tmp_dir!(), "#{uuid}-#{entry.client_name}")
+              File.cp!(path, temp_path)
+              
+              {:ok, {photo, temp_path, entry.client_type}}
+              
+            {:error, reason} -> 
+               require Logger
+               Logger.error("Photo create failed: #{inspect(reason)}")
+               {:postpone, reason}
+          end
+        else
+          {:error, reason} ->
+            require Logger
+            Logger.error("Thumbnail upload failed: #{inspect(reason)}")
+            {:postpone, :upload_failed}
         end
       else
         {:error, reason} ->
           require Logger
-          Logger.error("Thumbnail upload failed: #{inspect(reason)}")
+          Logger.error("Fast thumbnail gen failed: #{inspect(reason)}")
           {:postpone, :upload_failed}
       end
-    else
-      {:error, reason} ->
+    rescue
+      e ->
         require Logger
-        Logger.error("Fast thumbnail gen failed: #{inspect(reason)}")
-        {:postpone, :upload_failed}
+        Logger.error("Process photo entry crashed: #{inspect(e)}")
+        {:postpone, :processing_crashed}
     end
   end
 

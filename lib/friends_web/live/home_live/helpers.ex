@@ -238,7 +238,7 @@ defmodule FriendsWeb.HomeLive.Helpers do
 
             if can_view? do
               # Prefer image_url_large for modal (best quality), fallback to image_data, then thumbnail_data
-              raw = photo.image_url_large || photo.image_data || photo.thumbnail_data
+              raw = photo.image_url_large || photo.image_url_medium || photo.image_data || photo.thumbnail_data
               content_type = photo.content_type || "image/jpeg"
 
               src =

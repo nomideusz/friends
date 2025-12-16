@@ -318,6 +318,14 @@ defmodule FriendsWeb.HomeLive do
     PhotoEvents.prev_photo(socket)
   end
 
+  def handle_event("view_full_note", params, socket) do
+    NoteEvents.view_full_note(socket, params)
+  end
+
+  def handle_event("close_view_note", _params, socket) do
+    NoteEvents.close_view_note(socket)
+  end
+
   # Global keyboard handler for accessibility
   def handle_event("handle_keydown", %{"key" => "Escape"}, socket) do
     cond do
@@ -362,13 +370,6 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("view_full_note", params, socket) do
-    NoteEvents.view_full_note(socket, params)
-  end
-
-  def handle_event("close_view_note", _params, socket) do
-    NoteEvents.close_view_note(socket)
-  end
 
   def handle_event("handle_keydown", %{"key" => key}, socket)
       when key in ["ArrowLeft", "ArrowRight"] do
@@ -561,6 +562,38 @@ defmodule FriendsWeb.HomeLive do
     ChatEvents.toggle_mobile_chat(socket)
   end
 
+  # --- Constellation Graph Events ---
+
+  # Send friend request from constellation graph
+  def handle_event("constellation_invite", %{"user_id" => user_id_str}, socket) do
+    with user when not is_nil(user) <- socket.assigns.current_user,
+         {target_id, _} <- Integer.parse(user_id_str),
+         {:ok, _} <- Social.add_friend(user.id, target_id) do
+      # Push event to frontend to animate out the invited user (don't rebuild graph)
+      {:noreply,
+       socket
+       |> push_event("constellation_user_invited", %{user_id: target_id})
+       |> put_flash(:info, "Friend request sent!")}
+    else
+      {:error, :already_friends} ->
+        {:noreply, put_flash(socket, :info, "You're already friends!")}
+
+      {:error, :request_already_sent} ->
+        {:noreply, put_flash(socket, :info, "Request already sent")}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Could not send request")}
+    end
+  end
+
+  # Skip constellation view and show regular feed
+  def handle_event("skip_constellation", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_constellation, false)
+     |> assign(:constellation_data, nil)}
+  end
+
   # --- Progress Handler ---
 
   # Validate file content by checking magic bytes (file signature)
@@ -635,41 +668,6 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_new_public_note(socket, note)
   end
 
-  # --- Helpers ---
-  # Note: navigate_photo/2 is imported from FriendsWeb.HomeLive.Helpers
-
-  # --- Constellation Graph Events ---
-
-  # Send friend request from constellation graph
-  def handle_event("constellation_invite", %{"user_id" => user_id_str}, socket) do
-    with user when not is_nil(user) <- socket.assigns.current_user,
-         {target_id, _} <- Integer.parse(user_id_str),
-         {:ok, _} <- Social.add_friend(user.id, target_id) do
-      # Push event to frontend to animate out the invited user (don't rebuild graph)
-      {:noreply,
-       socket
-       |> push_event("constellation_user_invited", %{user_id: target_id})
-       |> put_flash(:info, "Friend request sent!")}
-    else
-      {:error, :already_friends} ->
-        {:noreply, put_flash(socket, :info, "You're already friends!")}
-
-      {:error, :request_already_sent} ->
-        {:noreply, put_flash(socket, :info, "Request already sent")}
-
-      _ ->
-        {:noreply, put_flash(socket, :error, "Could not send request")}
-    end
-  end
-
-  # Skip constellation view and show regular feed
-  def handle_event("skip_constellation", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:show_constellation, false)
-     |> assign(:constellation_data, nil)}
-  end
-
   # Handle new user signup for constellation real-time updates
   def handle_info({:new_user_joined, user_data}, socket) do
     if socket.assigns[:show_constellation] do
@@ -694,5 +692,10 @@ defmodule FriendsWeb.HomeLive do
       {:noreply, socket}
     end
   end
+
+  # --- Helpers ---
+  # Note: navigate_photo/2 is imported from FriendsWeb.HomeLive.Helpers
+
+
 
 end
