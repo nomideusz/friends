@@ -254,9 +254,19 @@ const Hooks = {
             // Don't rebuild on updates - we handle changes via push_event
         },
         destroyed() {
-            if (this.component) {
-                unmount(this.component)
+            try {
+                if (this.component) {
+                    unmount(this.component)
+                }
+            } catch (e) {
+                console.error("ConstellationGraph unmount error:", e)
             }
+            // Robust cleanup: ensure container is empty
+            this.el.innerHTML = ''
+            
+            // If the svelte component mounted to body or portal, we might need more aggressive cleanup
+            // ensuring this element is hidden immediately
+            this.el.style.display = 'none'
         }
     },
 

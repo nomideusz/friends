@@ -48,9 +48,9 @@ defmodule Friends.MixProject do
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"},
       {:hackney, "~> 1.20"},
-      {:sweet_xml, "~> 0.7"}
+      {:sweet_xml, "~> 0.7"},
       # NOTE: For thumbnail generation on Linux production, add:
-      # {:image, "~> 0.54"}
+      {:image, "~> 0.54", only: :prod}
       # This doesn't work on Windows due to libvips/vix not supporting Windows.
       # The ImageProcessor module gracefully falls back to using originals.
     ]
