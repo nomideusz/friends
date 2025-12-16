@@ -88,60 +88,66 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
 
 
   def handle_progress(:feed_photo, _entry, socket) do
-    if Enum.all?(socket.assigns.uploads.feed_photo.entries, & &1.done?) do
-      if is_nil(socket.assigns.current_user) do
-        {:noreply, put_flash(socket, :error, "Please login to post photos")}
-      else
-        results =
-          consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, entry ->
-            process_photo_entry(socket, path, entry, :feed)
-          end)
+    if is_nil(socket.assigns.current_user) do
+      {:noreply, put_flash(socket, :error, "Please login to post photos")}
+    else
+      entries = socket.assigns.uploads.feed_photo.entries
+      entry_count_before = length(entries)
 
-        # Process successful uploads
-        # Note: consume_uploaded_entries unwraps {:ok, value} to just value
-        socket =
-          Enum.reduce(results, socket, fn
-            {photo, temp_path, client_type}, acc when is_struct(photo, Friends.Social.Photo) ->
-              # 1. Update UI immediately
-              photo_with_type =
-                photo
-                |> Map.from_struct()
-                |> Map.put(:type, :photo)
-                |> Map.put(:unique_id, "photo-#{photo.id}")
+      results =
+        consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, entry ->
+          process_photo_entry(socket, path, entry, :feed)
+        end)
 
-              acc =
-                acc
-                |> assign(:feed_item_count, (acc.assigns[:feed_item_count] || 0) + 1)
-                |> stream_insert(:feed_items, photo_with_type, at: 0)
+      # Process successful uploads
+      socket =
+        Enum.reduce(results, socket, fn
+          {photo, temp_path, client_type}, acc when is_struct(photo, Friends.Social.Photo) ->
+            # 1. Update UI immediately
+            photo_with_type =
+              photo
+              |> Map.from_struct()
+              |> Map.put(:type, :photo)
+              |> Map.put(:unique_id, "photo-#{photo.id}")
 
-              # 2. Start background task for full processing
-              start_background_processing(photo, temp_path, client_type, photo.user_id)
+            acc =
+              acc
+              |> assign(:feed_item_count, (acc.assigns[:feed_item_count] || 0) + 1)
+              |> stream_insert(:feed_items, photo_with_type, at: 0)
 
-              push_event(acc, "photo_uploaded", %{photo_id: photo.id})
+            # 2. Start background task for full processing
+            start_background_processing(photo, temp_path, client_type, photo.user_id)
 
-            _, acc -> acc
-          end)
+            push_event(acc, "photo_uploaded", %{photo_id: photo.id})
+
+          _, acc -> acc
+        end)
         
-        # Cleanup and flash for errors
-        failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
+      # Cleanup and flash for errors
+      failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
 
-        socket = 
-          if failed_count > 0 do
-            put_flash(socket, :error, "#{failed_count} uploads failed")
-          else
-            socket
-          end
+      socket = 
+        if failed_count > 0 do
+          put_flash(socket, :error, "#{failed_count} uploads failed")
+        else
+          socket
+        end
           
-        # Hide constellation - user wants to see their feed now
-        socket = 
+      # Hide constellation if we successfully processed something
+      socket = 
+        if length(results) > 0 do
           socket
           |> assign(:show_constellation, false)
           |> assign(:constellation_data, nil)
+        else
+          socket
+        end
           
-        {:noreply, assign(socket, :uploading, false)}
-      end
-    else
-      {:noreply, assign(socket, :uploading, true)}
+      # Update uploading state based on remaining entries
+      consumed_count = length(results)
+      uploading = (entry_count_before - consumed_count) > 0
+      
+      {:noreply, assign(socket, :uploading, uploading)}
     end
   end
 
