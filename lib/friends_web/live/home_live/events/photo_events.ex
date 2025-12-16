@@ -347,13 +347,22 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
            # We need the base filename (virtual path in bucket)
            # We can deduce it from the thumbnail url or store it.
            # Let's extract from thumb url: .../uuid-name_thumb.jpg -> .../uuid-name
-           base_virtual_path = 
+           bucket = Application.get_env(:friends, :media_bucket, "friends-images")
+           path_segments = 
              photo.image_url_thumb
              |> URI.parse()
              |> Map.get(:path)
-             |> Path.rootname() # removes .jpg
+             |> String.split("/")
+             |> Enum.reject(&(&1 == ""))
+
+           base_virtual_path = 
+             case path_segments do
+               [^bucket | rest] -> rest
+               other -> other
+             end
+             |> Enum.join("/")
+             |> Path.rootname()
              |> String.replace_suffix("_thumb", "")
-             |> String.trim_leading("/") # remove leading slash
            
            # Check if it was full url or just path? Storage.get_file_url returns full URL.
            # If full URL, we need to be careful.
