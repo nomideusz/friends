@@ -73,7 +73,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
        socket
        |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
        |> assign(:photo_order, remove_photo_from_order(socket.assigns[:photo_order], id))
-       |> stream_delete(:feed_items, %{id: id, unique_id: "photo-#{id}"})}
+       |> stream_delete(:feed_items, %{id: id, unique_id: "photo-#{id}", type: :photo})}
     else
       # Room context
       {:noreply,
@@ -89,7 +89,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       {:noreply,
        socket
        |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
-       |> stream_delete(:feed_items, %{id: id, unique_id: "note-#{id}"})}
+       |> stream_delete(:feed_items, %{id: id, unique_id: "note-#{id}", type: :note})}
     else
       {:noreply,
        socket

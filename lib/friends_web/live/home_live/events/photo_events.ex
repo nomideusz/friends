@@ -173,7 +173,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
                     if socket.assigns[:feed_item_count] do
                       socket
                       |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
-                      |> stream_delete(:feed_items, %{id: photo_id, unique_id: "photo-#{photo_id}"})
+                      |> stream_delete(:feed_items, %{id: photo_id, unique_id: "photo-#{photo_id}", type: :photo})
                     else
                       socket
                       |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
