@@ -53,6 +53,7 @@ defmodule FriendsWeb.NetworkLive do
     |> assign(:current_route, "/network")
     |> assign(:user_rooms, [])
     |> assign(:graph_collapsed, false)
+    |> assign(:show_graph_modal, false)
   end
 
   defp load_data(socket) do
@@ -99,6 +100,14 @@ defmodule FriendsWeb.NetworkLive do
 
   def handle_event("toggle_graph", _params, socket) do
     {:noreply, assign(socket, :graph_collapsed, !socket.assigns.graph_collapsed)}
+  end
+
+  def handle_event("open_graph_modal", _params, socket) do
+    {:noreply, assign(socket, :show_graph_modal, true)}
+  end
+
+  def handle_event("close_graph_modal", _params, socket) do
+    {:noreply, assign(socket, :show_graph_modal, false)}
   end
 
   def handle_event("add_friend_from_graph", %{"user_id" => user_id}, socket) do
@@ -325,14 +334,17 @@ defmodule FriendsWeb.NetworkLive do
 
     # 3. My friends (accepted)
     friends = Social.list_friends(user_id)
-    friend_ids = Enum.map(friends, fn f -> f.user.id end)
+    # Map of friend_id -> accepted_at (time when I became friends with them)
+    friends_map = Map.new(friends, fn f -> {f.user.id, f.friendship.accepted_at} end)
+    friend_ids = Map.keys(friends_map)
 
     # 4. Get friendships BETWEEN my friends (the social network magic!)
     # This shows connections like: if A is friends with B and C, and B is friends with C
     friend_to_friend_edges = get_friendships_between(friend_ids)
 
     # 5. NEW: Get friends of friends (2nd degree connections)
-    {second_degree_friends, second_degree_edges} = get_second_degree_connections(friend_ids, user_id)
+    # Pass friends_map to allow calculating dependent visibility times (Ego-Centric Graph)
+    {second_degree_friends, second_degree_edges} = get_second_degree_connections(friends_map, user_id)
 
     # Build nodes map to avoid duplicates
     nodes_map = %{}
@@ -448,8 +460,8 @@ defmodule FriendsWeb.NetworkLive do
 
     # Edges between my friends (social network connections!)
     edges =
-      Enum.reduce(friend_to_friend_edges, edges, fn {id1, id2}, acc ->
-        [%{from: id1, to: id2, type: "mutual", connected_at: NaiveDateTime.utc_now()} | acc]
+      Enum.reduce(friend_to_friend_edges, edges, fn {id1, id2, accepted_at}, acc ->
+        [%{from: id1, to: id2, type: "mutual", connected_at: accepted_at} | acc]
       end)
 
     # Add second degree edges (from my friends to their friends)
@@ -491,11 +503,11 @@ defmodule FriendsWeb.NetworkLive do
       from f in Friends.Social.Friendship,
         where:
           f.user_id in ^user_ids and f.friend_user_id in ^user_ids and f.status == "accepted",
-        select: {f.user_id, f.friend_user_id}
+        select: {f.user_id, f.friend_user_id, f.accepted_at}
     )
-    |> Enum.map(fn {id1, id2} ->
+    |> Enum.map(fn {id1, id2, accepted_at} ->
       # Normalize to avoid duplicates (always smaller ID first)
-      if id1 < id2, do: {id1, id2}, else: {id2, id1}
+      if id1 < id2, do: {id1, id2, accepted_at}, else: {id2, id1, accepted_at}
     end)
     |> Enum.uniq()
   end
@@ -508,11 +520,13 @@ defmodule FriendsWeb.NetworkLive do
 
   # Get friends of friends (2nd degree connections)
   # Returns {list_of_users, list_of_edges}
-  defp get_second_degree_connections(friend_ids, _user_id) when length(friend_ids) == 0 do
+  defp get_second_degree_connections(friends_map, _user_id) when map_size(friends_map) == 0 do
     {[], []}
   end
 
-  defp get_second_degree_connections(friend_ids, user_id) do
+  defp get_second_degree_connections(friends_map, user_id) do
+    friend_ids = Map.keys(friends_map)
+
     # Get all friends of my friends (BOTH directions)
     # Direction 1: where my friends are the "user"
     friends_of_friends_1 =
@@ -522,7 +536,7 @@ defmodule FriendsWeb.NetworkLive do
           preload: [:friend_user]
       )
       |> Enum.map(fn f ->
-        %{friend_id: f.friend_user_id, connector_id: f.user_id, friend_user: f.friend_user}
+        %{friend_id: f.friend_user_id, connector_id: f.user_id, friend_user: f.friend_user, accepted_at: f.accepted_at}
       end)
 
     # Direction 2: where my friends are the "friend_user"
@@ -533,7 +547,7 @@ defmodule FriendsWeb.NetworkLive do
           preload: [:user]
       )
       |> Enum.map(fn f ->
-        %{friend_id: f.user_id, connector_id: f.friend_user_id, friend_user: f.user}
+        %{friend_id: f.user_id, connector_id: f.friend_user_id, friend_user: f.user, accepted_at: f.accepted_at}
       end)
 
     # Combine both directions
@@ -552,13 +566,15 @@ defmodule FriendsWeb.NetworkLive do
         if MapSet.member?(existing_ids, friendship.friend_id) do
           acc
         else
-          # Track which of my friends connects to this 2nd degree person
+          # Track which of my friends connects to this 2nd degree person, preserving timeframe
+          connection_data = %{connector_id: friendship.connector_id, accepted_at: friendship.accepted_at}
+          
           Map.update(
             acc,
             friendship.friend_id,
-            %{user: friend_of_friend, connections: [friendship.connector_id]},
+            %{user: friend_of_friend, connections: [connection_data]},
             fn existing ->
-              %{existing | connections: [friendship.connector_id | existing.connections]}
+              %{existing | connections: [connection_data | existing.connections]}
             end
           )
         end
@@ -568,8 +584,10 @@ defmodule FriendsWeb.NetworkLive do
     edges =
       second_degree_map
       |> Enum.flat_map(fn {second_degree_id, data} ->
-        Enum.map(data.connections, fn friend_id ->
-          %{from: friend_id, to: second_degree_id, type: "second_degree", connected_at: NaiveDateTime.utc_now()}
+        Enum.map(data.connections, fn conn ->
+          # Send REAL historical time. Frontend will handle "Ego-Centric" clamping via path logic.
+          # This allows Shortest Path discovery (if C connects to A(Old) and B(New), C appears with A).
+          %{from: conn.connector_id, to: second_degree_id, type: "second_degree", connected_at: conn.accepted_at || NaiveDateTime.utc_now()}
         end)
       end)
 
@@ -664,38 +682,31 @@ defmodule FriendsWeb.NetworkLive do
             </div>
           </section>
 
-          <%!-- Network Graph (Collapsible, Always Visible) --%>
-          <%= if @graph_data && @graph_data.stats.total_connections > 0 do %>
-            <section>
-              <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold text-white">Your Constellation</h2>
-                <button
-                  phx-click="toggle_graph"
-                  class="text-sm text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <%= if @graph_collapsed, do: "Expand ▼", else: "Collapse ▲" %>
-                </button>
-              </div>
 
-              <%= if !@graph_collapsed do %>
-                <div class="relative h-[80vh] min-h-[600px]">
-                  <%!-- Graph Container --%>
-                  <div class="absolute inset-0 aether-card overflow-hidden shadow-inner">
-                    <div
-                      id="network-graph"
-                      phx-hook="FriendGraph"
-                      phx-update="ignore"
-                      data-graph={Jason.encode!(@graph_data)}
-                      class="w-full h-full"
-                    >
-                    </div>
-                  </div>
-                  <%!-- Stats Overlay --%>
 
-                </div>
-              <% end %>
-            </section>
-          <% end %>
+
+          <%!-- Network Graph Trigger --%>
+          <section>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold text-white">Your Constellation</h2>
+            </div>
+            
+             <div class="aether-card p-8 flex flex-col items-center justify-center text-center">
+               <div class="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-4">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-blue-400">
+                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v2.25A2.25 2.25 0 006 10.5zm0 9.75h2.25A2.25 2.25 0 0010.5 18v-2.25a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25V18A2.25 2.25 0 006 20.25zm9.75-9.75H18a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0018 3.75h-2.25A2.25 2.25 0 0013.5 6v2.25a2.25 2.25 0 002.25 2.25z" />
+                 </svg>
+               </div>
+               <h3 class="text-xl font-bold text-white mb-2">Explore Your Network</h3>
+               <p class="text-neutral-400 max-w-md mb-6">Visualize your connections and friends of friends in an interactive 3D constellation.</p>
+               <button 
+                 phx-click="open_graph_modal" 
+                 class="px-6 py-3 bg-white text-black font-bold uppercase tracking-wider rounded-lg hover:bg-neutral-200 transition-colors shadow-lg active:translate-y-px"
+               >
+                 View Constellation
+               </button>
+             </div>
+          </section>
 
           <%!-- Search & Add Friends --%>
           <section>
@@ -894,6 +905,23 @@ defmodule FriendsWeb.NetworkLive do
           <% end %>
         </div>
       </div>
+      
+      <%!-- Network Graph Modal (Moved outside main content z-index context) --%>
+      <%= if @show_graph_modal do %>
+        <.modal id="network-graph-modal" show={@show_graph_modal} on_cancel={JS.push("close_graph_modal")} backdrop_class="bg-black/40 backdrop-blur-sm" container_class="w-full max-w-[95vw] h-[90vh] max-h-[90vh] bg-black/60 backdrop-blur-3xl p-0 border border-white/10 overflow-hidden rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] relative ring-1 ring-white/5">
+          <div class="h-full w-full relative group">
+            <%= if @graph_data do %>
+              <div
+                id="network-graph"
+                phx-hook="FriendGraph"
+                phx-update="ignore"
+                data-graph={Jason.encode!(@graph_data)}
+                class="w-full h-full block"
+              ></div>
+            <% end %>
+          </div>
+        </.modal>
+      <% end %>
     </div>
     """
   end

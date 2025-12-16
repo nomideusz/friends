@@ -58,7 +58,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       socket
       |> assign(:session_id, session_id)
       |> assign(:room, nil)
-      |> assign(:page_title, if(session_user != nil and length(friends) < 3, do: "New Internet", else: "Home"))
+      |> assign(:page_title, "New Internet")
       |> assign(:current_user, session_user)
       |> assign(:user_id, session_user_id)
       |> assign(:user_color, session_user_color)
@@ -410,7 +410,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
     {:noreply,
      socket
      |> assign(:room, nil)
-     |> assign(:page_title, "Home")
+     |> assign(:page_title, "New Internet")
      |> assign(:user_rooms, user_rooms)
      |> assign(:feed_mode, "dashboard")
      |> assign(:current_route, "/")}

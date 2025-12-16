@@ -52,11 +52,16 @@
     const nodeMap = new Map();
 
     // Process ALL nodes
-    data.nodes.forEach((node) => {
-      // Default to maxTime if no timestamp, so node appears at the end
-      const nodeTime = node.connected_at
-        ? new Date(node.connected_at).getTime()
-        : Date.now(); // Default to present time
+    (graphData.nodes || []).forEach((node) => {
+      // For 2nd degree nodes, we calculate visibility from edges.
+      // Initialize to Infinity so we can find the EARLIEST connection.
+      // Other nodes (Self, Friends) use their intrinsic connectedAt.
+      const initialTime =
+        node.type === "second_degree"
+          ? Infinity
+          : node.connected_at
+            ? new Date(node.connected_at).getTime()
+            : Date.now();
 
       let label = node.display_name || node.username;
       if (node.mutual_count && node.mutual_count > 0 && node.type !== "self") {
@@ -66,10 +71,13 @@
       const n = {
         id: String(node.id),
         label: label,
+        group: node.type === "self" ? 1 : 2,
+        displayName: node.display_name || node.username,
+        username: node.username,
         type: node.type,
         color: colors[node.type] || colors.second_degree,
         mutual_count: node.mutual_count || 0,
-        connectedAt: nodeTime, // Store timestamp for visibility filtering
+        connectedAt: initialTime,
         // Initialize position at center
         x: width / 2 + (Math.random() - 0.5) * 50,
         y: height / 2 + (Math.random() - 0.5) * 50,
@@ -92,18 +100,44 @@
         const source = nodeMap.get(String(edge.from));
         const target = nodeMap.get(String(edge.to));
         if (source && target) {
-          // Edge appears when BOTH connected nodes are visible
-          // Use max of the two node timestamps for realistic behavior
+          // LOGIC UPDATE: Smart Ego-Centric Visibility (Shortest Path)
+          // A 2nd degree node (Target) becomes visible when a valid path (Me->Source->Target) completes.
+          // Path completion time = max(Me->Source time, Source->Target time).
+          // We take the MINIMUM of all path completion times (earliest discovery).
+
+          if (source.type === "self" && target.type !== "self") {
+            // Direct connection: Visible at edge time (which is Me->Target time)
+            target.connectedAt = Math.min(target.connectedAt, edgeTime);
+          } else if (target.type === "self" && source.type !== "self") {
+            source.connectedAt = Math.min(source.connectedAt, edgeTime);
+          } else if (
+            source.type !== "second_degree" &&
+            target.type === "second_degree"
+          ) {
+            // 1st -> 2nd
+            const pathCompleteAt = Math.max(source.connectedAt, edgeTime);
+            target.connectedAt = Math.min(target.connectedAt, pathCompleteAt);
+          } else if (
+            target.type !== "second_degree" &&
+            source.type === "second_degree"
+          ) {
+            // 1st -> 2nd (Reverse)
+            const pathCompleteAt = Math.max(target.connectedAt, edgeTime);
+            source.connectedAt = Math.min(source.connectedAt, pathCompleteAt);
+          }
+
+          // Edge appears when BOTH connected nodes are visible AND the edge itself exists
           const effectiveTime = Math.max(
             source.connectedAt,
             target.connectedAt,
+            edgeTime,
           );
           links.push({
             source: source.id,
             target: target.id,
             type: edge.type,
             color: colors[edge.type] || "#ffffff",
-            connectedAt: effectiveTime, // Use later of the two node timestamps
+            connectedAt: effectiveTime, // Use later of: node A, node B, or the connection itself
           });
         }
       });
@@ -406,41 +440,36 @@
     animationFrame = requestAnimationFrame(animate);
   }
 
-  // Debounced resize handler - only reinitialize on significant width changes
-  let resizeTimeout;
-  let lastWidth = 0;
-  function handleResize() {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      if (!container) return;
-      const newWidth = container.getBoundingClientRect().width;
-      // Only reinitialize if width changed by more than 50px (ignore mobile address bar height changes)
-      if (Math.abs(newWidth - lastWidth) > 50) {
-        lastWidth = newWidth;
-        initGraph();
-      }
-    }, 250); // 250ms debounce
-  }
+  // ResizeObserver for robust responsiveness in modals/containers
+  let resizeObserver;
 
   onMount(() => {
     initGraph();
+
     if (container) {
-      lastWidth = container.getBoundingClientRect().width;
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const newWidth = entry.contentRect.width;
+          if (Math.abs(newWidth - width) > 50) {
+            initGraph();
+          }
+        }
+      });
+      resizeObserver.observe(container);
     }
+
     window.addEventListener("phx:graph-updated", (e) => {
       if (e.detail.graph_data) {
         graphData = e.detail.graph_data;
         initGraph();
       }
     });
-    window.addEventListener("resize", handleResize);
   });
 
   onDestroy(() => {
     if (simulation) simulation.stop();
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    if (resizeTimeout) clearTimeout(resizeTimeout);
-    window.removeEventListener("resize", handleResize);
+    if (resizeObserver) resizeObserver.disconnect();
   });
 </script>
 
@@ -449,105 +478,76 @@
   <div bind:this={container} class="w-full h-full"></div>
 
   <!-- Legend -->
+
+  <!-- Time Travel (Aether Design: Deep Void & Energy) -->
   <div
-    class="absolute top-4 right-4 p-3 bg-black/70 backdrop-blur-md rounded-lg border border-white/10 text-xs text-white space-y-2 pointer-events-none z-10"
+    class="absolute bottom-10 left-6 right-6 p-4 rounded-2xl border border-white/5 bg-black/30 backdrop-blur-md flex items-center gap-4 z-20"
   >
-    <div
-      class="font-semibold border-b border-white/10 pb-1 uppercase tracking-wider text-[10px] text-neutral-400"
+    <button
+      class="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/50 text-white hover:text-blue-400 transition-all active:scale-95 shadow-[0_0_10px_rgba(0,0,0,0.5)] hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-pointer"
+      on:click|stopPropagation={togglePlay}
     >
-      Legend
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="w-3 h-3 rounded-full bg-white"></div>
-      <span>You</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div
-        class="w-2.5 h-2.5 rounded-full border-2"
-        style="border-color: {colors.trusted}; box-shadow: 0 0 6px {colors.trusted}"
-      ></div>
-      <span>Trusted</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div
-        class="w-2.5 h-2.5 rounded-full border-2"
-        style="border-color: {colors.trusts_me}; box-shadow: 0 0 6px {colors.trusts_me}"
-      ></div>
-      <span>Trusts You</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div
-        class="w-2.5 h-2.5 rounded-full border-2"
-        style="border-color: {colors.friend}; box-shadow: 0 0 6px {colors.friend}"
-      ></div>
-      <span>Friend</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="w-2 h-2 rounded-full border border-gray-500/50"></div>
-      <span class="text-neutral-400">2nd Degree</span>
-    </div>
-  </div>
+      {#if isPlaying}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-3 h-3"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+        </svg>
+      {:else}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-3 h-3 ml-0.5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      {/if}
+    </button>
 
-  <!-- Time Travel -->
-  <div
-    class="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gradient-to-t from-black via-black/80 to-transparent"
-  >
-    <div class="flex items-center gap-4 max-w-2xl mx-auto">
-      <button
-        class="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95"
-        on:click={togglePlay}
+    <div class="flex-1 flex flex-col gap-1">
+      <div
+        class="flex justify-between text-[10px] text-neutral-400 font-mono uppercase tracking-widest"
       >
-        {#if isPlaying}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg
-          >
-        {:else}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 ml-0.5"
-            viewBox="0 0 24 24"
-            fill="currentColor"><path d="M8 5v14l11-7z" /></svg
-          >
-        {/if}
-      </button>
-
-      <div class="flex-1 flex flex-col gap-1">
-        <div
-          class="flex justify-between text-[10px] text-neutral-500 font-mono uppercase tracking-widest"
+        <span
+          >{new Date(minTime).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })}</span
         >
-          <span
-            >{new Date(minTime).toLocaleDateString("en-US", {
-              month: "short",
-              year: "2-digit",
-            })}</span
-          >
-          <span class="text-white font-semibold">{currentDate}</span>
-          <span>Now</span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="0.1"
-          bind:value={timeValue}
-          on:change={() => (isPlaying = false)}
-          class="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-        />
+        <span class="text-white font-semibold flex items-center gap-2">
+          {currentDate}
+          {#if isPlaying}
+            <span
+              class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_5px_#3B82F6]"
+            ></span>
+          {/if}
+        </span>
       </div>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="0.1"
+        bind:value={timeValue}
+        on:change={() => (isPlaying = false)}
+        on:input|stopPropagation
+        on:click|stopPropagation
+        class="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_15px_#3B82F6] [&::-webkit-slider-thumb]:border-[1px] [&::-webkit-slider-thumb]:border-blue-200"
+      />
+    </div>
 
-      <div class="text-right min-w-[70px]">
-        <div
-          class="text-[10px] text-neutral-500 uppercase tracking-widest font-mono"
-        >
-          Network
-        </div>
-        <div class="text-xl font-bold text-white leading-none">
-          {currentStats.nodes}
-          <span class="text-xs font-normal text-neutral-600">nodes</span>
-        </div>
+    <div
+      class="flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 border border-white/5 shadow-inner"
+    >
+      <div
+        class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_#3B82F6]"
+      ></div>
+      <div class="text-[10px] font-mono font-medium text-neutral-400">
+        <span class="text-white text-base mr-1">{currentStats.nodes}</span> nodes
       </div>
     </div>
   </div>

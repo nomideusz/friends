@@ -153,6 +153,8 @@ defmodule FriendsWeb.CoreComponents do
   attr :id, :string, required: true
   attr :show, :boolean, default: false
   attr :on_cancel, JS, default: %JS{}
+  attr :container_class, :string, default: "w-full max-w-lg bg-neutral-900 border border-neutral-800 p-6 relative"
+  attr :backdrop_class, :string, default: "bg-black/80"
   slot :inner_block, required: true
 
   def modal(assigns) do
@@ -163,10 +165,11 @@ defmodule FriendsWeb.CoreComponents do
       phx-remove={hide_modal(@id)}
       data-cancel={JS.exec(@on_cancel, "phx-remove")}
       class="relative z-50 hidden"
+      style="z-index: 9000;"
     >
       <div
         id={"#{@id}-bg"}
-        class="fixed inset-0 bg-black/80 transition-opacity"
+        class={["fixed inset-0 transition-opacity", @backdrop_class]}
         aria-hidden="true"
       />
       <div
@@ -183,12 +186,12 @@ defmodule FriendsWeb.CoreComponents do
             phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
             phx-key="escape"
             phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
-            class="w-full max-w-lg bg-neutral-900 border border-neutral-800 p-6"
+            class={@container_class}
           >
             <button
               phx-click={JS.exec("data-cancel", to: "##{@id}")}
               type="button"
-              class="absolute top-4 right-4 text-neutral-500 hover:text-white"
+              class="absolute top-4 right-4 text-neutral-500 hover:text-white z-50"
               aria-label="close"
             >
               ×
