@@ -141,6 +141,24 @@ defmodule Friends.Social do
   defdelegate list_friend_requests(user_id), to: Relationships
   defdelegate list_sent_friend_requests(user_id), to: Relationships
   defdelegate count_friends(user_id), to: Relationships
+  defdelegate get_connected_user_ids(user_id), to: Relationships
+
+  @doc """
+  Lists recent users who are not yet connected to the current user.
+  Used for constellation graph discovery experience.
+  Returns up to 100 users in random order for variety.
+  """
+  def list_discoverable_users(current_user_id, limit \\ 100) do
+    connected_ids = Relationships.get_connected_user_ids(current_user_id)
+
+    Repo.all(
+      from u in User,
+        where: u.id != ^current_user_id and u.id not in ^connected_ids,
+        order_by: fragment("RANDOM()"),
+        limit: ^limit,
+        select: %{id: u.id, username: u.username, display_name: u.display_name, inserted_at: u.inserted_at}
+    )
+  end
   
   # --- Invites (Relationships) ---
   
@@ -324,9 +342,30 @@ defmodule Friends.Social do
   end
 
   defp create_user(attrs, invite) do
-    %User{}
-    |> User.changeset(Map.put(attrs, :invited_by_id, invite.created_by_id))
-    |> Repo.insert()
+    case %User{}
+         |> User.changeset(Map.put(attrs, :invited_by_id, invite.created_by_id))
+         |> Repo.insert() do
+      {:ok, user} ->
+        # Broadcast new user for constellation real-time updates
+        broadcast_new_user(user)
+        {:ok, user}
+
+      error ->
+        error
+    end
+  end
+
+  defp broadcast_new_user(user) do
+    Phoenix.PubSub.broadcast(
+      Friends.PubSub,
+      "friends:new_users",
+      {:new_user_joined, %{
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name || user.username,
+        inserted_at: user.inserted_at
+      }}
+    )
   end
 
   def get_user_by_public_key(public_key) when is_map(public_key) do

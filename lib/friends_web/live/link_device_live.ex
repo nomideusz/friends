@@ -110,7 +110,7 @@ defmodule FriendsWeb.LinkDeviceLive do
               href="/"
               class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
             >
-              Continue to Friends
+              Continue to New Internet
             </a>
           </div>
         <% else %>

@@ -506,6 +506,39 @@
   <%!-- === UNIFIED LAYOUT === --%>
   <div class="max-w-[1600px] mx-auto p-4 sm:p-8">
     <%= if @current_user do %>
+      <%!-- === CONSTELLATION GRAPH FOR NEW USERS === --%>
+      <%= if assigns[:show_constellation] && assigns[:constellation_data] && @live_action == :index do %>
+        <div id="constellation-container" phx-hook="FriendsApp">
+          <div
+            id="constellation-graph"
+            phx-hook="ConstellationGraph"
+            phx-update="ignore"
+            data-constellation={Jason.encode!(@constellation_data)}
+            class="fixed inset-0 z-20"
+            style="background: radial-gradient(ellipse at center, #0a0a0f 0%, #000000 100%);"
+          >
+          </div>
+        </div>
+        <%!-- Skip to regular feed button with opt-out checkbox --%>
+        <div class="fixed bottom-24 left-0 right-0 z-30 flex flex-col items-center gap-3 pointer-events-none">
+          <label class="pointer-events-auto flex items-center gap-2 text-white/60 text-xs cursor-pointer hover:text-white/80 transition-colors">
+            <input
+              type="checkbox"
+              id="constellation-opt-out"
+              class="w-4 h-4 rounded bg-white/10 border-white/30 text-blue-500 focus:ring-blue-500 cursor-pointer"
+            />
+            <span>Don't show this again</span>
+          </label>
+          <button
+            type="button"
+            id="skip-constellation-btn"
+            phx-click="skip_constellation"
+            class="pointer-events-auto px-6 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-full text-white text-sm transition-all"
+          >
+            Skip to Feed →
+          </button>
+        </div>
+      <% else %>
       <div id="main-app-layout" class="flex flex-col lg:flex-row gap-6 relative">
         
         <%!-- LEFT: Sidebar or Chat --%>
@@ -640,6 +673,7 @@
           <% end %>
         </div>
       </div>
+      <% end %> <%!-- End constellation else block --%>
 
       <%!-- Floating Action Button (Mobile Only) --%>
       <%= if @current_user && not @show_mobile_chat do %>
@@ -706,7 +740,7 @@
       <%!-- Guests Landing --%>
       <div class="max-w-md mx-auto mt-20 text-center">
         <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white to-neutral-500">
-          Friends
+          New Internet
         </h1>
         
         <p class="text-neutral-400 text-lg mb-8">Simple, secure, and private messaging.</p>

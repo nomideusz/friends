@@ -14,7 +14,7 @@ defmodule FriendsWeb.Layouts do
   attr :current_user, :any, default: nil
   attr :user_color, :string, default: "#888"
   attr :auth_status, :atom, default: :pending
-  attr :page_title, :string, default: "Friends"
+  attr :page_title, :string, default: "New Internet"
   attr :room, :any, default: nil
   attr :viewers, :list, default: []
   attr :user_rooms, :list, default: []
@@ -31,10 +31,11 @@ defmodule FriendsWeb.Layouts do
       cond do
         assigns[:room] && assigns[:room].code == "lobby" -> "Public Square"
         assigns[:room] -> assigns[:room].name || assigns[:room].code
+        assigns[:page_title] == "New Internet" -> "New Internet"
         assigns[:page_title] == "Contacts" -> "Contacts"
         assigns[:page_title] == "Devices" -> "Devices"
-        assigns[:page_title] == "Home" -> "Friends"
-        true -> assigns[:page_title] || "Friends"
+        assigns[:page_title] == "Home" -> "New Internet"
+        true -> assigns[:page_title] || "New Internet"
       end
 
     assigns = Phoenix.Component.assign(assigns, :context_title, context_title)

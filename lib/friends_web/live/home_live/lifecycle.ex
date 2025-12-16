@@ -57,9 +57,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
     socket =
       socket
       |> assign(:session_id, session_id)
-      # No specific room
       |> assign(:room, nil)
-      |> assign(:page_title, "Home")
+      |> assign(:page_title, if(session_user != nil and length(friends) < 3, do: "New Internet", else: "Home"))
       |> assign(:current_user, session_user)
       |> assign(:user_id, session_user_id)
       |> assign(:user_color, session_user_color)
@@ -90,6 +89,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       # Public feed assigns
       |> assign(:friends, friends)
       |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
+      # Constellation for users with < 3 friends (opt-out checked client-side via localStorage)
+      |> assign(:show_constellation, session_user != nil and length(friends) < 3)
+      |> assign(:constellation_data, if(session_user != nil and length(friends) < 3, do: GraphHelper.build_constellation_data(session_user), else: nil))
       |> assign(:show_nav_drawer, false)
       |> assign(:show_graph_drawer, false)
       |> assign(:contacts_collapsed, false)
@@ -120,6 +122,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       end
 
     socket = SessionEvents.maybe_bootstrap_identity(socket, get_connect_params(socket))
+
+    # Subscribe to new user signups if showing constellation
+    if connected?(socket) and socket.assigns[:show_constellation] do
+      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
+    end
 
     {:ok, socket}
   end

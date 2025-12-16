@@ -6,13 +6,14 @@ import topbar from "../vendor/topbar"
 import { getHooks } from "live_svelte"
 import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
+import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
 import { mount, unmount } from 'svelte'
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
 import * as messageEncryption from "./message-encryption"
 import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
 import QRCode from "qrcode"
 
-const Components = { FriendsMap, FriendGraph }
+const Components = { FriendsMap, FriendGraph, ConstellationGraph }
 
 // Generate device fingerprint - hardware characteristics that are consistent across browsers
 function generateFingerprint() {
@@ -181,6 +182,60 @@ const Hooks = {
         }
     },
 
+    ConstellationGraph: {
+        mounted() {
+            // Check localStorage for opt-out preference
+            if (localStorage.getItem('constellation_opt_out') === 'true') {
+                // User opted out - trigger skip and hide constellation
+                this.pushEvent('skip_constellation', {})
+                this.el.style.display = 'none'
+                // Also hide the skip button container
+                const skipContainer = document.querySelector('[class*="fixed bottom-24"]')
+                if (skipContainer) skipContainer.style.display = 'none'
+                return
+            }
+
+            const constellationData = JSON.parse(this.el.dataset.constellation || 'null')
+
+            this.component = mount(ConstellationGraph, {
+                target: this.el,
+                props: {
+                    data: constellationData,
+                    live: this
+                }
+            })
+
+            // Handle server event to fade out invited user
+            this.handleEvent("constellation_user_invited", ({ user_id }) => {
+                const svg = this.el.querySelector('svg')
+                if (svg) {
+                    const userGroup = svg.querySelector(`.orbiting-user-${user_id}`)
+                    if (userGroup) {
+                        // Animate smooth fade out
+                        userGroup.style.transition = 'opacity 1s ease-out'
+                        userGroup.style.opacity = '0'
+                        // Remove after animation
+                        setTimeout(() => userGroup.remove(), 1000)
+                    }
+                }
+            })
+
+            // Handle server event for new user joining
+            this.handleEvent("constellation_new_user", (user) => {
+                // Dispatch custom event on window for reliable cross-component communication
+                window.dispatchEvent(new CustomEvent('constellation:addNewUser', { detail: user }))
+            })
+        },
+        updated() {
+            // Don't rebuild on updates - we handle changes via push_event
+        },
+        destroyed() {
+            if (this.component) {
+                unmount(this.component)
+            }
+        }
+    },
+
     // Feed voice recording for public feed
     FeedVoiceRecorder: {
         mounted() {
@@ -270,6 +325,17 @@ const Hooks = {
                     document.cookie = `friends_session_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
                 }
             })
+
+            // Handle constellation opt-out - save to localStorage when skip is clicked
+            const skipBtn = document.getElementById('skip-constellation-btn')
+            if (skipBtn) {
+                skipBtn.addEventListener('click', () => {
+                    const optOutCheckbox = document.getElementById('constellation-opt-out')
+                    if (optOutCheckbox && optOutCheckbox.checked) {
+                        localStorage.setItem('constellation_opt_out', 'true')
+                    }
+                })
+            }
 
             // Handle sign out
             this.handleEvent("sign_out", async () => {

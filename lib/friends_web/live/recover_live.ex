@@ -128,10 +128,12 @@ defmodule FriendsWeb.RecoverLive do
     ~H"""
     <div
       id="recover-app"
-      class="min-h-screen flex items-center justify-center p-4"
+      class="min-h-screen flex items-center justify-center p-4 relative"
       phx-hook="RecoverApp"
     >
-      <div class="w-full max-w-md">
+      <div class="opal-bg"></div>
+      
+      <div class="w-full max-w-md relative z-10">
         <%= case @step do %>
           <% :username -> %>
             <div class="text-center mb-8">
@@ -278,7 +280,7 @@ defmodule FriendsWeb.RecoverLive do
                 href="/"
                 class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
               >
-                enter friends
+                enter new internet
               </a>
               <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg text-left">
                 <p class="text-xs text-neutral-500 mb-2">what happened:</p>

@@ -292,4 +292,31 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
     MapSet.intersection(friends1_ids, friends2_ids)
     |> MapSet.size()
   end
+
+  @doc """
+  Builds constellation data for users with 0 connections.
+  Shows discoverable users orbiting around the central self node.
+  """
+  def build_constellation_data(nil), do: nil
+  def build_constellation_data(user) do
+    discoverable = Social.list_discoverable_users(user.id, 30)
+
+    %{
+      self: %{
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name || user.username,
+        color: user_color(user)
+      },
+      others: Enum.map(discoverable, fn u ->
+        %{
+          id: u.id,
+          username: u.username,
+          display_name: u.display_name || u.username,
+          joined_at: u.inserted_at,
+          color: Enum.at(@colors, rem(u.id, length(@colors)))
+        }
+      end)
+    }
+  end
 end

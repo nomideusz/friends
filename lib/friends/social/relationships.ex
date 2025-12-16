@@ -307,6 +307,47 @@ defmodule Friends.Social.Relationships do
     friend_ids
   end
 
+  @doc """
+  Returns all user IDs that the current user is connected to (friends or pending).
+  Used for constellation graph to exclude already-connected users.
+  """
+  def get_connected_user_ids(user_id) do
+    # Friends I added (accepted)
+    my_friends =
+      Repo.all(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "accepted",
+          select: f.friend_user_id
+      )
+
+    # Friends who added me (accepted)
+    friends_of_me =
+      Repo.all(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "accepted",
+          select: f.user_id
+      )
+
+    # Pending requests I sent
+    pending_sent =
+      Repo.all(
+        from f in Friendship,
+          where: f.user_id == ^user_id and f.status == "pending",
+          select: f.friend_user_id
+      )
+
+    # Pending requests I received
+    pending_received =
+      Repo.all(
+        from f in Friendship,
+          where: f.friend_user_id == ^user_id and f.status == "pending",
+          select: f.user_id
+      )
+
+    (my_friends ++ friends_of_me ++ pending_sent ++ pending_received)
+    |> Enum.uniq()
+  end
+
   # --- Invites ---
 
   def validate_invite(code) when is_binary(code) do

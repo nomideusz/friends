@@ -197,14 +197,16 @@ defmodule FriendsWeb.RegisterLive do
     ~H"""
     <div
       id="register-app"
-      class="min-h-screen flex items-center justify-center p-4"
+      class="min-h-screen flex items-center justify-center p-4 relative"
       phx-hook="RegisterApp"
     >
-      <div class="w-full max-w-md">
+      <div class="opal-bg"></div>
+      
+      <div class="w-full max-w-md relative z-10">
         <%= case @step do %>
           <% :username -> %>
             <div class="text-center mb-8">
-              <h1 class="text-2xl font-medium text-white mb-2">join friends</h1>
+              <h1 class="text-2xl font-medium text-white mb-2">join new internet</h1>
               
               <p class="text-neutral-500 text-sm">invite is optional; pick a username to continue</p>
             </div>
@@ -323,7 +325,7 @@ defmodule FriendsWeb.RegisterLive do
                 <%= if @pending_room_code do %>
                   enter {@pending_room_code}
                 <% else %>
-                  enter friends
+                  enter new internet
                 <% end %>
               </a>
               <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg text-left">

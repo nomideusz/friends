@@ -106,6 +106,7 @@ h6 {
   border-radius: 8px;
   padding: 0.5rem 1rem;
   transition: all 0.2s ease;
+  cursor: pointer;
 
   /* Default: Ghost/Outline */
   background: transparent;
@@ -130,8 +131,8 @@ h6 {
 .btn-aether-primary:hover {
   background: white;
   /* Brighter */
-  color: var(--color-void);
-  /* Keep dark text on white background */
+  color: var(--color-void) !important;
+  /* Keep dark text on white background - !important to override btn-aether */
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
   /* Strong Glow */
   transform: translateY(-1px);

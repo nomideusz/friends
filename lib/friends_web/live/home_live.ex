@@ -636,7 +636,63 @@ defmodule FriendsWeb.HomeLive do
   end
 
   # --- Helpers ---
+  # Note: navigate_photo/2 is imported from FriendsWeb.HomeLive.Helpers
 
+  # --- Constellation Graph Events ---
 
+  # Send friend request from constellation graph
+  def handle_event("constellation_invite", %{"user_id" => user_id_str}, socket) do
+    with user when not is_nil(user) <- socket.assigns.current_user,
+         {target_id, _} <- Integer.parse(user_id_str),
+         {:ok, _} <- Social.add_friend(user.id, target_id) do
+      # Push event to frontend to animate out the invited user (don't rebuild graph)
+      {:noreply,
+       socket
+       |> push_event("constellation_user_invited", %{user_id: target_id})
+       |> put_flash(:info, "Friend request sent!")}
+    else
+      {:error, :already_friends} ->
+        {:noreply, put_flash(socket, :info, "You're already friends!")}
+
+      {:error, :request_already_sent} ->
+        {:noreply, put_flash(socket, :info, "Request already sent")}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Could not send request")}
+    end
+  end
+
+  # Skip constellation view and show regular feed
+  def handle_event("skip_constellation", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_constellation, false)
+     |> assign(:constellation_data, nil)}
+  end
+
+  # Handle new user signup for constellation real-time updates
+  def handle_info({:new_user_joined, user_data}, socket) do
+    if socket.assigns[:show_constellation] do
+      # Don't show users we're already connected to
+      connected_ids = Social.get_connected_user_ids(socket.assigns.current_user.id)
+      
+      if user_data.id not in connected_ids and user_data.id != socket.assigns.current_user.id do
+        # Assign a random color
+        colors = ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
+        color = Enum.at(colors, rem(user_data.id, length(colors)))
+        
+        {:noreply, push_event(socket, "constellation_new_user", %{
+          id: user_data.id,
+          username: user_data.username,
+          display_name: user_data.display_name,
+          color: color
+        })}
+      else
+        {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
 
 end
