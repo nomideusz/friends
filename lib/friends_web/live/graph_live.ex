@@ -4,8 +4,7 @@ defmodule FriendsWeb.GraphLive do
   alias Friends.Repo
   import Ecto.Query
 
-  # Colors for avatars
-  @colors ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #ec4899)
+
 
   @impl true
   def mount(_params, session, socket) do
@@ -38,10 +37,12 @@ defmodule FriendsWeb.GraphLive do
     {:noreply, refresh_graph(socket)}
   end
 
+  @impl true
   def handle_info({:friend_removed, _}, socket) do
     {:noreply, refresh_graph(socket)}
   end
 
+  @impl true
   def handle_info(_, socket), do: {:noreply, socket}
 
   # Event handlers for shared header
@@ -112,11 +113,7 @@ defmodule FriendsWeb.GraphLive do
     }
   end
 
-  defp user_color(%{id: id}) when is_integer(id) do
-    Enum.at(@colors, rem(id, length(@colors)))
-  end
 
-  defp user_color(_), do: Enum.at(@colors, 0)
 
   @impl true
   def render(assigns) do

@@ -157,7 +157,7 @@ defmodule FriendsWeb.RecoverLive do
           <% :username -> %>
             <div class="text-center mb-8">
               <h1 class="text-3xl font-bold text-white" style="text-shadow: 0 0 40px rgba(255,255,255,0.3), 0 0 80px rgba(255,255,255,0.1); animation: gentle-pulse 3s ease-in-out infinite;">
-                Network Recovery
+                Access Recovery
               </h1>
             </div>
             

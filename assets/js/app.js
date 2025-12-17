@@ -152,22 +152,54 @@ const Hooks = {
 
     WelcomeGraph: {
         mounted() {
-            // Check localStorage for opt-out preference
-            if (localStorage.getItem('hideWelcomeGraph') === 'true') {
-                // User opted out - trigger skip
+            // Check localStorage for permanent opt-out OR sessionStorage for already viewed this session
+            if (localStorage.getItem('hideWelcomeGraph') === 'true' || sessionStorage.getItem('graphViewed') === 'true') {
+                // User opted out or already viewed - trigger skip
                 this.pushEvent('skip_welcome_graph', {})
                 this.el.style.display = 'none'
                 return
             }
 
             const graphData = JSON.parse(this.el.dataset.graphData || 'null')
+            // If user is new, don't show opt-out checkbox
+            const isNewUser = this.el.dataset.isNewUser === 'true'
 
             // Svelte 5 mount
             this.component = mount(WelcomeGraph, {
                 target: this.el,
                 props: {
                     graphData,
-                    live: this
+                    live: this,
+                    showOptOut: !isNewUser
+                }
+            })
+            
+            // Listen for live network updates from server
+            this.handleEvent("welcome_new_user", (userData) => {
+                console.log('[WelcomeGraph] New user joined:', userData)
+                if (this.component && this.component.addNode) {
+                    this.component.addNode(userData)
+                }
+            })
+            
+            this.handleEvent("welcome_new_connection", ({ from_id, to_id }) => {
+                console.log('[WelcomeGraph] New connection:', from_id, '->', to_id)
+                if (this.component && this.component.addLink) {
+                    this.component.addLink(from_id, to_id)
+                }
+            })
+            
+            this.handleEvent("welcome_connection_removed", ({ from_id, to_id }) => {
+                console.log('[WelcomeGraph] Connection removed:', from_id, '->', to_id)
+                if (this.component && this.component.removeLink) {
+                    this.component.removeLink(from_id, to_id)
+                }
+            })
+            
+            this.handleEvent("welcome_user_deleted", ({ user_id }) => {
+                console.log('[WelcomeGraph] User deleted:', user_id)
+                if (this.component && this.component.removeNode) {
+                    this.component.removeNode(user_id)
                 }
             })
         },
@@ -189,6 +221,21 @@ const Hooks = {
                     graphData,
                     live: this
                 }
+            })
+
+            // Listen for graph updates from the server (since phx-update="ignore")
+            this.handleEvent("graph-updated", ({ graph_data }) => {
+                console.log('[FriendGraph] Received graph update', graph_data)
+                if (this.component) {
+                    unmount(this.component)
+                }
+                this.component = mount(FriendGraph, {
+                    target: this.el,
+                    props: {
+                        graphData: graph_data,
+                        live: this
+                    }
+                })
             })
         },
         updated() {

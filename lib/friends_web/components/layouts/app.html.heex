@@ -1,19 +1,21 @@
 <%!-- Animated opalescent background --%>
 <div class="opal-bg"></div>
- <%!-- Shared Header --%>
-<.shared_header
-  current_user={assigns[:current_user]}
-  user_color={assigns[:user_color] || "#888"}
-  auth_status={assigns[:auth_status] || :anon}
-  page_title={assigns[:page_title] || "New Internet"}
-  room={assigns[:room]}
-  viewers={assigns[:viewers] || []}
-  user_rooms={assigns[:user_private_rooms] || assigns[:user_rooms] || []}
-  public_rooms={assigns[:public_rooms] || []}
-  pending_count={length(assigns[:pending_requests] || [])}
-  recovery_count={length(assigns[:recovery_requests] || [])}
-  show_header_dropdown={assigns[:show_header_dropdown] || false}
-  show_user_dropdown={assigns[:show_user_dropdown] || false}
-  current_route={assigns[:current_route] || "/"}
-/>
-<main class="text-white relative"><.flash_group flash={@flash} /> {@inner_content}</main>
+<div class="flex flex-col h-screen overflow-hidden">
+  <%!-- Shared Header --%>
+  <.shared_header
+    current_user={assigns[:current_user]}
+    user_color={assigns[:user_color] || "#888"}
+    auth_status={assigns[:auth_status] || :anon}
+    page_title={assigns[:page_title] || "New Internet"}
+    room={assigns[:room]}
+    viewers={assigns[:viewers] || []}
+    user_rooms={assigns[:user_private_rooms] || assigns[:user_rooms] || []}
+    public_rooms={assigns[:public_rooms] || []}
+    pending_count={length(assigns[:pending_requests] || [])}
+    recovery_count={length(assigns[:recovery_requests] || [])}
+    show_header_dropdown={assigns[:show_header_dropdown] || false}
+    show_user_dropdown={assigns[:show_user_dropdown] || false}
+    current_route={assigns[:current_route] || "/"}
+  />
+  <main class="text-white relative flex-1 overflow-y-auto overflow-x-hidden"><.flash_group flash={@flash} />{@inner_content}</main>
+</div>

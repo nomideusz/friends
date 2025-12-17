@@ -646,6 +646,59 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_new_public_note(socket, note)
   end
 
+  # Handle friendship events (when a friend is accepted or removed)
+  def handle_info({:friend_accepted, friendship}, socket) do
+    # Refresh the graph data and private rooms when a friendship changes
+    if socket.assigns.current_user do
+      graph_data = FriendsWeb.HomeLive.GraphHelper.build_graph_data(socket.assigns.current_user)
+      private_rooms = Social.list_user_rooms(socket.assigns.current_user.id)
+
+      socket =
+        socket
+        |> assign(:graph_data, graph_data)
+        |> assign(:user_private_rooms, private_rooms)
+        
+      # If welcome graph is displayed, push live update for new connection
+      socket = if socket.assigns[:show_welcome_graph] do
+        socket
+        |> push_event("welcome_new_connection", %{
+          from_id: friendship.user_id,
+          to_id: friendship.friend_user_id
+        })
+      else
+        socket
+      end
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:friend_removed, friendship}, socket) do
+    # Refresh the graph data when a friendship is removed
+    if socket.assigns.current_user do
+      graph_data = FriendsWeb.HomeLive.GraphHelper.build_graph_data(socket.assigns.current_user)
+
+      socket = assign(socket, :graph_data, graph_data)
+      
+      # If welcome graph is displayed, push live update for removed connection
+      socket = if socket.assigns[:show_welcome_graph] do
+        socket
+        |> push_event("welcome_connection_removed", %{
+          from_id: friendship.user_id,
+          to_id: friendship.friend_user_id
+        })
+      else
+        socket
+      end
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
 
 
   # --- Helpers ---

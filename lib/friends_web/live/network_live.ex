@@ -910,15 +910,17 @@ defmodule FriendsWeb.NetworkLive do
       <%= if @show_graph_modal do %>
         <.modal id="network-graph-modal" show={@show_graph_modal} on_cancel={JS.push("close_graph_modal")} backdrop_class="bg-black/40 backdrop-blur-sm" container_class="w-full max-w-[95vw] h-[90vh] max-h-[90vh] bg-black/60 backdrop-blur-3xl p-0 border border-white/10 overflow-hidden rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] relative ring-1 ring-white/5">
           <div class="h-full w-full relative group">
-            <%= if @graph_data do %>
-              <div
-                id="network-graph"
-                phx-hook="FriendGraph"
-                phx-update="ignore"
-                data-graph={Jason.encode!(@graph_data)}
-                class="w-full h-full block"
-              ></div>
-            <% end %>
+            <%!-- Use a wrapper with phx-update="ignore" that contains the hook element --%>
+            <div id="network-graph-wrapper" phx-update="ignore">
+              <%= if @graph_data do %>
+                <div
+                  id="network-graph"
+                  phx-hook="FriendGraph"
+                  data-graph={Jason.encode!(@graph_data)}
+                  class="w-full h-full block"
+                ></div>
+              <% end %>
+            </div>
           </div>
         </.modal>
       <% end %>

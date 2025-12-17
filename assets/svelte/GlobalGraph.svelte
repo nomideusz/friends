@@ -116,22 +116,22 @@
         width = rect.width || 800;
         height = rect.height || 600;
 
-        // Calculate time range from all data
+        // Build graph data first to ensure consistent timestamps
+        const data = buildAllData(graphData);
+        currentStats = { nodes: data.nodes.length, edges: data.links.length };
+
+        // Calculate time range from PROCESSED data to ensure consistency
         const dates = [];
-        (graphData.nodes || []).forEach((n) => {
-            if (n.inserted_at) dates.push(new Date(n.inserted_at).getTime());
-        });
-        (graphData.edges || []).forEach((e) => {
-            if (e.connected_at) dates.push(new Date(e.connected_at).getTime());
-        });
+        data.nodes.forEach((n) => dates.push(n.connectedAt));
+        data.links.forEach((l) => dates.push(l.connectedAt));
+        
         if (dates.length > 0) {
             minTime = Math.min(...dates) - 1000 * 60 * 60 * 24 * 7;
             maxTime = Math.max(...dates);
+        } else {
+            minTime = Date.now() - 1000 * 60 * 60 * 24 * 7;
+            maxTime = Date.now();
         }
-
-        // Build graph data
-        const data = buildAllData(graphData);
-        currentStats = { nodes: data.nodes.length, edges: data.links.length };
 
         // Create SVG
         d3.select(container).selectAll("*").remove();
@@ -285,8 +285,12 @@
 
             nodes.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
 
+
             labels.attr("x", (d) => d.x).attr("y", (d) => d.y);
         });
+
+        // Ensure nodes are visible immediately
+        updateGraph(timeValue);
     }
 
     function updateGraph(percent) {

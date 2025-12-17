@@ -131,37 +131,7 @@ defmodule FriendsWeb.AuthLive do
     end
   end
 
-  defp start_login(socket) do
-    user = socket.assigns.user
-    challenge_options = Social.generate_webauthn_authentication_challenge(user)
 
-    {:noreply,
-     socket
-     |> assign(:step, :passkey)
-     |> assign(:webauthn_challenge, challenge_options)
-     |> push_event("webauthn_auth_challenge", %{
-       mode: "login",
-       options: challenge_options
-     })}
-  end
-
-  defp start_registration(socket) do
-    username = socket.assigns.username
-    display_name = socket.assigns.display_name
-    
-    # Generate a temporary user struct for challenge generation
-    temp_user = %{id: 0, username: username, display_name: display_name}
-    challenge_options = Social.generate_webauthn_registration_challenge(temp_user)
-
-    {:noreply,
-     socket
-     |> assign(:step, :passkey)
-     |> assign(:webauthn_challenge, challenge_options.challenge)
-     |> push_event("webauthn_auth_challenge", %{
-       mode: "register",
-       options: challenge_options
-     })}
-  end
 
   # Login response
   @impl true
@@ -274,6 +244,38 @@ defmodule FriendsWeb.AuthLive do
   defp format_webauthn_error(reason) when is_atom(reason), do: to_string(reason) |> String.replace("_", " ")
   defp format_webauthn_error(reason), do: inspect(reason)
 
+  defp start_login(socket) do
+    user = socket.assigns.user
+    challenge_options = Social.generate_webauthn_authentication_challenge(user)
+
+    {:noreply,
+     socket
+     |> assign(:step, :passkey)
+     |> assign(:webauthn_challenge, challenge_options)
+     |> push_event("webauthn_auth_challenge", %{
+       mode: "login",
+       options: challenge_options
+     })}
+  end
+
+  defp start_registration(socket) do
+    username = socket.assigns.username
+    display_name = socket.assigns.display_name
+    
+    # Generate a temporary user struct for challenge generation
+    temp_user = %{id: 0, username: username, display_name: display_name}
+    challenge_options = Social.generate_webauthn_registration_challenge(temp_user)
+
+    {:noreply,
+     socket
+     |> assign(:step, :passkey)
+     |> assign(:webauthn_challenge, challenge_options.challenge)
+     |> push_event("webauthn_auth_challenge", %{
+       mode: "register",
+       options: challenge_options
+     })}
+  end
+
   # --- Render ---
 
   @impl true
@@ -365,7 +367,7 @@ defmodule FriendsWeb.AuthLive do
                 href="/recover"
                 class="text-xs text-neutral-500 hover:text-white transition-colors"
               >
-                Recover Access →
+                Access Recovery →
               </a>
             </div>
 
@@ -401,15 +403,21 @@ defmodule FriendsWeb.AuthLive do
             </div>
 
           <% :success -> %>
-            <div class="text-center space-y-4">
-              <div class="text-6xl mb-4">✅</div>
-              
-              <h2 class="text-xl font-medium text-white">
-                <%= if @mode == :register, do: "Account Created!", else: "Welcome Back!" %>
-              </h2>
-              
-              <p class="text-neutral-400">Redirecting...</p>
-            </div>
+            <div class="text-center flex flex-col items-center justify-center animate-fade-in py-8">
+               <div class="mb-8">
+                 <div class="w-16 h-16 border-2 border-white/20 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                   <div class="w-2 h-2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                 </div>
+               </div>
+               
+               <h2 class="text-xl font-medium tracking-wide text-white uppercase mb-2" style="letter-spacing: 0.1em;">
+                 <%= if @mode == :register, do: "Identity Verified", else: "Access Granted" %>
+               </h2>
+               
+               <p class="text-neutral-500 text-[10px] uppercase font-mono tracking-[0.2em] opacity-80">
+                 Establishing Connection...
+               </p>
+             </div>
         <% end %>
       </div>
     </div>

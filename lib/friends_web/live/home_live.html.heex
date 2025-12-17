@@ -1,4 +1,4 @@
-<div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white pb-20">
+<div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white h-full bg-black overflow-hidden">
   <%!-- === DRAWER SYSTEM (Mobile) === --%>
   <%!-- Stacked from bottom: Navigation (z-50), Graph (z-60), Chat (z-70), Invite (z-110) --%>
   
@@ -506,27 +506,31 @@
   <%!-- === UNIFIED LAYOUT === --%>
   <div class="max-w-[1600px] mx-auto p-4 sm:p-8">
     <%= if @current_user do %>
-      <%# === WELCOME GRAPH FOR NEW USERS === %>
+          <%!-- === WELCOME GRAPH FOR NEW USERS === --%>
 <%= if assigns[:show_welcome_graph] && assigns[:welcome_graph_data] && @live_action == :index do %>
   <div id="welcome-graph-container" phx-hook="FriendsApp" class="fixed inset-0 z-50 bg-black">
-    <div
-      id="welcome-graph"
-      phx-hook="WelcomeGraph"
-      class="w-full h-full"
-      data-graph-data={Jason.encode!(@welcome_graph_data)}>
+    <%!-- Wrapper with phx-update="ignore" to prevent LiveView from destroying the graph on updates --%>
+    <div id="welcome-graph-wrapper" phx-update="ignore">
+      <div
+        id="welcome-graph"
+        phx-hook="WelcomeGraph"
+        class="w-full h-full"
+        data-graph-data={Jason.encode!(@welcome_graph_data)}
+        data-is-new-user={to_string(@is_new_user)}>
+      </div>
     </div>
   </div>
 <% end %>
 
-<%# === MAIN LAYOUT === %>
-<div class="h-screen w-screen bg-black text-white overflow-hidden flex flex-col relative"
+<%!-- === MAIN LAYOUT === --%>
+<div class="h-full w-full text-white flex flex-row gap-4 relative overflow-hidden"
      style={if assigns[:show_welcome_graph], do: "display: none;", else: "display: flex;"}>
         
         <%!-- LEFT: Sidebar or Chat --%>
         <%= if assigns[:room] && @room.is_private && not @room_access_denied do %>
           <%!-- Private Room: Show Chat Panel as Left Sidebar (Desktop) --%>
           <div class="hidden lg:block w-80 shrink-0">
-            <div class="sticky top-24 h-[calc(100vh-8rem)]">
+            <div class="sticky top-6 h-[calc(100vh-3rem)]">
               <.chat_panel
                 room={@room}
                 current_user={@current_user}
@@ -541,7 +545,7 @@
           </div>
         <% else %>
           <%!-- Dashboard/Public: Show Navigation Sidebar --%>
-          <div class="hidden lg:block">
+          <div class="hidden lg:block shrink-0">
             <.sidebar
               users={assigns[:friends] || []}
               rooms={assigns[:user_rooms] || []}
@@ -653,69 +657,19 @@
             </div>
           <% end %>
         </div>
-      </div>
-      <% end %> <%!-- End constellation else block --%>
 
-      <%!-- Floating Action Button (Mobile Only) --%>
+
+      <%!-- Floating Action Button (Mobile Only) - HIDDEN as per request --%>
+      <%!--
       <%= if @current_user && not @show_mobile_chat do %>
         <div class="lg:hidden">
-          <%!-- FAB Buttons (Expanded State) --%>
-          <%= if @fab_expanded do %>
-            <div class="fixed bottom-20 right-4 flex flex-col gap-2 z-40">
-              <%!-- Photo Button --%>
-              <form
-                phx-change={if @live_action == :index, do: "validate_feed_photo", else: "validate"}
-                phx-submit={if @live_action == :index, do: "save_feed_photo", else: "save"}
-                class="contents"
-              >
-                <label
-                  for={if @live_action == :index, do: @uploads.feed_photo.ref, else: @uploads.photo.ref}
-                  class="w-11 h-11 rounded-full aether-card text-blue-400 flex items-center justify-center cursor-pointer hover:text-blue-300 hover:border-blue-400/50 transition-all active:scale-95"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </label>
-                <.live_file_input upload={if @live_action == :index, do: @uploads.feed_photo, else: @uploads.photo} class="sr-only" />
-              </form>
-
-              <%!-- Note Button --%>
-              <button
-                type="button"
-                phx-click={if @live_action == :index, do: "open_feed_note_modal", else: "open_note_modal"}
-                class="w-11 h-11 rounded-full aether-card text-emerald-400 flex items-center justify-center cursor-pointer hover:text-emerald-300 hover:border-emerald-400/50 transition-all active:scale-95"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-
-              <%!-- Voice Button --%>
-              <button
-                type="button"
-                id="fab-voice-record"
-                phx-hook={if @live_action == :index, do: "FeedVoiceRecorder", else: "GridVoiceRecorder"}
-                data-room-id={if @live_action != :index && assigns[:room], do: @room.id, else: nil}
-                class={"w-11 h-11 rounded-full aether-card text-purple-400 flex items-center justify-center cursor-pointer hover:text-purple-300 hover:border-purple-400/50 transition-all active:scale-95 #{if @recording_voice, do: "animate-pulse border-purple-500", else: ""}"}
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </button>
-            </div>
-          <% end %>
-
-          <%!-- Main FAB Button --%>
-          <button
-            type="button"
-            phx-click="toggle_fab"
-            class={"fixed bottom-6 right-4 w-12 h-12 rounded-full aether-card flex items-center justify-center cursor-pointer transition-all z-50 #{if @fab_expanded, do: "text-red-400 rotate-45 border-red-500/50", else: "text-white hover:border-white/30"}"}
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
+         FAB content...
         </div>
+      <% end %>
+      --%>
+      
+    <%!-- End of main layout container --%>
+    </div>
 
     <% else %>
       <%!-- Guests Landing --%>

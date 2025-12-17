@@ -61,6 +61,8 @@ body {
   background-color: var(--color-void);
   color: var(--color-light);
   min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Typography */
