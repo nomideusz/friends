@@ -12,7 +12,8 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
   def open_note_modal(socket) do
     # Only registered users can open note modal
     if socket.assigns.current_user && not socket.assigns.room_access_denied do
-      {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "") |> assign(:note_modal_action, "save_note")}
+      action = if socket.assigns[:room], do: "save_note", else: "post_feed_note"
+      {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "") |> assign(:note_modal_action, action)}
     else
       {:noreply, socket}
     end
@@ -186,7 +187,14 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
   end
 
   def start_voice_recording(socket) do
-    {:noreply, assign(socket, :recording_voice, true)}
+    {:noreply,
+     socket
+     |> assign(:recording_voice, true)
+     |> push_event("start_js_recording", %{})}
+  end
+
+  def cancel_voice_recording(socket) do
+    {:noreply, assign(socket, :recording_voice, false)}
   end
 
   def post_public_voice(socket, %{"audio_data" => audio_data} = params) do
@@ -213,8 +221,18 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
           }
 
           case Social.create_public_photo(attrs, user.id) do
-            {:ok, _photo} ->
-              {:noreply, assign(socket, :recording_voice, false)}
+            {:ok, photo} ->
+              item =
+                photo
+                |> Map.from_struct()
+                |> Map.put(:type, :photo)
+                |> Map.put(:unique_id, "photo-#{photo.id}")
+
+              {:noreply,
+               socket
+               |> assign(:recording_voice, false)
+               |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+               |> stream_insert(:feed_items, item, at: 0)}
 
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "Failed to post voice message")}

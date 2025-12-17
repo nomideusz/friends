@@ -10,11 +10,46 @@ defmodule FriendsWeb.HomeLive.Events.SettingsEvents do
 
   # --- Settings Modal ---
 
+  def open_devices_modal(socket) do
+    # Refresh devices list just in case
+    devices = Social.list_user_devices(socket.assigns.current_user.id)
+    
+    {:noreply,
+     socket
+     |> assign(:show_devices_modal, true)
+     |> assign(:devices, devices)}
+  end
+
+  def close_devices_modal(socket) do
+    {:noreply, assign(socket, :show_devices_modal, false)}
+  end
+  
+  def revoke_device(socket, %{"id" => device_id}) do
+    case Social.revoke_user_device(socket.assigns.current_user.id, device_id) do
+      {:ok, _device} ->
+        # Refresh list
+        devices = Social.list_user_devices(socket.assigns.current_user.id)
+        
+        {:noreply,
+         socket
+         |> put_flash(:info, "Device revoked successfully")
+         |> assign(:devices, devices)}
+         
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not revoke device")}
+    end
+  end
+
   def open_settings_modal(socket) do
     room = socket.assigns.room
 
     # Load room members if this is a private room
-    members = if room.is_private, do: Social.list_room_members(room.id), else: []
+    members = 
+      if room && room.is_private do
+        Social.list_room_members(room.id)
+      else
+        []
+      end
 
     {:noreply,
      socket

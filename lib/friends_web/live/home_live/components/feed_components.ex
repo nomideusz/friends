@@ -19,7 +19,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
         count = length(entries)
         avg_progress = div(Enum.reduce(entries, 0, & &1.progress + &2), count)
       %>
-      <div class="mb-4 aether-card p-3 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div class="mb-4 aether-card p-3 animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-auto">
         <div class="flex items-center gap-4">
           <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
             <svg class="w-5 h-5 text-blue-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,41 +68,40 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
   def feed_actions_bar(assigns) do
     assigns = assign(assigns, :upload_key, :feed_photo)
     ~H"""
-    <CardComponents.actions_bar
-      uploads={@uploads}
-      uploading={@uploading}
-      recording_voice={@recording_voice}
-      note_event="open_feed_note_modal"
-      voice_button_id="feed-voice-record"
-      voice_hook="FeedVoiceRecorder"
-      upload_key={:feed_photo}
-    />
+    <div>
+      <%!-- Photo Input (Allows CornerNav trigger) --%>
+      <%= if @uploads && @uploads[@upload_key] do %>
+        <form
+          id="upload-form-feed_photo"
+          phx-change="validate_feed_photo"
+          phx-submit="save_feed_photo"
+          class="hidden"
+        >
+          <%!-- IMPORTANT: ID must match CornerNavigation fallback selector --%>
+          <.live_file_input upload={@uploads[@upload_key]} class="sr-only" id="feed_upload_input" />
+        </form>
+      <% end %>
+
+      <%!-- Voice Recorder (Visible ONLY when recording) --%>
+      <button
+        type="button"
+        id="feed-voice-record"
+        phx-hook="FeedVoiceRecorder"
+        class={"#{if @recording_voice, do: "w-full mb-4 py-3 bg-red-500/10 border border-red-500 text-red-500 rounded-lg animate-pulse font-bold flex items-center justify-center gap-2 pointer-events-auto", else: "hidden"}"}
+      >
+         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+         </svg>
+         <span>Recording... (Tap to Stop)</span>
+      </button>
+    </div>
     """
   end
 
   def empty_feed(assigns) do
     ~H"""
-    <div class="text-center py-20 aether-card shadow-inner">
-      <div class="mb-4">
-        <svg
-          class="w-16 h-16 mx-auto text-neutral-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-          >
-          </path>
-        </svg>
-      </div>
-      
-      <p class="text-neutral-200 text-lg font-bold uppercase tracking-wide mb-2">Your feed is empty</p>
-      
-      <p class="text-neutral-500 text-sm">Post a photo, note, or voice message to get started</p>
+    <div id="empty-feed-container" class="fixed inset-0 z-0 pointer-events-none" phx-update="ignore">
+       <%!-- Background Global Graph is rendered in layout --%>
     </div>
     """
   end
@@ -115,7 +114,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
       id="public-feed-grid"
       phx-update="stream"
       phx-hook="PhotoGrid"
-      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 pointer-events-auto"
     >
       <%= for {dom_id, item} <- @feed_items do %>
         <.feed_item id={dom_id} item={item} />

@@ -197,6 +197,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   def handle_new_public_photo(socket, photo) do
     item = %{
       id: photo.id,
+      unique_id: "photo-#{photo.id}",
       type: :photo,
       user_id: photo.user_id,
       user_color: photo.user_color,
@@ -213,13 +214,19 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
      socket
      |> assign(:photo_order, merge_photo_order(socket.assigns[:photo_order], [photo.id], :front))
      |> stream_insert(:feed_items, item, at: 0)
-     |> assign(:feed_item_count, socket.assigns.feed_item_count + 1)}
+     |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+     |> then(fn s ->
+       if s.assigns[:show_welcome_graph],
+         do: push_event(s, "welcome_signal", %{user_id: photo.user_id}),
+         else: s
+     end)}
   end
 
   def handle_new_public_note(socket, note) do
     item = %{
       id: note.id,
-      type: "note",
+      unique_id: "note-#{note.id}",
+      type: :note,
       user_id: note.user_id,
       user_color: note.user_color,
       user_name: note.user_name,
@@ -230,6 +237,11 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
     {:noreply,
      socket
      |> stream_insert(:feed_items, item, at: 0)
-     |> assign(:feed_item_count, socket.assigns.feed_item_count + 1)}
+     |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+     |> then(fn s ->
+       if s.assigns[:show_welcome_graph],
+         do: push_event(s, "welcome_signal", %{user_id: note.user_id}),
+         else: s
+     end)}
   end
 end

@@ -133,14 +133,8 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
           end
           
         # Hide constellation - user wants to see their feed now
-        socket = 
-          if length(results) > 0 do
-            socket
-            |> assign(:show_welcome_graph, false)
-            |> assign(:welcome_graph_data, nil)
-          else
-            socket
-          end
+        # Keep constellation visible
+        socket = socket
           
         {:noreply, assign(socket, :uploading, false)}
       end

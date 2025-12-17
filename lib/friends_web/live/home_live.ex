@@ -7,6 +7,7 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FeedComponents
   import FriendsWeb.HomeLive.Components.RoomComponents
   import FriendsWeb.HomeLive.Components.ModalComponents
+  import FriendsWeb.HomeLive.Components.SettingsComponents
   import FriendsWeb.HomeLive.Components.ChatComponents
   import FriendsWeb.HomeLive.Components.InviteComponents
   import FriendsWeb.HomeLive.Components.DrawerComponents
@@ -59,6 +60,23 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("toggle_fab", _params, socket) do
     {:noreply, assign(socket, :fab_expanded, !socket.assigns[:fab_expanded])}
+  end
+
+  # --- Home Orb Events ---
+
+  def handle_event("go_home", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_breadcrumbs, false)
+     |> push_navigate(to: ~p"/")}
+  end
+
+  def handle_event("show_breadcrumbs", _params, socket) do
+    # Toggle breadcrumbs visibility (auto-hide after 3s could be nice too, but toggle involves less state complexity for now)
+    # Actually, let's make it show if hidden, hide if shown.
+    # Ideally should hide on release, but my hook design implies "show on hold".
+    # For now, let's just toggle.
+    {:noreply, assign(socket, :show_breadcrumbs, !socket.assigns[:show_breadcrumbs])}
   end
 
   def handle_event(
@@ -126,6 +144,10 @@ defmodule FriendsWeb.HomeLive do
     PhotoEvents.validate_feed_photo(socket)
   end
 
+  def handle_event("save_feed_photo", _, socket) do
+    PhotoEvents.save_feed_photo(socket)
+  end
+
   # open_feed_note_modal and close_note_modal delegated to NoteEvents module (lines 203-205)
 
   def handle_event("view_feed_photo", %{"photo_id" => photo_id}, socket) do
@@ -142,6 +164,10 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("start_voice_recording", _, socket) do
     NoteEvents.start_voice_recording(socket)
+  end
+
+  def handle_event("cancel_voice_recording", _, socket) do
+    NoteEvents.cancel_voice_recording(socket)
   end
 
   def handle_event("post_public_voice", %{"audio_data" => _} = params, socket) do
@@ -286,6 +312,15 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("switch_settings_tab", %{"tab" => tab}, socket) do
     SettingsEvents.switch_settings_tab(socket, tab)
   end
+
+  def handle_event("open_devices_modal", _params, socket),
+    do: SettingsEvents.open_devices_modal(socket)
+
+  def handle_event("close_devices_modal", _params, socket),
+    do: SettingsEvents.close_devices_modal(socket)
+
+  def handle_event("revoke_device", params, socket),
+    do: SettingsEvents.revoke_device(socket, params)
 
   # Network modal events
   def handle_event("open_network_modal", _params, socket),
@@ -560,6 +595,64 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("toggle_mobile_chat", _params, socket) do
     ChatEvents.toggle_mobile_chat(socket)
+  end
+
+  # --- Corner Navigation Events ---
+
+  def handle_event("open_create_group", _params, socket) do
+    {:noreply, assign(socket, :create_group_modal, true)}
+  end
+
+  def handle_event("open_note_modal", _params, socket) do
+    {:noreply, assign(socket, :show_note_modal, true)}
+  end
+  
+
+  
+  def handle_event("open_photo_upload", _params, socket) do
+    {:noreply, push_event(socket, "trigger_file_input", %{selector: "#upload-form-feed_photo input"})}
+  end
+  
+  def handle_event("toggle_graph_drawer", _params, socket) do
+    {:noreply, assign(socket, :show_graph_drawer, !socket.assigns.show_graph_drawer)}
+  end
+  
+  def handle_event("close_create_group_modal", _params, socket) do
+    {:noreply, assign(socket, :create_group_modal, false)}
+  end
+
+  # --- Nav Orb Events ---
+  
+  def handle_event("toggle_nav_menu", _params, socket) do
+    {:noreply, assign(socket, :show_nav_menu, !socket.assigns[:show_nav_menu])}
+  end
+
+  def handle_event("close_nav_menu", _params, socket) do
+    {:noreply, assign(socket, :show_nav_menu, false)}
+  end
+  
+  def handle_event("go_to_dashboard", _params, socket) do
+    {:noreply, 
+     socket 
+     |> assign(:show_nav_menu, false) 
+     |> push_navigate(to: ~p"/")}
+  end
+
+  def handle_event("go_to_dashboard", _params, socket) do
+    {:noreply, 
+     socket 
+     |> assign(:show_nav_menu, false) 
+     |> push_navigate(to: ~p"/")}
+  end
+  
+  # --- Create Orb Events ---
+  
+  def handle_event("toggle_create_menu", _params, socket) do
+    {:noreply, assign(socket, :show_create_menu, !socket.assigns[:show_create_menu])}
+  end
+  
+  def handle_event("close_create_menu", _params, socket) do
+    {:noreply, assign(socket, :show_create_menu, false)}
   end
 
   # --- Welcome Graph Events ---

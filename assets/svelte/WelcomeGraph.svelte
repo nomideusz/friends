@@ -8,6 +8,8 @@
     export let onSkip = null;
     // Whether to show the "Don't show again" checkbox (false for new users)
     export let showOptOut = true;
+    // Whether to hide controls and fixed positioning (for background usage)
+    export let hideControls = false;
 
     let container;
     let svg;
@@ -32,6 +34,7 @@
         if (nodeMap.has(id)) return; // Already exists
         
         const newNode = {
+            ...userData,
             id,
             x: width / 2 + (Math.random() - 0.5) * 200,
             y: height / 2 + (Math.random() - 0.5) * 200
@@ -116,7 +119,7 @@
             .attr("cx", d => d.x)
             .attr("cy", d => d.y)
             .style("fill", "#ffffff")
-            .style("fill-opacity", 0.4)
+            .style("fill-opacity", 0.8)
             .attr("filter", "url(#node-glow)")
             .call(d3.drag()
                 .on("start", (event, d) => {
@@ -187,6 +190,28 @@
         // Redraw links with animation
         updateLinks();
     }
+    
+    // Function to pulse a node (visualize a signal/post)
+    export function pulseNode(id) {
+        if (!nodeGroup) return;
+        
+        const nodeId = String(id);
+        const circle = nodeGroup.selectAll("circle").filter(d => d.id === nodeId);
+        
+        if (!circle.empty()) {
+             circle
+                .transition()
+                .duration(200)
+                .attr("r", 15)
+                .style("fill-opacity", 1)
+                .attr("filter", null) // Remove glow temporarily to avoid artifact? Or keep it.
+                .transition()
+                .duration(600)
+                .attr("r", width < 600 ? 8 : 5)
+                .style("fill-opacity", 0.8)
+                .attr("filter", "url(#node-glow)");
+        }
+    }
 
     function initGraph() {
         if (!container || !graphData) return;
@@ -227,7 +252,7 @@
         filter
             .append("feFlood")
             .attr("flood-color", "#ffffff")
-            .attr("flood-opacity", "0.3")
+            .attr("flood-opacity", "0.8")
             .attr("result", "color");
 
         filter
@@ -255,6 +280,14 @@
         // Initial zoom to center with dynamic scale
         // Calculate based on actual data bounds for better mobile fit
         const isMobile = width < 600;
+        
+        // For background mode, disable wheel zoom to allow page scrolling
+        if (hideControls) {
+             zoom.filter((event) => {
+                // Allow interactions, just not wheel
+                return event.type !== 'wheel';
+             });
+        }
         
         // For mobile, zoom out significantly more to show all nodes
         // For desktop, use a slightly tighter view
@@ -319,11 +352,13 @@
             .data(data.nodes)
             .join("circle")
             .attr("r", nodeRadius)
-            .attr("fill", "#0a0a0a")
+            .attr("fill", "#ffffff")
             .attr("stroke", "#ffffff")
-            .attr("stroke-opacity", 0.4)
+            .attr("stroke-opacity", 0.2)
             .attr("stroke-width", 1)
             .attr("filter", "url(#node-glow)")
+            // Reduced opacity for background mode
+            .style("fill-opacity", hideControls ? 0.4 : 0.8)
             .style("cursor", "default")
             .call(
                 d3
@@ -372,6 +407,7 @@
         const scatterRange = width < 600 ? 150 : 300;
         data.nodes.forEach((node) => {
             const n = {
+                ...node,
                 id: String(node.id),
                 x: width / 2 + (Math.random() - 0.5) * scatterRange,
                 y: height / 2 + (Math.random() - 0.5) * scatterRange,
@@ -417,7 +453,7 @@
             initGraph();
         };
         window.addEventListener("resize", handleResize);
-
+        
         return () => {
             window.removeEventListener("resize", handleResize);
         };
@@ -429,40 +465,43 @@
     });
 </script>
 
-<div class="fixed inset-0 z-50 bg-black">
-    <!-- Subtle Gradient Background -->
+<div class={hideControls ? "w-full h-full" : "fixed inset-0 z-50 bg-black"}>
+    <!-- Subtle Gradient Background - Always Visible -->
     <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)] pointer-events-none"></div>
 
     <!-- Graph Container -->
     <div bind:this={container} class="w-full h-full relative z-10"></div>
 
-    <!-- Controls (bottom-right) -->
-    <div class="absolute bottom-10 right-10 flex flex-col items-end gap-3 z-20">
-        <button
-            on:click={handleSkip}
-            class="text-white/40 hover:text-white/90 text-xs font-mono tracking-[0.2em] uppercase transition-all duration-300 cursor-pointer flex items-center gap-2 group"
-        >
-            Proceed <span class="group-hover:translate-x-1 transition-transform">→</span>
-        </button>
 
-        {#if showOptOut}
-            <label
-                class="group flex items-center gap-3 cursor-pointer select-none mt-2"
+    <!-- Controls (bottom-right) -->
+    {#if !hideControls}
+        <div class="absolute bottom-10 right-10 flex flex-col items-end gap-3 z-20">
+            <button
+                on:click={handleSkip}
+                class="text-white/40 hover:text-white/90 text-xs font-mono tracking-[0.2em] uppercase transition-all duration-300 cursor-pointer flex items-center gap-2 group"
             >
-                <div class="relative w-3 h-3 border border-white/10 rounded-sm group-hover:border-white/30 transition-colors">
-                    {#if dontShowAgain}
-                        <div class="absolute inset-0 bg-white/60 m-0.5 rounded-[1px]"></div>
-                    {/if}
-                </div>
-                <input
-                    type="checkbox"
-                    bind:checked={dontShowAgain}
-                    class="hidden"
-                />
-                <span class="text-[9px] text-white/20 font-mono uppercase tracking-widest group-hover:text-white/40 transition-colors">
-                    Don't show again
-                </span>
-            </label>
-        {/if}
-    </div>
+                Proceed <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </button>
+
+            {#if showOptOut}
+                <label
+                    class="group flex items-center gap-3 cursor-pointer select-none mt-2"
+                >
+                    <div class="relative w-3 h-3 border border-white/10 rounded-sm group-hover:border-white/30 transition-colors">
+                        {#if dontShowAgain}
+                            <div class="absolute inset-0 bg-white/60 m-0.5 rounded-[1px]"></div>
+                        {/if}
+                    </div>
+                    <input
+                        type="checkbox"
+                        bind:checked={dontShowAgain}
+                        class="hidden"
+                    />
+                    <span class="text-[9px] text-white/20 font-mono uppercase tracking-widest group-hover:text-white/40 transition-colors">
+                        Don't show again
+                    </span>
+                </label>
+            {/if}
+        </div>
+    {/if}
 </div>

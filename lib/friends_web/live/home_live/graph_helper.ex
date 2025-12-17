@@ -330,8 +330,8 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
       Repo.all(
         from u in Friends.Social.User,
           order_by: [desc: u.inserted_at],
-          limit: 100,
-          select: %{id: u.id}
+          limit: 300,
+          select: %{id: u.id, username: u.username, display_name: u.display_name}
       )
 
     user_ids = Enum.map(users, & &1.id)
@@ -349,8 +349,18 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
       end)
       |> Enum.uniq()
 
+    nodes =
+      Enum.map(users, fn u ->
+        %{
+          id: u.id,
+          username: u.username,
+          display_name: u.display_name || u.username,
+          color: user_color(u)
+        }
+      end)
+
     %{
-      nodes: Enum.map(user_ids, fn id -> %{id: id} end),
+      nodes: nodes,
       edges: edges
     }
   end

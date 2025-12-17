@@ -51,6 +51,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       # Load initial public feed items and contacts
       feed_items = Social.list_public_feed_items(session_user.id, 20)
       friends = Social.list_friends(session_user.id)
+      trusted_friends = Social.list_trusted_friends(session_user.id)
+      pending_requests = Social.list_friend_requests(session_user.id)
+      devices = Social.list_user_devices(session_user.id)
 
       socket =
         socket
@@ -81,8 +84,14 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Required for layout to not crash
         |> assign(:room_access_denied, false)
         |> assign(:feed_mode, "dashboard")
+        |> assign(:show_nav_menu, false)
+        |> assign(:show_create_menu, false)
         # Public feed assigns
         |> assign(:friends, friends)
+        |> assign(:trusted_friends, trusted_friends)
+        |> assign(:pending_requests, pending_requests)
+        |> assign(:devices, devices)
+        |> assign(:show_devices_modal, false)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
         # Welcome graph shown for all users (opt-out checked client-side via localStorage)
         |> assign(:show_welcome_graph, true)
@@ -101,6 +110,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_image_modal, false)
         |> assign(:full_image_data, nil)
         |> assign(:feed_item_count, length(feed_items))
+        |> assign(:show_breadcrumbs, false)
         |> assign(:photo_order, photo_ids(feed_items))
         |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
 
@@ -263,8 +273,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:network_filter, "trusted")
         |> assign(:room_access_denied, not can_access)
         |> assign(:show_image_modal, false)
+        |> assign(:show_breadcrumbs, false)
         |> assign(:full_image_data, nil)
         |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
+        |> assign(:show_nav_menu, false)
+        |> assign(:show_create_menu, false)
         |> assign(:current_photo_id, nil)
         |> assign(:friends, friends)
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")

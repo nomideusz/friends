@@ -9,6 +9,7 @@ import FriendGraph from "../svelte/FriendGraph.svelte"
 import GlobalGraph from "../svelte/GlobalGraph.svelte"
 import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
 import WelcomeGraph from "../svelte/WelcomeGraph.svelte"
+import CornerNavigation from "../svelte/CornerNavigation.svelte"
 import { mount, unmount } from 'svelte'
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
 import * as messageEncryption from "./message-encryption"
@@ -152,8 +153,12 @@ const Hooks = {
 
     WelcomeGraph: {
         mounted() {
+            // Check if we should always show (e.g. for empty feed background)
+            const alwaysShow = this.el.dataset.alwaysShow === 'true'
+
             // Check localStorage for permanent opt-out OR sessionStorage for already viewed this session
-            if (localStorage.getItem('hideWelcomeGraph') === 'true' || sessionStorage.getItem('graphViewed') === 'true') {
+            // BUT only if not set to always show
+            if (!alwaysShow && (localStorage.getItem('hideWelcomeGraph') === 'true' || sessionStorage.getItem('graphViewed') === 'true')) {
                 // User opted out or already viewed - trigger skip
                 this.pushEvent('skip_welcome_graph', {})
                 this.el.style.display = 'none'
@@ -163,6 +168,7 @@ const Hooks = {
             const graphData = JSON.parse(this.el.dataset.graphData || 'null')
             // If user is new, don't show opt-out checkbox
             const isNewUser = this.el.dataset.isNewUser === 'true'
+            const hideControls = this.el.dataset.hideControls === 'true'
 
             // Svelte 5 mount
             this.component = mount(WelcomeGraph, {
@@ -170,7 +176,8 @@ const Hooks = {
                 props: {
                     graphData,
                     live: this,
-                    showOptOut: !isNewUser
+                    showOptOut: !isNewUser,
+                    hideControls
                 }
             })
             
@@ -195,11 +202,76 @@ const Hooks = {
                     this.component.removeLink(from_id, to_id)
                 }
             })
+
+            // Pulse on signal (post)
+            this.handleEvent("welcome_signal", ({ user_id }) => {
+                 if (this.component && this.component.pulseNode) {
+                     this.component.pulseNode(user_id)
+                 }
+            })
             
             this.handleEvent("welcome_user_deleted", ({ user_id }) => {
                 console.log('[WelcomeGraph] User deleted:', user_id)
                 if (this.component && this.component.removeNode) {
                     this.component.removeNode(user_id)
+                }
+            })
+        },
+        destroyed() {
+            if (this.component) {
+                unmount(this.component)
+            }
+        }
+    },
+
+    CornerNavigation: {
+        mounted() {
+            const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
+            const pendingCount = parseInt(this.el.dataset.pendingCount || '0', 10)
+            const currentRoute = this.el.dataset.currentRoute || '/'
+            const rooms = JSON.parse(this.el.dataset.rooms || '[]')
+            
+            this.component = mount(CornerNavigation, {
+                target: this.el,
+                props: {
+                    live: this,
+                    currentUser,
+                    pendingCount,
+                    currentRoute,
+                    rooms
+                }
+            })
+        },
+        updated() {
+            if (!this.component) return;
+            
+            const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
+            const pendingCount = parseInt(this.el.dataset.pendingCount || '0', 10)
+            const currentRoute = this.el.dataset.currentRoute || '/'
+            const rooms = JSON.parse(this.el.dataset.rooms || '[]')
+            
+            // Update props directly on the component instance if supported by Svelte 5 mount return
+            // For Svelte 5, the return value of mount is the exports object.
+            // But we can't easily update props on the instance created by `mount` unless we use state/store or specific framework methods.
+            // A common pattern with svelte and liveview hooks is to unmount and remount or use a store signal.
+            // However, with Svelte 5, if we want reactivity, we can wrap the props in a Rune or use a wrapper.
+            // Let's try simple unmount/remount for now as it's robust, or see if we can set props on the component.
+            // Actually, Svelte 5 `mount` interaction is different. 
+            // Let's stick to the robust unmount/remount for this "ignore" block pattern if attributes change, 
+            // OR simpler: since the container has phx-update="ignore", the `updated` hook MIGHT NOT BE CALLED by LiveView 
+            // UNLESS the attributes on the container itself changes.
+            // Wait, if phx-update="ignore" is present, LiveView patches the attributes of the container 
+            // but ignores the content. So `updated()` IS called.
+            
+            unmount(this.component)
+            this.component = mount(CornerNavigation, {
+                target: this.el,
+                props: {
+                    live: this,
+                    currentUser,
+                    pendingCount,
+                    currentRoute,
+                    rooms
                 }
             })
         },
@@ -383,6 +455,56 @@ const Hooks = {
         }
     },
 
+    HomeOrb: {
+        mounted() {
+            this.timer = null
+            this.held = false
+            
+            const startPress = (e) => {
+                // Only left click or touch
+                if (e.type === 'mousedown' && e.button !== 0) return
+                
+                this.held = false
+                this.timer = setTimeout(() => {
+                    this.held = true
+                    // Provide haptic feedback if available
+                    if (navigator.vibrate) navigator.vibrate(10)
+                    this.pushEvent("show_breadcrumbs", {})
+                }, 500)
+            }
+            
+            const endPress = (e) => {
+                if (this.timer) {
+                    clearTimeout(this.timer)
+                    this.timer = null
+                }
+                
+                // If we held it, prevent the click navigation (if it was a long press)
+                // But typically the click handler is separate. 
+                // We rely on the fact that if 'held' becomes true, the click event logic
+                // in standard HTML might still fire, so we might need preventDefault() if intended.
+                // However, phx-click is declarative. 
+                // A simple trick: if we held, we can set a flag that the click handler checks? 
+                // No, phx-click doesn't easy check client side flags.
+                // Instead, we can just rely on the breadcrumb toggle happening.
+                // If user lifts finger after long press, it might count as a click and navigate HOME too.
+                // To prevent that, we can use e.preventDefault() if it WAS a long press?
+                if (this.held) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }
+            }
+            
+            this.el.addEventListener('mousedown', startPress)
+            this.el.addEventListener('touchstart', startPress, {passive: false}) // passive:false allows preventDefault
+            
+            this.el.addEventListener('mouseup', endPress)
+            this.el.addEventListener('mouseleave', endPress)
+            this.el.addEventListener('touchend', endPress)
+            this.el.addEventListener('touchcancel', endPress)
+        }
+    },
+
     // WebAuthn Login hook for authentication flow
     WebAuthnLogin: {
         mounted() {
@@ -463,6 +585,42 @@ const Hooks = {
             this.recorder = null
             this.isRecording = false
 
+            this.handleEvent("start_js_recording", async () => {
+                if (this.isRecording) return
+
+                try {
+                    this.recorder = new VoiceRecorder()
+
+                    this.recorder.onStop = async (audioBlob, durationMs) => {
+                        try {
+                            const arrayBuffer = await audioBlob.arrayBuffer()
+                            const bytes = new Uint8Array(arrayBuffer)
+                            let binary = ''
+                            for (let i = 0; i < bytes.length; i++) {
+                                binary += String.fromCharCode(bytes[i])
+                            }
+                            const base64 = btoa(binary)
+
+                            this.pushEvent("post_public_voice", {
+                                audio_data: base64,
+                                duration_ms: durationMs
+                            })
+                        } catch (err) {
+                            console.error("Failed to process audio:", err)
+                        }
+                    }
+
+                    const started = await this.recorder.start()
+                    if (started) {
+                        this.isRecording = true
+                        // No need to push start_voice_recording as server triggered this
+                    }
+                } catch (err) {
+                    console.error("Failed to start recording:", err)
+                    this.pushEvent("cancel_voice_recording", {})
+                }
+            })
+
             this.el.addEventListener('click', async () => {
                 if (this.isRecording) {
                     // Stop recording - the onStop callback handles the result
@@ -470,41 +628,8 @@ const Hooks = {
                         this.recorder.stop()
                     }
                     this.isRecording = false
-                } else {
-                    // Start recording
-                    try {
-                        this.recorder = new VoiceRecorder()
-
-                        // Setup callback for when recording stops
-                        this.recorder.onStop = async (audioBlob, durationMs) => {
-                            try {
-                                // Convert blob to base64 for sending to server
-                                const arrayBuffer = await audioBlob.arrayBuffer()
-                                const bytes = new Uint8Array(arrayBuffer)
-                                let binary = ''
-                                for (let i = 0; i < bytes.length; i++) {
-                                    binary += String.fromCharCode(bytes[i])
-                                }
-                                const base64 = btoa(binary)
-
-                                this.pushEvent("post_public_voice", {
-                                    audio_data: base64,
-                                    duration_ms: durationMs
-                                })
-                            } catch (err) {
-                                console.error("Failed to process audio:", err)
-                            }
-                        }
-
-                        const started = await this.recorder.start()
-                        if (started) {
-                            this.isRecording = true
-                            this.pushEvent("start_voice_recording", {})
-                        }
-                    } catch (err) {
-                        console.error("Failed to start recording:", err)
-                    }
                 }
+                // Click only handles STOP because button is hidden when not recording
             })
         },
         destroyed() {
@@ -579,6 +704,16 @@ const Hooks = {
                         thumbnail: this.pendingThumbnail
                     })
                     this.pendingThumbnail = null
+                }
+            })
+
+            // Handle server-triggered file input click
+            this.handleEvent("trigger_file_input", ({ selector }) => {
+                const input = document.querySelector(selector)
+                if (input) {
+                    input.click()
+                } else {
+                    console.error("File input not found:", selector)
                 }
             })
 
