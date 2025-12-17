@@ -19,7 +19,7 @@ New Internet is:
 ## Primary Focus: Groups
 
 Groups are the main feature. Our priorities:
-1. **Creating groups** — seamless, intuitive group creation
+1. **Creating groups** — seamless, intuitive group creation (Spaces)
 2. **Adding members** — frictionless invitations
 3. **Building connections** — nurturing the network effect
 
@@ -27,20 +27,24 @@ Groups are the main feature. Our priorities:
 
 ## Design Principles
 
-### Aether Design
-- **Clean, consistent aesthetic** — no visual clutter
-- **No banners, big headers, footers, or sidebars**
-- **Forget the old internet** — break free from legacy patterns
+### Fluid Design
+- **Organic Depth** — Use high-blur glass layering and subtle inner highlights to create realistic depth.
+- **Physical Interaction** — Transitions and hovers use **spring-based easing** to feel responsive and alive.
+- **Organic Corners** — Forget the grid-rigid past; use large, organic radii (`--radius-fluid`) for a softer human touch.
+- **Constraint as Clarity** — No visual clutter. No banners, big headers, or traditional footers.
 
-### Navigation
-- **Intuitive and adaptive**
-- **As simple as possible, but not simpler**
-- **Responsive patterns**: modals for desktop → drawers for mobile
+### Navigation Hub
+- **Unified Controls** — Consolidate fragmented actions into a central **Fluid Toolbar** or Dynamic Island.
+- **Responsive Surfaces** — 
+  - **Mobile**: Surfaces emerge from the bottom as **Sheet Drawers** to prioritize thumb-reachability and natural physical flow.
+  - **Desktop**: Surfaces appear as centered **Floating Islands** (Modals) to maintain focus and respect the wider canvas.
+- **Context-Aware** — The interface adapts to the current focus (Space vs. Network) without layout shifts.
+- **Gesture-Ready** — Design for touch-first fluidity across all devices.
 
 ### Content Philosophy
-- **No helping texts** — we don't treat users like babies
-- **Trust user intelligence** — guide through design, not words
-- **Let the interface speak for itself**
+- **No helping texts** — we don't treat users like babies.
+- **Trust user intelligence** — guide through design, not words.
+- **Let the interface speak for itself.**
 
 ---
 
@@ -50,33 +54,33 @@ Groups are the main feature. Our priorities:
 |-----------|---------------|
 | Friendly | Welcoming, safe, against violence |
 | Fresh | Modern, innovative, forward-thinking |
-| Clean | Minimal UI, no clutter, purposeful elements |
+| Fluid | Organic motion, springy interactions, and depth |
 | People-first | Human connections over engagement metrics |
-| Network-first | Groups and connections are the product |
+| Network-first | Groups (Spaces) and connections are the product |
 
 ---
 
-## Visual Identity — The Aether Palette
+## Visual Identity — The Fluid Palette
 
-### The Void (Darks)
-| Token | Hex | Purpose |
-|-------|-----|---------|
-| `--color-void` | `#030303` | Deepest black (background) |
-| `--color-abyss` | `#0A0A0A` | Secondary black |
-| `--color-matter` | `#121212` | Cards, elevated surfaces |
+### Depth & Surfaces
+| Token | Purpose |
+|-------|---------|
+| `--color-void` | Pure Black background (#000000) for OLED depth |
+| `--color-glass` | Semi-transparent layered surfaces |
+| `--radius-fluid` | Large organic radius (32px) for structural elements |
 
 ### The Light
-| Token | Hex | Purpose |
-|-------|-----|---------|
-| `--color-light` | `#EAE6DD` | Primary text (warm starlight) |
-| `--color-dim` | `#888888` | Secondary text |
-| `--color-photon` | `#FFFFFF` | Pure white (borders, accents) |
+| Token | Purpose |
+|-------|---------|
+| `--color-light` | iOS-style clean white text (#F5F5F7) |
+| `--color-dim` | iOS-style subtle secondary text (#8E8E93) |
+| `--blur-glass` | High-quality 24px backdrop blur |
 
-### Energy & Trust
-| Token | Hex | Purpose |
-|-------|-----|---------|
-| `--color-energy` | `#3B82F6` | Blue (focus, interactions) |
-| `--color-trust` | `#10B981` | Emerald (trusted connections) |
+### Interactions
+| Token | Purpose |
+|-------|---------|
+| `--color-energy` | Apple Blue (#007AFF) for focuses and primary actions |
+| `--ease-spring` | The physical signature of our motion system |
 
 ---
 
@@ -87,7 +91,7 @@ Groups are the main feature. Our priorities:
 | **No "likes"** | Vanity metrics breed toxicity |
 | **No marketing speak** | Authenticity over engagement |
 | **No bullshit** | Honesty and clarity always |
-| **No Facebook patterns** | We're building something different |
+| **No legacy patterns** | We break free from sidebars and static headers |
 | **No dark patterns** | Respect user agency |
 
 ---
@@ -96,10 +100,10 @@ Groups are the main feature. Our priorities:
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Performance-first** | Fast, responsive, optimized |
+| **Performance-first** | Fast, responsive, optimized (OLED optimized) |
 | **Live by default** | Phoenix LiveView for real-time updates |
-| **Everything is live** | No page reloads, seamless experience |
-| **Server-driven UI** | LiveView pushes state, client follows |
+| **Everything is live** | No page reloads, seamless state transitions |
+| **Server-driven UI** | LiveView pushes state, client follows the flow |
 
 > 💡 If it can be live, it should be live.
 

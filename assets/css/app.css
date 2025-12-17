@@ -4,32 +4,63 @@
 @source "../../lib/friends_web";
 
 /* =========================================================================================
-   PROJECT AETHER: THE VOID & LIGHT
-   Design: Deep Space, Liquid Glass, Photonic Borders
+   PROJECT AETHER: FLUID DESIGN
+   Design: Deep Space, Layered Glass, Organic Springs
    ========================================================================================= */
 
+@keyframes opal-flow {
+  0% { background-position: 0% 50%; opacity: 0.3; }
+  50% { background-position: 100% 50%; opacity: 0.5; }
+  100% { background-position: 0% 50%; opacity: 0.3; }
+}
+
+.opal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+              radial-gradient(circle at 80% 70%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  background-size: 200% 200%;
+  animation: opal-flow 20s infinite ease-in-out;
+  filter: blur(80px);
+}
 :root {
   --font-family-display: 'Outfit', system-ui, sans-serif;
   --font-family-body: 'Inter', system-ui, sans-serif;
   --font-family-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  /* THE AETHER PALETTE */
-  --color-void: #030303;
-  /* Deepest Black */
-  --color-abyss: #0A0A0A;
-  /* Secondary Black */
+  /* FLUID DESIGN PALETTE */
+  --color-void: #000000;
+  /* Pure Black for perfect OLED depth */
+  --color-abyss: #080808;
+  /* Deep layered surfaces */
   --color-matter: #121212;
-  /* Tertiary Black (Cards) */
+  /* Card backgrounds */
+  --color-glass: rgba(20, 20, 20, 0.7);
+  /* Standard glass background */
 
-  --color-light: #EAE6DD;
-  /* Primary Text (Starlight) */
-  --color-dim: #888888;
-  /* Secondary Text */
+  --color-light: #F5F5F7;
+  /* iOS-style clean white */
+  --color-dim: #8E8E93;
+  /* iOS-style secondary text */
 
   --color-photon: #FFFFFF;
-  /* Pure Light (Borders/Accents) */
-  --color-energy: #3B82F6;
-  /* Blue Energy (Interactions) */
+  --color-energy: #007AFF;
+  /* Apple Blue */
+
+  /* FLUID TOKENS */
+  --radius-fluid: 2rem;
+  /* 32px - Organic large corners */
+  --radius-inner: 1.5rem;
+  /* 24px - Nested corners */
+  --blur-glass: 24px;
+  /* High quality blur */
+
+  /* SPRING EASING */
+  --ease-spring: cubic-bezier(0.3, 1.5, 0.6, 1);
+  /* Organic springy feel */
+  --ease-fluid: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme {
@@ -44,6 +75,8 @@
   --color-dim: var(--color-dim);
   --color-photon: var(--color-photon);
   --color-energy: var(--color-energy);
+  
+  --radius-fluid: var(--radius-fluid);
 }
 
 /* =========================================================================================
@@ -55,6 +88,7 @@ html {
   -webkit-font-smoothing: antialiased;
   background-color: var(--color-void);
   color: var(--color-light);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -74,244 +108,240 @@ h5,
 h6 {
   font-family: var(--font-family-display);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--color-photon);
 }
 
 /* =========================================================================================
-   AETHER COMPONENTS (Glass & Light)
+   FLUID COMPONENTS (Glass & Depth)
    ========================================================================================= */
 
 @layer components {
 
-  /* The Aether Card: Glass on Void */
+  /* The Fluid Card: Depth and Soft Borders */
   .aether-card {
-    background-color: rgba(18, 18, 18, 0.6);
-    /* Semi-transparent Matter */
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    /* Subtle Light Border */
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    background-color: var(--color-glass);
+    backdrop-filter: blur(var(--blur-glass));
+    -webkit-backdrop-filter: blur(var(--blur-glass));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.18); /* Light sheen on top */
+    border-radius: var(--radius-fluid);
+    box-shadow: 
+      0 10px 40px -10px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset; /* Soft inner bevel */
+    transition: all 0.4s var(--ease-spring);
   }
 
   .aether-card:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    /* Brighter Border on Hover */
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 
+      0 20px 50px -15px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  }
+  
+  /* Disable hover float for modal containers */
+  .aether-card.surface-island:hover,
+  .surface-island.aether-card:hover {
+    transform: none;
+  }
+
+  .fluid-glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-fluid);
   }
 }
 
-/* Buttons: Photonic Interfaces */
+/* Buttons: Fluid Interfaces */
 .btn-aether {
   font-family: var(--font-family-display);
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  transition: all 0.2s ease;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-radius: 1rem;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s var(--ease-spring);
   cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.75rem;
 
-  /* Default: Ghost/Outline */
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Default: Glass/Outline */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--color-light);
 }
 
 .btn-aether:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: var(--color-photon);
-  color: var(--color-photon);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
-  /* Glow */
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
 }
 
 .btn-aether-primary {
-  background: var(--color-photon);
+  background: var(--color-light);
   color: var(--color-void);
-  border: 1px solid var(--color-photon);
+  border: 1px solid var(--color-light);
 }
 
 .btn-aether-primary:hover {
   background: white;
-  /* Brighter */
   color: var(--color-void) !important;
-  /* Keep dark text on white background - !important to override btn-aether */
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-  /* Strong Glow */
-  transform: translateY(-1px);
+  box-shadow: 0 10px 30px -5px rgba(255, 255, 255, 0.3);
 }
 
 /* Inputs */
 input,
 textarea {
-  background: rgba(0, 0, 0, 0.3) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: var(--color-photon) !important;
-  border-radius: 8px !important;
-  transition: all 0.2s ease;
+  border-radius: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  transition: all 0.3s var(--ease-fluid);
 }
 
 input:focus,
 textarea:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
   border-color: var(--color-energy) !important;
-  box-shadow: 0 0 0 1px var(--color-energy), 0 0 12px rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2) !important;
   outline: none;
 }
 
-/* Scrollbar (Minimal) */
+/* Scrollbar (Fluid Minimal) */
 ::-webkit-scrollbar {
-  width: 8px;
-  background: var(--color-void);
+  width: 6px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Image Loading Transition */
+img {
+  transition: opacity 0.5s var(--ease-fluid);
+}
+
 img.loaded {
   opacity: 1;
 }
 
 /* =========================================================================================
-   HOME ORB (Navigation)
+   FLUID TOOLBAR ANIMATIONS
    ========================================================================================= */
 
-@keyframes orb-pulse {
-  0% {
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
-    transform: scale(1);
-  }
-
-  50% {
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
-    transform: scale(1.05);
-  }
-
-  100% {
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
-    transform: scale(1);
-  }
+@keyframes toolbar-pop {
+  0% { transform: translate(-50%, 20px) scale(1); opacity: 0; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
 }
 
-@keyframes orb-glow-strong {
-  0% {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
-  }
-
-  50% {
-    box-shadow: 0 0 30px rgba(255, 255, 255, 0.9);
-  }
-
-  100% {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
-  }
-}
-
-.home-orb {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.home-orb-active {
-  animation: orb-pulse 4s infinite ease-in-out;
-  background: white;
-  opacity: 1;
-}
-
-.home-orb-inactive {
-  opacity: 0.5;
-  transform: scale(0.85);
-  background: transparent !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
-}
-
-.home-orb-inactive:hover {
-  opacity: 1;
-  transform: scale(1);
-  background: white !important;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+#fluid-toolbar-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: toolbar-pop 0.6s var(--ease-spring) forwards;
 }
 
 /* =========================================================================================
-   CREATE ORB (Radial Menu)
+   RESPONSIVE SURFACES (Sheets vs. Islands)
    ========================================================================================= */
 
-.radial-menu-item {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(10, 10, 10, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.surface-overlay {
+  position: fixed;
+  inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 200;
+  padding: 1rem;
   pointer-events: none;
+  justify-content: center;
 }
 
-.radial-menu-open .radial-menu-item {
-  opacity: 1;
+.surface-island {
   pointer-events: auto;
-}
-
-/* Radial Positions (Arc from top to left) */
-.radial-menu-open .radial-menu-item:nth-child(1) {
-  transform: translateY(-70px) scale(1);
-  transition-delay: 0.05s;
-}
-
-.radial-menu-open .radial-menu-item:nth-child(2) {
-  transform: translate(-50px, -50px) scale(1);
-  transition-delay: 0.1s;
-}
-
-.radial-menu-open .radial-menu-item:nth-child(3) {
-  transform: translate(-70px, 0) scale(1);
-  transition-delay: 0.15s;
-}
-
-.radial-menu-open .radial-menu-item:nth-child(4) {
-  transform: translate(-40px, -90px) scale(1);
-  transition-delay: 0.2s;
-}
-
-/* Optional 4th item further out */
-
-/* =========================================================================================
-   ORB BUFFER ZONE (Transparent Clickable Area)
-   ========================================================================================= */
-
-.orb-hitzone {
-  width: 48px;
-  height: 48px;
+  position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-abyss);
+}
+
+/* Mobile: Bottom Sheet */
+@media (max-width: 1023px) {
+  .surface-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  
+  .surface-island {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 0;
+    border-radius: var(--radius-fluid) var(--radius-fluid) 0 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    animation: sheet-slide-up 0.5s var(--ease-spring);
+    max-height: 92vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Override aether-card rounded corners on mobile sheets */
+  .surface-island.aether-card {
+    border-radius: var(--radius-fluid) var(--radius-fluid) 0 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+}
+
+/* Desktop: Centered Island */
+@media (min-width: 1024px) {
+  .surface-overlay {
+    align-items: center;
+  }
+  
+  .surface-island {
+    width: auto;
+    border-radius: var(--radius-fluid) !important;
+    animation: island-pop 0.5s var(--ease-spring);
+    max-height: 85vh;
+  }
+}
+
+@keyframes sheet-slide-up {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes island-pop {
+  0% { transform: scale(0.9) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Drag Handle for Sheets */
+.sheet-handle {
+  width: 100%;
+  padding-top: 1rem;
+  padding-bottom: 0.5rem;
+  display: flex;
   justify-content: center;
   cursor: pointer;
-  border-radius: 50%;
-  transition: background 0.2s ease, transform 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.orb-hitzone:hover {
-  background: rgba(255, 255, 255, 0.05);
+.sheet-handle > div {
+  width: 32px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 
-.orb-hitzone:hover>div {
-  transform: scale(1.15);
-  background: white;
-}
-
-.orb-hitzone:active {
-  transform: scale(0.95);
+@media (min-width: 1024px) {
+  .sheet-handle { display: none; }
 }

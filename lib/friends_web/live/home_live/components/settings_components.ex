@@ -13,67 +13,66 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
   def settings_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div
-        class="fixed inset-0 z-[100]"
-        phx-window-keydown="close_settings_modal"
-        phx-key="escape"
-      >
-        <!-- Backdrop -->
+      <div class="surface-overlay" style="z-index: 300;">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" phx-click="close_settings_modal"></div>
+
         <div 
-          class="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" 
-          phx-click="close_settings_modal"
-        ></div>
-
-        <!-- Modal Content -->
-        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-          <div class="aether-card w-full max-w-2xl h-[600px] max-h-[90vh] flex overflow-hidden rounded-2xl shadow-2xl bg-black/95 pointer-events-auto animate-in zoom-in-95 duration-200 border border-white/10">
-            
-            <!-- Sidebar -->
-            <div class="w-48 border-r border-white/10 bg-white/5 flex flex-col">
-              <div class="p-4 border-b border-white/5">
-                <h2 class="font-bold text-white">Settings</h2>
-              </div>
-              
-              <nav class="flex-1 p-2 space-y-1">
-                <button
-                  phx-click="switch_settings_tab"
-                  phx-value-tab="profile"
-                  class={"w-full text-left px-3 py-2 rounded-lg text-sm transition-colors #{if @tab == "profile", do: "bg-white/10 text-white font-medium", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
-                >
-                  Profile
-                </button>
-                <button
-                  phx-click="switch_settings_tab"
-                  phx-value-tab="general"
-                  class={"w-full text-left px-3 py-2 rounded-lg text-sm transition-colors #{if @tab == "general", do: "bg-white/10 text-white font-medium", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
-                >
-                  General
-                </button>
-              </nav>
-              
-              <div class="p-2 border-t border-white/5">
-                <button
-                  phx-click="sign_out"
-                  class="w-full text-left px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                >
-                  <span>🚪</span> Sign Out
-                </button>
-              </div>
-            </div>
-
-            <!-- Content Area -->
-            <div class="flex-1 flex flex-col min-w-0 bg-black/40">
-              <div class="flex items-center justify-between p-4 border-b border-white/10">
-                <h3 class="font-bold text-white text-lg capitalize">{@tab}</h3>
-                <button phx-click="close_settings_modal" class="text-neutral-400 hover:text-white">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+          id="settings-modal-container"
+          class="surface-island aether-card w-full max-w-4xl h-[85vh] md:h-[80vh] flex flex-col shadow-[0_30px_100px_rgba(0,0,0,0.8)] rounded-t-[2rem] rounded-b-none lg:rounded-b-[2rem]"
+          phx-window-keydown="close_settings_modal"
+          phx-key="escape"
+        >
+          <div class="sheet-handle" phx-click="close_settings_modal"><div></div></div>
+          
+          <div class="flex flex-1 overflow-hidden">
+              <!-- Sidebar -->
+              <div class="w-20 md:w-48 border-r border-white/10 bg-white/5 flex flex-col">
+                <div class="p-4 border-b border-white/5 hidden md:block">
+                  <h2 class="font-bold text-white">Settings</h2>
+                </div>
+                
+                <nav class="flex-1 p-2 space-y-1">
+                  <button
+                    phx-click="switch_settings_tab"
+                    phx-value-tab="profile"
+                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "profile", do: "bg-white/10 text-white font-medium", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                  >
+                    <span class="md:hidden text-lg">👤</span>
+                    <span class="hidden md:inline">Profile</span>
+                  </button>
+                  <button
+                    phx-click="switch_settings_tab"
+                    phx-value-tab="general"
+                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "general", do: "bg-white/10 text-white font-medium", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                  >
+                    <span class="md:hidden text-lg">⚙️</span>
+                    <span class="hidden md:inline">General</span>
+                  </button>
+                </nav>
+                
+                <div class="p-2 border-t border-white/5">
+                  <button
+                    phx-click="sign_out"
+                    class="w-full text-center md:text-left px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center justify-center md:justify-start gap-2"
+                  >
+                    <span>🚪</span> <span class="hidden md:inline">Sign Out</span>
+                  </button>
+                </div>
               </div>
 
-              <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                <%= case @tab do %>
+              <!-- Content Area -->
+              <div class="flex-1 flex flex-col min-w-0 bg-black/40">
+                <div class="flex items-center justify-between p-4 md:p-6 border-b border-white/10">
+                  <h3 class="font-bold text-white text-lg md:text-xl capitalize">{@tab}</h3>
+                  <button phx-click="close_settings_modal" class="text-white/30 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+                  <%= case @tab do %>
                   <% "profile" -> %>
                     <div class="space-y-8">
                       <!-- Identity Card -->
@@ -157,35 +156,30 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
   def network_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div
-        class="fixed inset-0 z-[100]"
-        phx-window-keydown="close_network_modal"
-        phx-key="escape"
-      >
-        <!-- Backdrop -->
-        <div 
-          class="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" 
-          phx-click="close_network_modal"
-        ></div>
+      <div class="surface-overlay" style="z-index: 200;">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" phx-click="close_network_modal"></div>
 
-        <!-- Modal Content -->
-        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-          <div class="aether-card w-full max-w-4xl h-[700px] max-h-[90vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl bg-black/95 pointer-events-auto animate-in zoom-in-95 duration-200 border border-white/10">
+        <div 
+          class="surface-island aether-card w-full max-w-4xl h-[700px] rounded-t-[2rem] rounded-b-none lg:rounded-b-[2rem]"
+          phx-window-keydown="close_network_modal"
+          phx-key="escape"
+        >
+          <div class="sheet-handle" phx-click="close_network_modal"><div></div></div>
             
             <!-- Header -->
-            <div class="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+            <div class="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
               <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                 </div>
                 <div>
-                  <h2 class="font-bold text-white text-lg">Network</h2>
-                  <p class="text-xs text-neutral-400">Manage connections and trust</p>
+                  <h2 class="font-bold text-white text-xl tracking-tight">Network</h2>
+                  <p class="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-0.5">Manage connections</p>
                 </div>
               </div>
               
-              <button phx-click="close_network_modal" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              <button phx-click="close_network_modal" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
@@ -194,21 +188,21 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
               <button
                 phx-click="switch_network_tab"
                 phx-value-tab="friends"
-                class={"px-4 py-2 rounded-lg text-sm font-medium transition-colors #{if @tab == "friends", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "friends", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
               >
                 Friends
               </button>
               <button
                 phx-click="switch_network_tab"
                 phx-value-tab="requests"
-                class={"px-4 py-2 rounded-lg text-sm font-medium transition-colors #{if @tab == "requests", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "requests", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
               >
-                Requests <span class="bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 rounded ml-1">{length(@pending_requests || [])}</span>
+                Requests <span class="bg-red-500 text-white text-[10px] px-1.5 rounded-full ml-1">{length(@pending_requests || [])}</span>
               </button>
               <button
                 phx-click="switch_network_tab"
                 phx-value-tab="search"
-                class={"px-4 py-2 rounded-lg text-sm font-medium transition-colors #{if @tab == "search", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "search", do: "bg-white/10 text-white", else: "text-white/40 hover:text-white hover:bg-white/5"}"}
               >
                 Find People
               </button>
@@ -310,7 +304,6 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
             </div>
           </div>
         </div>
-      </div>
     <% end %>
     """
   end
@@ -323,40 +316,35 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
   def devices_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div
-        class="fixed inset-0 z-[100]"
-        phx-window-keydown="close_devices_modal"
-        phx-key="escape"
-      >
-        <!-- Backdrop -->
-        <div 
-          class="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" 
-          phx-click="close_devices_modal"
-        ></div>
+      <div class="surface-overlay" style="z-index: 200;">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" phx-click="close_devices_modal"></div>
 
-        <!-- Modal Content -->
-        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-          <div class="aether-card w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden rounded-2xl shadow-2xl bg-black/95 pointer-events-auto animate-in zoom-in-95 duration-200 border border-white/10">
+        <div 
+          class="surface-island aether-card w-full max-w-2xl max-h-[80vh] rounded-t-[2rem] rounded-b-none lg:rounded-b-[2rem]"
+          phx-window-keydown="close_devices_modal"
+          phx-key="escape"
+        >
+          <div class="sheet-handle" phx-click="close_devices_modal"><div></div></div>
             
             <!-- Header -->
-            <div class="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            <div class="p-8 border-b border-white/10 flex items-center justify-between bg-white/5">
+              <div class="flex items-center gap-6">
+                <div class="w-14 h-14 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
+                  <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                 </div>
                 <div>
-                  <h2 class="font-bold text-white text-xl">Devices</h2>
-                  <p class="text-sm text-neutral-400">Manage your active sessions</p>
+                  <h2 class="font-bold text-white text-2xl tracking-tight">Devices</h2>
+                  <p class="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-0.5">Manage active sessions</p>
                 </div>
               </div>
               
-              <button phx-click="close_devices_modal" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              <button phx-click="close_devices_modal" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors cursor-pointer">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
             <!-- Content -->
-            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
               <div class="space-y-4">
                 <%= if @devices == [] do %>
                   <div class="text-center py-12 text-neutral-500">
@@ -365,10 +353,10 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                 <% else %>
                   <%= for device <- @devices do %>
                     <div class={[
-                      "aether-card p-4 rounded-xl border flex items-center gap-4 transition-colors",
-                      # Highlight current device if ID matches (logic needs to be robust, using fingerprint usually)
-                      # For now just list them.
-                      "border-white/10 bg-white/5"
+                       "aether-card p-4 rounded-xl border flex items-center gap-4 transition-colors",
+                       # Highlight current device if ID matches (logic needs to be robust, using fingerprint usually)
+                       # For now just list them.
+                       "border-white/10 bg-white/5"
                     ]}>
                       <div class="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -390,10 +378,10 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                       </div>
                       
                       <button 
-                        class="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider px-3 py-1.5 hover:bg-red-500/10 rounded transition-colors cursor-pointer"
-                        phx-click="revoke_device"
-                        phx-value-id={device.id}
-                        data-confirm="Are you sure you want to revoke this device? It will be logged out."
+                         class="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider px-3 py-1.5 hover:bg-red-500/10 rounded transition-colors cursor-pointer"
+                         phx-click="revoke_device"
+                         phx-value-id={device.id}
+                         data-confirm="Are you sure you want to revoke this device? It will be logged out."
                       >
                         Revoke
                       </button>
@@ -408,11 +396,9 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                   <div class="text-sm text-neutral-300">
                     <p class="font-bold text-blue-400 mb-1">Security Note</p>
                     <p>Revoking a device will invalidate its access tokens. If you suspect unauthorized access, revoke the device and rotate your keys.</p>
-                  </div>
                 </div>
               </div>
             </div>
-            
           </div>
         </div>
       </div>

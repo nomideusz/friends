@@ -147,29 +147,29 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
     <%= if @item.type == :photo or @item.type == "photo" do %>
       <div
         id={@id}
-        class="photo-item aether-card group relative aspect-square overflow-hidden cursor-pointer transition-all hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
+        class="photo-item aether-card group relative aspect-square overflow-hidden cursor-pointer animate-in fade-in zoom-in-95 duration-300"
         phx-click="view_feed_photo"
         phx-value-photo_id={@item.id}
       >
         <%= if is_binary(@item[:content_type]) && String.starts_with?(@item.content_type, "audio/") do %>
-          <div class="w-full h-full flex flex-col items-center justify-center p-3 sm:p-4 text-center relative overflow-hidden" onclick="event.stopPropagation();">
+          <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center relative overflow-hidden" onclick="event.stopPropagation();">
             <!-- Decorative wave background -->
             <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMTBoMThNMTAgMXYxOCIgc3Ryb2tlPSJjdXJyZW50Q29xvciBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIC8+PC9zdmc+');"></div>
             
             <div class="relative z-10 flex flex-col items-center w-full">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 sm:mb-3 ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3 border border-white/20 group-hover:scale-110 transition-transform duration-300">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
               
-              <span class="text-[10px] font-medium text-neutral-400 uppercase tracking-widest mb-2">Voice Note</span>
+              <span class="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3">Voice Note</span>
               
-              <audio controls src={@item.image_data} class="w-full h-6 sm:h-7 max-w-[120px] sm:max-w-[140px] opacity-90 hover:opacity-100 transition-opacity" style="transform: scale(0.85);" onclick="event.stopPropagation();" />
+              <audio controls src={@item.image_data} class="w-full h-7 max-w-[140px] opacity-90 transition-opacity" style="transform: scale(0.9);" onclick="event.stopPropagation();" />
               
-              <div class="mt-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-900 border border-white/10 shadow-sm">
-                <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name || "unknown"}</span>
+              <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 shadow-sm">
+                <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                <span class="text-[10px] text-white/50 font-bold uppercase tracking-tight">@{@item.user_name || "unknown"}</span>
               </div>
             </div>
           </div>
@@ -177,12 +177,10 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
           <img
             src={@item.thumbnail_data || @item[:image_data]}
             alt="Feed photo"
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
           />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-            <div class="absolute bottom-2 left-2 right-2">
-              <div class="text-xs font-bold text-neutral-500 truncate">@{@item.user_name || "unknown"}</div>
-            </div>
+          <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div class="text-[10px] font-bold text-white/70 uppercase tracking-wider">@{@item.user_name || "unknown"}</div>
           </div>
         <% end %>
       </div>
@@ -190,23 +188,23 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
       <%!-- Note item --%>
       <div
         id={@id}
-        class="note-item aether-card group relative aspect-square overflow-hidden cursor-pointer transition-all hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
+        class="note-item aether-card group relative aspect-square overflow-hidden cursor-pointer animate-in fade-in zoom-in-95 duration-300"
         phx-click="view_feed_note"
         phx-value-note_id={@item.id}
       >
-        <div class="w-full h-full p-4 flex flex-col">
+        <div class="w-full h-full p-6 flex flex-col">
           <div class="flex-1 overflow-hidden">
-            <p class="text-sm text-neutral-200 line-clamp-6">{@item.content || ""}</p>
+            <p class="text-sm sm:text-base text-white/90 font-medium leading-relaxed line-clamp-6">{@item.content || ""}</p>
           </div>
           
-          <div class="mt-2 pt-2 border-t border-neutral-200">
+          <div class="mt-4 pt-4 border-t border-white/10">
             <div class="flex items-center gap-2">
               <div
-                class="w-5 h-5 rounded-full"
+                class="w-6 h-6 rounded-full border border-white/10 shadow-inner"
                 style={"background-color: #{@item.user_color || "#888"}"}
               >
               </div>
-               <span class="text-xs text-neutral-500 truncate">@{@item.user_name || "unknown"}</span>
+               <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest truncate">@{@item.user_name || "unknown"}</span>
             </div>
           </div>
         </div>

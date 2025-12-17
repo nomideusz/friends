@@ -41,14 +41,15 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
         ></div>
       <% end %>
 
-      <%!-- Drawer --%>
-      <div
-        id={@id}
-        phx-hook="SwipeableDrawer"
-        data-close-event={@close_event}
-        class={"fixed inset-x-0 bottom-0 #{@height} bg-[#0A0A0A] border-t border-white/10 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom duration-300 flex flex-col overflow-hidden"}
-        style={"z-index: #{@z_index}"}
-      >
+      <%!-- Responsive Surface Wrapper --%>
+      <div class="surface-overlay" style={"z-index: #{@z_index}"}>
+        <%!-- Drawer Island --%>
+        <div
+          id={@id}
+          phx-hook="SwipeableDrawer"
+          data-close-event={@close_event}
+          class={"surface-island aether-card #{@height} shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col"}
+        >
         <%!-- Drag Handle --%>
         <div
           class="w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing shrink-0 touch-none"
@@ -70,6 +71,7 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
         <%!-- Content --%>
         <div class="flex-1 overflow-y-auto overflow-x-hidden">
           {render_slot(@inner_block)}
+        </div>
         </div>
       </div>
     <% end %>
