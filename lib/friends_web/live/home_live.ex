@@ -623,6 +623,22 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("close_nav_menu", _params, socket) do
     {:noreply, assign(socket, :show_nav_menu, false)}
   end
+
+  # Long-press nav orb reveals fullscreen graph (hidden power user feature)
+  def handle_event("show_fullscreen_graph", _params, socket) do
+    graph_data = FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data()
+    {:noreply,
+     socket
+     |> assign(:show_fullscreen_graph, true)
+     |> assign(:fullscreen_graph_data, graph_data)}
+  end
+
+  def handle_event("close_fullscreen_graph", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_fullscreen_graph, false)
+     |> assign(:fullscreen_graph_data, nil)}
+  end
   
   def handle_event("go_to_dashboard", _params, socket) do
     {:noreply, 

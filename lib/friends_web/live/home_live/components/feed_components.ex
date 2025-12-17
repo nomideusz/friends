@@ -98,11 +98,27 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
     """
   end
 
+  attr :welcome_graph_data, :map, default: nil
+  attr :current_user_id, :any, default: nil
+
   def empty_feed(assigns) do
     ~H"""
-    <div id="empty-feed-container" class="fixed inset-0 z-0 pointer-events-none" phx-update="ignore">
-       <%!-- Background Global Graph is rendered in layout --%>
-    </div>
+    <%= if @welcome_graph_data do %>
+      <%!-- Live network graph for new users --%>
+      <div id="empty-feed-graph" class="fixed inset-0 z-0" phx-update="ignore">
+        <div
+          id="welcome-graph"
+          phx-hook="WelcomeGraph"
+          class="w-full h-full"
+          data-graph-data={Jason.encode!(@welcome_graph_data)}
+          data-current-user-id={@current_user_id}
+          data-always-show="true">
+        </div>
+      </div>
+    <% else %>
+      <%!-- Pure void when no graph data --%>
+      <div id="empty-feed-container" class="min-h-[60vh]"></div>
+    <% end %>
     """
   end
 

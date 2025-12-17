@@ -6,10 +6,18 @@
     export let graphData = null;
     export let live = null;
     export let onSkip = null;
-    // Whether to show the "Don't show again" checkbox (false for new users)
-    export let showOptOut = true;
     // Whether to hide controls and fixed positioning (for background usage)
     export let hideControls = false;
+    // Current user ID for highlighting
+    export let currentUserId = null;
+    
+    // Aether palette (subtle)
+    const COLORS = {
+        light: '#EAE6DD',      // Primary text
+        dim: '#888888',        // Secondary
+        energy: '#3B82F6',     // Blue accent (connections)
+        you: '#14B8A6',        // Teal/cyan (current user) - blue-green mix
+    };
 
     let container;
     let svg;
@@ -17,12 +25,12 @@
     let width = 800;
     let height = 600;
     let animationFrame;
-    let dontShowAgain = false;
     
     // Live update state
     let nodesData = [];
     let linksData = [];
     let nodeGroup;
+    let labelGroup;
     let linkGroup;
     let nodeMap = new Map();
     
@@ -289,17 +297,17 @@
              });
         }
         
-        // For mobile, zoom out significantly more to show all nodes
+        // For mobile, zoom in a bit more for better visibility
         // For desktop, use a slightly tighter view
-        const contentSize = isMobile ? 600 : 350;
+        const contentSize = isMobile ? 500 : 350;
         const minDimension = Math.min(width, height);
-        const padding = isMobile ? 80 : 20;
+        const padding = isMobile ? 60 : 20;
         
         let initialScale = (minDimension - padding) / contentSize;
-        // Cap max zoom, allow zooming out more for mobile
-        initialScale = Math.min(initialScale, isMobile ? 0.6 : 1.2);
+        // Cap max zoom - allow closer view on mobile
+        initialScale = Math.min(initialScale, isMobile ? 0.85 : 1.2);
         // Ensure minimum zoom for very small screens
-        initialScale = Math.max(initialScale, 0.2);
+        initialScale = Math.max(initialScale, 0.3);
 
         const initialTransform = d3.zoomIdentity
             .translate(width / 2, height / 2)
@@ -310,6 +318,7 @@
         // Create groups - store references for live updates
         linkGroup = mainGroup.append("g").attr("class", "links");
         nodeGroup = mainGroup.append("g").attr("class", "nodes");
+        labelGroup = mainGroup.append("g").attr("class", "labels");
         
         // Store data for live updates
         nodesData = data.nodes;
@@ -318,10 +327,11 @@
         nodeMap.clear();
         nodesData.forEach(n => nodeMap.set(n.id, n));
 
-        // Simulation - use smaller forces on mobile to keep nodes closer
-        const linkDistance = isMobile ? 40 : 80;
-        const chargeStrength = isMobile ? -50 : -100;
-        const collideRadius = isMobile ? 12 : 15;
+        // Simulation - tighter clustering on mobile, lonely nodes pulled to center
+        const linkDistance = isMobile ? 45 : 70;
+        const chargeStrength = isMobile ? -45 : -80;
+        const collideRadius = isMobile ? 10 : 12;
+        const centerStrength = isMobile ? 0.06 : 0.03; // Pull lonely nodes to center
         
         simulation = d3
             .forceSimulation(nodesData)
@@ -334,32 +344,59 @@
             )
             .force("charge", d3.forceManyBody().strength(chargeStrength))
             .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("x", d3.forceX(width / 2).strength(centerStrength))
+            .force("y", d3.forceY(height / 2).strength(centerStrength))
             .force("collide", d3.forceCollide().radius(collideRadius));
 
-        // Draw edges - monochrome
+        // Draw edges - subtle energy blue
         const links = linkGroup
             .selectAll("line")
             .data(data.links)
             .join("line")
-            .attr("stroke", "#ffffff")
-            .attr("stroke-opacity", 0.08)
-            .attr("stroke-width", 1);
+            .attr("stroke", COLORS.energy)
+            .attr("stroke-opacity", isMobile ? 0.18 : 0.15)
+            .attr("stroke-width", isMobile ? 1.5 : 1);
 
-        // Draw nodes - larger on mobile for better touch interaction
-        const nodeRadius = isMobile ? 8 : 5;
+        // Draw nodes - same size for all, visually distinctive current user
+        const nodeRadius = isMobile ? 5 : 5;
+        const currentUserIdStr = currentUserId ? String(currentUserId) : null;
+        
+        // No outer ring - self node is just blue, others are white
+        
+        
         const nodes = nodeGroup
             .selectAll("circle")
             .data(data.nodes)
             .join("circle")
             .attr("r", nodeRadius)
-            .attr("fill", "#ffffff")
-            .attr("stroke", "#ffffff")
-            .attr("stroke-opacity", 0.2)
+            .attr("fill", d => d.id === currentUserIdStr ? COLORS.energy : "#ffffff")
+            .attr("stroke", d => d.id === currentUserIdStr ? COLORS.energy : "#ffffff")
+            .attr("stroke-opacity", 0.5)
             .attr("stroke-width", 1)
             .attr("filter", "url(#node-glow)")
-            // Reduced opacity for background mode
-            .style("fill-opacity", hideControls ? 0.4 : 0.8)
-            .style("cursor", "default")
+            .style("fill-opacity", d => {
+                if (d.id === currentUserIdStr) return 1;
+                return hideControls ? 0.5 : 0.85;
+            })
+            .style("cursor", "pointer")
+            .on("mouseenter", function(event, d) {
+                if (d.id === currentUserIdStr) return;
+                showLabel(d);
+                // Highlight on hover
+                d3.select(this)
+                    .transition().duration(150)
+                    .attr("r", nodeRadius + 1.5)
+                    .style("fill-opacity", 1);
+            })
+            .on("mouseleave", function(event, d) {
+                if (d.id === currentUserIdStr) return;
+                hideLabel(d);
+                // Return to normal
+                d3.select(this)
+                    .transition().duration(150)
+                    .attr("r", nodeRadius)
+                    .style("fill-opacity", hideControls ? 0.5 : 0.85);
+            })
             .call(
                 d3
                     .drag()
@@ -379,6 +416,59 @@
                         d.fy = null;
                     }),
             );
+        
+        // Add current user's label (always visible)
+        if (currentUserIdStr) {
+            const currentUserNode = data.nodes.find(n => n.id === currentUserIdStr);
+            if (currentUserNode) {
+                labelGroup
+                    .append("text")
+                    .attr("class", "current-user-label")
+                    .attr("data-node-id", currentUserIdStr)
+                    .attr("x", currentUserNode.x)
+                    .attr("y", currentUserNode.y - nodeRadius - 6)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", COLORS.light)
+                    .attr("font-size", "8px")
+                    .attr("font-family", "'IBM Plex Mono', monospace")
+                    .attr("font-weight", "400")
+                    .attr("letter-spacing", "0.05em")
+                    .style("opacity", 0.8)
+                    .text(currentUserNode.username || currentUserNode.name || 'you');
+            }
+        }
+        
+        // Helper: show label on hover
+        function showLabel(d) {
+            const label = labelGroup.select(`text[data-node-id="${d.id}"]`);
+            if (label.empty()) {
+                labelGroup
+                    .append("text")
+                    .attr("data-node-id", d.id)
+                    .attr("x", d.x)
+                    .attr("y", d.y - nodeRadius - 6)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", COLORS.dim)
+                    .attr("font-size", "8px")
+                    .attr("font-family", "'IBM Plex Mono', monospace")
+                    .attr("font-weight", "400")
+                    .attr("letter-spacing", "0.05em")
+                    .style("opacity", 0)
+                    .text(d.username || d.name || d.id)
+                    .transition()
+                    .duration(150)
+                    .style("opacity", 0.8);
+            }
+        }
+        
+        // Helper: hide label on hover out
+        function hideLabel(d) {
+            labelGroup.select(`text[data-node-id="${d.id}"]:not(.current-user-label)`)
+                .transition()
+                .duration(150)
+                .style("opacity", 0)
+                .remove();
+        }
 
         // Tick handler - uses selectAll to include dynamically added elements
         simulation.on("tick", () => {
@@ -389,10 +479,25 @@
                 .attr("x2", (d) => d.target.x)
                 .attr("y2", (d) => d.target.y);
 
-            // Query all current nodes from the group (includes dynamically added ones)
+            // Query all current nodes
             nodeGroup.selectAll("circle")
                 .attr("cx", (d) => d.x)
                 .attr("cy", (d) => d.y);
+            
+            // Update label positions
+            labelGroup.selectAll("text")
+                .attr("x", function() {
+                    const nodeId = d3.select(this).attr("data-node-id");
+                    const node = nodesData.find(n => n.id === nodeId);
+                    return node ? node.x : 0;
+                })
+                .attr("y", function() {
+                    const nodeId = d3.select(this).attr("data-node-id");
+                    const node = nodesData.find(n => n.id === nodeId);
+                    const isCurrentUser = d3.select(this).classed("current-user-label");
+                    const offset = isCurrentUser ? nodeRadius * 2 + 4 : nodeRadius + 6;
+                    return node ? node.y - offset : 0;
+                });
         });
     }
 
@@ -471,37 +576,4 @@
 
     <!-- Graph Container -->
     <div bind:this={container} class="w-full h-full relative z-10"></div>
-
-
-    <!-- Controls (bottom-right) -->
-    {#if !hideControls}
-        <div class="absolute bottom-10 right-10 flex flex-col items-end gap-3 z-20">
-            <button
-                on:click={handleSkip}
-                class="text-white/40 hover:text-white/90 text-xs font-mono tracking-[0.2em] uppercase transition-all duration-300 cursor-pointer flex items-center gap-2 group"
-            >
-                Proceed <span class="group-hover:translate-x-1 transition-transform">→</span>
-            </button>
-
-            {#if showOptOut}
-                <label
-                    class="group flex items-center gap-3 cursor-pointer select-none mt-2"
-                >
-                    <div class="relative w-3 h-3 border border-white/10 rounded-sm group-hover:border-white/30 transition-colors">
-                        {#if dontShowAgain}
-                            <div class="absolute inset-0 bg-white/60 m-0.5 rounded-[1px]"></div>
-                        {/if}
-                    </div>
-                    <input
-                        type="checkbox"
-                        bind:checked={dontShowAgain}
-                        class="hidden"
-                    />
-                    <span class="text-[9px] text-white/20 font-mono uppercase tracking-widest group-hover:text-white/40 transition-colors">
-                        Don't show again
-                    </span>
-                </label>
-            {/if}
-        </div>
-    {/if}
 </div>

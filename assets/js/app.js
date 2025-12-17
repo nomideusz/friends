@@ -169,6 +169,7 @@ const Hooks = {
             // If user is new, don't show opt-out checkbox
             const isNewUser = this.el.dataset.isNewUser === 'true'
             const hideControls = this.el.dataset.hideControls === 'true'
+            const currentUserId = this.el.dataset.currentUserId || null
 
             // Svelte 5 mount
             this.component = mount(WelcomeGraph, {
@@ -177,7 +178,8 @@ const Hooks = {
                     graphData,
                     live: this,
                     showOptOut: !isNewUser,
-                    hideControls
+                    hideControls,
+                    currentUserId
                 }
             })
 
@@ -496,6 +498,51 @@ const Hooks = {
             // Hover events (desktop)
             this.el.addEventListener('mouseenter', handleMouseEnter)
             this.el.addEventListener('mouseleave', handleMouseLeave)
+        }
+    },
+
+    // Long-press nav orb for 3s to reveal fullscreen graph (hidden feature)
+    NavOrbLongPress: {
+        mounted() {
+            this.timer = null
+            this.held = false
+
+            const startPress = (e) => {
+                if (e.type === 'mousedown' && e.button !== 0) return
+                e.preventDefault()
+
+                this.held = false
+                this.timer = setTimeout(() => {
+                    this.held = true
+                    // Haptic feedback
+                    if (navigator.vibrate) navigator.vibrate([50, 50, 50])
+                    // Show fullscreen graph
+                    this.pushEvent("show_fullscreen_graph", {})
+                }, 3000) // 3 seconds
+            }
+
+            const endPress = (e) => {
+                if (this.timer) {
+                    clearTimeout(this.timer)
+                    this.timer = null
+                }
+
+                if (this.held) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    this.held = false
+                }
+            }
+
+            this.el.addEventListener('mousedown', startPress)
+            this.el.addEventListener('touchstart', startPress, { passive: false })
+            this.el.addEventListener('mouseup', endPress)
+            this.el.addEventListener('mouseleave', endPress)
+            this.el.addEventListener('touchend', endPress)
+            this.el.addEventListener('touchcancel', endPress)
+        },
+        destroyed() {
+            if (this.timer) clearTimeout(this.timer)
         }
     },
 
