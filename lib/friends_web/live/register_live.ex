@@ -142,13 +142,6 @@ defmodule FriendsWeb.RegisterLive do
     end
   end
 
-  defp format_webauthn_error(:origin_mismatch), do: "Origin mismatch - please reload the page"
-  defp format_webauthn_error(:rp_id_hash_mismatch), do: "Security verification failed"
-  defp format_webauthn_error(:challenge_mismatch), do: "Challenge expired - please try again"
-  defp format_webauthn_error({:webauthn_failed, reason}), do: format_webauthn_error(reason)
-  defp format_webauthn_error(reason) when is_atom(reason), do: to_string(reason) |> String.replace("_", " ")
-  defp format_webauthn_error(reason), do: inspect(reason)
-
   @impl true
   def handle_event("webauthn_register_error", %{"error" => error}, socket) do
     message =
@@ -159,6 +152,8 @@ defmodule FriendsWeb.RegisterLive do
 
     {:noreply, assign(socket, :error, message)}
   end
+
+
 
   @impl true
   def handle_event("noop", _params, socket), do: {:noreply, socket}
@@ -367,4 +362,11 @@ defmodule FriendsWeb.RegisterLive do
   end
 
   # Admin invite is unused in the current unified form; keep helper if needed later.
+
+  defp format_webauthn_error(:origin_mismatch), do: "Origin mismatch - please reload the page"
+  defp format_webauthn_error(:rp_id_hash_mismatch), do: "Security verification failed"
+  defp format_webauthn_error(:challenge_mismatch), do: "Challenge expired - please try again"
+  defp format_webauthn_error({:webauthn_failed, reason}), do: format_webauthn_error(reason)
+  defp format_webauthn_error(reason) when is_atom(reason), do: to_string(reason) |> String.replace("_", " ")
+  defp format_webauthn_error(reason), do: inspect(reason)
 end

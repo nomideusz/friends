@@ -63,7 +63,7 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
   end
 
   # Delegate to shared CardComponents
-  alias FriendsWeb.HomeLive.Components.CardComponents
+
 
   def feed_actions_bar(assigns) do
     assigns = assign(assigns, :upload_key, :feed_photo)

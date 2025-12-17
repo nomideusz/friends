@@ -180,7 +180,7 @@ const Hooks = {
                     hideControls
                 }
             })
-            
+
             // Listen for live network updates from server
             this.handleEvent("welcome_new_user", (userData) => {
                 console.log('[WelcomeGraph] New user joined:', userData)
@@ -188,14 +188,14 @@ const Hooks = {
                     this.component.addNode(userData)
                 }
             })
-            
+
             this.handleEvent("welcome_new_connection", ({ from_id, to_id }) => {
                 console.log('[WelcomeGraph] New connection:', from_id, '->', to_id)
                 if (this.component && this.component.addLink) {
                     this.component.addLink(from_id, to_id)
                 }
             })
-            
+
             this.handleEvent("welcome_connection_removed", ({ from_id, to_id }) => {
                 console.log('[WelcomeGraph] Connection removed:', from_id, '->', to_id)
                 if (this.component && this.component.removeLink) {
@@ -205,11 +205,11 @@ const Hooks = {
 
             // Pulse on signal (post)
             this.handleEvent("welcome_signal", ({ user_id }) => {
-                 if (this.component && this.component.pulseNode) {
-                     this.component.pulseNode(user_id)
-                 }
+                if (this.component && this.component.pulseNode) {
+                    this.component.pulseNode(user_id)
+                }
             })
-            
+
             this.handleEvent("welcome_user_deleted", ({ user_id }) => {
                 console.log('[WelcomeGraph] User deleted:', user_id)
                 if (this.component && this.component.removeNode) {
@@ -230,7 +230,7 @@ const Hooks = {
             const pendingCount = parseInt(this.el.dataset.pendingCount || '0', 10)
             const currentRoute = this.el.dataset.currentRoute || '/'
             const rooms = JSON.parse(this.el.dataset.rooms || '[]')
-            
+
             this.component = mount(CornerNavigation, {
                 target: this.el,
                 props: {
@@ -244,12 +244,12 @@ const Hooks = {
         },
         updated() {
             if (!this.component) return;
-            
+
             const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
             const pendingCount = parseInt(this.el.dataset.pendingCount || '0', 10)
             const currentRoute = this.el.dataset.currentRoute || '/'
             const rooms = JSON.parse(this.el.dataset.rooms || '[]')
-            
+
             // Update props directly on the component instance if supported by Svelte 5 mount return
             // For Svelte 5, the return value of mount is the exports object.
             // But we can't easily update props on the instance created by `mount` unless we use state/store or specific framework methods.
@@ -262,7 +262,7 @@ const Hooks = {
             // UNLESS the attributes on the container itself changes.
             // Wait, if phx-update="ignore" is present, LiveView patches the attributes of the container 
             // but ignores the content. So `updated()` IS called.
-            
+
             unmount(this.component)
             this.component = mount(CornerNavigation, {
                 target: this.el,
@@ -367,29 +367,7 @@ const Hooks = {
         }
     },
 
-    CopyToClipboard: {
-        mounted() {
-            this.el.addEventListener('click', async () => {
-                const targetId = this.el.dataset.copyTarget
-                const input = document.getElementById(targetId)
-                if (input) {
-                    try {
-                        await navigator.clipboard.writeText(input.value)
-                        const originalText = this.el.textContent
-                        this.el.textContent = '✓ Copied!'
-                        setTimeout(() => {
-                            this.el.textContent = originalText
-                        }, 2000)
-                    } catch (err) {
-                        // Fallback: select the input
-                        input.select()
-                        input.setSelectionRange(0, 99999)
-                        document.execCommand('copy')
-                    }
-                }
-            })
-        }
-    },
+
 
     ConstellationGraph: {
         mounted() {
@@ -459,11 +437,12 @@ const Hooks = {
         mounted() {
             this.timer = null
             this.held = false
-            
+            this.hovered = false
+
             const startPress = (e) => {
                 // Only left click or touch
                 if (e.type === 'mousedown' && e.button !== 0) return
-                
+
                 this.held = false
                 this.timer = setTimeout(() => {
                     this.held = true
@@ -472,69 +451,55 @@ const Hooks = {
                     this.pushEvent("show_breadcrumbs", {})
                 }, 500)
             }
-            
+
             const endPress = (e) => {
                 if (this.timer) {
                     clearTimeout(this.timer)
                     this.timer = null
                 }
-                
-                // If we held it, prevent the click navigation (if it was a long press)
-                // But typically the click handler is separate. 
-                // We rely on the fact that if 'held' becomes true, the click event logic
-                // in standard HTML might still fire, so we might need preventDefault() if intended.
-                // However, phx-click is declarative. 
-                // A simple trick: if we held, we can set a flag that the click handler checks? 
-                // No, phx-click doesn't easy check client side flags.
-                // Instead, we can just rely on the breadcrumb toggle happening.
-                // If user lifts finger after long press, it might count as a click and navigate HOME too.
-                // To prevent that, we can use e.preventDefault() if it WAS a long press?
+
+                // If we held it, prevent the click navigation
                 if (this.held) {
                     e.preventDefault()
                     e.stopPropagation()
                 }
             }
-            
+
+            // Hover behavior for desktop - show breadcrumbs on hover
+            const handleMouseEnter = () => {
+                if (!this.hovered) {
+                    this.hovered = true
+                    this.pushEvent("show_breadcrumbs", {})
+                }
+            }
+
+            const handleMouseLeave = () => {
+                if (this.hovered) {
+                    this.hovered = false
+                    // Hide breadcrumbs after a short delay (allows moving to breadcrumbs)
+                    setTimeout(() => {
+                        if (!this.hovered) {
+                            this.pushEvent("show_breadcrumbs", {})  // Toggle off
+                        }
+                    }, 300)
+                }
+            }
+
+            // Long-press events (mobile)
             this.el.addEventListener('mousedown', startPress)
-            this.el.addEventListener('touchstart', startPress, {passive: false}) // passive:false allows preventDefault
-            
+            this.el.addEventListener('touchstart', startPress, { passive: false })
             this.el.addEventListener('mouseup', endPress)
             this.el.addEventListener('mouseleave', endPress)
             this.el.addEventListener('touchend', endPress)
             this.el.addEventListener('touchcancel', endPress)
+
+            // Hover events (desktop)
+            this.el.addEventListener('mouseenter', handleMouseEnter)
+            this.el.addEventListener('mouseleave', handleMouseLeave)
         }
     },
 
-    // WebAuthn Login hook for authentication flow
-    WebAuthnLogin: {
-        mounted() {
-            // Handle WebAuthn authentication challenge
-            this.handleEvent("webauthn_login_challenge", async ({ options }) => {
-                try {
-                    console.log('[WebAuthnLogin] Challenge received, authenticating...')
-                    const credential = await authenticateWithCredential(options)
-                    console.log('[WebAuthnLogin] Credential obtained, sending to server...')
-                    this.pushEvent("webauthn_login_response", { credential })
-                } catch (error) {
-                    console.error('[WebAuthnLogin] Authentication failed:', error)
-                    this.pushEvent("webauthn_login_error", {
-                        error: error.name === 'NotAllowedError'
-                            ? 'Authentication cancelled'
-                            : error.message || 'Unknown error'
-                    })
-                }
-            })
 
-            // Handle login success - set cookie and redirect
-            this.handleEvent("login_success", ({ user_id }) => {
-                console.log('[WebAuthnLogin] Login successful for user:', user_id)
-                // Set cookie for session persistence
-                document.cookie = `friends_user_id=${user_id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
-                // Redirect to home
-                window.location.href = '/'
-            })
-        }
-    },
 
     // Unified WebAuthn hook for /auth page (handles both login and registration)
     WebAuthnAuth: {

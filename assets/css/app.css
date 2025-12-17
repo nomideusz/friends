@@ -83,6 +83,7 @@ h6 {
    ========================================================================================= */
 
 @layer components {
+
   /* The Aether Card: Glass on Void */
   .aether-card {
     background-color: rgba(18, 18, 18, 0.6);
@@ -182,15 +183,34 @@ img.loaded {
    ========================================================================================= */
 
 @keyframes orb-pulse {
-  0% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); transform: scale(1); }
-  50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.6); transform: scale(1.05); }
-  100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); transform: scale(1); }
+  0% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+    transform: scale(1.05);
+  }
+
+  100% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    transform: scale(1);
+  }
 }
 
 @keyframes orb-glow-strong {
-  0% { box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); }
-  50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.9); }
-  100% { box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); }
+  0% {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.9);
+  }
+
+  100% {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+  }
 }
 
 .home-orb {
@@ -200,18 +220,21 @@ img.loaded {
 .home-orb-active {
   animation: orb-pulse 4s infinite ease-in-out;
   background: white;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .home-orb-inactive {
-  opacity: 0.7;
-  transform: scale(0.9);
+  opacity: 0.5;
+  transform: scale(0.85);
+  background: transparent !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
 }
 
 .home-orb-inactive:hover {
   opacity: 1;
-  transform: scale(1.1);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  transform: scale(1);
+  background: white !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
 }
 
 /* =========================================================================================
@@ -242,8 +265,53 @@ img.loaded {
 }
 
 /* Radial Positions (Arc from top to left) */
-.radial-menu-open .radial-menu-item:nth-child(1) { transform: translateY(-70px) scale(1); transition-delay: 0.05s; }
-.radial-menu-open .radial-menu-item:nth-child(2) { transform: translate(-50px, -50px) scale(1); transition-delay: 0.1s; }
-.radial-menu-open .radial-menu-item:nth-child(3) { transform: translate(-70px, 0) scale(1); transition-delay: 0.15s; }
-.radial-menu-open .radial-menu-item:nth-child(4) { transform: translate(-40px, -90px) scale(1); transition-delay: 0.2s; } /* Optional 4th item further out */
+.radial-menu-open .radial-menu-item:nth-child(1) {
+  transform: translateY(-70px) scale(1);
+  transition-delay: 0.05s;
+}
 
+.radial-menu-open .radial-menu-item:nth-child(2) {
+  transform: translate(-50px, -50px) scale(1);
+  transition-delay: 0.1s;
+}
+
+.radial-menu-open .radial-menu-item:nth-child(3) {
+  transform: translate(-70px, 0) scale(1);
+  transition-delay: 0.15s;
+}
+
+.radial-menu-open .radial-menu-item:nth-child(4) {
+  transform: translate(-40px, -90px) scale(1);
+  transition-delay: 0.2s;
+}
+
+/* Optional 4th item further out */
+
+/* =========================================================================================
+   ORB BUFFER ZONE (Transparent Clickable Area)
+   ========================================================================================= */
+
+.orb-hitzone {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.2s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.orb-hitzone:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.orb-hitzone:hover>div {
+  transform: scale(1.15);
+  background: white;
+}
+
+.orb-hitzone:active {
+  transform: scale(0.95);
+}
