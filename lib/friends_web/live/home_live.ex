@@ -371,41 +371,50 @@ defmodule FriendsWeb.HomeLive do
   # Global keyboard handler for accessibility
   def handle_event("handle_keydown", %{"key" => "Escape"}, socket) do
     cond do
-      socket.assigns.show_image_modal ->
+      socket.assigns[:show_image_modal] ->
         {:noreply,
          socket
          |> assign(:show_image_modal, false)
          |> assign(:full_image_data, nil)
          |> assign(:current_photo_id, nil)}
 
-      socket.assigns.show_room_modal ->
+      socket.assigns[:show_room_modal] ->
         {:noreply, assign(socket, :show_room_modal, false)}
 
-      socket.assigns.create_group_modal ->
+      socket.assigns[:create_group_modal] ->
         {:noreply, socket |> assign(:create_group_modal, false) |> assign(:new_room_name, "")}
 
-      socket.assigns.show_settings_modal ->
+      socket.assigns[:show_settings_modal] ->
         {:noreply,
          socket
          |> assign(:show_settings_modal, false)
          |> assign(:member_invite_search, "")
          |> assign(:member_invite_results, [])}
 
-      socket.assigns.show_network_modal ->
+      socket.assigns[:show_network_modal] ->
         {:noreply,
          socket
          |> assign(:show_network_modal, false)
          |> assign(:friend_search, "")
          |> assign(:friend_search_results, [])}
 
-      socket.assigns.show_name_modal ->
+      socket.assigns[:show_name_modal] ->
         {:noreply, assign(socket, :show_name_modal, false)}
 
-      socket.assigns.show_note_modal ->
+      socket.assigns[:show_note_modal] ->
         {:noreply, socket |> assign(:show_note_modal, false) |> assign(:note_input, "")}
 
-      socket.assigns.viewing_note ->
+      socket.assigns[:viewing_note] ->
         {:noreply, assign(socket, :viewing_note, nil)}
+
+      socket.assigns[:show_groups_sheet] ->
+        {:noreply, assign(socket, :show_groups_sheet, false)}
+
+      socket.assigns[:show_user_menu] ->
+        {:noreply, assign(socket, :show_user_menu, false)}
+
+      socket.assigns[:show_contact_sheet] ->
+        {:noreply, assign(socket, :show_contact_sheet, false)}
 
       true ->
         {:noreply, socket}
@@ -682,57 +691,7 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Contact Search Events ---
 
-  def handle_event("open_contact_search", %{"mode" => mode}, socket) do
-    mode_atom = case mode do
-      "add_member" -> :add_member
-      _ -> :add_contact
-    end
-    {:noreply,
-     socket
-     |> assign(:show_contact_search, true)
-     |> assign(:contact_search_mode, mode_atom)
-     |> assign(:contact_search_query, "")
-     |> assign(:contact_search_results, [])
-     |> assign(:show_user_menu, false)}
-  end
 
-  def handle_event("close_contact_search", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:show_contact_search, false)
-     |> assign(:contact_search_query, "")
-     |> assign(:contact_search_results, [])}
-  end
-
-  def handle_event("contact_search", %{"value" => query}, socket) do
-    query = String.trim(query)
-    current_user = socket.assigns.current_user
-
-    results = if String.length(query) >= 2 and current_user do
-      case socket.assigns[:contact_search_mode] do
-        :add_member ->
-          # Search only from user's existing contacts/friends
-          Social.search_friends(current_user.id, query)
-        _ ->
-          # Search all users
-          Social.search_users(query, current_user.id)
-      end
-    else
-      []
-    end
-
-    {:noreply,
-     socket
-     |> assign(:contact_search_query, query)
-     |> assign(:contact_search_results, results)}
-  end
-
-  def handle_event("clear_contact_search", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:contact_search_query, "")
-     |> assign(:contact_search_results, [])}
-  end
 
   def handle_event("send_friend_request", %{"user_id" => user_id_str}, socket) do
     case Integer.parse(user_id_str) do
@@ -743,8 +702,8 @@ defmodule FriendsWeb.HomeLive do
             {:ok, _} ->
               {:noreply,
                socket
-               |> assign(:show_contact_search, false)
-               |> assign(:contact_search_query, "")
+               |> assign(:show_contact_sheet, false)
+               |> assign(:contact_sheet_search, "")
                |> assign(:contact_search_results, [])
                |> put_flash(:info, "Friend request sent!")}
             {:error, :cannot_trust_self} ->
@@ -772,8 +731,8 @@ defmodule FriendsWeb.HomeLive do
           {:noreply,
            socket
            |> assign(:room_members, members)
-           |> assign(:show_contact_search, false)
-           |> assign(:contact_search_query, "")
+           |> assign(:show_contact_sheet, false)
+           |> assign(:contact_sheet_search, "")
            |> assign(:contact_search_results, [])
            |> put_flash(:info, "Member added!")}
         {:error, _} ->
@@ -888,11 +847,62 @@ defmodule FriendsWeb.HomeLive do
   # --- Groups Sheet Events ---
 
   def handle_event("open_groups_sheet", _, socket) do
-    {:noreply, assign(socket, show_groups_sheet: true, group_search_query: "")}
+    {:noreply, 
+     socket
+     |> assign(show_groups_sheet: true, group_search_query: "")
+     |> assign(:show_user_menu, false)}
   end
 
   def handle_event("close_groups_sheet", _, socket) do
     {:noreply, assign(socket, show_groups_sheet: false)}
+  end
+
+  # --- Contact/People Sheet Events ---
+
+  def handle_event("open_contact_search", params, socket) do
+    mode = params["mode"] || "list_contacts"
+    {:noreply, 
+     socket 
+     |> assign(:show_contact_sheet, true) 
+     |> assign(:show_header_dropdown, false)
+     |> assign(:show_user_dropdown, false)
+     |> assign(:show_user_menu, false)
+     |> assign(:contact_mode, mode)
+     |> assign(:contact_sheet_search, "")
+     |> assign(:contact_search_results, [])}
+  end
+
+  def handle_event("close_contact_search", _, socket) do
+    {:noreply, assign(socket, :show_contact_sheet, false)}
+  end
+  
+  def handle_event("contact_search", %{"value" => query}, socket) do
+    query = String.trim(query)
+    # Filter local friends first for instant feedback (especially for invite mode)
+    friends = socket.assigns[:friends] || []
+    
+    local_results = Enum.filter(friends, fn friend -> 
+      # Handle both simple friend maps and loaded user structs
+      user = Map.get(friend, :user) || friend
+      username = user.username || ""
+      String.contains?(String.downcase(username), String.downcase(query))
+    end) |> Enum.map(fn f -> Map.get(f, :user) || f end)
+
+    # Search globally like in network modal if query is long enough
+    global_results = if String.length(query) >= 2 do
+      Social.search_users(query, socket.assigns.current_user.id)
+    else
+      []
+    end
+    
+    # Merge results, prioritizing friends (local results)
+    # Use MapSet or user ID to unique
+    results = Enum.uniq_by(local_results ++ global_results, & &1.id)
+    
+    {:noreply, 
+     socket
+     |> assign(:contact_sheet_search, query)
+     |> assign(:contact_search_results, results)}
   end
 
   def handle_event("group_search", %{"value" => query}, socket) do
@@ -900,7 +910,8 @@ defmodule FriendsWeb.HomeLive do
     groups = socket.assigns.user_private_rooms
     
     results = Enum.filter(groups, fn group ->
-      String.contains?(String.downcase(group.name), query)
+      name = group.name || group.code || ""
+      String.contains?(String.downcase(name), query)
     end)
 
     {:noreply, 

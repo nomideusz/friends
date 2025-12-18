@@ -1132,7 +1132,7 @@ const Hooks = {
             this.el.addEventListener('mouseleave', () => this.endPress())
 
             // Touch events
-            this.el.addEventListener('touchstart', (e) => this.startPress(e), { passive: true })
+            this.el.addEventListener('touchstart', (e) => this.startPress(e), { passive: false })
             this.el.addEventListener('touchend', () => this.endPress())
             this.el.addEventListener('touchcancel', () => this.endPress())
         },
@@ -1164,7 +1164,6 @@ const Hooks = {
         },
 
         startPress(e) {
-            e.preventDefault()
             this.pressing = true
 
             // Show progress ring

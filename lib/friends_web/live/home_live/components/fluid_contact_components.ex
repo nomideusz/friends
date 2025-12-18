@@ -21,6 +21,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   attr :outgoing_requests, :list, default: []  # Pending sent requests
   attr :incoming_requests, :list, default: []  # Requests from others to accept
   attr :trusted_friend_ids, :list, default: []
+  attr :trusted_friends, :list, default: []
   attr :incoming_trust_requests, :list, default: []
   attr :room, :map, default: nil
   attr :room_members, :list, default: []
@@ -44,7 +45,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
     ~H"""
     <%= if @show do %>
-      <div id="people-sheet" class="fixed inset-0 z-[200]" phx-window-keydown="close_contact_search" phx-key="escape">
+      <div id="people-sheet" class="fixed inset-0 z-[201]">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
@@ -52,8 +53,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         ></div>
 
         <%!-- Modal --%>
-        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
-          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col">
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
+          <div
+            class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col pointer-events-auto"
+            phx-click-away="close_contact_search"
+          >
             <%!-- Handle --%>
             <div class="py-3 flex justify-center cursor-pointer" phx-click="close_contact_search">
               <div class="w-10 h-1 rounded-full bg-white/20"></div>
