@@ -154,6 +154,10 @@ defmodule FriendsWeb.HomeLive do
     PhotoEvents.view_feed_photo(socket, photo_id)
   end
 
+  def handle_event("view_gallery", %{"batch_id" => batch_id}, socket) do
+    PhotoEvents.view_gallery(socket, batch_id)
+  end
+
   def handle_event("close_photo_modal", _, socket) do
     PhotoEvents.close_photo_modal(socket)
   end
@@ -603,7 +607,17 @@ defmodule FriendsWeb.HomeLive do
 
   
   def handle_event("open_photo_upload", _params, socket) do
-    {:noreply, push_event(socket, "trigger_file_input", %{selector: "#upload-form-feed_photo input"})}
+    selector =
+      if !is_nil(socket.assigns[:room]) do
+        "#desktop-upload-form-photo input"
+      else
+        "#upload-form-feed_photo input"
+      end
+
+    {:noreply,
+     push_event(socket, "trigger_file_input", %{
+       selector: selector
+     })}
   end
   
   def handle_event("toggle_graph_drawer", _params, socket) do

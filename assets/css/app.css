@@ -134,7 +134,6 @@ h6 {
 
   .aether-card:hover {
     border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px) scale(1.01);
     box-shadow: 
       0 20px 50px -15px rgba(0, 0, 0, 0.6),
       0 0 0 1px rgba(255, 255, 255, 0.1) inset;
@@ -308,7 +307,7 @@ img.loaded {
   }
   
   .surface-island {
-    width: auto;
+    width: 100%;
     border-radius: var(--radius-fluid) !important;
     animation: island-pop 0.5s var(--ease-spring);
     max-height: 85vh;

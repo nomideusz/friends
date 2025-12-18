@@ -26,50 +26,80 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
       if is_nil(socket.assigns.current_user) or socket.assigns.room_access_denied do
         {:noreply, put_flash(socket, :error, "Please register to upload photos")}
       else
+        # Generate batch_id for this upload session (multiple photos)
+        batch_id = if length(socket.assigns.uploads.photo.entries) > 1 do
+          Ecto.UUID.generate()
+        else
+          nil  # Single photos don't get batch_id
+        end
+
         results =
           consume_uploaded_entries(socket, :photo, fn %{path: path}, entry ->
             Logger.info("PhotoEvents: Processing private photo entry #{entry.ref}")
-            process_photo_entry(socket, path, entry, :room)
+            process_photo_entry(socket, path, entry, :room, batch_id)
           end)
 
         # Process successful uploads
-        # Note: consume_uploaded_entries unwraps {:ok, value} to just value
-        socket =
-          Enum.reduce(results, socket, fn
-            {photo, temp_path, client_type}, acc when is_struct(photo, Friends.Social.Photo) ->
-              Logger.info("PhotoEvents: stream_insert for photo #{photo.id}, thumbnail: #{photo.thumbnail_data}")
+        {socket, uploaded_photos} =
+          Enum.reduce(results, {socket, []}, fn
+            {photo, temp_path, client_type}, {acc_socket, acc_photos} when is_struct(photo, Friends.Social.Photo) ->
+              # 1. Start background task
+              start_background_processing(photo, temp_path, client_type, acc_socket.assigns.user_id)
               
-              # 1. Update UI immediately
-              photo_with_type =
-                photo
-                |> Map.from_struct()
-                |> Map.put(:type, :photo)
-                |> Map.put(:unique_id, "photo-#{photo.id}")
+              # 2. Notify client
+              acc_socket = push_event(acc_socket, "photo_uploaded", %{photo_id: photo.id})
+              
+              {acc_socket, [photo | acc_photos]}
 
-              Logger.info("PhotoEvents: photo_with_type = #{inspect(Map.take(photo_with_type, [:id, :type, :unique_id, :thumbnail_data]))}")
-
-              acc =
-                acc
-                |> assign(:item_count, acc.assigns.item_count + 1)
-                |> assign(
-                  :photo_order,
-                  merge_photo_order(acc.assigns.photo_order, [photo.id], :front)
-                )
-                |> stream_insert(:items, photo_with_type, at: 0)
-
-              Logger.info("PhotoEvents: stream_insert DONE for photo #{photo.id}")
-
-              # 2. Start background task for full processing
-              start_background_processing(photo, temp_path, client_type, acc.assigns.user_id)
-
-              push_event(acc, "photo_uploaded", %{photo_id: photo.id})
-
-            error_result, acc -> 
-              Logger.warning("PhotoEvents: Non-ok result: #{inspect(error_result)}")
-              acc
+            _, acc -> acc
           end)
 
-        # Check for failures (simplistic check if any postponed)
+        uploaded_photos = Enum.reverse(uploaded_photos)
+        
+        # Group by batch_id to form galleries
+        {batched, singles} = Enum.split_with(uploaded_photos, & &1.batch_id)
+        
+        gallery_items =
+          batched
+          |> Enum.group_by(& &1.batch_id)
+          |> Enum.map(fn {batch_id, photos} ->
+            first = List.first(photos)
+            %{
+              type: :gallery,
+              batch_id: batch_id,
+              photo_count: length(photos),
+              first_photo: Map.from_struct(first),
+              all_photos: Enum.map(photos, &Map.from_struct/1),
+              user_id: first.user_id,
+              user_name: first.user_name,
+              user_color: first.user_color,
+              uploaded_at: first.uploaded_at,
+              id: "gallery-#{batch_id}",
+              unique_id: "gallery-#{batch_id}"
+            }
+          end)
+          
+        single_items =
+          Enum.map(singles, fn photo ->
+            photo
+            |> Map.from_struct()
+            |> Map.put(:type, :photo)
+            |> Map.put(:unique_id, "photo-#{photo.id}")
+          end)
+          
+        # Stream items (galleries + singles)
+        socket =
+          (gallery_items ++ single_items)
+          |> Enum.reduce(socket, fn item, acc ->
+            acc
+            |> assign(:item_count, (acc.assigns[:item_count] || 0) + 1)
+            |> stream_insert(:items, item, at: 0)
+          end)
+          
+        # Update navigation order with ALL individual photo IDs
+        all_new_ids = Enum.map(uploaded_photos, & &1.id)
+        socket = assign(socket, :photo_order, merge_photo_order(socket.assigns[:photo_order], all_new_ids, :front))
+
         failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
 
         socket = 
@@ -93,35 +123,83 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
       if is_nil(socket.assigns.current_user) do
         {:noreply, put_flash(socket, :error, "Please login to post photos")}
       else
+        # Generate batch_id for this upload session (multiple photos)
+        batch_id = if length(socket.assigns.uploads.feed_photo.entries) > 1 do
+          Ecto.UUID.generate()
+        else
+          nil  # Single photos don't get batch_id
+        end
+
         results =
           consume_uploaded_entries(socket, :feed_photo, fn %{path: path}, entry ->
-            process_photo_entry(socket, path, entry, :feed)
+            process_photo_entry(socket, path, entry, :feed, batch_id)
           end)
 
         # Process successful uploads
-        socket =
-          Enum.reduce(results, socket, fn
-            {photo, temp_path, client_type}, acc when is_struct(photo, Friends.Social.Photo) ->
-              # 1. Update UI immediately
-              photo_with_type =
-                photo
-                |> Map.from_struct()
-                |> Map.put(:type, :photo)
-                |> Map.put(:unique_id, "photo-#{photo.id}")
-
-              acc =
-                acc
-                |> assign(:feed_item_count, (acc.assigns[:feed_item_count] || 0) + 1)
-                |> assign(:photo_order, merge_photo_order(acc.assigns[:photo_order], [photo.id], :front))
-                |> stream_insert(:feed_items, photo_with_type, at: 0)
-
-              # 2. Start background task for full processing
+        # Process successful uploads
+        {socket, uploaded_photos} =
+          Enum.reduce(results, {socket, []}, fn
+            {photo, temp_path, client_type}, {acc_socket, acc_photos} when is_struct(photo, Friends.Social.Photo) ->
+              # Start background task for full processing
               start_background_processing(photo, temp_path, client_type, photo.user_id)
-
-              push_event(acc, "photo_uploaded", %{photo_id: photo.id})
+              
+              # Notify client
+              acc_socket = push_event(acc_socket, "photo_uploaded", %{photo_id: photo.id})
+              
+              {acc_socket, [photo | acc_photos]}
 
             _, acc -> acc
           end)
+        
+        uploaded_photos = Enum.reverse(uploaded_photos)
+        
+        # Group by batch_id to form galleries
+        {batched, singles} = Enum.split_with(uploaded_photos, & &1.batch_id)
+        
+        gallery_items =
+          batched
+          |> Enum.group_by(& &1.batch_id)
+          |> Enum.map(fn {batch_id, photos} ->
+            first = List.first(photos)
+            %{
+              type: :gallery,
+              batch_id: batch_id,
+              photo_count: length(photos),
+              first_photo: Map.from_struct(first),
+              all_photos: Enum.map(photos, &Map.from_struct/1),
+              user_id: first.user_id,
+              user_name: first.user_name,
+              user_color: first.user_color,
+              uploaded_at: first.uploaded_at,
+              id: "gallery-#{batch_id}",
+              unique_id: "gallery-#{batch_id}"
+            }
+          end)
+          
+        single_items =
+          Enum.map(singles, fn photo ->
+            photo
+            |> Map.from_struct()
+            |> Map.put(:type, :photo)
+            |> Map.put(:unique_id, "photo-#{photo.id}")
+          end)
+          
+        # Stream items (galleries + singles)
+        socket =
+          (gallery_items ++ single_items)
+          |> Enum.reduce(socket, fn item, acc ->
+            acc
+            |> assign(:feed_item_count, (acc.assigns[:feed_item_count] || 0) + 1)
+            |> stream_insert(:feed_items, item, at: 0)
+          end)
+          
+        # Update navigation order with ALL individual photo IDs
+        all_new_ids = Enum.map(uploaded_photos, & &1.id)
+        socket = assign(socket, :photo_order, merge_photo_order(socket.assigns[:photo_order], all_new_ids, :front))
+        
+        # Add to ignore list to prevent PubSub duplication (since we manually inserted gallery/singles)
+        ignored_ids = MapSet.union(socket.assigns[:uploaded_ids_to_ignore] || MapSet.new(), MapSet.new(all_new_ids))
+        socket = assign(socket, :uploaded_ids_to_ignore, ignored_ids)
         
         # Cleanup and flash for errors
         failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
@@ -190,6 +268,28 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
               {:noreply, put_flash(socket, :error, "not yours")}
             end
         end
+    end
+  end
+
+  def view_gallery(socket, batch_id) do
+    # 1. Fetch all photos in this batch
+    photos = Social.list_batch_photos(batch_id)
+    
+    case photos do
+      [first | _] = batch_photos ->
+        # 2. Update photo_order to JUST this gallery (so prev/next works within gallery)
+        gallery_photo_ids = Enum.map(batch_photos, & &1.id)
+        
+        # 3. Open modal with the first photo
+        new_socket = 
+          socket
+          |> assign(:photo_order, gallery_photo_ids)
+          |> load_photo_into_modal(first.id)
+          
+        {:noreply, new_socket}
+        
+      [] ->
+        {:noreply, put_flash(socket, :error, "Gallery not found")}
     end
   end
 
@@ -269,7 +369,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
 
   # --- Private Helpers ---
 
-  defp process_photo_entry(socket, path, entry, context) do
+  defp process_photo_entry(socket, path, entry, context, batch_id) do
     try do
       file_content = File.read!(path)
       
@@ -296,6 +396,7 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
             content_type: entry.client_type,
             file_size: entry.client_size,
             description: "",
+            batch_id: batch_id  # Add batch_id for gallery grouping
           }
           
           attrs = if context == :room,

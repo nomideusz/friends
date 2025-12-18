@@ -105,6 +105,8 @@ defmodule Friends.Social do
   defdelegate delete_photo(photo_id, room_code), to: Photos
   defdelegate list_user_photos(user_id, limit \\ 50, opts \\ []), to: Photos
   defdelegate list_public_photos(limit \\ 50, opts \\ []), to: Photos
+  defdelegate list_photo_galleries(scope, limit \\ 50, opts \\ []), to: Photos
+  defdelegate list_batch_photos(batch_id), to: Photos
   defdelegate create_public_photo(attrs, user_id), to: Photos
 
   # --- Notes ---
@@ -777,12 +779,15 @@ defmodule Friends.Social do
     all_user_ids = [if(is_integer(user_id), do: "user-#{user_id}", else: user_id) | contact_ids]
 
     # Fetch photos from contacts + self
+    # fetch more than limit because grouping will reduce count
+    fetch_limit = limit * 3 
+    
     photos =
       Repo.all(
         from p in Friends.Social.Photo,
           where: p.user_id in ^all_user_ids and is_nil(p.room_id),
           order_by: [desc: p.uploaded_at],
-          limit: ^limit,
+          limit: ^fetch_limit,
           offset: ^offset_val,
           select: %{
             id: p.id,
@@ -794,6 +799,7 @@ defmodule Friends.Social do
             description: p.description,
             uploaded_at: p.uploaded_at,
             content_type: p.content_type,
+            batch_id: p.batch_id,
             image_data:
               fragment(
                 "CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END",
@@ -802,6 +808,10 @@ defmodule Friends.Social do
               )
           }
       )
+
+    # Group photos into galleries
+    {galleries, singles} = group_photos_into_galleries(photos)
+    photo_items = singles ++ galleries
 
     # Fetch notes from contacts + self
     notes =
@@ -823,7 +833,7 @@ defmodule Friends.Social do
       )
 
     # Combine and sort by inserted_at, newest first (handle mixed DateTime/NaiveDateTime)
-    (photos ++ notes)
+    (photo_items ++ notes)
     |> Enum.sort_by(
       fn item ->
         timestamp = Map.get(item, :uploaded_at) || Map.get(item, :inserted_at)
@@ -838,6 +848,33 @@ defmodule Friends.Social do
     )
     |> Enum.take(limit)
   end
+
+  def group_photos_into_galleries(photos) do
+    {batched, singles} = Enum.split_with(photos, & &1.batch_id)
+
+    galleries =
+      batched
+      |> Enum.group_by(& &1.batch_id)
+      |> Enum.map(fn {batch_id, batch_photos} ->
+        first_photo = List.first(batch_photos)
+        %{
+          type: :gallery,
+          batch_id: batch_id,
+          photo_count: length(batch_photos),
+          first_photo: first_photo,
+          all_photos: batch_photos,
+          user_id: first_photo.user_id,
+          user_color: first_photo.user_color,
+          user_name: first_photo.user_name,
+          uploaded_at: first_photo.uploaded_at,
+          id: "gallery-#{batch_id}",
+          unique_id: "gallery-#{batch_id}"
+        }
+      end)
+    
+    {galleries, singles}
+  end
+
 
   # --- Helper for Relationships broadcast (if needed, but implemented in Relationships now) ---
   

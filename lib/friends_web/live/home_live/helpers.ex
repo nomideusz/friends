@@ -124,8 +124,10 @@ defmodule FriendsWeb.HomeLive.Helpers do
   # --- Item Building Helpers ---
 
   def build_items(photos, notes) do
+    {galleries, singles} = Friends.Social.group_photos_into_galleries(photos)
+
     photo_items =
-      Enum.map(photos, fn p ->
+      Enum.map(singles, fn p ->
         p
         |> Map.put(:type, :photo)
         |> Map.put(:unique_id, "photo-#{p.id}")
@@ -138,7 +140,7 @@ defmodule FriendsWeb.HomeLive.Helpers do
         |> Map.put(:unique_id, "note-#{n.id}")
       end)
 
-    (photo_items ++ note_items)
+    (galleries ++ photo_items ++ note_items)
     |> Enum.sort_by(
       fn item ->
         timestamp = Map.get(item, :uploaded_at) || Map.get(item, :inserted_at)

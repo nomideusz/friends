@@ -147,8 +147,99 @@ function optimizeImage(file, maxSize = 1200) {
     })
 }
 
+// Shared Audio Context
+let sharedAudioCtx = null
+function getAudioContext() {
+    if (!sharedAudioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext
+        sharedAudioCtx = new AudioContext()
+    }
+    return sharedAudioCtx
+}
+
 // Hooks
 const Hooks = {
+    VoiceWaveform: {
+        mounted() {
+            this.src = this.el.dataset.src
+            this.canvas = this.el
+            this.ctx = this.canvas.getContext('2d')
+            this.analyze()
+        },
+
+        updated() {
+            if (this.el.dataset.src !== this.src) {
+                this.src = this.el.dataset.src
+                this.analyze()
+            }
+        },
+
+        async analyze() {
+            if (!this.src) return
+
+            try {
+                const response = await fetch(this.src)
+                const arrayBuffer = await response.arrayBuffer()
+
+                const audioCtx = getAudioContext()
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+
+                const rawData = audioBuffer.getChannelData(0)
+                const samples = 40
+                const blockSize = Math.floor(rawData.length / samples)
+                const peaks = []
+
+                for (let i = 0; i < samples; i++) {
+                    let sum = 0
+                    for (let j = 0; j < blockSize; j++) {
+                        sum += Math.abs(rawData[i * blockSize + j])
+                    }
+                    peaks.push(sum / blockSize)
+                }
+
+                const max = Math.max(...peaks) || 1
+                const normalized = peaks.map(p => p / max)
+
+                this.draw(normalized)
+            } catch (e) {
+                console.error("Waveform error", e)
+            }
+        },
+
+        draw(data) {
+            const width = this.canvas.width
+            const height = this.canvas.height
+            const ctx = this.ctx
+            const barWidth = width / data.length
+            const gap = 2
+
+            ctx.clearRect(0, 0, width, height)
+            ctx.fillStyle = getComputedStyle(this.canvas).color || '#fdba74'
+
+            data.forEach((val, i) => {
+                const barHeight = Math.max(3, val * height * 0.8)
+                const x = i * barWidth
+                const y = (height - barHeight) / 2
+
+                // Draw rounded bars (manual radius for compatibility)
+                this.roundRect(ctx, x, y, barWidth - gap, barHeight, 2)
+                ctx.fill()
+            })
+        },
+
+        roundRect(ctx, x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2
+            if (h < 2 * r) r = h / 2
+            ctx.beginPath()
+            ctx.moveTo(x + r, y)
+            ctx.arcTo(x + w, y, x + w, y + h, r)
+            ctx.arcTo(x + w, y + h, x, y + h, r)
+            ctx.arcTo(x, y + h, x, y, r)
+            ctx.arcTo(x, y, x + w, y, r)
+            ctx.closePath()
+        }
+    },
+
     ...getHooks(Components),
 
     WelcomeGraph: {
@@ -1516,6 +1607,10 @@ const Hooks = {
 
             const playBtn = this.el.querySelector('.grid-voice-play-btn')
             const progressBar = this.el.querySelector('.grid-voice-progress')
+            const canvas = this.el.querySelector('canvas.visualizer-canvas')
+
+            // Auto-decrypt and visualize
+            this.decryptAndVisualize(canvas)
 
             if (playBtn) {
                 this.el.addEventListener('click', async (e) => {
@@ -1530,56 +1625,125 @@ const Hooks = {
                             return
                         }
 
-                        try {
-                            playBtn.textContent = '...'
+                        // If audio is already prepared (from visualization step), just play
+                        if (this.audio) {
+                            this.audio.play()
+                            playBtn.textContent = '⏸'
+                            this.isPlaying = true
+                            return
+                        }
 
-                            const dataEl = document.getElementById(`grid-voice-data-${this.itemId}`)
-                            if (dataEl && dataEl.dataset.encrypted) {
-                                const encryptedArray = messageEncryption.base64ToArray(dataEl.dataset.encrypted)
-                                const nonceArray = messageEncryption.base64ToArray(dataEl.dataset.nonce)
-
-                                const audioBlob = await messageEncryption.decryptVoiceNote(
-                                    encryptedArray,
-                                    nonceArray,
-                                    `room-${this.roomId}`
-                                )
-
-                                if (audioBlob) {
-                                    if (this.audio) {
-                                        this.audio.pause()
-                                        URL.revokeObjectURL(this.audio.src)
-                                    }
-
-                                    this.audio = new Audio(URL.createObjectURL(audioBlob))
-
-                                    this.audio.ontimeupdate = () => {
-                                        if (progressBar && this.audio.duration) {
-                                            const percent = (this.audio.currentTime / this.audio.duration) * 100
-                                            progressBar.style.width = `${percent}%`
-                                        }
-                                    }
-
-                                    this.audio.onended = () => {
-                                        playBtn.textContent = '▶'
-                                        this.isPlaying = false
-                                        if (progressBar) progressBar.style.width = '0%'
-                                    }
-
-                                    this.audio.play()
-                                    playBtn.textContent = '⏸'
-                                    this.isPlaying = true
-                                } else {
-                                    playBtn.textContent = '❌'
-                                }
-                            } else {
-                                playBtn.textContent = '❌'
-                            }
-                        } catch (e) {
-                            console.error("Failed to decrypt grid voice note:", e)
+                        // Fallback: Decrypt if not yet ready
+                        playBtn.textContent = '...'
+                        if (await this.decryptAndVisualize(canvas)) {
+                            this.audio.play()
+                            playBtn.textContent = '⏸'
+                            this.isPlaying = true
+                        } else {
                             playBtn.textContent = '❌'
                         }
                     }
                 })
+            }
+        },
+
+        async decryptAndVisualize(canvas) {
+            // Check if already decrypted
+            if (this.audio) return true
+
+            try {
+                const dataEl = document.getElementById(`grid-voice-data-${this.itemId}`)
+                if (dataEl && dataEl.dataset.encrypted) {
+                    const encryptedArray = messageEncryption.base64ToArray(dataEl.dataset.encrypted)
+                    const nonceArray = messageEncryption.base64ToArray(dataEl.dataset.nonce)
+
+                    const audioBlob = await messageEncryption.decryptVoiceNote(
+                        encryptedArray,
+                        nonceArray,
+                        `room-${this.roomId}`
+                    )
+
+                    if (audioBlob) {
+                        this.audio = new Audio(URL.createObjectURL(audioBlob))
+
+                        // Setup visualizer if canvas exists
+                        if (canvas) {
+                            this.drawWaveform(canvas, audioBlob)
+                        }
+
+                        // Setup audio events
+                        if (this.el.querySelector('.grid-voice-progress')) {
+                            const progressBar = this.el.querySelector('.grid-voice-progress')
+                            const playBtn = this.el.querySelector('.grid-voice-play-btn')
+
+                            this.audio.ontimeupdate = () => {
+                                if (this.audio.duration) {
+                                    const percent = (this.audio.currentTime / this.audio.duration) * 100
+                                    progressBar.style.width = `${percent}%`
+                                }
+                            }
+
+                            this.audio.onended = () => {
+                                if (playBtn) playBtn.textContent = '▶'
+                                this.isPlaying = false
+                                progressBar.style.width = '0%'
+                            }
+                        }
+                        return true
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to decrypt grid voice note:", e)
+            }
+            return false
+        },
+
+        async drawWaveform(canvas, audioBlob) {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+                const arrayBuffer = await audioBlob.arrayBuffer()
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+
+                const width = canvas.width
+                const height = canvas.height
+                const ctx = canvas.getContext('2d')
+                const data = audioBuffer.getChannelData(0)
+                const step = Math.ceil(data.length / width)
+                const amp = height / 2
+
+                ctx.clearRect(0, 0, width, height)
+                ctx.beginPath()
+
+                // Draw centered waveform
+                for (let i = 0; i < width; i++) {
+                    let min = 1.0
+                    let max = -1.0
+
+                    // Get chunk of data for this pixel
+                    for (let j = 0; j < step; j++) {
+                        const datum = data[(i * step) + j]
+                        if (datum < min) min = datum
+                        if (datum > max) max = datum
+                    }
+
+                    if (min === 1.0) min = 0
+                    if (max === -1.0) max = 0
+
+                    // Smooth data slightly
+                    const high = Math.abs(max)
+                    const low = Math.abs(min)
+                    const avg = (high + low) / 2
+
+                    // Draw line
+                    const y = (1 + min) * amp
+                    const h = Math.max(1, (max - min) * amp)
+
+                    ctx.fillStyle = '#fbbf24' // warm amber
+                    ctx.fillRect(i, height / 2 - h / 2 * 1.5, 1, h * 1.5) // scaled up slightly
+                }
+
+            } catch (e) {
+                console.error("Waveform visualization failed:", e)
             }
         },
 

@@ -59,6 +59,18 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
                 </div>
               <% end %>
               
+              <%= if length(@photo_order || []) > 1 do %>
+                <% 
+                   current_idx = Enum.find_index(@photo_order, fn id -> id == @photo.id end) 
+                   total = length(@photo_order)
+                %>
+                <%= if current_idx do %>
+                  <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white/80 px-4 py-2 rounded-full text-sm font-bold border border-white/10 select-none">
+                    <%= current_idx + 1 %> / <%= total %>
+                  </div>
+                <% end %>
+              <% end %>
+              
               <button
                 phx-click="close_image_modal"
                 class="absolute -top-4 -right-4 w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-90 transition-all cursor-pointer shadow-2xl z-[60]"
@@ -97,7 +109,7 @@ defmodule FriendsWeb.HomeLive.Components.ModalComponents do
         ></div>
 
         <div class="surface-overlay">
-          <div class="surface-island aether-card w-full max-w-lg">
+          <div class="surface-island aether-card w-full max-w-3xl">
             <div class="sheet-handle" phx-click="close_note_modal"><div></div></div>
             
             <div class="p-8 pb-4">

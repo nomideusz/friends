@@ -31,6 +31,7 @@ defmodule Friends.Social.Photos do
       file_size: p.file_size,
       description: p.description,
       uploaded_at: p.uploaded_at,
+      batch_id: p.batch_id,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
@@ -66,6 +67,7 @@ defmodule Friends.Social.Photos do
       file_size: p.file_size,
       description: p.description,
       uploaded_at: p.uploaded_at,
+      batch_id: p.batch_id,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
@@ -98,6 +100,7 @@ defmodule Friends.Social.Photos do
       file_size: p.file_size,
       description: p.description,
       uploaded_at: p.uploaded_at,
+      batch_id: p.batch_id,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
@@ -129,6 +132,7 @@ defmodule Friends.Social.Photos do
       file_size: p.file_size,
       description: p.description,
       uploaded_at: p.uploaded_at,
+      batch_id: p.batch_id,
       room_id: p.room_id,
       inserted_at: p.inserted_at,
       updated_at: p.updated_at,
@@ -153,6 +157,61 @@ defmodule Friends.Social.Photos do
       content_type: p.content_type
     })
     |> Repo.one()
+  end
+
+  @doc """
+  Lists photos grouped into galleries by batch_id for feed display.
+  Single photos (no batch_id) are returned as individual items.
+  Photos with the same batch_id are grouped into a gallery.
+  """
+  def list_photo_galleries(user_id_or_scope, limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+    
+    # Get base photos query depending on scope
+    photos = case user_id_or_scope do
+      :public -> list_public_photos(limit * 3, offset: offset_val)  # Get more to account for grouping
+      {:user, user_id} -> list_user_photos(user_id, limit * 3, offset: offset_val)
+      {:friends, user_id} -> list_friends_photos(user_id, limit * 3, offset: offset_val)
+      {:room, room_id} -> list_photos(room_id, limit * 3, offset: offset_val)
+    end
+
+    # Group photos by batch_id
+    {batched, singles} = Enum.split_with(photos, & &1.batch_id)
+    
+    # Create gallery items from batched photos
+    galleries =
+      batched
+      |> Enum.group_by(& &1.batch_id)
+      |> Enum.map(fn {batch_id, batch_photos} ->
+        first_photo = List.first(batch_photos)
+        %{
+          type: :gallery,
+          batch_id: batch_id,
+          photo_count: length(batch_photos),
+          first_photo: first_photo,
+          all_photos: batch_photos,
+          user_id: first_photo.user_id,
+          user_color: first_photo.user_color,
+          user_name: first_photo.user_name,
+          uploaded_at: first_photo.uploaded_at,
+          id: "gallery-#{batch_id}",  # Unique ID for stream
+          unique_id: "gallery-#{batch_id}"
+        }
+      end)
+    
+    # Combine galleries and single photos, sort by uploaded_at
+    all_items = galleries ++ Enum.map(singles, &Map.put(&1, :type, :photo))
+    
+    all_items
+    |> Enum.sort_by(& &1.uploaded_at, {:desc, DateTime})
+    |> Enum.take(limit)
+  end
+
+  def list_batch_photos(batch_id) do
+    Photo
+    |> where([p], p.batch_id == ^batch_id)
+    |> order_by([p], asc: p.id)
+    |> Repo.all()
   end
 
   def create_photo(attrs, room_code) do

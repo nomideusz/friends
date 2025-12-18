@@ -144,71 +144,111 @@ defmodule FriendsWeb.HomeLive.Components.FeedComponents do
 
   def feed_item(assigns) do
     ~H"""
-    <%= if @item.type == :photo or @item.type == "photo" do %>
+    <%= if Map.get(@item, :type) == :gallery do %>
+      <%!-- Gallery item (multiple photos batch) --%>
       <div
         id={@id}
         class="photo-item aether-card group relative aspect-square overflow-hidden cursor-pointer animate-in fade-in zoom-in-95 duration-300"
-        phx-click="view_feed_photo"
-        phx-value-photo_id={@item.id}
+        phx-click="view_gallery"
+        phx-value-batch_id={@item.batch_id}
       >
-        <%= if is_binary(@item[:content_type]) && String.starts_with?(@item.content_type, "audio/") do %>
-          <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center relative overflow-hidden" onclick="event.stopPropagation();">
-            <!-- Decorative wave background -->
-            <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMTBoMThNMTAgMXYxOCIgc3Ryb2tlPSJjdXJyZW50Q29xvciBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIC8+PC9zdmc+');"></div>
-            
-            <div class="relative z-10 flex flex-col items-center w-full">
-              <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3 border border-white/20 group-hover:scale-110 transition-transform duration-300">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              
-              <span class="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3">Voice Note</span>
-              
-              <audio controls src={@item.image_data} class="w-full h-7 max-w-[140px] opacity-90 transition-opacity" style="transform: scale(0.9);" onclick="event.stopPropagation();" />
-              
-              <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 shadow-sm">
-                <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
-                <span class="text-[10px] text-white/50 font-bold uppercase tracking-tight">@{@item.user_name || "unknown"}</span>
-              </div>
-            </div>
+        <img
+          src={get_in(@item, [:first_photo, :thumbnail_data]) || get_in(@item, [:first_photo, :image_data])}
+          alt="Photo gallery"
+          class="w-full h-full object-cover ease-out"
+        />
+
+        <%!-- Gallery count indicator --%>
+        <div class="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-white/20">
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-xs font-bold text-white"><%= @item.photo_count %></span>
           </div>
-        <% else %>
-          <img
-            src={@item.thumbnail_data || @item[:image_data]}
-            alt="Feed photo"
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-          />
-          <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div class="text-[10px] font-bold text-white/70 uppercase tracking-wider">@{@item.user_name || "unknown"}</div>
-          </div>
-        <% end %>
+        </div>
+
+        <%!-- User info overlay --%>
+        <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div class="text-[10px] font-bold text-white/70 uppercase tracking-wider">@<%= @item.user_name || "unknown" %></div>
+        </div>
       </div>
     <% else %>
-      <%!-- Note item --%>
-      <div
-        id={@id}
-        class="note-item aether-card group relative aspect-square overflow-hidden cursor-pointer animate-in fade-in zoom-in-95 duration-300"
-        phx-click="view_feed_note"
-        phx-value-note_id={@item.id}
-      >
-        <div class="w-full h-full p-6 flex flex-col">
-          <div class="flex-1 overflow-hidden">
-            <p class="text-sm sm:text-base text-white/90 font-medium leading-relaxed line-clamp-6">{@item.content || ""}</p>
-          </div>
-          
-          <div class="mt-4 pt-4 border-t border-white/10">
-            <div class="flex items-center gap-2">
-              <div
-                class="w-6 h-6 rounded-full border border-white/10 shadow-inner"
-                style={"background-color: #{@item.user_color || "#888"}"}
-              >
+      <%= if @item.type == :photo or @item.type == "photo" do %>
+        <div
+          id={@id}
+          class="photo-item aether-card group relative aspect-square overflow-hidden cursor-pointer animate-in fade-in zoom-in-95 duration-300"
+          phx-click="view_feed_photo"
+          phx-value-photo_id={@item.id}
+        >
+          <%= if is_binary(@item[:content_type]) && String.starts_with?(@item.content_type, "audio/") do %>
+            <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-amber-900/40" onclick="event.stopPropagation();">
+              <!-- Decorative wave background -->
+              <!-- Real Waveform Visualization -->
+              <canvas
+                id={"waveform-#{@item.id}"}
+                phx-hook="VoiceWaveform"
+                data-src={@item.image_data}
+                class="absolute inset-x-0 bottom-0 w-full h-[60%] text-orange-400 opacity-80"
+                width="200"
+                height="80"
+                onclick="event.stopPropagation();"
+              ></canvas>
+              
+              <div class="relative z-10 flex flex-col items-center w-full">
+                <div class="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center mb-3 border border-orange-500/30 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                  <svg class="w-6 h-6 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                
+                <span class="text-[10px] font-bold text-orange-200/50 uppercase tracking-widest mb-3">Voice Note</span>
+                
+                <audio controls src={@item.image_data} class="w-full h-7 max-w-[140px] opacity-90 transition-opacity invert hue-rotate-15" style="transform: scale(0.9);" onclick="event.stopPropagation();" />
+                
+                <div class="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-orange-950/30 border border-orange-500/20 shadow-sm">
+                  <div class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_5px_orange]"></div>
+                  <span class="text-[10px] text-orange-200/60 font-bold uppercase tracking-tight">@<%= @item.user_name || "unknown" %></span>
+                </div>
               </div>
-               <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest truncate">@{@item.user_name || "unknown"}</span>
+            </div>
+          <% else %>
+            <img
+              src={@item.thumbnail_data || @item[:image_data]}
+              alt="Feed photo"
+              class="w-full h-full object-cover ease-out"
+            />
+            <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div class="text-[10px] font-bold text-white/70 uppercase tracking-wider">@<%= @item.user_name || "unknown" %></div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <%!-- Note item (Minimalist) --%>
+        <div
+          id={@id}
+          class="note-item group relative aspect-square overflow-hidden cursor-pointer animate-in fade-in zoom-in-95 duration-300 rounded-[2rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+          phx-click="view_feed_note"
+          phx-value-note_id={@item.id}
+        >
+          <div class="w-full h-full p-6 flex flex-col justify-between">
+            <div class="flex-1 overflow-hidden flex flex-col justify-center">
+              <p class="text-sm sm:text-base text-white/80 font-normal leading-relaxed line-clamp-6 font-display tracking-wide italic"><%= @item.content || "" %></p>
+            </div>
+            
+            <div class="mt-2 pt-4 border-t border-white/5">
+              <div class="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                <div
+                  class="w-4 h-4 rounded-full"
+                  style={"background-color: #{@item.user_color || "#888"}"}
+                >
+                </div>
+                 <span class="text-[9px] font-bold text-white/30 uppercase tracking-widest truncate">@<%= @item.user_name || "unknown" %></span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      <% end %>
     <% end %>
     """
   end

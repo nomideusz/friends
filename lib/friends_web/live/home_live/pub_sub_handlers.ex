@@ -195,31 +195,38 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   # --- Public Feed ---
 
   def handle_new_public_photo(socket, photo) do
-    item = %{
-      id: photo.id,
-      unique_id: "photo-#{photo.id}",
-      type: :photo,
-      user_id: photo.user_id,
-      user_color: photo.user_color,
-      user_name: photo.user_name,
-      image_data: photo.image_data,
-      thumbnail_data: photo.thumbnail_data,
-      content_type: photo.content_type,
-      file_size: photo.file_size,
-      description: photo.description,
-      inserted_at: photo.uploaded_at
-    }
+    # Ignore if this photo was just uploaded by this socket (to avoid duplication with gallery view)
+    ignored_ids = socket.assigns[:uploaded_ids_to_ignore] || MapSet.new()
 
-    {:noreply,
-     socket
-     |> assign(:photo_order, merge_photo_order(socket.assigns[:photo_order], [photo.id], :front))
-     |> stream_insert(:feed_items, item, at: 0)
-     |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
-     |> then(fn s ->
-       if s.assigns[:show_welcome_graph],
-         do: push_event(s, "welcome_signal", %{user_id: photo.user_id}),
-         else: s
-     end)}
+    if MapSet.member?(ignored_ids, photo.id) do
+       {:noreply, socket}
+    else
+      item = %{
+        id: photo.id,
+        unique_id: "photo-#{photo.id}",
+        type: :photo,
+        user_id: photo.user_id,
+        user_color: photo.user_color,
+        user_name: photo.user_name,
+        image_data: photo.image_data,
+        thumbnail_data: photo.thumbnail_data,
+        content_type: photo.content_type,
+        file_size: photo.file_size,
+        description: photo.description,
+        inserted_at: photo.uploaded_at
+      }
+
+      {:noreply,
+       socket
+       |> assign(:photo_order, merge_photo_order(socket.assigns[:photo_order], [photo.id], :front))
+       |> stream_insert(:feed_items, item, at: 0)
+       |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+       |> then(fn s ->
+         if s.assigns[:show_welcome_graph],
+           do: push_event(s, "welcome_signal", %{user_id: photo.user_id}),
+           else: s
+       end)}
+    end
   end
 
   def handle_new_public_note(socket, note) do

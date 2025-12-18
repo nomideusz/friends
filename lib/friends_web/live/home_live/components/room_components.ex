@@ -472,7 +472,38 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
 
   def room_item(assigns) do
     ~H"""
-    <%= if Map.get(@item, :type) == :photo do %>
+    <%= if Map.get(@item, :type) == :gallery do %>
+      <div
+        id={@id}
+        class="photo-item group relative aspect-square overflow-hidden aether-card cursor-pointer animate-in fade-in zoom-in-95 duration-300"
+        phx-click="view_gallery"
+        phx-value-batch_id={@item.batch_id}
+      >
+        <img
+          src={get_in(@item, [:first_photo, :thumbnail_data]) || get_in(@item, [:first_photo, :image_data])}
+          alt="Photo gallery"
+          class="w-full h-full object-cover ease-out"
+        />
+
+        <%!-- Gallery count indicator --%>
+        <div class="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-white/20">
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-xs font-bold text-white"><%= @item.photo_count %></span>
+          </div>
+        </div>
+
+        <%!-- Overlay --%>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+           <div class="absolute bottom-2 left-2 right-2">
+             <div class="text-xs font-bold text-neutral-500 truncate">@<%= @item.user_name || "unknown" %></div>
+           </div>
+        </div>
+      </div>
+    <% else %>
+      <%= if Map.get(@item, :type) == :photo do %>
       <div
         id={@id}
         class="photo-item group relative aspect-square overflow-hidden aether-card cursor-pointer transition-all hover:border-white/20 hover:-translate-y-1 animate-in fade-in zoom-in-95 duration-300"
@@ -495,8 +526,12 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
             >
             </div>
             
-            <!-- Decorative wave background -->
-            <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMTBoMThNMTAgMXYxOCIgc3Ryb2tlPSJjdXJyZW50Q29xb3Igc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiAvPjwvc3ZnPg==');"></div>
+            <!-- Waveform Canvas -->
+            <canvas
+              class="visualizer-canvas absolute inset-0 w-full h-full opacity-40 pointer-events-none"
+              width="300"
+              height="300"
+            ></canvas>
             
             <div class="relative z-10 flex flex-col items-center w-full">
               <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center mb-2 sm:mb-3 ring-1 ring-white/20">
@@ -616,6 +651,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           </button>
         <% end %>
       </div>
+    <% end %>
     <% end %>
     """
   end

@@ -16,6 +16,7 @@ defmodule Friends.Social.Photo do
     field :file_size, :integer
     field :description, :string
     field :uploaded_at, :utc_datetime
+    field :batch_id, :string  # Groups photos uploaded together
 
     belongs_to :room, Friends.Social.Room
 
@@ -36,7 +37,8 @@ defmodule Friends.Social.Photo do
       :content_type,
       :file_size,
       :description,
-      :room_id
+      :room_id,
+      :batch_id
     ])
     |> validate_required([:user_id, :image_data])
     |> validate_length(:description, max: 200)
