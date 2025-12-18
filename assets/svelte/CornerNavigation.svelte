@@ -87,35 +87,15 @@
             live?.pushEvent("open_photo_upload", {});
         }
     }
-
-    function handleHomeClick() {
-        if (currentRoute === "/") {
-            // Already home, maybe show breadcrumb or do nothing
-            return;
-        }
-        navigateTo("/");
-    }
-
-    $: isHome = currentRoute === "/" || currentRoute === "";
 </script>
 
 {#if currentUser}
-    <!-- Top Left: Home Orb -->
-    <CornerOrb
-        position="top-left"
-        icon="orb"
-        label="Home"
-        showLabel={true}
-        active={isHome}
-        onClick={handleHomeClick}
-    />
-
     <!-- Top Right: User Orb -->
     <CornerOrb
         position="top-right"
         icon="user"
         label={currentUser.username}
-        showLabel={true}
+        showLabel={false}
         notification={pendingCount > 0}
         menuItems={userMenuItems}
     />
@@ -125,7 +105,7 @@
         position="bottom-left"
         icon="menu"
         label="Navigate"
-        showLabel={true}
+        showLabel={false}
         menuItems={navMenuItems}
     />
 
@@ -134,7 +114,7 @@
         position="bottom-right"
         icon="plus"
         label="Create"
-        showLabel={true}
+        showLabel={false}
         menuItems={createMenuItems}
     />
 {/if}

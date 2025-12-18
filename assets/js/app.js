@@ -1115,6 +1115,98 @@ const Hooks = {
         }
     },
 
+    // Long-press handler for orb navigation (hidden power-user feature)
+    LongPressOrb: {
+        mounted() {
+            this.pressTimer = null
+            this.pressing = false
+            this.duration = parseInt(this.el.dataset.longPressDuration) || 3000
+            this.event = this.el.dataset.longPressEvent
+
+            // Create visual feedback element (progress ring)
+            this.createProgressRing()
+
+            // Mouse events
+            this.el.addEventListener('mousedown', (e) => this.startPress(e))
+            this.el.addEventListener('mouseup', () => this.endPress())
+            this.el.addEventListener('mouseleave', () => this.endPress())
+
+            // Touch events
+            this.el.addEventListener('touchstart', (e) => this.startPress(e), { passive: true })
+            this.el.addEventListener('touchend', () => this.endPress())
+            this.el.addEventListener('touchcancel', () => this.endPress())
+        },
+
+        createProgressRing() {
+            // Add SVG progress ring that fills during long press
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+            svg.setAttribute('class', 'long-press-ring')
+            svg.setAttribute('viewBox', '0 0 50 50')
+            svg.style.cssText = 'position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); pointer-events: none; opacity: 0; transition: opacity 0.2s;'
+
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+            circle.setAttribute('cx', '25')
+            circle.setAttribute('cy', '25')
+            circle.setAttribute('r', '22')
+            circle.setAttribute('fill', 'none')
+            circle.setAttribute('stroke', 'rgba(255,255,255,0.5)')
+            circle.setAttribute('stroke-width', '2')
+            circle.setAttribute('stroke-dasharray', '138.23') // 2*PI*22
+            circle.setAttribute('stroke-dashoffset', '138.23')
+            circle.setAttribute('transform', 'rotate(-90 25 25)')
+            circle.style.transition = `stroke-dashoffset ${this.duration}ms linear`
+
+            svg.appendChild(circle)
+            this.el.style.position = 'relative'
+            this.el.appendChild(svg)
+            this.progressRing = circle
+            this.progressSvg = svg
+        },
+
+        startPress(e) {
+            e.preventDefault()
+            this.pressing = true
+
+            // Show progress ring
+            this.progressSvg.style.opacity = '1'
+            this.progressRing.style.strokeDashoffset = '0'
+
+            // Set timer for long press
+            this.pressTimer = setTimeout(() => {
+                if (this.pressing && this.event) {
+                    this.pushEvent(this.event, {})
+                    this.endPress()
+                }
+            }, this.duration)
+        },
+
+        endPress() {
+            this.pressing = false
+            if (this.pressTimer) {
+                clearTimeout(this.pressTimer)
+                this.pressTimer = null
+            }
+
+            // Reset progress ring
+            if (this.progressSvg) {
+                this.progressSvg.style.opacity = '0'
+                // Reset without transition
+                this.progressRing.style.transition = 'none'
+                this.progressRing.style.strokeDashoffset = '138.23'
+                // Re-enable transition after a frame
+                setTimeout(() => {
+                    this.progressRing.style.transition = `stroke-dashoffset ${this.duration}ms linear`
+                }, 10)
+            }
+        },
+
+        destroyed() {
+            if (this.pressTimer) {
+                clearTimeout(this.pressTimer)
+            }
+        }
+    },
+
     // Message encryption and sending hook
     MessageEncryption: {
         mounted() {
@@ -1417,8 +1509,9 @@ const Hooks = {
             this.roomId = this.el.dataset.roomId
             this.voiceRecorder = null
 
-            const sendBtn = this.el.querySelector('button')
-            const input = this.el.querySelector('input')
+            // Find by ID for fluid layout compatibility
+            const sendBtn = this.el.querySelector('#send-unified-message-btn') || this.el.querySelector('button')
+            const input = this.el.querySelector('#unified-message-input') || this.el.querySelector('input[type="text"]')
 
             if (sendBtn && input) {
                 sendBtn.addEventListener('click', async () => {

@@ -116,7 +116,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_image_modal, false)
         |> assign(:full_image_data, nil)
         |> assign(:feed_item_count, length(feed_items))
+        |> assign(:no_more_items, length(feed_items) < 20)
+        |> assign(:show_nav_panel, false)
         |> assign(:show_breadcrumbs, false)
+        # Typing users (for rooms, init empty for dashboard)
+        |> assign(:typing_users, %{})
         |> assign(:photo_order, photo_ids(feed_items))
         |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
 
@@ -183,6 +187,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
 
         if room.is_private do
           Social.subscribe_to_room_chat(room.id)
+          # Subscribe to live typing events
+          Phoenix.PubSub.subscribe(Friends.PubSub, "room:#{room.id}:typing")
         end
 
         # Subscribe to user-specific events (room creations, etc.)
@@ -226,6 +232,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Collapsible chat panel, default open for private
         |> assign(:show_chat_panel, room.is_private)
         |> assign(:show_mobile_chat, false)
+        # Fluid room state
+        |> assign(:show_members_panel, false)
+        |> assign(:chat_expanded, false)
+        # Live typing - track what other users are typing
+        |> assign(:typing_users, %{})
         # FAB and collapsible UI state
         |> assign(:fab_expanded, false)
         |> assign(:contacts_collapsed, false)

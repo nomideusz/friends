@@ -1,7 +1,8 @@
 <div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white min-h-screen bg-black relative">
   
   <%!-- === FLUID TOOLBAR (Bottom-Center) === --%>
-  <%= if @current_user do %>
+  <%!-- Hidden when in fluid views (both dashboard and private rooms have their own input bars) --%>
+  <%= if not is_nil(@current_user) and not (@live_action == :index) and not (assigns[:room] && @room.is_private && not @room_access_denied) do %>
     <div
       id="fluid-toolbar-container"
       class="z-[150] select-none"
@@ -13,7 +14,6 @@
           <button 
             phx-click="go_home"
             class="w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] hover:scale-125 hover:shadow-[0_0_15px_rgba(255,255,255,0.8)] transition-all duration-300 cursor-pointer"
-            title="Go Home"
           ></button>
           
           <button phx-click="open_room_modal" class="text-[10px] font-mono font-bold tracking-widest text-white/50 uppercase select-none hover:text-white transition-colors cursor-pointer text-left">
@@ -31,11 +31,14 @@
 
         <%!-- Main Actions --%>
         <div class="flex items-center gap-4">
-          <%!-- Network/Graph --%>
+          <%!-- Network/Graph (3s press-hold shows fullscreen graph) --%>
           <button 
+            id="network-orb-button"
             phx-click="toggle_graph_drawer"
+            phx-hook="LongPressOrb"
+            data-long-press-event="show_fullscreen_graph"
+            data-long-press-duration="3000"
             class="p-2 rounded-xl hover:bg-white/10 transition-colors text-white/50 hover:text-white cursor-pointer"
-            title="Your Network"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -71,7 +74,7 @@
                 </button>
                 <div class="h-px bg-white/10 my-1"></div>
                 <button phx-click={JS.hide(to: "#universal-create-menu") |> JS.push("open_create_group_modal")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-green-500/20 text-green-400 transition-colors text-sm font-medium cursor-pointer">
-                  <span class="opacity-70">👥</span> New Group
+                  <span class="opacity-70">👥</span> Group
                 </button>
               </div>
             </div>
@@ -97,7 +100,6 @@
             >
               <div class="fluid-glass p-2 flex flex-col gap-1 min-w-[180px] shadow-2xl animate-in slide-in-from-bottom-4 zoom-in-95 duration-200">
                 <div class="px-4 py-2 mb-1">
-                  <div class="text-xs font-bold text-white/40 uppercase tracking-widest">Signed in as</div>
                   <div class="text-sm font-bold text-white truncate">@{@current_user.username}</div>
                 </div>
                 <button phx-click={JS.hide(to: "#universal-user-menu") |> JS.push("open_settings_modal")} class="flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer">
@@ -198,63 +200,11 @@
   <% end %>
 
 
-  <.note_modal show={assigns[:show_note_modal]} action={assigns[:note_modal_action] || "post_feed_note"} />
+  <%!-- Fluid Note Modal --%>
+  <.fluid_note_modal show={assigns[:show_note_modal]} action={assigns[:note_modal_action] || "post_feed_note"} />
 
-  <%!-- View Note Modal --%>
-  <%= if assigns[:viewing_note] do %>
-    <div
-      class="fixed inset-0 z-[200]"
-      phx-mounted={JS.add_class("overflow-hidden", to: "body")}
-      phx-remove={JS.remove_class("overflow-hidden", to: "body")}
-      phx-window-keydown="close_view_note"
-      phx-key="escape"
-    >
-      <!-- Backdrop -->
-      <div 
-        class="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
-        phx-click="close_view_note"
-      ></div>
-
-      <!-- Modal Content Container -->
-      <div class="surface-overlay">
-        <div class="surface-island aether-card w-full max-w-4xl">
-          <div class="sheet-handle" phx-click="close_view_note"><div></div></div>
-          
-          <div class="flex items-center justify-between p-8 pb-4">
-            <div class="flex items-center gap-4">
-              <div
-                class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-inner border border-white/10"
-                style={"background-color: #{if @viewing_note[:user], do: friend_color(@viewing_note.user), else: "#666"}"}
-              >
-                {if @viewing_note[:user] && @viewing_note.user[:username], do: String.first(@viewing_note.user.username || "?") |> String.upcase(), else: "?"}
-              </div>
-              <div>
-                <h3 class="text-xl font-bold text-white tracking-tight">
-                  {if @viewing_note[:user] && @viewing_note.user[:username], do: @viewing_note.user.username, else: "Anonymous"}
-                </h3>
-                <p class="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-0.5">
-                  {@viewing_note[:time] || "Just now"}
-                </p>
-              </div>
-            </div>
-            
-            <button
-              phx-click="close_view_note"
-              class="w-10 h-10 flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div class="flex-1 overflow-y-auto px-8 pb-10 custom-scrollbar">
-            <p class="text-lg md:text-xl text-white/90 leading-relaxed whitespace-pre-wrap font-medium">{String.trim(@viewing_note[:content] || "")}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  <% end %>
+  <%!-- Fluid View Note Modal --%>
+  <.fluid_view_note_modal note={assigns[:viewing_note]} />
   
   <.invite_modal
     show={assigns[:show_invite_modal]}
@@ -290,94 +240,8 @@
     current_device_id={assigns[:current_device_id]}
   />
   
-  <%!-- Create Group Modal --%>
-  <%= if assigns[:create_group_modal] do %>
-    <div
-      id="create-group-modal-overlay"
-      class="fixed inset-0 z-[200]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-group-modal-title"
-      phx-hook="LockScroll"
-    >
-      <!-- Backdrop -->
-      <div 
-        class="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300"
-        phx-click="close_create_group_modal"
-      ></div>
-
-      <!-- Modal Content Container -->
-      <div class="surface-overlay">
-        <div class="surface-island aether-card w-full max-w-md">
-          <div class="sheet-handle" phx-click="close_create_group_modal"><div></div></div>
-          
-          <div class="p-8 pb-6">
-            <div class="flex items-center justify-between mb-2">
-              <h2 id="create-group-modal-title" class="text-2xl font-bold text-white tracking-tight">
-                Create Space
-              </h2>
-              <button
-                type="button"
-                phx-click="close_create_group_modal"
-                class="w-8 h-8 flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <p class="text-sm font-medium text-white/40">
-              Personalized spaces for focused sharing
-            </p>
-          </div>
-
-          <form phx-submit="create_group" phx-change="update_room_form" class="px-8 pb-8 space-y-8">
-            <div class="space-y-3">
-              <label for="group-name" class="block text-[10px] font-bold text-white/30 uppercase tracking-widest pl-1">
-                Space Name
-              </label>
-              <input
-                type="text"
-                id="group-name"
-                name="name"
-                value={@new_room_name}
-                placeholder="e.g. Inner Circle"
-                maxlength="50"
-                autofocus
-                class="w-full"
-              />
-            </div>
-            
-            <div class="flex gap-4">
-              <button
-                type="button"
-                phx-click="close_create_group_modal"
-                class="flex-1 btn-aether"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                phx-disable-with="Creating..."
-                class="flex-1 btn-aether btn-aether-primary"
-              >
-                Create
-              </button>
-            </div>
-          </form>
-          
-          <div class="px-8 pb-8">
-            <div class="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-start gap-3">
-              <span class="text-lg">🛡️</span>
-              <div class="text-[11px] leading-relaxed text-white/40 font-medium">
-                Spaces are private. Only members you explicitly invite can view content or join discussions.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  <% end %>
+  <%!-- Fluid Create Group Modal --%>
+  <.fluid_create_group_modal show={assigns[:create_group_modal]} new_room_name={assigns[:new_room_name] || ""} />
 
   <%!-- Room Switcher Modal --%>
   <%= if assigns[:show_room_modal] do %>
@@ -405,8 +269,6 @@
           <div class="flex items-center justify-between">
             <div>
               <h2 id="room-modal-title" class="text-xl font-semibold text-white">Groups</h2>
-              
-              <p class="text-sm text-neutral-400 mt-1">Switch to another group</p>
             </div>
             
             <button
@@ -431,12 +293,6 @@
            <%!-- Private Rooms List --%>
           <%= if @current_user && @user_private_rooms != [] do %>
             <div>
-              <div class="flex items-center gap-2 mb-3">
-                <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                  Your Spaces
-                </span>
-                <div class="flex-1 border-t border-neutral-800"></div>
-              </div>
               
               <div class="space-y-1">
                 <%= for room <- @user_private_rooms do %>
@@ -463,9 +319,6 @@
                     ]}>
                       {room.name || room.code}
                     </span>
-                    <%= if assigns[:room] && room.code == @room.code do %>
-                      <span class="ml-auto text-xs text-white/50">Current</span>
-                    <% end %>
                   </button>
                 <% end %>
               </div>
@@ -474,13 +327,7 @@
 
            <%!-- Direct Spaces List --%>
           <%= if @current_user && @direct_rooms != [] do %>
-            <div>
-              <div class="flex items-center gap-2 mb-3">
-                <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                  Direct Spaces
-                </span>
-                <div class="flex-1 border-t border-neutral-800"></div>
-              </div>
+            <div class="mt-6">
               
               <div class="space-y-1">
                  <%= for dm_room <- @direct_rooms do %>
@@ -500,61 +347,8 @@
             </div>
           <% end %>
 
-           <%!-- Public Rooms List --%>
-          <div>
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                Public
-              </span>
-              <div class="flex-1 border-t border-neutral-800"></div>
-            </div>
-            
-            <div class="space-y-2">
-              <button
-                type="button"
-                phx-click="switch_room"
-                phx-value-code="lobby"
-                class={[
-                  "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 cursor-pointer",
-                  assigns[:room] && @room.code == "lobby" &&
-                    "bg-blue-500/20 border border-blue-500/30 ring-1 ring-blue-500/20",
-                  (is_nil(assigns[:room]) || @room.code != "lobby") &&
-                    "bg-neutral-800/50 hover:bg-neutral-800 border border-transparent"
-                ]}
-              >
-                <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                  <span class="text-sm">🌍</span>
-                </div>
-                
-                <span class={[
-                  "font-medium truncate",
-                  assigns[:room] && @room.code == "lobby" && "text-blue-400",
-                  (is_nil(assigns[:room]) || @room.code != "lobby") && "text-neutral-300"
-                ]}>
-                  Lobby
-                </span>
-                <%= if assigns[:room] && @room.code == "lobby" do %>
-                  <span class="ml-auto text-xs text-blue-500">✓</span>
-                <% end %>
-              </button>
-            </div>
-          </div>
+
           
-           <%!-- Create Group Button --%>
-          <div class="pt-2 border-t border-neutral-800 mt-2">
-            <button
-              type="button"
-              phx-click="open_create_group_modal"
-              class="w-full p-3 rounded-xl border border-dashed border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500 hover:bg-neutral-800/50 transition-all flex items-center justify-center gap-2 cursor-pointer group"
-            >
-              <div class="w-6 h-6 rounded-full bg-neutral-800 flex items-center justify-center group-hover:bg-neutral-700 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <span class="font-medium">Create New Group</span>
-            </button>
-          </div>
         </div>
            <%!-- Actions - sticky footer --%>
           <div class="p-4 border-t border-white/10 bg-black/40 backdrop-blur-md shrink-0 space-y-3">
@@ -576,13 +370,6 @@
                 Join
               </button>
             </form>
-             <%!-- Create new --%>
-            <button
-              phx-click="open_create_group_modal"
-              class="w-full px-5 py-3 border border-neutral-600 text-neutral-300 text-sm font-medium rounded-xl hover:border-neutral-500 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span>+</span> Create New Group
-            </button>
           </div>
         </div>
       </div>
@@ -685,7 +472,8 @@
         
         <%!-- LEFT: Sidebar or Chat --%>
         <%!-- LEFT: Sidebar (Navigation or Chat) --%>
-        <%= if (@live_action == :index) or (assigns[:room] && @room.is_private && not @room_access_denied) do %>
+        <%!-- Hidden for fluid views (dashboard and private rooms have their own full-screen layouts) --%>
+        <%= if false and ((@live_action == :index) or (assigns[:room] && @room.is_private && not @room_access_denied)) do %>
           <div class="hidden lg:block w-72 shrink-0">
             <div class="sticky top-6 h-[calc(100vh-3rem)] flex flex-col gap-4">
               
@@ -721,9 +509,9 @@
                     </div>
                   </div>
 
-                  <%!-- Direct Spaces --%>
+                  <%!-- Direct --%>
                   <div>
-                    <h3 class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3 px-2">Direct Spaces</h3>
+                    <h3 class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3 px-2">Direct</h3>
                     <div class="space-y-1">
                        <%= for dm_room <- @direct_rooms do %>
                          <% 
@@ -745,7 +533,7 @@
                        
                         <%= if @direct_rooms == [] do %>
                          <div class="px-3 py-4 text-center">
-                           <p class="text-xs text-neutral-600 font-medium">Connect with friends to start chatting</p>
+                           <p class="text-xs text-neutral-600 font-medium">—</p>
                          </div>
                       <% end %>
                     </div>
@@ -773,92 +561,57 @@
         <div class="flex-1 min-w-0 relative pb-32 pointer-events-auto">
           
           <%= if @live_action == :index do %>
-            <%!-- === DASHBOARD CONTENT === --%>
-            <div id="public-feed-app" phx-hook="FriendsApp">
-              <%!-- Upload progress --%>
-              <.feed_upload_progress uploads={assigns[:uploads]} />
-              <%!-- Hidden file input for uploads --%>
-              <.feed_actions_bar
-                uploads={@uploads}
-                uploading={@uploading}
-                recording_voice={@recording_voice}
-              /> 
-              <%!-- Feed Grid --%>
-              <%= if @feed_item_count == 0 do %>
-                <.empty_feed welcome_graph_data={@welcome_graph_data} current_user_id={if @current_user, do: @current_user.id, else: nil} />
-              <% else %>
-                <.feed_grid feed_items={@streams.feed_items} />
-              <% end %>
-            </div>
+            <%!-- === FLUID FEED (Dashboard) === --%>
+            <.fluid_feed
+              current_user={@current_user}
+              feed_items={@streams.feed_items}
+              feed_item_count={@feed_item_count}
+              uploads={assigns[:uploads]}
+              uploading={@uploading}
+              recording_voice={@recording_voice}
+              no_more_items={@no_more_items}
+              user_private_rooms={@user_private_rooms}
+              direct_rooms={@direct_rooms}
+              show_nav_panel={@show_nav_panel}
+              welcome_graph_data={@welcome_graph_data}
+            />
 
           <% else %>
             <%!-- === ROOM CONTENT === --%>
-            <div
-              id="friends-app"
-              class="text-white relative pt-12 lg:pt-0"
-              phx-hook="FriendsApp"
-              phx-window-keydown="handle_keydown"
-            >
-              <%!-- Upload progress --%>
-              <.upload_progress uploads={assigns[:uploads]} />
-              
-              <%!-- Access Denied --%>
-              <.access_denied
-                room_access_denied={@room_access_denied}
+            <%= if @room.is_private and not @room_access_denied do %>
+              <%!-- FLUID PRIVATE ROOM --%>
+              <.fluid_room
                 room={@room}
                 current_user={@current_user}
-              /> 
-              
-              <%!-- Empty State --%>
-              <.empty_room
+                room_members={@room_members}
+                room_messages={@room_messages}
+                items={@streams.items}
                 item_count={@item_count}
-                current_user={@current_user}
-                room_access_denied={@room_access_denied}
-                feed_mode={@feed_mode}
-                network_filter={@network_filter}
+                new_chat_message={@new_chat_message}
+                uploads={assigns[:uploads]}
+                uploading={@uploading}
+                recording_voice={@recording_voice}
+                no_more_items={@no_more_items}
+                show_members_panel={@show_members_panel}
+                chat_expanded={@chat_expanded}
+                typing_users={@typing_users}
               />
-              
-
-              
-              <%!-- Content Grid --%>
-              <%= if not @room_access_denied do %>
-                <%!-- New Action Bar (replaces desktop_action_cards) --%>
-                <div class="hidden lg:block">
-                  <.room_actions_bar
-                    current_user={@current_user}
-                    room_access_denied={@room_access_denied}
-                    uploads={assigns[:uploads]}
-                    uploading={@uploading}
-                    recording_voice={@recording_voice}
-                    room={@room}
-                  />
-                </div>
-              
-                <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                  <.room_grid items={@streams.items} room={@room} current_user={@current_user} />
-                </div>
-                
-                <.load_more_button no_more_items={@no_more_items} />
-              <% end %>
-
-              <%!-- Mobile Chat Overlay Toggle (Only needed for private rooms) --%>
-              <%= if @room.is_private and not @room_access_denied do %>
-                <%!-- Hidden on Desktop because Chat is on the left --%>
-                <%!-- Shown on Mobile as overlay --%>
-                <div class="lg:hidden">
-                   <.chat_panel
-                    room={@room}
-                    current_user={@current_user}
-                    room_members={@room_members}
-                    room_messages={@room_messages}
-                    new_chat_message={@new_chat_message}
-                    show_mobile_chat={@show_mobile_chat}
-                    id_prefix="mobile"
-                  />
-                  <.mobile_chat_toggle show_mobile_chat={@show_mobile_chat} />
-                </div>
-              <% end %>
-            </div>
+            <% else %>
+              <%!-- Access Denied or Public Room (fallback to old design) --%>
+              <div
+                id="friends-app"
+                class="text-white relative pt-12 lg:pt-0"
+                phx-hook="FriendsApp"
+                phx-window-keydown="handle_keydown"
+              >
+                <%!-- Access Denied --%>
+                <.access_denied
+                  room_access_denied={@room_access_denied}
+                  room={@room}
+                  current_user={@current_user}
+                />
+              </div>
+            <% end %>
           <% end %>
         </div>
 

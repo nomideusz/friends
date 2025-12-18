@@ -156,12 +156,44 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   # --- Chat ---
 
   def handle_new_room_message(socket, message) do
+    # When a message is sent, clear typing indicator for that user
+    typing_users = socket.assigns[:typing_users] || %{}
+    updated_typing = Map.delete(typing_users, message.sender_id)
+    socket = assign(socket, :typing_users, updated_typing)
+
     if socket.assigns.show_chat_panel or socket.assigns.room_tab == "chat" do
       messages = socket.assigns.room_messages ++ [message]
       {:noreply, assign(socket, :room_messages, messages)}
     else
       {:noreply, socket}
     end
+  end
+
+  # --- Live Typing ---
+
+  def handle_user_typing(socket, %{user_id: user_id, username: username, text: text}) do
+    current_user = socket.assigns[:current_user]
+
+    # Ignore own typing
+    if current_user && user_id == current_user.id do
+      {:noreply, socket}
+    else
+      # Update typing_users map
+      typing_users = socket.assigns[:typing_users] || %{}
+      updated = Map.put(typing_users, user_id, %{
+        username: username,
+        text: text,
+        timestamp: System.system_time(:millisecond)
+      })
+
+      {:noreply, assign(socket, :typing_users, updated)}
+    end
+  end
+
+  def handle_user_stopped_typing(socket, %{user_id: user_id}) do
+    typing_users = socket.assigns[:typing_users] || %{}
+    updated = Map.delete(typing_users, user_id)
+    {:noreply, assign(socket, :typing_users, updated)}
   end
 
   # --- Presence ---

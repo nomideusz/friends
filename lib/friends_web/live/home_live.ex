@@ -4,13 +4,14 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social
 
   import FriendsWeb.HomeLive.Helpers
-  import FriendsWeb.HomeLive.Components.FeedComponents
   import FriendsWeb.HomeLive.Components.RoomComponents
-  import FriendsWeb.HomeLive.Components.ModalComponents
   import FriendsWeb.HomeLive.Components.SettingsComponents
   import FriendsWeb.HomeLive.Components.ChatComponents
   import FriendsWeb.HomeLive.Components.InviteComponents
   import FriendsWeb.HomeLive.Components.DrawerComponents
+  import FriendsWeb.HomeLive.Components.FluidRoomComponents
+  import FriendsWeb.HomeLive.Components.FluidFeedComponents
+  import FriendsWeb.HomeLive.Components.FluidModalComponents
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -509,8 +510,33 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, socket}
   end
 
-  # Update chat message input
+  # Update chat message input AND broadcast typing
   def handle_event("update_chat_message", %{"value" => text}, socket) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    # Broadcast typing to other users
+    if room && current_user && String.length(text) > 0 do
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "room:#{room.id}:typing",
+        {:user_typing, %{
+          user_id: current_user.id,
+          username: current_user.username,
+          text: text
+        }}
+      )
+    end
+
+    # If text is empty, broadcast stop typing
+    if room && current_user && String.length(text) == 0 do
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "room:#{room.id}:typing",
+        {:user_stopped_typing, %{user_id: current_user.id}}
+      )
+    end
+
     {:noreply, assign(socket, :new_chat_message, text)}
   end
 
@@ -592,6 +618,18 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("toggle_mobile_chat", _params, socket) do
     ChatEvents.toggle_mobile_chat(socket)
+  end
+
+  def handle_event("toggle_members_panel", _params, socket) do
+    ChatEvents.toggle_members_panel(socket)
+  end
+
+  def handle_event("toggle_chat_expanded", _params, socket) do
+    ChatEvents.toggle_chat_expanded(socket)
+  end
+
+  def handle_event("toggle_nav_panel", _params, socket) do
+    {:noreply, update(socket, :show_nav_panel, &(!&1))}
   end
 
   # --- Corner Navigation Events ---
@@ -815,7 +853,15 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  # --- Live Typing Events ---
 
+  def handle_info({:user_typing, payload}, socket) do
+    PubSubHandlers.handle_user_typing(socket, payload)
+  end
+
+  def handle_info({:user_stopped_typing, payload}, socket) do
+    PubSubHandlers.handle_user_stopped_typing(socket, payload)
+  end
 
   # --- Helpers ---
   # Note: navigate_photo/2 is imported from FriendsWeb.HomeLive.Helpers
