@@ -214,14 +214,63 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       |> MapSet.new()
 
     # Remove left users and add new users
+    # Note: presence metadata uses user_id and user_name, not id and username
     updated_viewers =
       current_viewers
-      |> Enum.reject(fn user -> MapSet.member?(left_user_ids, "user-#{user.id}") end)
+      |> Enum.reject(fn user -> MapSet.member?(left_user_ids, "user-#{user.user_id}") end)
       |> Kernel.++(new_users)
-      |> Enum.uniq_by(& &1.id)
-      |> Enum.sort_by(& &1.username)
+      |> Enum.uniq_by(& &1.user_id)
+      |> Enum.sort_by(& &1.user_name)
 
     {:noreply, assign(socket, :viewers, updated_viewers)}
+  end
+
+  @doc """
+  Handle global presence changes - updates online_friend_ids for breathing avatars.
+  """
+  def handle_global_presence_diff(socket, %{joins: joins, leaves: leaves}) do
+    current_online = socket.assigns[:online_friend_ids] || MapSet.new()
+    friends = socket.assigns[:friends] || []
+    friend_ids = MapSet.new(Enum.map(friends, & &1.user.id))
+
+    # Extract user IDs from joins (format: "user-123")
+    joined_ids =
+      joins
+      |> Enum.flat_map(fn {key, _} ->
+        case key do
+          "user-" <> id_str ->
+            case Integer.parse(id_str) do
+              {id, ""} -> [id]
+              _ -> []
+            end
+          _ -> []
+        end
+      end)
+      |> MapSet.new()
+      |> MapSet.intersection(friend_ids)
+
+    # Extract user IDs from leaves
+    left_ids =
+      leaves
+      |> Enum.flat_map(fn {key, _} ->
+        case key do
+          "user-" <> id_str ->
+            case Integer.parse(id_str) do
+              {id, ""} -> [id]
+              _ -> []
+            end
+          _ -> []
+        end
+      end)
+      |> MapSet.new()
+
+    # Update online friend IDs
+    updated_online =
+      current_online
+      |> MapSet.union(joined_ids)
+      |> MapSet.difference(left_ids)
+
+    {:noreply, assign(socket, :online_friend_ids, updated_online)}
   end
 
   # --- Public Feed ---

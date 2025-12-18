@@ -46,18 +46,27 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{session_user.id}")
         # Subscribe to public feed updates
         Social.subscribe_to_public_feed(session_user.id)
+        # Subscribe to global presence for live friend status
+        Presence.subscribe_global()
+        # Track this user as online globally
+        Presence.track_global(self(), session_user.id, session_user_color, session_user_name)
       end
 
       # Load initial public feed items and contacts
       feed_items = Social.list_public_feed_items(session_user.id, 20)
       friends = Social.list_friends(session_user.id)
       trusted_friends = Social.list_trusted_friends(session_user.id)
+      incoming_trust_requests = Social.list_pending_trust_requests(session_user.id)
       pending_requests = Social.list_friend_requests(session_user.id)
       devices = Social.list_user_devices(session_user.id)
       
       # Fetch navigation lists
       user_private_rooms = Social.list_user_groups(session_user.id)
       direct_rooms = Social.list_user_dms(session_user.id)
+
+      # Get online friend IDs for presence indicators
+      friend_user_ids = Enum.map(friends, & &1.user.id)
+      online_friend_ids = if connected?(socket), do: Presence.filter_online(friend_user_ids), else: []
 
       socket =
         socket
@@ -93,6 +102,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Public feed assigns
         |> assign(:friends, friends)
         |> assign(:trusted_friends, trusted_friends)
+        |> assign(:incoming_trust_requests, incoming_trust_requests)
         |> assign(:pending_requests, pending_requests)
         |> assign(:user_private_rooms, user_private_rooms)
         |> assign(:direct_rooms, direct_rooms)
@@ -119,8 +129,13 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:no_more_items, length(feed_items) < 20)
         |> assign(:show_nav_panel, false)
         |> assign(:show_breadcrumbs, false)
+        |> assign(:show_groups_sheet, false)
+        |> assign(:group_search_query, "")
+        |> assign(:group_search_results, [])
         # Typing users (for rooms, init empty for dashboard)
         |> assign(:typing_users, %{})
+        # Live presence - friend IDs currently online
+        |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
         |> assign(:photo_order, photo_ids(feed_items))
         |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
 
@@ -203,6 +218,21 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Note: PhotoEvents must be aliased or full module name used
         Task.start(fn -> PhotoEvents.regenerate_all_missing_thumbnails(room.id, room.code) end)
       end
+
+      # Subscribe to global presence for friend status
+      if connected?(socket) and session_user do
+        Presence.subscribe_global()
+        Presence.track_global(self(), session_user.id, session_user_color, session_user_name)
+      end
+
+      # Get online friend IDs
+      online_friend_ids = 
+        if connected?(socket) and length(friends) > 0 do
+          friend_user_ids = Enum.map(friends, & &1.user.id)
+          Presence.filter_online(friend_user_ids)
+        else
+          []
+        end
 
       socket =
         socket
@@ -301,6 +331,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_create_menu, false)
         |> assign(:current_photo_id, nil)
         |> assign(:friends, friends)
+        # Live presence - friend IDs currently online
+        |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")
         |> maybe_allow_upload(can_access)
 

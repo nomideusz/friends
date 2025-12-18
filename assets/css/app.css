@@ -37,6 +37,48 @@
   filter: blur(80px);
 }
 
+/* =========================================================================================
+   PRESENCE BREATHING ANIMATION
+   Subtle glow for online friends - anti-notification, ambient awareness
+   ========================================================================================= */
+
+@keyframes presence-breathe {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0.7;
+  }
+  50% {
+    box-shadow: 0 0 8px 3px currentColor;
+    opacity: 1;
+  }
+}
+
+/* Avatar with breathing glow - apply when friend is online */
+.avatar-online {
+  animation: presence-breathe 3s var(--ease-fluid) infinite;
+  /* Use currentColor so glow inherits the user's color */
+}
+
+/* Static presence glow (for hover or focus states) */
+.presence-glow {
+  box-shadow: 0 0 12px 3px currentColor;
+  transition: box-shadow 0.3s var(--ease-fluid);
+}
+
+/* Presence dot - small indicator next to avatars */
+.presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 6px 1px currentColor;
+}
+
+/* Presence dot breathing (more subtle) */
+.presence-dot-online {
+  animation: presence-breathe 3s var(--ease-fluid) infinite;
+}
+
 :root {
   --font-family-display: 'Outfit', system-ui, sans-serif;
   --font-family-body: 'Inter', system-ui, sans-serif;

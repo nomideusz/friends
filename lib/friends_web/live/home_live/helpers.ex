@@ -33,6 +33,17 @@ defmodule FriendsWeb.HomeLive.Helpers do
 
   def friend_color(_), do: "#888"
 
+  @doc """
+  Generate DM room code from two user IDs.
+  Uses format: dm-{lower_id}-{higher_id}
+  """
+  def dm_room_code(user1_id, user2_id) when is_integer(user1_id) and is_integer(user2_id) do
+    {lower, higher} = if user1_id < user2_id, do: {user1_id, user2_id}, else: {user2_id, user1_id}
+    "dm-#{lower}-#{higher}"
+  end
+
+  def dm_room_code(_, _), do: nil
+
   def color_from_user_id("user-" <> id_str) do
     case Integer.parse(id_str) do
       {int, ""} -> color_from_user_id(int)

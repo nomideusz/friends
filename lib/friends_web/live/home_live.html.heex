@@ -1,127 +1,4 @@
 <div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white min-h-screen bg-black relative">
-  
-  <%!-- === FLUID TOOLBAR (Bottom-Center) === --%>
-  <%!-- Hidden when in fluid views (both dashboard and private rooms have their own input bars) --%>
-  <%= if not is_nil(@current_user) and not (@live_action == :index) and not (assigns[:room] && @room.is_private && not @room_access_denied) do %>
-    <div
-      id="fluid-toolbar-container"
-      class="z-[150] select-none"
-    >
-      <div class="fluid-glass px-6 py-3 flex items-center gap-6 shadow-2xl border border-white/10">
-        
-        <%!-- Home Button & Context Label --%>
-        <div class="flex items-center gap-4">
-          <button 
-            phx-click="go_home"
-            class="w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] hover:scale-125 hover:shadow-[0_0_15px_rgba(255,255,255,0.8)] transition-all duration-300 cursor-pointer"
-          ></button>
-          
-          <button phx-click="open_room_modal" class="text-[10px] font-mono font-bold tracking-widest text-white/50 uppercase select-none hover:text-white transition-colors cursor-pointer text-left">
-            <%= if assigns[:room] do %>
-              <%= if @room.is_private, do: @room.name || @room.code, else: "Public Square" %>
-            <% else %>
-              Network
-            <% end %>
-            <span class="ml-1 opacity-50">▾</span>
-          </button>
-        </div>
-
-        <%!-- Divider --%>
-        <div class="w-px h-4 bg-white/10"></div>
-
-        <%!-- Main Actions --%>
-        <div class="flex items-center gap-4">
-          <%!-- Network/Graph (3s press-hold shows fullscreen graph) --%>
-          <button 
-            id="network-orb-button"
-            phx-click="toggle_graph_drawer"
-            phx-hook="LongPressOrb"
-            data-long-press-event="show_fullscreen_graph"
-            data-long-press-duration="3000"
-            class="p-2 rounded-xl hover:bg-white/10 transition-colors text-white/50 hover:text-white cursor-pointer"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </button>
-
-          <%!-- Create Menu Trigger --%>
-          <div class="relative group/menu">
-            <button 
-              phx-click={JS.toggle(to: "#universal-create-menu")}
-              class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all duration-300 cursor-pointer"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-
-            <%!-- Universal Create Menu --%>
-            <div 
-              id="universal-create-menu"
-              class="absolute bottom-14 left-1/2 -translate-x-1/2 mb-4 hidden"
-              phx-click-away={JS.hide(to: "#universal-create-menu")}
-            >
-              <div class="fluid-glass p-2 flex flex-col gap-1 min-w-[140px] shadow-2xl animate-in slide-in-from-bottom-4 zoom-in-95 duration-200">
-                <button phx-click={JS.hide(to: "#universal-create-menu") |> JS.push("open_photo_upload")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer">
-                  <span class="text-white/50">📸</span> Photo
-                </button>
-                <button phx-click={JS.hide(to: "#universal-create-menu") |> JS.push("open_note_modal")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer">
-                  <span class="text-white/50">📝</span> Note
-                </button>
-                <button phx-click={JS.hide(to: "#universal-create-menu") |> JS.push("start_voice_recording")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer">
-                  <span class="text-white/50">🎙️</span> Voice
-                </button>
-                <div class="h-px bg-white/10 my-1"></div>
-                <button phx-click={JS.hide(to: "#universal-create-menu") |> JS.push("open_create_group_modal")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-green-500/20 text-green-400 transition-colors text-sm font-medium cursor-pointer">
-                  <span class="opacity-70">👥</span> Group
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <%!-- User / Profile --%>
-          <div class="relative group/user">
-            <button 
-              phx-click={JS.toggle(to: "#universal-user-menu")}
-              class="w-8 h-8 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 transition-colors cursor-pointer"
-            >
-              <span class="text-[10px] font-bold text-white/70"><%= String.first(@current_user.username) |> String.upcase() %></span>
-              <%= if length(@pending_requests || []) > 0 do %>
-                <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></div>
-              <% end %>
-            </button>
-
-            <%!-- Universal User Menu --%>
-            <div 
-              id="universal-user-menu"
-              class="absolute bottom-14 right-0 mb-4 hidden"
-              phx-click-away={JS.hide(to: "#universal-user-menu")}
-            >
-              <div class="fluid-glass p-2 flex flex-col gap-1 min-w-[180px] shadow-2xl animate-in slide-in-from-bottom-4 zoom-in-95 duration-200">
-                <div class="px-4 py-2 mb-1">
-                  <div class="text-sm font-bold text-white truncate">@{@current_user.username}</div>
-                </div>
-                <button phx-click={JS.hide(to: "#universal-user-menu") |> JS.push("open_settings_modal")} class="flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer">
-                  <span>Profile Settings</span>
-                  <%= if length(@pending_requests || []) > 0 do %>
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{length(@pending_requests)}</span>
-                  <% end %>
-                </button>
-                <button phx-click={JS.hide(to: "#universal-user-menu") |> JS.push("open_network_modal")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer">
-                  Manage Network
-                </button>
-                <div class="h-px bg-white/10 my-1"></div>
-                <button phx-click={JS.hide(to: "#universal-user-menu") |> JS.push("sign_out")} class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-red-500/20 text-red-400 transition-colors text-sm font-medium cursor-pointer">
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  <% end %>
 
 
   <%!-- Graph Drawer --%>
@@ -213,6 +90,42 @@
     friends={assigns[:friends] || []}
     search_query={assigns[:member_invite_search] || ""}
   />
+
+  <%!-- People Sheet --%>
+  <.contact_search_sheet
+    show={assigns[:show_contact_sheet]}
+    mode={assigns[:contact_mode]}
+    contacts={@friends}
+
+    search_query={assigns[:contact_sheet_search]}
+    trusted_friend_ids={assigns[:trusted_friend_ids]}
+    incoming_trust_requests={assigns[:incoming_trust_requests]}
+    room={assigns[:room]}
+    room_members={assigns[:room_members] || []}
+    current_user={@current_user}
+    online_friend_ids={assigns[:online_friend_ids]}
+
+  />
+
+  <%!-- Groups Sheet --%>
+  <.groups_sheet
+    show={assigns[:show_groups_sheet] || false}
+    groups={if assigns[:group_search_query] != "", do: assigns[:group_search_results], else: @user_private_rooms}
+    search_query={assigns[:group_search_query] || ""}
+    current_user={@current_user}
+  />
+
+
+
+  <%!-- Global User Menu --%>
+  <%= if assigns[:show_user_menu] do %>
+    <.user_menu_panel 
+      current_user={@current_user}
+      user_private_rooms={@user_private_rooms}
+      friends={@friends}
+      online_friend_ids={assigns[:online_friend_ids]}
+    />
+  <% end %>
 
   <.settings_modal
     show={assigns[:show_settings_modal]}
@@ -571,9 +484,10 @@
               recording_voice={@recording_voice}
               no_more_items={@no_more_items}
               user_private_rooms={@user_private_rooms}
-              direct_rooms={@direct_rooms}
-              show_nav_panel={@show_nav_panel}
+              friends={@friends}
+              show_user_menu={assigns[:show_user_menu] || false}
               welcome_graph_data={@welcome_graph_data}
+              online_friend_ids={assigns[:online_friend_ids]}
             />
 
           <% else %>

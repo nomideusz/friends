@@ -138,6 +138,9 @@ defmodule Friends.Social do
   defdelegate list_pending_trust_requests(user_id), to: Relationships
   defdelegate list_sent_trust_requests(user_id), to: Relationships
   defdelegate count_trusted_friends(user_id), to: Relationships
+  defdelegate cancel_trust_request(user_id, trusted_user_id), to: Relationships
+  defdelegate remove_trusted_friend(user_id, trusted_user_id), to: Relationships
+  defdelegate decline_trust_request(user_id, requester_id), to: Relationships
 
   defdelegate add_friend(user_id, friend_user_id), to: Relationships
   defdelegate accept_friend(user_id, requester_id), to: Relationships
@@ -479,6 +482,37 @@ defmodule Friends.Social do
   end
 
   def search_users(_, _), do: []
+
+  @doc """
+  Search among user's existing friends/contacts.
+  Used when adding members to rooms (only from contacts, not all users).
+  """
+  def search_friends(user_id, query) when is_binary(query) and byte_size(query) >= 2 do
+    pattern = "%#{query}%"
+    friend_ids = Relationships.get_contact_user_ids(user_id)
+    
+    # Convert string user_ids to integers
+    int_friend_ids = friend_ids
+      |> Enum.map(fn id ->
+        case id do
+          "user-" <> n -> String.to_integer(n)
+          n when is_integer(n) -> n
+          n when is_binary(n) -> String.to_integer(n)
+          _ -> nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    Repo.all(
+      from u in User,
+        where: u.id in ^int_friend_ids and
+          (ilike(u.username, ^pattern) or ilike(u.display_name, ^pattern)),
+        order_by: [asc: u.username],
+        limit: 20
+    )
+  end
+
+  def search_friends(_, _), do: []
 
   def get_user_by_username(username) do
     Repo.get_by(User, username: String.downcase(username))

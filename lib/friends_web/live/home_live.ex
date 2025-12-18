@@ -12,6 +12,8 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidRoomComponents
   import FriendsWeb.HomeLive.Components.FluidFeedComponents
   import FriendsWeb.HomeLive.Components.FluidModalComponents
+  import FriendsWeb.HomeLive.Components.FluidContactComponents
+  import FriendsWeb.HomeLive.Components.FluidGroupComponents
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -441,7 +443,7 @@ defmodule FriendsWeb.HomeLive do
     NetworkEvents.add_trusted_friend(socket, user_id_str)
   end
 
-  def handle_event("confirm_trust", %{"user_id" => user_id_str}, socket) do
+  def handle_event("confirm_trusted_friend", %{"user_id" => user_id_str}, socket) do
     NetworkEvents.confirm_trust(socket, user_id_str)
   end
 
@@ -620,9 +622,7 @@ defmodule FriendsWeb.HomeLive do
     ChatEvents.toggle_mobile_chat(socket)
   end
 
-  def handle_event("toggle_members_panel", _params, socket) do
-    ChatEvents.toggle_members_panel(socket)
-  end
+
 
   def handle_event("toggle_chat_expanded", _params, socket) do
     ChatEvents.toggle_chat_expanded(socket)
@@ -631,6 +631,8 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("toggle_nav_panel", _params, socket) do
     {:noreply, update(socket, :show_nav_panel, &(!&1))}
   end
+
+
 
   # --- Corner Navigation Events ---
 
@@ -658,25 +660,11 @@ defmodule FriendsWeb.HomeLive do
      })}
   end
   
-  def handle_event("toggle_graph_drawer", _params, socket) do
-    {:noreply, assign(socket, :show_graph_drawer, !socket.assigns.show_graph_drawer)}
-  end
-  
   def handle_event("close_create_group_modal", _params, socket) do
     {:noreply, assign(socket, :create_group_modal, false)}
   end
 
-  # --- Nav Orb Events ---
-  
-  def handle_event("toggle_nav_menu", _params, socket) do
-    {:noreply, assign(socket, :show_nav_menu, !socket.assigns[:show_nav_menu])}
-  end
-
-  def handle_event("close_nav_menu", _params, socket) do
-    {:noreply, assign(socket, :show_nav_menu, false)}
-  end
-
-  # Long-press nav orb reveals fullscreen graph (hidden power user feature)
+  # Hidden feature: Long-press nav orb reveals fullscreen graph
   def handle_event("show_fullscreen_graph", _params, socket) do
     graph_data = FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data()
     {:noreply,
@@ -691,29 +679,234 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:show_fullscreen_graph, false)
      |> assign(:fullscreen_graph_data, nil)}
   end
-  
-  def handle_event("go_to_dashboard", _params, socket) do
-    {:noreply, 
-     socket 
-     |> assign(:show_nav_menu, false) 
-     |> push_navigate(to: ~p"/")}
+
+  # --- Contact Search Events ---
+
+  def handle_event("open_contact_search", %{"mode" => mode}, socket) do
+    mode_atom = case mode do
+      "add_member" -> :add_member
+      _ -> :add_contact
+    end
+    {:noreply,
+     socket
+     |> assign(:show_contact_search, true)
+     |> assign(:contact_search_mode, mode_atom)
+     |> assign(:contact_search_query, "")
+     |> assign(:contact_search_results, [])
+     |> assign(:show_user_menu, false)}
   end
 
-  def handle_event("go_to_dashboard", _params, socket) do
+  def handle_event("close_contact_search", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_contact_search, false)
+     |> assign(:contact_search_query, "")
+     |> assign(:contact_search_results, [])}
+  end
+
+  def handle_event("contact_search", %{"value" => query}, socket) do
+    query = String.trim(query)
+    current_user = socket.assigns.current_user
+
+    results = if String.length(query) >= 2 and current_user do
+      case socket.assigns[:contact_search_mode] do
+        :add_member ->
+          # Search only from user's existing contacts/friends
+          Social.search_friends(current_user.id, query)
+        _ ->
+          # Search all users
+          Social.search_users(query, current_user.id)
+      end
+    else
+      []
+    end
+
+    {:noreply,
+     socket
+     |> assign(:contact_search_query, query)
+     |> assign(:contact_search_results, results)}
+  end
+
+  def handle_event("clear_contact_search", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:contact_search_query, "")
+     |> assign(:contact_search_results, [])}
+  end
+
+  def handle_event("send_friend_request", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          case Social.add_trusted_friend(current_user.id, user_id) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> assign(:show_contact_search, false)
+               |> assign(:contact_search_query, "")
+               |> assign(:contact_search_results, [])
+               |> put_flash(:info, "Friend request sent!")}
+            {:error, :cannot_trust_self} ->
+              {:noreply, put_flash(socket, :error, "Can't add yourself")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Already requested")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
+
+  def handle_event("add_room_member", %{"user_id" => user_id_str, "room_id" => room_id_str}, socket) do
+    with {user_id, _} <- Integer.parse(user_id_str),
+         {room_id, _} <- Integer.parse(room_id_str),
+         current_user when not is_nil(current_user) <- socket.assigns.current_user do
+      case Social.add_room_member(room_id, user_id, current_user.id) do
+        {:ok, _member} ->
+          # Refresh room members
+          room = socket.assigns.room
+          members = Social.list_room_members(room.id)
+          {:noreply,
+           socket
+           |> assign(:room_members, members)
+           |> assign(:show_contact_search, false)
+           |> assign(:contact_search_query, "")
+           |> assign(:contact_search_results, [])
+           |> put_flash(:info, "Member added!")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Could not add member")}
+      end
+    else
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid request")}
+    end
+  end
+
+  def handle_event("remove_contact", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          case Social.remove_friend(current_user.id, user_id) do
+            {:ok, _} ->
+              # Refresh friends list
+              friends = Social.list_friends(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:friends, friends)
+               |> put_flash(:info, "Removed")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not remove")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
+
+  def handle_event("cancel_request", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          case Social.cancel_trust_request(current_user.id, user_id) do
+            :ok ->
+              # Refresh outgoing requests
+              outgoing = Social.list_sent_trust_requests(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:outgoing_trust_requests, outgoing)
+               |> put_flash(:info, "Request cancelled")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not cancel")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
+
+
+
+  def handle_event("remove_trusted_friend", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          case Social.remove_trusted_friend(current_user.id, user_id) do
+            :ok ->
+              # Refresh trusted friends list
+              trusted = Social.list_trusted_friends(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:trusted_friends, trusted)
+               |> put_flash(:info, "Removed from recovery contacts")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not remove")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
+
+
+
+  def handle_event("decline_trusted_friend", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {requester_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          # Declining just removes the pending request (same as requester's cancel)
+          case Social.decline_trust_request(current_user.id, requester_id) do
+            :ok ->
+              incoming = Social.list_pending_trust_requests(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:incoming_trust_requests, incoming)
+               |> put_flash(:info, "Request declined")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not decline")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
+
+  # --- Groups Sheet Events ---
+
+  def handle_event("open_groups_sheet", _, socket) do
+    {:noreply, assign(socket, show_groups_sheet: true, group_search_query: "")}
+  end
+
+  def handle_event("close_groups_sheet", _, socket) do
+    {:noreply, assign(socket, show_groups_sheet: false)}
+  end
+
+  def handle_event("group_search", %{"value" => query}, socket) do
+    query = String.downcase(query)
+    groups = socket.assigns.user_private_rooms
+    
+    results = Enum.filter(groups, fn group ->
+      String.contains?(String.downcase(group.name), query)
+    end)
+
     {:noreply, 
      socket 
-     |> assign(:show_nav_menu, false) 
-     |> push_navigate(to: ~p"/")}
-  end
-  
-  # --- Create Orb Events ---
-  
-  def handle_event("toggle_create_menu", _params, socket) do
-    {:noreply, assign(socket, :show_create_menu, !socket.assigns[:show_create_menu])}
-  end
-  
-  def handle_event("close_create_menu", _params, socket) do
-    {:noreply, assign(socket, :show_create_menu, false)}
+     |> assign(:group_search_query, query)
+     |> assign(:group_search_results, results)}
   end
 
   # --- Welcome Graph Events ---
@@ -783,7 +976,10 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_info(%{event: "presence_diff", payload: diff}, socket) do
-    PubSubHandlers.handle_presence_diff(socket, diff)
+    # Handle room presence (viewers in room)
+    {:noreply, socket1} = PubSubHandlers.handle_presence_diff(socket, diff)
+    # Also handle global presence (online friend indicators)
+    PubSubHandlers.handle_global_presence_diff(socket1, diff)
   end
 
   # Ignore task failure messages we don't explicitly handle
@@ -867,5 +1063,28 @@ defmodule FriendsWeb.HomeLive do
   # Note: navigate_photo/2 is imported from FriendsWeb.HomeLive.Helpers
 
 
+
+  # --- Global User Menu & Sheet Handlers ---
+
+  def handle_event("toggle_user_menu", _params, socket) do
+    {:noreply, assign(socket, :show_user_menu, !socket.assigns[:show_user_menu])}
+  end
+
+  def handle_event("toggle_members_panel", _params, socket) do
+    {:noreply, assign(socket, :show_members_panel, !socket.assigns[:show_members_panel])}
+  end
+
+  def handle_event("open_invite_sheet", _params, socket) do
+    {:noreply, 
+     socket
+     |> assign(:show_members_panel, false) 
+     |> assign(:show_contact_sheet, true) 
+     |> assign(:contact_mode, :invite)
+     |> assign(:contact_sheet_search, "")}
+  end
+
+  def handle_event("invite_friend_to_room", %{"friend_id" => friend_id}, socket) do
+    RoomEvents.invite_to_room(socket, friend_id)
+  end
 
 end

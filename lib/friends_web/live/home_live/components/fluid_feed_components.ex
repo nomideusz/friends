@@ -4,6 +4,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   Content-first, unified input bar, no chat.
   """
   use FriendsWeb, :html
+  import FriendsWeb.HomeLive.Helpers
 
   # ============================================================================
   # FLUID FEED LAYOUT
@@ -18,9 +19,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   attr :recording_voice, :boolean, default: false
   attr :no_more_items, :boolean, default: false
   attr :user_private_rooms, :list, default: []
-  attr :direct_rooms, :list, default: []
-  attr :show_nav_panel, :boolean, default: false
+  attr :friends, :list, default: []
+  attr :show_user_menu, :boolean, default: false
   attr :welcome_graph_data, :map, default: nil
+  attr :online_friend_ids, :any, default: nil
 
   def fluid_feed(assigns) do
     ~H"""
@@ -30,10 +32,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
       phx-hook="FriendsApp"
       phx-window-keydown="handle_keydown"
     >
-      <%!-- Minimal Header --%>
+      <%!-- Minimal Header with User Menu --%>
       <.fluid_feed_header
         current_user={@current_user}
-        show_nav_panel={@show_nav_panel}
+        user_private_rooms={@user_private_rooms}
+        friends={@friends}
+        online_friend_ids={@online_friend_ids}
+        show_user_menu={@show_user_menu}
       />
 
       <%!-- Content Area (scrollable) --%>
@@ -70,51 +75,191 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         uploading={@uploading}
         recording_voice={@recording_voice}
       />
-
-      <%!-- Navigation Panel (floating) --%>
-      <%= if @show_nav_panel do %>
-        <.nav_panel
-          current_user={@current_user}
-          user_private_rooms={@user_private_rooms}
-          direct_rooms={@direct_rooms}
-        />
-      <% end %>
     </div>
     """
   end
 
   # ============================================================================
   # MINIMAL HEADER
-  # Network title, nav toggle, user button
+  # Clean header with just user menu (groups, DMs, settings in floating panel)
   # ============================================================================
 
   attr :current_user, :map, required: true
-  attr :show_nav_panel, :boolean, default: false
+  attr :user_private_rooms, :list, default: []
+  attr :friends, :list, default: []
+  attr :online_friend_ids, :any, default: nil
+  attr :show_user_menu, :boolean, default: false
 
   def fluid_feed_header(assigns) do
     ~H"""
-    <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black via-black/90 to-transparent">
-      <%!-- Left: Nav Toggle + Title --%>
-      <div class="flex items-center gap-3">
+    <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-end bg-gradient-to-b from-black via-black/90 to-transparent">
+      <%!-- User Menu Trigger (with 3s long-press easter egg) --%>
+      <div class="relative">
         <button
-          phx-click="toggle_nav_panel"
-          class="w-8 h-8 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          id="user-avatar-easter-egg"
+          phx-click="toggle_user_menu"
+          phx-hook="LongPressOrb"
+          data-long-press-event="show_fullscreen_graph"
+          data-long-press-duration="3000"
+          class="w-9 h-9 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <span class="text-xs font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
         </button>
 
-        <span class="text-sm font-bold text-white">Network</span>
+        <%!-- Floating User Menu (Now Global) --%>
       </div>
+    </div>
+    """
+  end
 
-      <%!-- Right: User Avatar --%>
-      <button
-        phx-click="open_settings_modal"
-        class="w-8 h-8 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 transition-colors cursor-pointer"
-      >
-        <span class="text-[10px] font-bold text-white/70"><%= String.first(@current_user.username) |> String.upcase() %></span>
-      </button>
+  # ============================================================================
+  # USER MENU PANEL (Floating Fluid Design)
+  # Groups, DMs, Settings - replaces the old nav drawer
+  # ============================================================================
+
+  attr :current_user, :map, required: true
+  attr :user_private_rooms, :list, default: []
+  attr :friends, :list, default: []
+  attr :online_friend_ids, :any, default: nil
+
+  def user_menu_panel(assigns) do
+    ~H"""
+    <%!-- Backdrop --%>
+    <div 
+      class="fixed inset-0 z-[79]"
+      phx-click="toggle_user_menu"
+    ></div>
+
+    <%!-- Floating Panel --%>
+    <div class="fixed top-16 right-4 z-[200] w-72 max-h-[80vh] animate-in fade-in slide-in-from-top-2 duration-200">
+      <div class="bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <%!-- User Header --%>
+        <div class="px-4 py-3 border-b border-white/5 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+            <span class="text-xs font-bold text-white"><%= String.first(@current_user.username) |> String.upcase() %></span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-white truncate">@{@current_user.username}</div>
+          </div>
+        </div>
+
+        <%!-- Content (scrollable) --%>
+        <div class="flex-1 overflow-y-auto max-h-[50vh]">
+          <%!-- Groups Section --%>
+          <% groups_count = length(@user_private_rooms) %>
+          <% groups_to_show = Enum.take(@user_private_rooms, 5) %>
+          <div class="p-2">
+            <div class="px-2 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider flex items-center justify-between">
+              <span>Groups</span>
+              <button
+                phx-click="open_create_group_modal"
+                class="text-white/40 hover:text-white transition-colors cursor-pointer"
+                title="New Group"
+              >
+                + New Group
+              </button>
+            </div>
+            <%!-- Groups list (limited to 5) --%>
+            <%!-- Groups list (limited to 5) --%>
+            <%= for room <- groups_to_show do %>
+              <.link
+                navigate={~p"/r/#{room.code}"}
+                class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors"
+              >
+                <div class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-white/50">
+                  #
+                </div>
+                <span class="text-sm text-white/80 truncate">{room.name || room.code}</span>
+              </.link>
+            <% end %>
+            <%!-- Overflow link --%>
+            <%= if groups_count > 5 do %>
+              <button
+                phx-click="open_groups_sheet"
+                class="w-full px-2.5 py-1.5 text-xs text-white/40 hover:text-white/60 transition-colors text-left cursor-pointer"
+              >
+                See all {groups_count} groups...
+              </button>
+            <% end %>
+          </div>
+
+          <%!-- Direct Messages Section (Friends) --%>
+          <% friends_to_show = Enum.take(@friends, 5) %>
+          <div class="p-2 border-t border-white/5">
+            <div class="px-2 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider flex items-center justify-between">
+              <span>People</span>
+              <button
+                phx-click="open_contact_search"
+                phx-value-mode="add_contact"
+                class="text-white/40 hover:text-white transition-colors cursor-pointer"
+                title="Add Person"
+              >
+                + Add Person
+              </button>
+            </div>
+            <%!-- Friends list (limited to 5) --%>
+            <%= for friend_wrapper <- friends_to_show do %>
+              <% friend = if Map.has_key?(friend_wrapper, :user), do: friend_wrapper.user, else: friend_wrapper %>
+              <% dm_code = dm_room_code(@current_user.id, friend.id) %>
+              <% is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, friend.id) %>
+              <.link
+                navigate={~p"/r/#{dm_code}"}
+                class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors"
+              >
+                <div
+                  class={"w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold #{if is_online, do: "avatar-online", else: ""}"}
+                  style={"background-color: #{friend_color(friend)};"}
+                >
+                  <span style="color: white;">{String.first(friend.username) |> String.upcase()}</span>
+                </div>
+                <span class="text-sm text-white/80 truncate flex items-center gap-2">
+                  @{friend.username}
+                  <%= if is_online do %>
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                  <% end %>
+                </span>
+              </.link>
+            <% end %>
+            <%!-- Overflow link --%>
+            <%!-- Footer: Always visible to manage contacts --%>
+            <button
+              phx-click="open_contact_search"
+              phx-value-mode="list_contacts" 
+              class="w-full px-2.5 py-1.5 text-xs text-white/40 hover:text-white/60 transition-colors text-left cursor-pointer"
+            >
+              Manage People...
+            </button>
+          </div>
+        </div>
+
+        <%!-- Actions Footer --%>
+        <div class="p-2 border-t border-white/5 space-y-1">
+          <button
+            phx-click="open_settings_modal"
+            class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors text-left cursor-pointer"
+          >
+            <div class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <span class="text-sm text-white/70">Settings</span>
+          </button>
+
+          <button
+            phx-click="sign_out"
+            class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-red-500/10 transition-colors text-left cursor-pointer"
+          >
+            <div class="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400/70">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </div>
+            <span class="text-sm text-red-400/80">Sign Out</span>
+          </button>
+        </div>
+      </div>
     </div>
     """
   end
@@ -257,8 +402,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
             loading="lazy"
           />
           <%!-- Gallery badge --%>
-          <div class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm">
-            <span class="text-[10px] font-bold text-white">{@item.photo_count}</span>
+          <div class="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center gap-1.5 shadow-sm">
+            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-[10px] font-bold text-white">+{@item.photo_count}</span>
           </div>
           <%!-- Hover overlay --%>
           <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -422,6 +570,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   attr :current_user, :map, required: true
   attr :user_private_rooms, :list, default: []
   attr :direct_rooms, :list, default: []
+  attr :online_friend_ids, :any, default: nil
 
   def nav_panel(assigns) do
     ~H"""
@@ -471,17 +620,23 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
               <div class="pt-3 border-t border-white/5 space-y-1">
                 <%= for dm <- @direct_rooms do %>
                   <% partner = get_dm_partner(dm, @current_user.id) %>
+                  <% is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, partner.id) %>
                   <.link
                     navigate={~p"/r/#{dm.code}"}
                     class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors"
                   >
                     <div
-                      class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                      style={"background-color: #{partner.color}"}
+                      class={"w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white #{if is_online, do: "avatar-online", else: ""}"}
+                      style={"background-color: #{partner.color}; color: #{partner.color};"}
                     >
-                      {String.first(partner.name)}
+                      <span style="color: white;">{String.first(partner.name)}</span>
                     </div>
-                    <span class="text-sm text-white/80 truncate">{partner.name}</span>
+                    <span class="text-sm text-white/80 truncate flex items-center gap-2">
+                      {partner.name}
+                      <%= if is_online do %>
+                        <span class="w-2 h-2 rounded-full bg-green-400 presence-dot-online" style="color: #4ade80;"></span>
+                      <% end %>
+                    </span>
                   </.link>
                 <% end %>
               </div>
@@ -511,9 +666,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
     case partner do
       %{user: %{username: username, id: id}} ->
-        %{name: username, color: user_color(id)}
+        %{name: username, color: user_color(id), id: id}
       _ ->
-        %{name: "?", color: "#888"}
+        %{name: "?", color: "#888", id: nil}
     end
   end
 
@@ -527,3 +682,4 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   end
   defp user_color(_), do: "#888"
 end
+

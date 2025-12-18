@@ -87,9 +87,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         chat_expanded={@chat_expanded}
       />
 
-      <%!-- Members Panel (floating) --%>
+      <%!-- Members Sheet (bottom sheet) --%>
       <%= if @show_members_panel do %>
-        <.members_panel
+        <.members_sheet
           room={@room}
           room_members={@room_members}
           current_user={@current_user}
@@ -131,24 +131,35 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         </button>
       </div>
 
-      <%!-- Members Pill --%>
-      <button
-        phx-click="toggle_members_panel"
-        class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
-      >
-        <%!-- Stacked avatars --%>
-        <div class="flex -space-x-2">
-          <%= for member <- Enum.take(@room_members, 3) do %>
-            <div
-              class="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white border border-black"
-              style={"background-color: #{member_color(member)}"}
-            >
-              {String.first(member.user.username)}
-            </div>
-          <% end %>
-        </div>
-        <span class="text-xs font-medium text-white/70">{length(@room_members)}</span>
-      </button>
+      <%!-- Right Actions --%>
+      <div class="flex items-center gap-3">
+        <%!-- Members Pill --%>
+        <button
+          phx-click="toggle_members_panel"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/20 backdrop-blur-md transition-all cursor-pointer shadow-sm group"
+        >
+          <%!-- Stacked avatars --%>
+          <div class="flex -space-x-2">
+            <%= for member <- Enum.take(@room_members, 3) do %>
+              <div
+                class="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white border border-black"
+                style={"background-color: #{member_color(member)}"}
+              >
+                {String.first(member.user.username)}
+              </div>
+            <% end %>
+          </div>
+          <span class="text-xs font-medium text-white/70">{length(@room_members)}</span>
+        </button>
+
+        <%!-- User Avatar (Menu) --%>
+        <button
+          phx-click="toggle_user_menu"
+          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
+        >
+          <span class="text-xs font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
+        </button>
+      </div>
     </div>
     """
   end
@@ -490,71 +501,90 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   end
 
   # ============================================================================
-  # MEMBERS PANEL
-  # Floating island with member list + invite
+  # MEMBERS SHEET
+  # Bottom sheet for managing members
   # ============================================================================
 
   attr :room, :map, required: true
   attr :room_members, :list, default: []
   attr :current_user, :map, required: true
 
-  def members_panel(assigns) do
+  def members_sheet(assigns) do
     ~H"""
-    <div class="fixed inset-0 z-[80]">
+    <div class="fixed inset-0 z-[150]" phx-window-keydown="toggle_members_panel" phx-key="escape">
       <%!-- Backdrop --%>
       <div
-        class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
         phx-click="toggle_members_panel"
       ></div>
 
-      <%!-- Panel --%>
-      <div class="absolute top-16 left-1/2 -translate-x-1/2 w-[90%] max-w-sm animate-in zoom-in-95 slide-in-from-top-4 duration-200">
-        <div class="bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-          <%!-- Header --%>
-          <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-            <span class="text-sm font-bold text-white">{length(@room_members)}</span>
-            <button
-              phx-click="toggle_members_panel"
-              class="w-6 h-6 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      <%!-- Sheet --%>
+      <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
+        <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col">
+          <%!-- Handle --%>
+          <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_members_panel">
+            <div class="w-10 h-1 rounded-full bg-white/20"></div>
           </div>
 
-          <%!-- Members list --%>
-          <div class="max-h-60 overflow-y-auto p-2 space-y-1">
+          <%!-- Header --%>
+          <div class="px-4 pb-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white">{@room.name || @room.code}</h2>
+            <span class="text-xs text-white/40">{length(@room_members)} members</span>
+          </div>
+
+          <%!-- Members List --%>
+          <div class="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
             <%= for member <- @room_members do %>
-              <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors">
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
                   style={"background-color: #{member_color(member)}"}
                 >
                   {String.first(member.user.username)}
                 </div>
-                <span class="text-sm text-white/80 flex-1 truncate">@{member.user.username}</span>
-                <%= if @room.owner_id == member.user.id do %>
-                  <span class="text-[10px] text-yellow-500">👑</span>
+                
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-white truncate">@{member.user.username}</span>
+                    <%= if @room.owner_id == member.user.id do %>
+                      <span class="text-[10px] text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">Owner</span>
+                    <% end %>
+                  </div>
+                  <div class="text-[10px] text-white/40">
+                    Joined {Calendar.strftime(member.inserted_at, "%b %d")}
+                  </div>
+                </div>
+
+                <%!-- Actions (if admin/owner) --%>
+                <% is_owner = @room.owner_id == @current_user.id %>
+                <% is_self = member.user.id == @current_user.id %>
+                
+                <%= if is_owner and not is_self do %>
+                  <button
+                    phx-click="remove_member"
+                    phx-value-user_id={member.user.id}
+                    data-confirm={"Remove #{member.user.username} from group?"}
+                    class="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1"
+                  >
+                    Remove
+                  </button>
                 <% end %>
               </div>
             <% end %>
-          </div>
 
-          <%!-- Invite button --%>
-          <%= if @room.room_type != "dm" do %>
-            <div class="p-3 border-t border-white/5">
+            <%!-- Invite Button --%>
+            <%= if @room.room_type != "dm" do %>
               <button
-                phx-click="open_invite_modal"
-                class="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-2"
+                phx-click="open_invite_sheet"
+                class="w-full mt-4 py-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/20 text-sm font-medium text-white transition-colors flex items-center justify-center gap-2"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
-                +
+                Invite People
               </button>
-            </div>
-          <% end %>
+            <% end %>
+          </div>
         </div>
       </div>
     </div>

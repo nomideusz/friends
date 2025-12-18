@@ -123,6 +123,49 @@ defmodule Friends.Social.Relationships do
     )
   end
 
+  @doc """
+  Cancel a pending trust request that the user sent.
+  """
+  def cancel_trust_request(user_id, trusted_user_id) do
+    case Repo.get_by(TrustedFriend, user_id: user_id, trusted_user_id: trusted_user_id, status: "pending") do
+      nil -> {:error, :not_found}
+      tf -> 
+        case Repo.delete(tf) do
+          {:ok, _} -> :ok
+          error -> error
+        end
+    end
+  end
+
+  @doc """
+  Remove a confirmed trusted friend (recovery contact).
+  """
+  def remove_trusted_friend(user_id, trusted_user_id) do
+    case Repo.get_by(TrustedFriend, user_id: user_id, trusted_user_id: trusted_user_id) do
+      nil -> {:error, :not_found}
+      tf -> 
+        case Repo.delete(tf) do
+          {:ok, _} -> :ok
+          error -> error
+        end
+    end
+  end
+
+  @doc """
+  Decline a pending trust request (from recipient's side).
+  Finds the request where user_id is the requester and trusted_user_id is the current user.
+  """
+  def decline_trust_request(user_id, requester_id) do
+    case Repo.get_by(TrustedFriend, user_id: requester_id, trusted_user_id: user_id, status: "pending") do
+      nil -> {:error, :not_found}
+      tf -> 
+        case Repo.delete(tf) do
+          {:ok, _} -> :ok
+          error -> error
+        end
+    end
+  end
+
   # --- Friendships (Social Connections) ---
 
   def add_friend(user_id, friend_user_id) do
