@@ -54,6 +54,10 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       trusted_friends = Social.list_trusted_friends(session_user.id)
       pending_requests = Social.list_friend_requests(session_user.id)
       devices = Social.list_user_devices(session_user.id)
+      
+      # Fetch navigation lists
+      user_private_rooms = Social.list_user_groups(session_user.id)
+      direct_rooms = Social.list_user_dms(session_user.id)
 
       socket =
         socket
@@ -90,6 +94,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:friends, friends)
         |> assign(:trusted_friends, trusted_friends)
         |> assign(:pending_requests, pending_requests)
+        |> assign(:user_private_rooms, user_private_rooms)
+        |> assign(:direct_rooms, direct_rooms)
         |> assign(:devices, devices)
         |> assign(:show_devices_modal, false)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
@@ -260,7 +266,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:member_invite_results, [])
         |> assign(
           :user_private_rooms,
-          if(session_user, do: Social.list_user_rooms(session_user.id), else: [])
+          if(session_user, do: Social.list_user_groups(session_user.id), else: [])
+        )
+        |> assign(
+          :direct_rooms,
+          if(session_user, do: Social.list_user_dms(session_user.id), else: [])
         )
         |> assign(
           :user_rooms,

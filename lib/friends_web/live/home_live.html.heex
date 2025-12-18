@@ -16,13 +16,14 @@
             title="Go Home"
           ></button>
           
-          <span class="text-[10px] font-mono font-bold tracking-widest text-white/30 uppercase select-none">
+          <button phx-click="open_room_modal" class="text-[10px] font-mono font-bold tracking-widest text-white/50 uppercase select-none hover:text-white transition-colors cursor-pointer text-left">
             <%= if assigns[:room] do %>
               <%= if @room.is_private, do: @room.name || @room.code, else: "Public Square" %>
             <% else %>
               Network
             <% end %>
-          </span>
+            <span class="ml-1 opacity-50">▾</span>
+          </button>
         </div>
 
         <%!-- Divider --%>
@@ -397,7 +398,7 @@
       <!-- Modal Content Container -->
       <div class="absolute inset-0 flex items-end sm:items-center justify-center p-4 pointer-events-none">
         <div
-          class="w-full sm:max-w-md opal-card opal-prismatic sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 pointer-events-auto"
+          class="w-full sm:max-w-md aether-card sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 pointer-events-auto bg-[#121212]"
         >
           <%!-- Header --%>
         <div class="p-6 border-b border-neutral-200 bg-neutral-950 shrink-0">
@@ -426,55 +427,84 @@
           </div>
         </div>
          <%!-- Content - scrollable --%>
-        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
            <%!-- Private Rooms List --%>
           <%= if @current_user && @user_private_rooms != [] do %>
             <div>
               <div class="flex items-center gap-2 mb-3">
-                <span class="text-xs text-neutral-500 uppercase tracking-wider">
-                  Your Private Spaces
+                <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+                  Your Spaces
                 </span>
                 <div class="flex-1 border-t border-neutral-800"></div>
               </div>
               
-              <div class="space-y-2">
+              <div class="space-y-1">
                 <%= for room <- @user_private_rooms do %>
                   <button
                     type="button"
                     phx-click="switch_room"
                     phx-value-code={room.code}
                     class={[
-                      "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 cursor-pointer",
+                      "w-full p-3 rounded-xl text-left transition-all flex items-center gap-3 cursor-pointer group",
                       assigns[:room] && room.code == @room.code &&
-                        "bg-green-500/20 border border-green-500/30 ring-1 ring-green-500/20",
+                        "bg-white/10 ring-1 ring-white/20",
                       (is_nil(assigns[:room]) || room.code != @room.code) &&
-                        "bg-neutral-800/50 hover:bg-neutral-800 border border-transparent"
+                        "bg-white/5 hover:bg-white/10"
                     ]}
                   >
-                    <div class="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-                      <span class="text-sm">🔒</span>
+                    <div class="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center text-sm">
+                      🔒
                     </div>
                     
                     <span class={[
-                      "font-medium truncate",
-                      assigns[:room] && room.code == @room.code && "text-green-400",
-                      (is_nil(assigns[:room]) || room.code != @room.code) && "text-neutral-300"
+                      "font-medium truncate text-sm",
+                      assigns[:room] && room.code == @room.code && "text-white",
+                      (is_nil(assigns[:room]) || room.code != @room.code) && "text-neutral-300 group-hover:text-white"
                     ]}>
                       {room.name || room.code}
                     </span>
                     <%= if assigns[:room] && room.code == @room.code do %>
-                      <span class="ml-auto text-xs text-green-500">✓</span>
+                      <span class="ml-auto text-xs text-white/50">Current</span>
                     <% end %>
                   </button>
                 <% end %>
               </div>
             </div>
           <% end %>
+
+           <%!-- Direct Spaces List --%>
+          <%= if @current_user && @direct_rooms != [] do %>
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+                  Direct Spaces
+                </span>
+                <div class="flex-1 border-t border-neutral-800"></div>
+              </div>
+              
+              <div class="space-y-1">
+                 <%= for dm_room <- @direct_rooms do %>
+                   <% 
+                     other_member = Enum.find(dm_room.members, fn m -> m.user_id != @current_user.id end)
+                     other_user = if other_member, do: other_member.user
+                     display_name = (other_user && other_user.username) || "Unknown"
+                   %>
+                   <button phx-click="switch_room" phx-value-code={dm_room.code} class="w-full text-left px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group flex items-center gap-3 cursor-pointer">
+                      <div class="w-8 h-8 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                        {if other_user && other_user.username, do: String.first(other_user.username) |> String.upcase(), else: "?"}
+                      </div>
+                      <span class="text-sm font-medium text-neutral-300 group-hover:text-white truncate">{display_name}</span>
+                   </button>
+                 <% end %>
+              </div>
+            </div>
+          <% end %>
+
            <%!-- Public Rooms List --%>
           <div>
             <div class="flex items-center gap-2 mb-3">
-              <span class="text-xs text-neutral-500 uppercase tracking-wider">
-                Public Groups
+              <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+                Public
               </span>
               <div class="flex-1 border-t border-neutral-800"></div>
             </div>
@@ -654,20 +684,87 @@
   <div class="w-full text-white flex flex-row gap-4 relative z-10 pointer-events-none">
         
         <%!-- LEFT: Sidebar or Chat --%>
-        <%= if assigns[:room] && @room.is_private && not @room_access_denied do %>
-          <%!-- Private Room: Show Chat Panel as Left Sidebar (Desktop) --%>
-          <div class="hidden lg:block w-80 shrink-0">
-            <div class="sticky top-6 h-[calc(100vh-3rem)]">
-              <.chat_panel
-                room={@room}
-                current_user={@current_user}
-                room_members={@room_members}
-                room_messages={@room_messages}
-                new_chat_message={@new_chat_message}
-                show_mobile_chat={false}
-                container_class="h-full flex flex-col"
-                id_prefix="desktop"
-              />
+        <%!-- LEFT: Sidebar (Navigation or Chat) --%>
+        <%= if (@live_action == :index) or (assigns[:room] && @room.is_private && not @room_access_denied) do %>
+          <div class="hidden lg:block w-72 shrink-0">
+            <div class="sticky top-6 h-[calc(100vh-3rem)] flex flex-col gap-4">
+              
+              <%= if @live_action == :index do %>
+                <%!-- Navigation Sidebar --%>
+                <div class="flex-1 fluid-glass p-4 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+                  
+                  <%!-- Groups --%>
+                  <div>
+                    <div class="flex items-center justify-between mb-3 px-2">
+                       <h3 class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Groups</h3>
+                       <button phx-click="open_create_group_modal" class="text-neutral-400 hover:text-white transition-colors cursor-pointer" title="Create Group">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                       </button>
+                    </div>
+                    
+                    <div class="space-y-1">
+                      <%= for room <- @user_private_rooms do %>
+                        <button phx-click="switch_room" phx-value-code={room.code} class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-all group flex items-center gap-3 cursor-pointer">
+                          <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-sm group-hover:bg-white/10 transition-colors">
+                            🔒
+                          </div>
+                          <span class="text-sm font-medium text-neutral-300 group-hover:text-white truncate whitespace-nowrap">{room.name || room.code}</span>
+                        </button>
+                      <% end %>
+                      
+                      <%= if @user_private_rooms == [] do %>
+                         <div class="px-3 py-6 text-center rounded-xl border border-dashed border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer" phx-click="open_create_group_modal">
+                           <div class="text-lg mb-1">🌑</div>
+                           <p class="text-xs text-neutral-500 font-medium">No groups yet</p>
+                         </div>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <%!-- Direct Spaces --%>
+                  <div>
+                    <h3 class="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3 px-2">Direct Spaces</h3>
+                    <div class="space-y-1">
+                       <%= for dm_room <- @direct_rooms do %>
+                         <% 
+                           other_member = Enum.find(dm_room.members, fn m -> m.user_id != @current_user.id end)
+                           other_user = if other_member, do: other_member.user
+                           # User requested ONLY the username for 1:1 groups
+                           display_name = (other_user && other_user.username) || "Unknown"
+                         %>
+                         <button phx-click="switch_room" phx-value-code={dm_room.code} class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 transition-all group flex items-center gap-3 cursor-pointer relative overflow-hidden">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm relative z-10">
+                              {if other_user && other_user.username, do: String.first(other_user.username) |> String.upcase(), else: "?"}
+                            </div>
+                            <span class="text-sm font-medium text-neutral-300 group-hover:text-white truncate whitespace-nowrap relative z-10">{display_name}</span>
+                            
+                            <%!-- Hover Effect --%>
+                            <div class="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                         </button>
+                       <% end %>
+                       
+                        <%= if @direct_rooms == [] do %>
+                         <div class="px-3 py-4 text-center">
+                           <p class="text-xs text-neutral-600 font-medium">Connect with friends to start chatting</p>
+                         </div>
+                      <% end %>
+                    </div>
+                  </div>
+
+                </div>
+              <% else %>
+                <%!-- Chat Panel (Private Room) --%>
+                <.chat_panel
+                  room={@room}
+                  current_user={@current_user}
+                  room_members={@room_members}
+                  room_messages={@room_messages}
+                  new_chat_message={@new_chat_message}
+                  show_mobile_chat={false}
+                  container_class="h-full flex flex-col"
+                  id_prefix="desktop"
+                />
+              <% end %>
             </div>
           </div>
         <% end %>

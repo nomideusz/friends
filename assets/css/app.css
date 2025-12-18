@@ -9,9 +9,20 @@
    ========================================================================================= */
 
 @keyframes opal-flow {
-  0% { background-position: 0% 50%; opacity: 0.3; }
-  50% { background-position: 100% 50%; opacity: 0.5; }
-  100% { background-position: 0% 50%; opacity: 0.3; }
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.3;
+  }
+
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.5;
+  }
+
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.3;
+  }
 }
 
 .opal-bg {
@@ -19,12 +30,13 @@
   inset: 0;
   z-index: -1;
   background: radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-              radial-gradient(circle at 80% 70%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+    radial-gradient(circle at 80% 70%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
   background-size: 200% 200%;
   animation: opal-flow 20s infinite ease-in-out;
   filter: blur(80px);
 }
+
 :root {
   --font-family-display: 'Outfit', system-ui, sans-serif;
   --font-family-body: 'Inter', system-ui, sans-serif;
@@ -75,7 +87,7 @@
   --color-dim: var(--color-dim);
   --color-photon: var(--color-photon);
   --color-energy: var(--color-energy);
-  
+
   --radius-fluid: var(--radius-fluid);
 }
 
@@ -124,21 +136,23 @@ h6 {
     backdrop-filter: blur(var(--blur-glass));
     -webkit-backdrop-filter: blur(var(--blur-glass));
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-top: 1px solid rgba(255, 255, 255, 0.18); /* Light sheen on top */
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    /* Light sheen on top */
     border-radius: var(--radius-fluid);
-    box-shadow: 
+    box-shadow:
       0 10px 40px -10px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.05) inset; /* Soft inner bevel */
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    /* Soft inner bevel */
     transition: all 0.4s var(--ease-spring);
   }
 
   .aether-card:hover {
     border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 
+    box-shadow:
       0 20px 50px -15px rgba(0, 0, 0, 0.6),
       0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   }
-  
+
   /* Disable hover float for modal containers */
   .aether-card.surface-island:hover,
   .surface-island.aether-card:hover {
@@ -146,11 +160,12 @@ h6 {
   }
 
   .fluid-glass {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(10, 10, 10, 0.6);
     backdrop-filter: blur(40px) saturate(180%);
     -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-fluid);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -238,8 +253,15 @@ img.loaded {
    ========================================================================================= */
 
 @keyframes toolbar-pop {
-  0% { transform: translate(-50%, 20px) scale(1); opacity: 0; }
-  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  0% {
+    transform: translate(-50%, 20px) scale(1);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
 }
 
 #fluid-toolbar-container {
@@ -279,7 +301,7 @@ img.loaded {
     align-items: flex-end;
     padding: 0;
   }
-  
+
   .surface-island {
     width: 100%;
     max-width: 100%;
@@ -291,7 +313,7 @@ img.loaded {
     max-height: 92vh;
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   /* Override aether-card rounded corners on mobile sheets */
   .surface-island.aether-card {
     border-radius: var(--radius-fluid) var(--radius-fluid) 0 0 !important;
@@ -305,7 +327,7 @@ img.loaded {
   .surface-overlay {
     align-items: center;
   }
-  
+
   .surface-island {
     width: 100%;
     border-radius: var(--radius-fluid) !important;
@@ -315,13 +337,27 @@ img.loaded {
 }
 
 @keyframes sheet-slide-up {
-  0% { transform: translateY(100%); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes island-pop {
-  0% { transform: scale(0.9) translateY(20px); opacity: 0; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
+  0% {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Drag Handle for Sheets */
@@ -334,7 +370,7 @@ img.loaded {
   cursor: pointer;
 }
 
-.sheet-handle > div {
+.sheet-handle>div {
   width: 32px;
   height: 4px;
   background: rgba(255, 255, 255, 0.2);
@@ -342,5 +378,7 @@ img.loaded {
 }
 
 @media (min-width: 1024px) {
-  .sheet-handle { display: none; }
+  .sheet-handle {
+    display: none;
+  }
 }

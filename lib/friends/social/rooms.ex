@@ -349,6 +349,32 @@ defmodule Friends.Social.Rooms do
     )
   end
 
+  def list_user_groups(user_id) do
+    Repo.all(
+      from r in Room,
+        join: m in RoomMember,
+        on: m.room_id == r.id,
+        where: m.user_id == ^user_id and r.room_type == "private",
+        order_by: [desc: m.inserted_at],
+        preload: [:owner, :members]
+    )
+  end
+
+  def list_user_dms(user_id) do
+    Repo.all(
+      from r in Room,
+        join: m in RoomMember,
+        on: m.room_id == r.id,
+        join: u in User,
+        on: m.user_id == u.id,
+        # Find the room type
+        where: m.user_id == ^user_id and r.room_type == "dm",
+        # Preload members to find the other user later
+        preload: [members: :user],
+        order_by: [desc: m.inserted_at]
+    )
+  end
+
   def list_user_room_ids(user_id) do
     Repo.all(
       from rm in RoomMember,
