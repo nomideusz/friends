@@ -273,88 +273,37 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   attr :current_user, :map, default: nil
 
   def fluid_feed_empty_state(assigns) do
-    # Take first 7 nodes for the orbs
-    nodes = if assigns.welcome_graph_data, do: Enum.take(assigns.welcome_graph_data.nodes || [], 7), else: []
-    assigns = assign(assigns, :nodes, nodes)
-
     ~H"""
     <div class="relative flex items-center justify-center h-[70vh] overflow-hidden">
       <%!-- Ambient glow background --%>
       <div class="absolute inset-0 opacity-30">
         <div class="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-br from-purple-500/20 to-transparent blur-3xl"></div>
         <div class="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full bg-gradient-to-br from-blue-500/20 to-transparent blur-3xl"></div>
-        <div class="absolute top-1/2 left-1/2 w-32 h-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-white/10 to-transparent blur-2xl"></div>
       </div>
 
-      <%!-- Floating Orbs --%>
-      <div class="relative w-80 h-80">
-        <%!-- Connection lines (ethereal) --%>
-        <svg class="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
-          <defs>
-            <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="white" stop-opacity="0.1" />
-              <stop offset="50%" stop-color="white" stop-opacity="0.3" />
-              <stop offset="100%" stop-color="white" stop-opacity="0.1" />
-            </linearGradient>
-          </defs>
-          <%!-- Draw some ethereal connection lines --%>
-          <line x1="160" y1="80" x2="100" y2="140" stroke="url(#line-gradient)" stroke-width="1" class="animate-pulse" />
-          <line x1="160" y1="80" x2="220" y2="140" stroke="url(#line-gradient)" stroke-width="1" class="animate-pulse" style="animation-delay: 0.5s" />
-          <line x1="160" y1="80" x2="160" y2="160" stroke="url(#line-gradient)" stroke-width="1" class="animate-pulse" style="animation-delay: 1s" />
-          <line x1="100" y1="140" x2="80" y2="220" stroke="url(#line-gradient)" stroke-width="1" class="animate-pulse" style="animation-delay: 0.3s" />
-          <line x1="220" y1="140" x2="240" y2="220" stroke="url(#line-gradient)" stroke-width="1" class="animate-pulse" style="animation-delay: 0.7s" />
-          <line x1="160" y1="160" x2="160" y2="250" stroke="url(#line-gradient)" stroke-width="1" class="animate-pulse" style="animation-delay: 1.2s" />
+      <%!-- Static Graphic (Abstract Node Network) --%>
+      <div class="relative w-64 h-64 opacity-30">
+        <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <%!-- Central Node --%>
+          <circle cx="100" cy="100" r="12" fill="white" fill-opacity="0.2" />
+          
+          <%!-- Satellite Nodes --%>
+          <circle cx="100" cy="40" r="6" fill="white" fill-opacity="0.1" />
+          <circle cx="160" cy="100" r="6" fill="white" fill-opacity="0.1" />
+          <circle cx="100" cy="160" r="6" fill="white" fill-opacity="0.1" />
+          <circle cx="40" cy="100" r="6" fill="white" fill-opacity="0.1" />
+          
+          <%!-- Connections --%>
+          <line x1="100" y1="88" x2="100" y2="46" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
+          <line x1="112" y1="100" x2="154" y2="100" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
+          <line x1="100" y1="112" x2="100" y2="154" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
+          <line x1="88" y1="100" x2="46" y2="100" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
+          
+          <%!-- Orbital Rings --%>
+          <circle cx="100" cy="100" r="50" stroke="white" stroke-opacity="0.05" stroke-width="1" />
+          <circle cx="100" cy="100" r="70" stroke="white" stroke-opacity="0.03" stroke-width="1" />
         </svg>
-
-        <%!-- Central orb (current user) --%>
-        <div 
-          class="absolute top-[15%] left-1/2 -translate-x-1/2 w-14 h-14 rounded-full flex items-center justify-center"
-          style="background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), rgba(255,255,255,0.05)); box-shadow: 0 0 40px rgba(255,255,255,0.2), 0 0 80px rgba(255,255,255,0.1);"
-        >
-          <span class="text-sm font-bold text-white/80">
-            <%= if @current_user, do: String.first(@current_user.username) |> String.upcase(), else: "?" %>
-          </span>
-        </div>
-
-        <%!-- Orbiting nodes --%>
-        <%= for {node, idx} <- Enum.with_index(@nodes) do %>
-          <% 
-            # Position orbs in an organic, asymmetric pattern
-            positions = [
-              {"18%", "40%", "0.3s"},
-              {"60%", "38%", "0.6s"},
-              {"38%", "55%", "0.9s"},
-              {"15%", "72%", "0.4s"},
-              {"50%", "78%", "0.7s"},
-              {"72%", "68%", "1.0s"},
-              {"85%", "45%", "0.5s"}
-            ]
-            {left, top, delay} = Enum.at(positions, idx, {"50%", "50%", "0s"})
-            size = if idx < 2, do: "w-10 h-10", else: "w-8 h-8"
-          %>
-          <div 
-            class={"absolute #{size} rounded-full flex items-center justify-center transition-all duration-1000 hover:scale-125"}
-            style={"left: #{left}; top: #{top}; background: radial-gradient(circle at 30% 30%, #{node.color}90, #{node.color}20); box-shadow: 0 0 20px #{node.color}40, 0 0 40px #{node.color}20; animation: float 6s ease-in-out infinite; animation-delay: #{delay};"}
-          >
-            <span class="text-[10px] font-bold text-white/90">
-              <%= String.first(node.username) |> String.upcase() %>
-            </span>
-          </div>
-        <% end %>
       </div>
-
-      <%!-- Subtle hint text --%>
-      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
-        <p class="text-[10px] text-white/20 tracking-widest uppercase">Your network awaits</p>
-      </div>
-
-      <%!-- Floating animation keyframes --%>
-      <style>
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-        }
-      </style>
     </div>
     """
   end

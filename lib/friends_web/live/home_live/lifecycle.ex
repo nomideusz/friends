@@ -102,6 +102,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Public feed assigns
         |> assign(:friends, friends)
         |> assign(:trusted_friends, trusted_friends)
+        |> assign(:trusted_friend_ids, Enum.map(trusted_friends, & &1.trusted_user.id))
         |> assign(:incoming_trust_requests, incoming_trust_requests)
         |> assign(:pending_requests, pending_requests)
         |> assign(:user_private_rooms, user_private_rooms)
@@ -109,9 +110,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:devices, devices)
         |> assign(:show_devices_modal, false)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
-        # Welcome graph shown for all users (opt-out checked client-side via localStorage)
-        |> assign(:show_welcome_graph, true)
+        # Welcome graph data (used by fluid_feed AND fullscreen overlay if empty)
         |> assign(:welcome_graph_data, GraphHelper.build_welcome_graph_data())
+        # Show fullscreen overlay if feed is empty
+        |> assign(:show_fullscreen_graph, length(feed_items) == 0)
+        |> assign(:fullscreen_graph_data, if(length(feed_items) == 0, do: GraphHelper.build_welcome_graph_data(), else: nil))
         # New user = no friends yet (for showing opt-out checkbox)
         |> assign(:is_new_user, length(friends) == 0)
         |> assign(:show_nav_drawer, false)
@@ -132,6 +135,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_groups_sheet, false)
         |> assign(:group_search_query, "")
         |> assign(:group_search_results, [])
+        |> assign(:show_contact_sheet, false)
+        |> assign(:contact_mode, :list_contacts)
+        |> assign(:contact_sheet_search, "")
+        |> assign(:contact_search_results, [])
+        |> assign(:room_members, [])
         # Typing users (for rooms, init empty for dashboard)
         |> assign(:typing_users, %{})
         # Live presence - friend IDs currently online
@@ -292,6 +300,12 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:invites, [])
         |> assign(:trusted_friends, [])
         |> assign(:outgoing_trust_requests, [])
+        |> assign(:show_contact_sheet, false)
+        |> assign(:contact_mode, :list_contacts)
+        |> assign(:contact_sheet_search, "")
+        |> assign(:contact_search_results, [])
+        |> assign(:trusted_friend_ids, [])
+        |> assign(:incoming_trust_requests, [])
         |> assign(
           :pending_requests,
           if(session_user, do: Social.list_friend_requests(session_user.id), else: [])
