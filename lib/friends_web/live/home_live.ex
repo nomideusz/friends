@@ -675,6 +675,12 @@ defmodule FriendsWeb.HomeLive do
 
   # Hidden feature: Long-press nav orb reveals fullscreen graph
   def handle_event("show_fullscreen_graph", _params, socket) do
+    # Subscribe to network events for live graph updates
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:global")
+      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
+    end
+
     graph_data = FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data()
     {:noreply,
      socket
@@ -683,11 +689,17 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("close_fullscreen_graph", _params, socket) do
+    # Unsubscribe from network events
+    Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:global")
+    Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:new_users")
+
     {:noreply,
      socket
      |> assign(:show_fullscreen_graph, false)
      |> assign(:fullscreen_graph_data, nil)}
   end
+
+
 
   # --- Contact Search Events ---
 
@@ -1073,6 +1085,20 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  # Handle new user joining (for live graph updates)
+  def handle_info({:new_user_joined, user_data}, socket) do
+    if socket.assigns[:show_fullscreen_graph] do
+      {:noreply,
+       push_event(socket, "welcome_new_user", %{
+         id: user_data.id,
+         username: user_data.username,
+         display_name: user_data.display_name || user_data.username
+       })}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # Handle friendship events (when a friend is accepted or removed)
   def handle_info({:friend_accepted, friendship}, socket) do
     # Refresh the graph data, friends list, and private rooms when a friendship changes
@@ -1089,8 +1115,8 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:friends, friends)
         |> assign(:pending_requests, pending_requests)
         
-      # If welcome graph is displayed, push live update for new connection
-      socket = if socket.assigns[:show_welcome_graph] do
+      # If welcome graph OR fullscreen graph is displayed, push live update for new connection
+      socket = if socket.assigns[:show_welcome_graph] or socket.assigns[:show_fullscreen_graph] do
         socket
         |> push_event("welcome_new_connection", %{
           from_id: friendship.user_id,
@@ -1099,6 +1125,7 @@ defmodule FriendsWeb.HomeLive do
       else
         socket
       end
+
 
       {:noreply, socket}
     else
@@ -1113,8 +1140,8 @@ defmodule FriendsWeb.HomeLive do
 
       socket = assign(socket, :graph_data, graph_data)
       
-      # If welcome graph is displayed, push live update for removed connection
-      socket = if socket.assigns[:show_welcome_graph] do
+      # If welcome graph OR fullscreen graph is displayed, push live update for removed connection
+      socket = if socket.assigns[:show_welcome_graph] or socket.assigns[:show_fullscreen_graph] do
         socket
         |> push_event("welcome_connection_removed", %{
           from_id: friendship.user_id,
@@ -1123,6 +1150,7 @@ defmodule FriendsWeb.HomeLive do
       else
         socket
       end
+
 
       {:noreply, socket}
     else
