@@ -698,18 +698,25 @@ defmodule FriendsWeb.HomeLive do
       {user_id, _} ->
         current_user = socket.assigns.current_user
         if current_user do
-          case Social.add_trusted_friend(current_user.id, user_id) do
+          case Social.add_friend(current_user.id, user_id) do
             {:ok, _} ->
+              # Refresh outgoing requests list
+              outgoing = Social.list_sent_friend_requests(current_user.id)
               {:noreply,
                socket
+               |> assign(:outgoing_friend_requests, outgoing)
                |> assign(:show_contact_sheet, false)
                |> assign(:contact_sheet_search, "")
                |> assign(:contact_search_results, [])
                |> put_flash(:info, "Friend request sent!")}
-            {:error, :cannot_trust_self} ->
+            {:error, :cannot_friend_self} ->
               {:noreply, put_flash(socket, :error, "Can't add yourself")}
+            {:error, :already_friends} ->
+              {:noreply, put_flash(socket, :error, "Already friends")}
+            {:error, :request_already_sent} ->
+              {:noreply, put_flash(socket, :error, "Request already sent")}
             {:error, _} ->
-              {:noreply, put_flash(socket, :error, "Already requested")}
+              {:noreply, put_flash(socket, :error, "Could not send request")}
           end
         else
           {:noreply, socket}
@@ -792,7 +799,56 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  def handle_event("accept_friend_request", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          case Social.accept_friend(current_user.id, user_id) do
+            {:ok, _} ->
+              # Refresh friends and pending requests
+              friends = Social.list_friends(current_user.id)
+              pending_requests = Social.list_friend_requests(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:friends, friends)
+               |> assign(:pending_requests, pending_requests)
+               |> put_flash(:info, "Friend request accepted!")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not accept request")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
 
+  def handle_event("decline_friend_request", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          # Declining a friend request removes the pending friendship
+          case Social.remove_friend(current_user.id, user_id) do
+            {:ok, _} ->
+              # Refresh pending requests
+              pending_requests = Social.list_friend_requests(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:pending_requests, pending_requests)
+               |> put_flash(:info, "Friend request declined")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not decline request")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
 
   def handle_event("remove_trusted_friend", %{"user_id" => user_id_str}, socket) do
     case Integer.parse(user_id_str) do
@@ -1007,17 +1063,31 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_new_public_note(socket, note)
   end
 
+  # Handle incoming friend request - someone sent us a request
+  def handle_info({:friend_request, _friendship}, socket) do
+    if socket.assigns.current_user do
+      pending_requests = Social.list_friend_requests(socket.assigns.current_user.id)
+      {:noreply, assign(socket, :pending_requests, pending_requests)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # Handle friendship events (when a friend is accepted or removed)
   def handle_info({:friend_accepted, friendship}, socket) do
-    # Refresh the graph data and private rooms when a friendship changes
+    # Refresh the graph data, friends list, and private rooms when a friendship changes
     if socket.assigns.current_user do
       graph_data = FriendsWeb.HomeLive.GraphHelper.build_graph_data(socket.assigns.current_user)
       private_rooms = Social.list_user_rooms(socket.assigns.current_user.id)
+      friends = Social.list_friends(socket.assigns.current_user.id)
+      pending_requests = Social.list_friend_requests(socket.assigns.current_user.id)
 
       socket =
         socket
         |> assign(:graph_data, graph_data)
         |> assign(:user_private_rooms, private_rooms)
+        |> assign(:friends, friends)
+        |> assign(:pending_requests, pending_requests)
         
       # If welcome graph is displayed, push live update for new connection
       socket = if socket.assigns[:show_welcome_graph] do
@@ -1082,20 +1152,100 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("toggle_members_panel", _params, socket) do
-    {:noreply, assign(socket, :show_members_panel, !socket.assigns[:show_members_panel])}
+    {:noreply, 
+     socket
+     |> assign(:show_group_sheet, !socket.assigns[:show_group_sheet])
+     |> assign(:group_search, "")}
   end
 
   def handle_event("open_invite_sheet", _params, socket) do
     {:noreply, 
      socket
-     |> assign(:show_members_panel, false) 
-     |> assign(:show_contact_sheet, true) 
-     |> assign(:contact_mode, :invite)
-     |> assign(:contact_sheet_search, "")}
+     |> assign(:show_group_sheet, true)
+     |> assign(:group_search, "")}
+  end
+
+  def handle_event("close_group_sheet", _params, socket) do
+    {:noreply, 
+     socket
+     |> assign(:show_group_sheet, false)
+     |> assign(:group_search, "")}
+  end
+
+  def handle_event("group_search", %{"value" => query}, socket) do
+    {:noreply, assign(socket, :group_search, query)}
   end
 
   def handle_event("invite_friend_to_room", %{"friend_id" => friend_id}, socket) do
     RoomEvents.invite_to_room(socket, friend_id)
+  end
+
+  def handle_event("open_member_menu", %{"member_id" => member_id_str}, socket) do
+    case Integer.parse(member_id_str) do
+      {member_id, _} ->
+        {:noreply, assign(socket, :context_menu_member_id, member_id)}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("close_member_menu", _params, socket) do
+    {:noreply, assign(socket, :context_menu_member_id, nil)}
+  end
+
+  def handle_event("make_admin", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        room = socket.assigns.room
+        if room && room.owner_id == socket.assigns.current_user.id do
+          Social.update_member_role(room.id, user_id, "admin")
+          room_members = Social.list_room_members(room.id)
+          {:noreply, assign(socket, :room_members, room_members)}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_admin", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        room = socket.assigns.room
+        if room && room.owner_id == socket.assigns.current_user.id do
+          Social.update_member_role(room.id, user_id, "member")
+          room_members = Social.list_room_members(room.id)
+          {:noreply, assign(socket, :room_members, room_members)}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_member", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        room = socket.assigns.room
+        current_user = socket.assigns.current_user
+        
+        # Check if user can remove members (owner or admin)
+        is_owner = room && room.owner_id == current_user.id
+        current_member = Enum.find(socket.assigns[:room_members] || [], fn m -> m.user_id == current_user.id end)
+        is_admin = current_member && current_member.role == "admin"
+        
+        if is_owner or is_admin do
+          Social.remove_room_member(room.id, user_id)
+          room_members = Social.list_room_members(room.id)
+          {:noreply, assign(socket, :room_members, room_members)}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, socket}
+    end
   end
 
 end

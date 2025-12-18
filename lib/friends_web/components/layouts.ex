@@ -134,11 +134,15 @@ defmodule FriendsWeb.Layouts do
       :if={msg = Phoenix.Flash.get(@flash, @kind)}
       id={"flash-#{@kind}"}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> JS.hide(to: "#flash-#{@kind}")}
+      phx-mounted={JS.show(transition: {"animate-in slide-in-from-bottom-4 fade-in duration-300", "", ""})}
       role="alert"
       class={[
-        "fixed top-4 right-4 z-[70] px-4 py-3 text-sm cursor-pointer",
-        @kind == :info && "bg-neutral-900 text-white",
-        @kind == :error && "bg-red-600 text-white"
+        "fixed bottom-24 left-1/2 -translate-x-1/2 z-[200]",
+        "px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer",
+        "backdrop-blur-xl border shadow-2xl",
+        "animate-in slide-in-from-bottom-4 fade-in duration-300",
+        @kind == :info && "bg-white/10 border-white/20 text-white",
+        @kind == :error && "bg-red-500/20 border-red-500/30 text-red-200"
       ]}
       {@rest}
     >

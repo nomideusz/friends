@@ -226,6 +226,16 @@ defmodule Friends.Social.Rooms do
     Repo.get_by(RoomMember, room_id: room_id, user_id: user_id)
   end
 
+  def update_member_role(room_id, user_id, role) when role in ["owner", "admin", "member"] do
+    case get_room_member(room_id, user_id) do
+      nil -> {:error, :not_found}
+      member ->
+        member
+        |> RoomMember.changeset(%{role: role})
+        |> Repo.update()
+    end
+  end
+
   def get_room_members(room_id) do
     Repo.all(
       from m in RoomMember,

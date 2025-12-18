@@ -25,6 +25,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :show_members_panel, :boolean, default: false
   attr :chat_expanded, :boolean, default: false
   attr :typing_users, :map, default: %{}
+  attr :friends, :list, default: []
+  attr :viewers, :list, default: []
+  attr :context_menu_member_id, :integer, default: nil
+  attr :show_group_sheet, :boolean, default: false
+  attr :group_search, :string, default: ""
 
   def fluid_room(assigns) do
     ~H"""
@@ -40,6 +45,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         room_members={@room_members}
         current_user={@current_user}
         show_members_panel={@show_members_panel}
+        viewers={@viewers}
+        context_menu_member_id={@context_menu_member_id}
       />
 
       <%!-- Content Area (scrollable) --%>
@@ -87,14 +94,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         chat_expanded={@chat_expanded}
       />
 
-      <%!-- Members Sheet (bottom sheet) --%>
-      <%= if @show_members_panel do %>
-        <.members_sheet
-          room={@room}
-          room_members={@room_members}
-          current_user={@current_user}
-        />
-      <% end %>
+      <%!-- Unified Group Sheet --%>
+      <.group_sheet
+        show={@show_group_sheet}
+        room={@room}
+        room_members={@room_members}
+        current_user={@current_user}
+        friends={@friends}
+        group_search={@group_search}
+        viewers={@viewers}
+      />
     </div>
     """
   end
@@ -108,8 +117,22 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :room_members, :list, default: []
   attr :current_user, :map, required: true
   attr :show_members_panel, :boolean, default: false
+  attr :viewers, :list, default: []
+  attr :context_menu_member_id, :integer, default: nil
 
   def fluid_room_header(assigns) do
+    # Build set of online user IDs from presence
+    online_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
+    
+    # Sort members: online first, then by username
+    sorted_members = Enum.sort_by(assigns.room_members, fn m ->
+      {!MapSet.member?(online_ids, m.user_id), m.user.username}
+    end)
+    
+    assigns = assigns
+      |> assign(:online_ids, online_ids)
+      |> assign(:sorted_members, sorted_members)
+
     ~H"""
     <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black via-black/90 to-transparent">
       <%!-- Back + Room Name --%>
@@ -123,42 +146,150 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           </svg>
         </.link>
 
+        <%!-- Room name (C: clickable to open members) --%>
         <button
           phx-click="toggle_members_panel"
-          class="text-sm font-bold text-white truncate max-w-[200px] hover:text-white/80 transition-colors cursor-pointer"
+          class="text-sm font-bold text-white truncate max-w-[140px] hover:text-white/80 transition-colors cursor-pointer"
         >
           {@room.name || @room.code}
         </button>
       </div>
 
-      <%!-- Right Actions --%>
-      <div class="flex items-center gap-3">
-        <%!-- Members Pill --%>
-        <button
-          phx-click="toggle_members_panel"
-          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 hover:bg-white/20 hover:border-white/20 backdrop-blur-md transition-all cursor-pointer shadow-sm group"
-        >
-          <%!-- Stacked avatars --%>
-          <div class="flex -space-x-2">
-            <%= for member <- Enum.take(@room_members, 3) do %>
-              <div
-                class="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white border border-black"
-                style={"background-color: #{member_color(member)}"}
-              >
-                {String.first(member.user.username)}
-              </div>
+      <%!-- Inline Presence Avatars --%>
+      <div class="flex items-center gap-1 relative">
+        <%!-- Show up to 5 members --%>
+        <%= for member <- Enum.take(@sorted_members, 5) do %>
+          <% is_online = MapSet.member?(@online_ids, member.user_id) %>
+          <div class="relative">
+            <button
+              phx-click="open_member_menu"
+              phx-value-member_id={member.user_id}
+              class={"w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 transition-all cursor-pointer 
+                #{if is_online, do: "border-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)] animate-pulse", else: "border-white/20 opacity-60"}"}
+              style={"background-color: #{member_color(member)};"}
+              title={"@#{member.user.username}#{if is_online, do: " (online)", else: ""}"}
+            >
+              {String.first(member.user.username) |> String.upcase()}
+            </button>
+
+            <%!-- Context Menu (if this member is selected) --%>
+            <%= if @context_menu_member_id == member.user_id do %>
+              <.member_context_menu 
+                member={member} 
+                room={@room} 
+                current_user={@current_user}
+                is_online={is_online}
+              />
             <% end %>
           </div>
-          <span class="text-xs font-medium text-white/70">{length(@room_members)}</span>
+        <% end %>
+
+        <%!-- +N overflow / Invite button --%>
+        <%= if length(@room_members) > 5 do %>
+          <button
+            phx-click="toggle_members_panel"
+            class="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[10px] font-medium text-white/70 hover:bg-white/20 transition-all cursor-pointer"
+          >
+            +{length(@room_members) - 5}
+          </button>
+        <% end %>
+
+        <%!-- Group Settings Button (•••) --%>
+        <button
+          phx-click="toggle_members_panel"
+          class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white/70 transition-all cursor-pointer"
+          title="Group settings"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
         </button>
 
-        <%!-- User Avatar (Menu) --%>
+        <%!-- User Avatar (Menu + Long Press Graph) --%>
         <button
+          id="room-user-orb"
           phx-click="toggle_user_menu"
-          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
+          phx-hook="LongPressOrb"
+          data-long-press-duration="3000"
+          data-long-press-event="show_fullscreen_graph"
+          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer ml-2"
         >
           <span class="text-xs font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
         </button>
+      </div>
+    </div>
+    """
+  end
+
+  # ============================================================================
+  # MEMBER CONTEXT MENU
+  # Minimal popup when clicking on member avatar
+  # ============================================================================
+
+  attr :member, :map, required: true
+  attr :room, :map, required: true
+  attr :current_user, :map, required: true
+  attr :is_online, :boolean, default: false
+
+  def member_context_menu(assigns) do
+    is_owner = assigns.room.owner_id == assigns.current_user.id
+    is_self = assigns.member.user_id == assigns.current_user.id
+    assigns = assigns
+      |> assign(:is_owner, is_owner)
+      |> assign(:is_self, is_self)
+
+    ~H"""
+    <%!-- Backdrop to close --%>
+    <div 
+      class="fixed inset-0 z-40" 
+      phx-click="close_member_menu"
+    ></div>
+
+    <%!-- Menu popup --%>
+    <div class="absolute top-10 left-1/2 -translate-x-1/2 z-50 w-40 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <%!-- Header with username --%>
+      <div class="px-3 py-2 border-b border-white/5">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-medium text-white truncate">@{@member.user.username}</span>
+          <%= if @is_online do %>
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+          <% end %>
+        </div>
+      </div>
+
+      <%!-- Actions --%>
+      <div class="py-1">
+        <%!-- View Profile / Message (future) --%>
+        <button
+          phx-click="close_member_menu"
+          class="w-full px-3 py-2 text-left text-xs text-white/70 hover:bg-white/10 transition-colors"
+        >
+          View profile
+        </button>
+
+        <%!-- Remove (owner only, not self) --%>
+        <%= if @is_owner and not @is_self do %>
+          <button
+            phx-click="remove_member"
+            phx-value-user_id={@member.user_id}
+            data-confirm={"Remove @#{@member.user.username}?"}
+            class="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            Remove from group
+          </button>
+        <% end %>
+
+        <%= if @is_self do %>
+          <button
+            phx-click="leave_room"
+            data-confirm="Leave this group?"
+            class="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            Leave group
+          </button>
+        <% end %>
       </div>
     </div>
     """
@@ -501,93 +632,228 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   end
 
   # ============================================================================
-  # MEMBERS SHEET
-  # Bottom sheet for managing members
+  # UNIFIED GROUP SHEET
+  # Combines members list + invite + share link in one sheet
   # ============================================================================
 
+  attr :show, :boolean, default: false
   attr :room, :map, required: true
   attr :room_members, :list, default: []
   attr :current_user, :map, required: true
+  attr :friends, :list, default: []
+  attr :group_search, :string, default: ""
+  attr :viewers, :list, default: []
 
-  def members_sheet(assigns) do
+  def group_sheet(assigns) do
+    # Build online IDs set
+    online_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
+    
+    # Build member IDs set
+    member_ids = MapSet.new(Enum.map(assigns.room_members, & &1.user_id))
+    
+    # Filter members by search
+    filtered_members = 
+      if assigns.group_search == "" do
+        assigns.room_members
+      else
+        query = String.downcase(assigns.group_search)
+        Enum.filter(assigns.room_members, fn m ->
+          String.contains?(String.downcase(m.user.username), query)
+        end)
+      end
+    
+    # Filter friends (non-members) by search
+    non_member_friends = Enum.reject(assigns.friends, fn f -> 
+      MapSet.member?(member_ids, f.user.id)
+    end)
+    
+    filtered_friends = 
+      if assigns.group_search == "" do
+        non_member_friends
+      else
+        query = String.downcase(assigns.group_search)
+        Enum.filter(non_member_friends, fn f ->
+          String.contains?(String.downcase(f.user.username), query)
+        end)
+      end
+    
+    is_owner = assigns.room.owner_id == assigns.current_user.id
+    
+    # Get current user's role in this room
+    current_user_member = Enum.find(assigns.room_members, fn m -> m.user_id == assigns.current_user.id end)
+    current_user_role = if current_user_member, do: current_user_member.role, else: "member"
+    
+    assigns = assigns
+      |> assign(:online_ids, online_ids)
+      |> assign(:filtered_members, filtered_members)
+      |> assign(:filtered_friends, filtered_friends)
+      |> assign(:is_owner, is_owner)
+      |> assign(:current_user_role, current_user_role)
+
     ~H"""
-    <div class="fixed inset-0 z-[150]" phx-window-keydown="toggle_members_panel" phx-key="escape">
-      <%!-- Backdrop --%>
-      <div
-        class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
-        phx-click="toggle_members_panel"
-      ></div>
+    <%= if @show do %>
+      <div class="fixed inset-0 z-[150]" phx-window-keydown="close_group_sheet" phx-key="escape">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="close_group_sheet"
+        ></div>
 
-      <%!-- Sheet --%>
-      <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
-        <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col">
-          <%!-- Handle --%>
-          <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_members_panel">
-            <div class="w-10 h-1 rounded-full bg-white/20"></div>
-          </div>
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
+          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col">
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="close_group_sheet">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
 
-          <%!-- Header --%>
-          <div class="px-4 pb-4 flex items-center justify-between">
-            <h2 class="text-lg font-bold text-white">{@room.name || @room.code}</h2>
-            <span class="text-xs text-white/40">{length(@room_members)} members</span>
-          </div>
+            <%!-- Search --%>
+            <div class="px-4 pb-3">
+              <input
+                type="text"
+                name="group_search"
+                value={@group_search}
+                placeholder="Search..."
+                phx-keyup="group_search"
+                phx-debounce="150"
+                autocomplete="off"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none text-sm"
+              />
+            </div>
 
-          <%!-- Members List --%>
-          <div class="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
-            <%= for member <- @room_members do %>
-              <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                <div
-                  class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                  style={"background-color: #{member_color(member)}"}
-                >
-                  {String.first(member.user.username)}
+            <%!-- Content --%>
+            <div class="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+              <%!-- MEMBERS SECTION --%>
+              <div>
+                <div class="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">
+                  Members ({length(@room_members)})
                 </div>
-                
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-white truncate">@{member.user.username}</span>
-                    <%= if @room.owner_id == member.user.id do %>
-                      <span class="text-[10px] text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">Owner</span>
+                <div class="space-y-1">
+                  <%= for member <- @filtered_members do %>
+                    <% is_online = MapSet.member?(@online_ids, member.user_id) %>
+                    <% is_self = member.user_id == @current_user.id %>
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/5">
+                      <%!-- Avatar with presence --%>
+                      <div 
+                        class={"w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 #{if is_online, do: "border-green-400", else: "border-white/20 opacity-70"}"}
+                        style={"background-color: #{member_color(member)};"}
+                      >
+                        {String.first(member.user.username) |> String.upcase()}
+                      </div>
+                      
+                      <%!-- Info --%>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm font-medium text-white truncate">@{member.user.username}</span>
+                          <%= if @room.owner_id == member.user_id do %>
+                            <span class="text-[9px] text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20">Owner</span>
+                          <% end %>
+                          <%= if member.role == "admin" do %>
+                            <span class="text-[9px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">Admin</span>
+                          <% end %>
+                          <%= if is_online do %>
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                          <% end %>
+                        </div>
+                      </div>
+                      
+                      <%!-- Actions (dropdown menu) --%>
+                      <%= if (@is_owner or member.role == "member") and not is_self and @room.owner_id != member.user_id do %>
+                        <div class="flex items-center gap-1">
+                          <%!-- Make/Remove Admin (owner only) --%>
+                          <%= if @is_owner do %>
+                            <%= if member.role == "admin" do %>
+                              <button
+                                phx-click="remove_admin"
+                                phx-value-user_id={member.user_id}
+                                class="text-[10px] text-blue-400/70 hover:text-blue-400 transition-colors px-2 py-1 cursor-pointer"
+                              >
+                                ✕ Admin
+                              </button>
+                            <% else %>
+                              <button
+                                phx-click="make_admin"
+                                phx-value-user_id={member.user_id}
+                                class="text-[10px] text-blue-400/70 hover:text-blue-400 transition-colors px-2 py-1 cursor-pointer"
+                              >
+                                + Admin
+                              </button>
+                            <% end %>
+                          <% end %>
+                          
+                          <%!-- Remove (owner or admin can remove members) --%>
+                          <%= if @is_owner or (@current_user_role == "admin" and member.role == "member") do %>
+                            <button
+                              phx-click="remove_member"
+                              phx-value-user_id={member.user_id}
+                              data-confirm={"Remove @#{member.user.username}?"}
+                              class="text-[10px] text-red-400/70 hover:text-red-400 transition-colors px-2 py-1 cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+
+              <%!-- INVITE SECTION (if not DM) --%>
+              <%= if @room.room_type != "dm" and @filtered_friends != [] do %>
+                <div>
+                  <div class="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">
+                    Invite
+                  </div>
+                  <div class="space-y-1">
+                    <%= for friend <- Enum.take(@filtered_friends, 5) do %>
+                      <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/5">
+                        <div 
+                          class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white border border-white/20"
+                          style={"background-color: #{member_color(friend)};"}
+                        >
+                          {String.first(friend.user.username) |> String.upcase()}
+                        </div>
+                        <span class="flex-1 text-sm font-medium text-white truncate">@{friend.user.username}</span>
+                        <button
+                          phx-click="invite_to_room"
+                          phx-value-user_id={friend.user.id}
+                          class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                        >
+                          Invite
+                        </button>
+                      </div>
                     <% end %>
                   </div>
-                  <div class="text-[10px] text-white/40">
-                    Joined {Calendar.strftime(member.inserted_at, "%b %d")}
-                  </div>
                 </div>
+              <% end %>
+            </div>
 
-                <%!-- Actions (if admin/owner) --%>
-                <% is_owner = @room.owner_id == @current_user.id %>
-                <% is_self = member.user.id == @current_user.id %>
-                
-                <%= if is_owner and not is_self do %>
-                  <button
-                    phx-click="remove_member"
-                    phx-value-user_id={member.user.id}
-                    data-confirm={"Remove #{member.user.username} from group?"}
-                    class="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1"
-                  >
-                    Remove
-                  </button>
-                <% end %>
-              </div>
-            <% end %>
-
-            <%!-- Invite Button --%>
+            <%!-- Share Link (bottom) --%>
             <%= if @room.room_type != "dm" do %>
-              <button
-                phx-click="open_invite_sheet"
-                class="w-full mt-4 py-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/20 text-sm font-medium text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                Invite People
-              </button>
+              <div class="px-4 py-3 border-t border-white/5">
+                <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                  <svg class="w-4 h-4 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <code class="flex-1 text-xs text-white/50 truncate font-mono">
+                    {url(~p"/r/#{@room.code}")}
+                  </code>
+                  <button
+                    id="group-sheet-copy"
+                    phx-hook="CopyToClipboard"
+                    data-copy={url(~p"/r/#{@room.code}")}
+                    class="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
             <% end %>
           </div>
         </div>
       </div>
-    </div>
+    <% end %>
     """
   end
 

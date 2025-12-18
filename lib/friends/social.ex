@@ -84,6 +84,7 @@ defmodule Friends.Social do
   defdelegate list_public_rooms(limit \\ 20), to: Rooms
   defdelegate invite_to_room(room_id, inviter_user_id, invitee_user_id), to: Rooms
   defdelegate get_room_member(room_id, user_id), to: Rooms
+  defdelegate update_member_role(room_id, user_id, role), to: Rooms
   defdelegate join_room(user, room_code), to: Rooms
   defdelegate leave_room(user, room_id), to: Rooms
   defdelegate get_room_members(room_id), to: Rooms

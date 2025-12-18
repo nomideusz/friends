@@ -102,6 +102,7 @@
     trusted_friends={@trusted_friends}
     incoming_trust_requests={@incoming_trust_requests}
     incoming_requests={@incoming_trust_requests}
+    pending_friend_requests={@pending_requests}
     room={@room}
     room_members={@room_members || []}
     current_user={@current_user}
@@ -511,6 +512,11 @@
                 show_members_panel={@show_members_panel}
                 chat_expanded={@chat_expanded}
                 typing_users={@typing_users}
+                friends={@friends}
+                viewers={@viewers}
+                context_menu_member_id={assigns[:context_menu_member_id]}
+                show_group_sheet={assigns[:show_group_sheet] || false}
+                group_search={assigns[:group_search] || ""}
               />
             <% else %>
               <%!-- Access Denied or Public Room (fallback to old design) --%>

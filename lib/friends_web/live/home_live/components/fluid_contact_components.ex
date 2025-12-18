@@ -23,6 +23,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   attr :trusted_friend_ids, :list, default: []
   attr :trusted_friends, :list, default: []
   attr :incoming_trust_requests, :list, default: []
+  attr :pending_friend_requests, :list, default: []  # Actual friend requests to accept/decline
   attr :room, :map, default: nil
   attr :room_members, :list, default: []
 
@@ -63,26 +64,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
               <div class="w-10 h-1 rounded-full bg-white/20"></div>
             </div>
 
-            <%!-- Header (Invite Mode) --%>
-            <%= if @mode == :invite and @room do %>
-              <div class="px-4 pb-2">
-                <h3 class="text-sm font-medium text-white/70">Invite to {@room.name || @room.code}</h3>
-              </div>
-            <% end %>
-
             <%!-- Search --%>
             <div class="px-4 pb-3">
               <input
                 type="text"
                 name="contact_search"
                 value={@search_query}
-                placeholder={
-                  case @mode do
-                    :add_contact -> "Search by username..."
-                    :invite -> "Search friends to invite..."
-                    _ -> "Filter people..."
-                  end
-                }
+                placeholder="Search by username..."
                 phx-keyup="contact_search"
                 phx-debounce="200"
                 autocomplete="off"
@@ -130,7 +118,21 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 <% end %>
               <% else %>
-                <%!-- Pending Trust Requests (incoming) --%>
+                <%!-- Pending Friend Requests --%>
+                <% friend_requests = @pending_friend_requests || [] %>
+                <%= if Enum.any?(friend_requests) do %>
+                  <div class="mb-4">
+                    <div class="text-[10px] font-medium text-blue-400/70 uppercase tracking-wider mb-2">Friend Requests</div>
+                    <div class="space-y-1">
+                      <%= for fr <- friend_requests do %>
+                        <% user = if Map.has_key?(fr, :user), do: fr.user, else: fr %>
+                        <.friend_request_row user={user} />
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                
+                <%!-- Pending Trust/Recovery Requests (incoming) --%>
                 <% incoming = @incoming_requests || [] %>
                 <%= if Enum.any?(incoming) do %>
                   <div class="mb-4">
@@ -316,6 +318,53 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   end
 
   # ============================================================================
+  # FRIEND REQUEST ROW
+  # For incoming friend requests (pending acceptance)
+  # ============================================================================
+
+  attr :user, :map, required: true
+
+  def friend_request_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
+      <%!-- Avatar --%>
+      <div
+        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+        style={"background-color: #{friend_color(@user)};"}
+      >
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      </div>
+
+      <%!-- Name --%>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white truncate">@{@user.username}</span>
+          <span class="text-[10px] text-blue-400/70">wants to be friends</span>
+        </div>
+      </div>
+
+      <%!-- Accept/Decline --%>
+      <div class="flex items-center gap-2">
+        <button
+          phx-click="accept_friend_request"
+          phx-value-user_id={@user.id}
+          class="text-xs text-green-400 hover:text-green-300 font-medium transition-colors cursor-pointer"
+        >
+          Accept
+        </button>
+        <button
+          phx-click="decline_friend_request"
+          phx-value-user_id={@user.id}
+          class="text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer"
+        >
+          Decline
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  # ============================================================================
   # SVG ICONS
   # ============================================================================
 
@@ -368,21 +417,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Actions --%>
       <div class="flex items-center gap-2">
-        <%= if @mode == :invite do %>
-           <% is_member = MapSet.member?(@member_ids, @user.id) %>
-           <%= if is_member do %>
-             <span class="text-xs text-white/30">Member</span>
-           <% else %>
-             <button
-               phx-click="invite_friend_to_room"
-               phx-value-friend_id={@user.id}
-               class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
-             >
-               Invite
-             </button>
-           <% end %>
-        <% else %>
-          <%= case @status do %>
+        <%= case @status do %>
             <% :self -> %>
               <span class="text-xs text-white/30">You</span>
             <% :connected -> %>
@@ -432,7 +467,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                 Add
               </button>
           <% end %>
-        <% end %>
       </div>
     </div>
     """
