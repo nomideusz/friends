@@ -480,8 +480,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       <div
         id="fluid-chat-overlay"
         class="fixed bottom-20 left-0 right-0 z-40 pointer-events-none"
-        phx-hook="RoomChatScroll"
-        data-room-id={@room.id}
       >
         <div class="max-w-lg mx-auto px-4 pointer-events-auto">
           <%!-- Chat container with glass effect --%>
@@ -494,8 +492,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <div class="w-8 h-1 rounded-full bg-white/20"></div>
             </button>
 
-            <%!-- Messages --%>
-            <div class="max-h-[40vh] overflow-y-auto px-4 pb-4 space-y-3">
+            <%!-- Messages (scrollable container) --%>
+            <div
+              id="chat-messages-scroll"
+              class="max-h-[40vh] overflow-y-auto px-4 pb-4 space-y-3"
+              phx-hook="RoomChatScroll"
+              data-room-id={@room.id}
+            >
               <%= for message <- @room_messages do %>
                 <div class={"flex flex-col #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
                   <%= if message.sender_id != @current_user.id do %>
