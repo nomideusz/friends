@@ -18,6 +18,10 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
     {:noreply, update(socket, :chat_expanded, &(!&1))}
   end
 
+  def toggle_chat_visibility(socket) do
+    {:noreply, update(socket, :show_chat, &(!&1))}
+  end
+
   # ============================================================================
   # LIVE TYPING
   # Broadcasts keystrokes to other room members in real-time

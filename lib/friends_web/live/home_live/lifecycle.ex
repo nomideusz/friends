@@ -273,6 +273,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Fluid room state
         |> assign(:show_members_panel, false)
         |> assign(:chat_expanded, false)
+        # Chat visibility toggle
+        |> assign(:show_chat, true)
         # Live typing - track what other users are typing
         |> assign(:typing_users, %{})
         # FAB and collapsible UI state

@@ -30,6 +30,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :context_menu_member_id, :integer, default: nil
   attr :show_group_sheet, :boolean, default: false
   attr :group_search, :string, default: ""
+  attr :show_chat, :boolean, default: true
 
   def fluid_room(assigns) do
     ~H"""
@@ -82,6 +83,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         new_chat_message={@new_chat_message}
         chat_expanded={@chat_expanded}
         typing_users={@typing_users}
+        show_chat={@show_chat}
       />
 
       <%!-- Unified Input Bar (always visible at bottom) --%>
@@ -518,6 +520,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :new_chat_message, :string, default: ""
   attr :chat_expanded, :boolean, default: false
   attr :typing_users, :map, default: %{}
+  attr :show_chat, :boolean, default: true
 
   def fluid_chat_overlay(assigns) do
     has_messages = length(assigns.room_messages) > 0
@@ -526,7 +529,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
     assigns = assign(assigns, :has_typing, has_typing)
 
     ~H"""
-    <%= if @has_messages or @chat_expanded or @has_typing do %>
+    <%= if @show_chat && (@has_messages or @chat_expanded or @has_typing) do %>
       <div
         id="fluid-chat-overlay"
         class="fixed bottom-20 left-0 right-0 z-40 pointer-events-none"
@@ -534,13 +537,25 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         <div class="max-w-lg mx-auto px-4 pointer-events-auto">
           <%!-- Chat container with glass effect --%>
           <div class="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
-            <%!-- Collapse handle --%>
-            <button
-              phx-click="toggle_chat_expanded"
-              class="w-full py-2 flex justify-center cursor-pointer hover:bg-white/5 transition-colors"
-            >
-              <div class="w-8 h-1 rounded-full bg-white/20"></div>
-            </button>
+            <%!-- Header with collapse handle and hide button --%>
+            <div class="flex items-center justify-between px-3">
+              <button
+                phx-click="toggle_chat_visibility"
+                class="p-2 text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+                title="Hide chat"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <button
+                phx-click="toggle_chat_expanded"
+                class="flex-1 py-2 flex justify-center cursor-pointer hover:bg-white/5 transition-colors"
+              >
+                <div class="w-8 h-1 rounded-full bg-white/20"></div>
+              </button>
+              <div class="w-8"></div> <%!-- Spacer for balance --%>
+            </div>
 
             <%!-- Messages (scrollable container) --%>
             <div

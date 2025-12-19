@@ -105,6 +105,19 @@ defmodule FriendsWeb.HomeLive do
     NoteEvents.delete_note(socket, id)
   end
 
+  # Chat toggle events
+  def handle_event("toggle_chat_expanded", _params, socket) do
+    ChatEvents.toggle_chat_expanded(socket)
+  end
+
+  def handle_event("toggle_chat_visibility", _params, socket) do
+    ChatEvents.toggle_chat_visibility(socket)
+  end
+
+  def handle_event("toggle_members_panel", _params, socket) do
+    ChatEvents.toggle_members_panel(socket)
+  end
+
   # Room events
   def handle_event("open_room_modal", _params, socket), do: RoomEvents.open_room_modal(socket)
   def handle_event("close_room_modal", _params, socket), do: RoomEvents.close_room_modal(socket)
