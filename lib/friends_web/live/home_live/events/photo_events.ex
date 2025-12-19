@@ -99,6 +99,10 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
         # Update navigation order with ALL individual photo IDs
         all_new_ids = Enum.map(uploaded_photos, & &1.id)
         socket = assign(socket, :photo_order, merge_photo_order(socket.assigns[:photo_order], all_new_ids, :front))
+        
+        # Add to ignore list to prevent PubSub duplication (since we manually inserted gallery/singles)
+        ignored_ids = MapSet.union(socket.assigns[:uploaded_ids_to_ignore] || MapSet.new(), MapSet.new(all_new_ids))
+        socket = assign(socket, :uploaded_ids_to_ignore, ignored_ids)
 
         failed_count = Enum.count(results, fn res -> match?({:postpone, _}, res) end)
 

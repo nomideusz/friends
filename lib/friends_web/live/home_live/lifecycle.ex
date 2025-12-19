@@ -347,6 +347,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_create_menu, false)
         |> assign(:current_photo_id, nil)
         |> assign(:friends, friends)
+        # Group/members sheet state
+        |> assign(:show_group_sheet, false)
+        |> assign(:group_search, "")
         # Live presence - friend IDs currently online
         |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")

@@ -343,8 +343,18 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
           end
 
           case result do
-            {:ok, _} ->
-              {:noreply, put_flash(socket, :info, "Pinned!")}
+            {:ok, updated_item} ->
+              # Update stream with the new pinned_at value
+              item_with_type =
+                updated_item
+                |> Map.from_struct()
+                |> Map.put(:type, String.to_existing_atom(item_type))
+                |> Map.put(:unique_id, "#{item_type}-#{item_id}")
+
+              {:noreply, 
+               socket
+               |> stream_insert(:items, item_with_type)
+               |> put_flash(:info, "Pinned!")}
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "Could not pin")}
           end
@@ -373,8 +383,18 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
           end
 
           case result do
-            {:ok, _} ->
-              {:noreply, put_flash(socket, :info, "Unpinned")}
+            {:ok, updated_item} ->
+              # Update stream with the cleared pinned_at value
+              item_with_type =
+                updated_item
+                |> Map.from_struct()
+                |> Map.put(:type, String.to_existing_atom(item_type))
+                |> Map.put(:unique_id, "#{item_type}-#{item_id}")
+
+              {:noreply, 
+               socket
+               |> stream_insert(:items, item_with_type)
+               |> put_flash(:info, "Unpinned")}
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "Could not unpin")}
           end

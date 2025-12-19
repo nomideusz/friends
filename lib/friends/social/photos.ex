@@ -223,14 +223,11 @@ defmodule Friends.Social.Photos do
 
     case result do
       {:ok, photo} ->
-        # Use main Social module for PubSub broadcasting to avoid duplicating that logic?
-        # Or just call Phoenix.PubSub directly.
-        # Social.broadcast/3 is a wrapper around Phoenix.PubSub.
-        # We can implement broadcast locally or call Social.broadcast.
-        # Calling Social.broadcast creates a dependency loop if Social uses Photos.
-        # Better to duplicate simple broadcast wrapper or use Phoenix.PubSub directly.
-        
-        Phoenix.PubSub.broadcast(Friends.PubSub, "friends:room:#{room_code}", {:new_photo, photo})
+        # Skip broadcasting photos that are part of a batch (gallery)
+        # The uploader will insert a gallery item instead
+        if is_nil(photo.batch_id) do
+          Phoenix.PubSub.broadcast(Friends.PubSub, "friends:room:#{room_code}", {:new_photo, photo})
+        end
         {:ok, photo}
 
       error ->

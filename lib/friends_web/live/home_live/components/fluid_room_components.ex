@@ -94,6 +94,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         recording_voice={@recording_voice}
         new_chat_message={@new_chat_message}
         chat_expanded={@chat_expanded}
+        show_chat={@show_chat}
       />
 
       <%!-- Unified Group Sheet --%>
@@ -357,8 +358,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             loading="lazy"
           />
           <%!-- Gallery badge --%>
-          <div class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm">
-            <span class="text-[10px] font-bold text-white">{@item.photo_count}</span>
+          <div class="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/20 shadow-lg">
+            <svg class="w-3.5 h-3.5 text-white/80" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+            </svg>
+            <span class="text-xs font-semibold text-white">{@item.photo_count}</span>
           </div>
           <%!-- Hover overlay --%>
           <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -631,6 +635,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :recording_voice, :boolean, default: false
   attr :new_chat_message, :string, default: ""
   attr :chat_expanded, :boolean, default: false
+  attr :show_chat, :boolean, default: true
 
   def unified_input_bar(assigns) do
     ~H"""
@@ -642,6 +647,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           phx-hook="RoomChatEncryption"
           data-room-id={@room.id}
         >
+          <%!-- Chat toggle button (shows when chat is hidden) --%>
+          <%= if not @show_chat do %>
+            <button
+              type="button"
+              phx-click="toggle_chat_visibility"
+              class="w-9 h-9 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors cursor-pointer animate-pulse"
+              title="Show chat"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
+          <% end %>
+
           <%!-- Photo button --%>
           <form id="fluid-upload-form" phx-change="validate" phx-submit="save" class="contents">
             <label class="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
@@ -676,6 +695,12 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             class="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none py-2"
             id="unified-message-input"
             autocomplete="off"
+            autocorrect="off"
+            autocapitalize="sentences"
+            inputmode="text"
+            enterkeyhint="send"
+            data-form-type="other"
+            data-lpignore="true"
           />
 
           <%!-- Voice button --%>
@@ -933,6 +958,40 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <% end %>
           </div>
         </div>
+      </div>
+    <% end %>
+    """
+  end
+
+  # ============================================================================
+  # ACCESS DENIED STATE
+  # Shown when user doesn't have access to a private room
+  # ============================================================================
+
+  attr :room_access_denied, :boolean, default: false
+  attr :room, :map, required: true
+  attr :current_user, :map, default: nil
+
+  def access_denied(assigns) do
+    ~H"""
+    <%= if @room_access_denied do %>
+      <div class="text-center py-20">
+        <p class="text-4xl mb-4">🔒</p>
+
+        <p class="text-white/50 text-sm font-medium">private room</p>
+
+        <p class="text-white/30 text-xs mt-2">you don't have access to this room</p>
+
+        <%= if is_nil(@current_user) do %>
+          <a
+            href={"/auth?join=#{@room.code}"}
+            class="inline-block mt-4 px-4 py-2 bg-emerald-500 text-black text-sm font-medium rounded-lg hover:bg-emerald-400 transition-colors"
+          >
+            sign in to join
+          </a>
+        <% else %>
+          <p class="text-neutral-700 text-xs mt-4">ask the owner to invite you</p>
+        <% end %>
       </div>
     <% end %>
     """

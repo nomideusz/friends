@@ -30,22 +30,30 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
   def handle_new_photo(socket, photo) do
     Logger.info("PubSubHandlers: Received new photo ID #{photo.id} from user #{photo.user_id} (My user: #{socket.assigns.user_id})")
-    # Only insert if not from self (optimistic UI handles self)
-    if photo.user_id != socket.assigns.user_id do
-      photo_with_type =
-        photo
-        |> Map.from_struct()
-        |> Map.put(:type, :photo)
-        |> Map.put(:unique_id, "photo-#{photo.id}")
-        |> Map.put(:thumbnail_data, photo.thumbnail_data)
-
-      {:noreply,
-       socket
-       |> assign(:item_count, socket.assigns.item_count + 1)
-       |> assign(:photo_order, merge_photo_order(socket.assigns.photo_order, [photo.id], :front))
-       |> stream_insert(:items, photo_with_type, at: 0)}
-    else
+    
+    # Check if this photo should be ignored (was just uploaded by this socket as part of a batch)
+    ignored_ids = socket.assigns[:uploaded_ids_to_ignore] || MapSet.new()
+    
+    if MapSet.member?(ignored_ids, photo.id) do
       {:noreply, socket}
+    else
+      # Only insert if not from self (optimistic UI handles self)
+      if photo.user_id != socket.assigns.user_id do
+        photo_with_type =
+          photo
+          |> Map.from_struct()
+          |> Map.put(:type, :photo)
+          |> Map.put(:unique_id, "photo-#{photo.id}")
+          |> Map.put(:thumbnail_data, photo.thumbnail_data)
+
+        {:noreply,
+         socket
+         |> assign(:item_count, socket.assigns.item_count + 1)
+         |> assign(:photo_order, merge_photo_order(socket.assigns.photo_order, [photo.id], :front))
+         |> stream_insert(:items, photo_with_type, at: 0)}
+      else
+        {:noreply, socket}
+      end
     end
   end
 
@@ -131,26 +139,31 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   end
 
   def handle_photo_updated(socket, photo) do
-    photo_with_type =
-      photo
-      |> Map.from_struct()
-      |> Map.put(:type, :photo)
-      |> Map.put(:unique_id, "photo-#{photo.id}")
+    # Skip photos that are part of a batch/gallery - they shouldn't appear as individual items
+    if photo.batch_id do
+      {:noreply, socket}
+    else
+      photo_with_type =
+        photo
+        |> Map.from_struct()
+        |> Map.put(:type, :photo)
+        |> Map.put(:unique_id, "photo-#{photo.id}")
 
-    # Update the appropriate stream based on photo type and current view
-    socket =
-      cond do
-        photo.room_id && socket.assigns[:item_count] ->
-          stream_insert(socket, :items, photo_with_type)
+      # Update the appropriate stream based on photo type and current view
+      socket =
+        cond do
+          photo.room_id && socket.assigns[:item_count] ->
+            stream_insert(socket, :items, photo_with_type)
 
-        is_nil(photo.room_id) && socket.assigns[:feed_item_count] ->
-          stream_insert(socket, :feed_items, photo_with_type)
+          is_nil(photo.room_id) && socket.assigns[:feed_item_count] ->
+            stream_insert(socket, :feed_items, photo_with_type)
 
-        true ->
-          socket
-      end
+          true ->
+            socket
+        end
 
-    {:noreply, socket}
+      {:noreply, socket}
+    end
   end
 
   # --- Chat ---
