@@ -241,6 +241,15 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("open_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
   def handle_event("open_feed_note_modal", _params, socket), do: NoteEvents.open_feed_note_modal(socket)
   def handle_event("close_note_modal", _params, socket), do: NoteEvents.close_note_modal(socket)
+
+  # Pin/unpin events (admin-only, handled in RoomEvents)
+  def handle_event("pin_item", %{"type" => type, "id" => id}, socket) do
+    RoomEvents.pin_item(socket, type, id)
+  end
+
+  def handle_event("unpin_item", %{"type" => type, "id" => id}, socket) do
+    RoomEvents.unpin_item(socket, type, id)
+  end
   
   def handle_event("view_feed_note", %{"note_id" => note_id}, socket) do
     NoteEvents.view_feed_note(socket, note_id)
