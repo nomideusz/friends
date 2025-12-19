@@ -419,20 +419,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <%= if @room.owner_id == @current_user.id do %>
               <button
                 type="button"
-                phx-click={if @item[:pinned_at], do: "unpin_item", else: "pin_item"}
+                phx-click={if Map.get(@item, :pinned_at), do: "unpin_item", else: "pin_item"}
                 phx-value-type="photo"
                 phx-value-id={@item.id}
                 class="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-all z-10"
-                title={if @item[:pinned_at], do: "Unpin", else: "Pin"}
+                title={if Map.get(@item, :pinned_at), do: "Unpin", else: "Pin"}
               >
-                <svg class={"w-3 h-3 #{if @item[:pinned_at], do: "text-yellow-400", else: "text-white/70 hover:text-yellow-400"}"} fill={if @item[:pinned_at], do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <svg class={"w-3 h-3 #{if Map.get(@item, :pinned_at), do: "text-yellow-400", else: "text-white/70 hover:text-yellow-400"}"} fill={if Map.get(@item, :pinned_at), do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
               </button>
             <% end %>
             
             <%!-- Pinned indicator (always visible for non-owners) --%>
-            <%= if @item[:pinned_at] && @room.owner_id != @current_user.id do %>
+            <%= if Map.get(@item, :pinned_at) && @room.owner_id != @current_user.id do %>
               <div class="absolute top-2 left-2 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg z-10" title="Pinned">
                 <svg class="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -479,20 +479,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           <%= if @room.owner_id == @current_user.id do %>
             <button
               type="button"
-              phx-click={if @item[:pinned_at], do: "unpin_item", else: "pin_item"}
+              phx-click={if Map.get(@item, :pinned_at), do: "unpin_item", else: "pin_item"}
               phx-value-type="note"
               phx-value-id={@item.id}
               class="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-all z-10"
-              title={if @item[:pinned_at], do: "Unpin", else: "Pin"}
+              title={if Map.get(@item, :pinned_at), do: "Unpin", else: "Pin"}
             >
-              <svg class={"w-3 h-3 #{if @item[:pinned_at], do: "text-yellow-400", else: "text-white/70 hover:text-yellow-400"}"} fill={if @item[:pinned_at], do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
+              <svg class={"w-3 h-3 #{if Map.get(@item, :pinned_at), do: "text-yellow-400", else: "text-white/70 hover:text-yellow-400"}"} fill={if Map.get(@item, :pinned_at), do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </button>
           <% end %>
           
           <%!-- Pinned indicator (always visible for non-owners) --%>
-          <%= if @item[:pinned_at] && @room.owner_id != @current_user.id do %>
+          <%= if Map.get(@item, :pinned_at) && @room.owner_id != @current_user.id do %>
             <div class="absolute top-2 left-2 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg z-10" title="Pinned">
               <svg class="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
