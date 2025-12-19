@@ -6,7 +6,6 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Helpers
   import FriendsWeb.HomeLive.Components.RoomComponents
   import FriendsWeb.HomeLive.Components.SettingsComponents
-  import FriendsWeb.HomeLive.Components.ChatComponents
   import FriendsWeb.HomeLive.Components.InviteComponents
   import FriendsWeb.HomeLive.Components.DrawerComponents
   import FriendsWeb.HomeLive.Components.FluidRoomComponents
