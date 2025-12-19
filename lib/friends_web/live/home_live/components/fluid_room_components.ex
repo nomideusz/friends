@@ -401,18 +401,43 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
             <%!-- Delete button (own photos only) --%>
-            <%= if @item.user_id == @current_user.id do %>
+            <%= if @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id do %>
               <button
                 type="button"
                 phx-click="delete_photo"
                 phx-value-id={@item.id}
                 data-confirm="Delete?"
-                class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center"
+                class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center z-10"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            <% end %>
+            
+            <%!-- Pin button (owner only) --%>
+            <%= if @room.owner_id == @current_user.id do %>
+              <button
+                type="button"
+                phx-click={if @item[:pinned_at], do: "unpin_item", else: "pin_item"}
+                phx-value-type="photo"
+                phx-value-id={@item.id}
+                class="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-all z-10"
+                title={if @item[:pinned_at], do: "Unpin", else: "Pin"}
+              >
+                <svg class={"w-3 h-3 #{if @item[:pinned_at], do: "text-yellow-400", else: "text-white/70 hover:text-yellow-400"}"} fill={if @item[:pinned_at], do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+            <% end %>
+            
+            <%!-- Pinned indicator (always visible for non-owners) --%>
+            <%= if @item[:pinned_at] && @room.owner_id != @current_user.id do %>
+              <div class="absolute top-2 left-2 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg z-10" title="Pinned">
+                <svg class="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </div>
             <% end %>
           </div>
         <% end %>
@@ -435,19 +460,44 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           </div>
 
           <%!-- Delete button (own notes only) --%>
-          <%= if @item.user_id == @current_user.id do %>
+          <%= if @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id do %>
             <button
               type="button"
               phx-click="delete_note"
               phx-value-id={@item.id}
               data-confirm="Delete?"
               phx-click-stop
-              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center"
+              class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center z-10"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          <% end %>
+          
+          <%!-- Pin button (owner only) --%>
+          <%= if @room.owner_id == @current_user.id do %>
+            <button
+              type="button"
+              phx-click={if @item[:pinned_at], do: "unpin_item", else: "pin_item"}
+              phx-value-type="note"
+              phx-value-id={@item.id}
+              class="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-all z-10"
+              title={if @item[:pinned_at], do: "Unpin", else: "Pin"}
+            >
+              <svg class={"w-3 h-3 #{if @item[:pinned_at], do: "text-yellow-400", else: "text-white/70 hover:text-yellow-400"}"} fill={if @item[:pinned_at], do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </button>
+          <% end %>
+          
+          <%!-- Pinned indicator (always visible for non-owners) --%>
+          <%= if @item[:pinned_at] && @room.owner_id != @current_user.id do %>
+            <div class="absolute top-2 left-2 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center shadow-lg z-10" title="Pinned">
+              <svg class="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </div>
           <% end %>
         </div>
 
