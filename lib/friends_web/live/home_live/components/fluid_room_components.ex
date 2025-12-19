@@ -566,17 +566,17 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
   def unified_input_bar(assigns) do
     ~H"""
-    <div class="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/95 to-transparent">
+    <div class="fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-t from-black via-black/95 to-transparent">
       <div class="max-w-lg mx-auto">
         <div
           id="unified-input-area"
-          class="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full px-2 py-1.5 shadow-2xl"
+          class="flex items-center gap-2"
           phx-hook="RoomChatEncryption"
           data-room-id={@room.id}
         >
           <%!-- Photo button --%>
           <form id="fluid-upload-form" phx-change="validate" phx-submit="save" class="contents">
-            <label class="w-9 h-9 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <label class="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -586,13 +586,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             </label>
           </form>
 
-          <%!-- Text input --%>
+          <%!-- Text input (minimal, no border) --%>
           <input
             type="text"
             value={@new_chat_message}
             phx-keyup="update_chat_message"
-            placeholder="..."
-            class="flex-1 bg-transparent border-none text-sm text-white placeholder-white/30 focus:ring-0 focus:outline-none py-2"
+            placeholder="Message"
+            style="font-size: 16px;"
+            class="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none py-2"
             id="unified-message-input"
             autocomplete="off"
           />
@@ -602,20 +603,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             id="fluid-voice-btn"
             phx-hook="GridVoiceRecorder"
             data-room-id={@room.id}
-            class={"w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer #{if @recording_voice, do: "bg-red-500 text-white animate-pulse", else: "text-white/50 hover:text-white hover:bg-white/10"}"}
+            class={"w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer #{if @recording_voice, do: "bg-red-500 text-white animate-pulse", else: "text-white/40 hover:text-white hover:bg-white/10"}"}
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
           </button>
 
-          <%!-- Send button --%>
+          <%!-- Send button (adaptive: dims when no content) --%>
           <button
             id="send-unified-message-btn"
-            class="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors cursor-pointer"
+            class={"w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-white text-black scale-100", else: "bg-white/10 text-white/40 scale-90"}"}
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
         </div>
