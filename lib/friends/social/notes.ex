@@ -151,7 +151,7 @@ defmodule Friends.Social.Notes do
 
       note ->
         note
-        |> Ecto.Changeset.change(%{pinned_at: DateTime.utc_now()})
+        |> Ecto.Changeset.change(%{pinned_at: DateTime.utc_now() |> DateTime.truncate(:second)})
         |> Repo.update()
         |> case do
           {:ok, updated} ->

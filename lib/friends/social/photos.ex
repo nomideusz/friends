@@ -442,7 +442,7 @@ defmodule Friends.Social.Photos do
 
       photo ->
         photo
-        |> Ecto.Changeset.change(%{pinned_at: DateTime.utc_now()})
+        |> Ecto.Changeset.change(%{pinned_at: DateTime.utc_now() |> DateTime.truncate(:second)})
         |> Repo.update()
         |> case do
           {:ok, updated} ->
