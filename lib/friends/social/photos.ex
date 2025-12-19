@@ -17,8 +17,8 @@ defmodule Friends.Social.Photos do
 
     Photo
     |> where([p], p.room_id == ^room_id)
-    # Add secondary sort for consistency
-    |> order_by([p], desc: p.uploaded_at, desc: p.id)
+    # Pinned items first (DESC NULLS LAST), then chronological
+    |> order_by([p], [desc_nulls_last: p.pinned_at, desc: p.uploaded_at, desc: p.id])
     |> limit(^limit)
     |> offset(^offset_val)
     |> select([p], %{
@@ -31,6 +31,7 @@ defmodule Friends.Social.Photos do
       file_size: p.file_size,
       description: p.description,
       uploaded_at: p.uploaded_at,
+      pinned_at: p.pinned_at,
       batch_id: p.batch_id,
       room_id: p.room_id,
       inserted_at: p.inserted_at,

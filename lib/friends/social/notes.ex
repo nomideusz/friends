@@ -12,7 +12,8 @@ defmodule Friends.Social.Notes do
 
     Note
     |> where([n], n.room_id == ^room_id)
-    |> order_by([n], desc: n.inserted_at)
+    # Pinned items first (DESC NULLS LAST), then chronological
+    |> order_by([n], [desc_nulls_last: n.pinned_at, desc: n.inserted_at])
     |> limit(^limit)
     |> offset(^offset_val)
     |> Repo.all()
