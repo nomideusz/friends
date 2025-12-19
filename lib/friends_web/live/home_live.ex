@@ -1146,6 +1146,12 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_new_photo(socket, photo)
   end
 
+  # Pin/Unpin broadcasts - just reload items to show updated pinned state
+  def handle_info({:photo_pinned, _data}, socket), do: {:noreply, socket}
+  def handle_info({:photo_unpinned, _data}, socket), do: {:noreply, socket}
+  def handle_info({:note_pinned, _data}, socket), do: {:noreply, socket}
+  def handle_info({:note_unpinned, _data}, socket), do: {:noreply, socket}
+
   def handle_info({:new_note, note}, socket) do
     PubSubHandlers.handle_new_note(socket, note)
   end
