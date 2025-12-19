@@ -320,4 +320,79 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
       {:noreply, put_flash(socket, :error, "Please log in")}
     end
   end
+
+  # --- PIN / UNPIN CONTENT ---
+
+  def pin_item(socket, item_type, item_id_str) do
+    case {socket.assigns.current_user, safe_to_integer(item_id_str)} do
+      {nil, _} ->
+        {:noreply, put_flash(socket, :error, "Please log in")}
+
+      {_, {:error, _}} ->
+        {:noreply, put_flash(socket, :error, "Invalid item")}
+
+      {user, {:ok, item_id}} ->
+        room = socket.assigns.room
+
+        # Only owner/admins can pin
+        if can_manage_room?(room, user) do
+          result = case item_type do
+            "photo" -> Social.pin_photo(item_id, room.code)
+            "note" -> Social.pin_note(item_id, room.code)
+            _ -> {:error, :unknown_type}
+          end
+
+          case result do
+            {:ok, _} ->
+              {:noreply, put_flash(socket, :info, "Pinned!")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not pin")}
+          end
+        else
+          {:noreply, put_flash(socket, :error, "Only admins can pin content")}
+        end
+    end
+  end
+
+  def unpin_item(socket, item_type, item_id_str) do
+    case {socket.assigns.current_user, safe_to_integer(item_id_str)} do
+      {nil, _} ->
+        {:noreply, put_flash(socket, :error, "Please log in")}
+
+      {_, {:error, _}} ->
+        {:noreply, put_flash(socket, :error, "Invalid item")}
+
+      {user, {:ok, item_id}} ->
+        room = socket.assigns.room
+
+        if can_manage_room?(room, user) do
+          result = case item_type do
+            "photo" -> Social.unpin_photo(item_id, room.code)
+            "note" -> Social.unpin_note(item_id, room.code)
+            _ -> {:error, :unknown_type}
+          end
+
+          case result do
+            {:ok, _} ->
+              {:noreply, put_flash(socket, :info, "Unpinned")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not unpin")}
+          end
+        else
+          {:noreply, put_flash(socket, :error, "Only admins can unpin content")}
+        end
+    end
+  end
+
+  # Check if user is owner or admin of the room
+  defp can_manage_room?(room, user) do
+    if room.owner_id == user.id do
+      true
+    else
+      case Social.get_room_member(room.id, user.id) do
+        nil -> false
+        member -> member.role in ["admin", "owner"]
+      end
+    end
+  end
 end

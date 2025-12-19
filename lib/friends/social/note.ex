@@ -13,6 +13,7 @@ defmodule Friends.Social.Note do
     field :user_name, :string
     field :content, :string
     field :editable_until, :utc_datetime_usec
+    field :pinned_at, :utc_datetime  # Admin-pinned content
 
     belongs_to :room, Friends.Social.Room
 

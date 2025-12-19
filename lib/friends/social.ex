@@ -113,6 +113,8 @@ defmodule Friends.Social do
   defdelegate list_photo_galleries(scope, limit \\ 50, opts \\ []), to: Photos
   defdelegate list_batch_photos(batch_id), to: Photos
   defdelegate create_public_photo(attrs, user_id), to: Photos
+  defdelegate pin_photo(photo_id, room_code), to: Photos
+  defdelegate unpin_photo(photo_id, room_code), to: Photos
 
   # --- Notes ---
 
@@ -125,12 +127,12 @@ defmodule Friends.Social do
   defdelegate update_note(note_id, attrs, user_id), to: Notes
   defdelegate delete_note(note_id, user_id, room_code), to: Notes
   defdelegate create_public_note(attrs, user_id), to: Notes
+  defdelegate pin_note(note_id, room_code), to: Notes
+  defdelegate unpin_note(note_id, room_code), to: Notes
 
   # --- Friendships / Relationships ---
 
   defdelegate get_friend_network_ids(user_id), to: Relationships
-  defdelegate list_user_rooms(user_id), to: Rooms # Actually in Rooms
-  defdelegate list_user_room_ids(user_id), to: Rooms # Actually in Rooms
   
   defdelegate add_trusted_friend(user_id, trusted_user_id), to: Relationships
   defdelegate confirm_trusted_friend(user_id, requester_id), to: Relationships

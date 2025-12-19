@@ -17,6 +17,7 @@ defmodule Friends.Social.Photo do
     field :description, :string
     field :uploaded_at, :utc_datetime
     field :batch_id, :string  # Groups photos uploaded together
+    field :pinned_at, :utc_datetime  # Admin-pinned content
 
     belongs_to :room, Friends.Social.Room
 

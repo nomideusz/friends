@@ -428,4 +428,64 @@ defmodule Friends.Social.Photos do
         end
     end
   end
+
+  # --- PIN / UNPIN ---
+
+  @doc """
+  Pin a photo to the top of the room. Only room owner/admins should call this.
+  """
+  def pin_photo(photo_id, room_code) do
+    case Repo.get(Photo, photo_id) do
+      nil ->
+        {:error, :not_found}
+
+      photo ->
+        photo
+        |> Ecto.Changeset.change(%{pinned_at: DateTime.utc_now()})
+        |> Repo.update()
+        |> case do
+          {:ok, updated} ->
+            if room_code do
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub,
+                "friends:room:#{room_code}",
+                {:photo_pinned, %{id: photo_id, pinned_at: updated.pinned_at}}
+              )
+            end
+            {:ok, updated}
+
+          error ->
+            error
+        end
+    end
+  end
+
+  @doc """
+  Unpin a photo.
+  """
+  def unpin_photo(photo_id, room_code) do
+    case Repo.get(Photo, photo_id) do
+      nil ->
+        {:error, :not_found}
+
+      photo ->
+        photo
+        |> Ecto.Changeset.change(%{pinned_at: nil})
+        |> Repo.update()
+        |> case do
+          {:ok, updated} ->
+            if room_code do
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub,
+                "friends:room:#{room_code}",
+                {:photo_unpinned, %{id: photo_id}}
+              )
+            end
+            {:ok, updated}
+
+          error ->
+            error
+        end
+    end
+  end
 end

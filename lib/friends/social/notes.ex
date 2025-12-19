@@ -137,4 +137,64 @@ defmodule Friends.Social.Notes do
         end
     end
   end
+
+  # --- PIN / UNPIN ---
+
+  @doc """
+  Pin a note to the top of the room.
+  """
+  def pin_note(note_id, room_code) do
+    case Repo.get(Note, note_id) do
+      nil ->
+        {:error, :not_found}
+
+      note ->
+        note
+        |> Ecto.Changeset.change(%{pinned_at: DateTime.utc_now()})
+        |> Repo.update()
+        |> case do
+          {:ok, updated} ->
+            if room_code do
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub,
+                "friends:room:#{room_code}",
+                {:note_pinned, %{id: note_id, pinned_at: updated.pinned_at}}
+              )
+            end
+            {:ok, updated}
+
+          error ->
+            error
+        end
+    end
+  end
+
+  @doc """
+  Unpin a note.
+  """
+  def unpin_note(note_id, room_code) do
+    case Repo.get(Note, note_id) do
+      nil ->
+        {:error, :not_found}
+
+      note ->
+        note
+        |> Ecto.Changeset.change(%{pinned_at: nil})
+        |> Repo.update()
+        |> case do
+          {:ok, updated} ->
+            if room_code do
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub,
+                "friends:room:#{room_code}",
+                {:note_unpinned, %{id: note_id}}
+              )
+            end
+            {:ok, updated}
+
+          error ->
+            error
+        end
+    end
+  end
 end
