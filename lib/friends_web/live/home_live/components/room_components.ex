@@ -605,6 +605,31 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                 delete
               </button>
             <% end %>
+            
+            <%!-- Pin button (owner/admin only) --%>
+            <%= if @room.owner_id == @current_user.id do %>
+              <button
+                type="button"
+                phx-click={if @item.pinned_at, do: "unpin_item", else: "pin_item"}
+                phx-value-type="photo"
+                phx-value-id={@item.id}
+                class="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-all bg-black/50 hover:bg-black/80"
+                title={if @item.pinned_at, do: "Unpin", else: "Pin"}
+              >
+                <svg class={"w-4 h-4 #{if @item.pinned_at, do: "text-yellow-400", else: "text-white/60 hover:text-yellow-400"}"} fill={if @item.pinned_at, do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+            <% end %>
+            
+            <%!-- Pinned indicator (always visible when pinned, unless owner can toggle it) --%>
+            <%= if @item.pinned_at && @room.owner_id != @current_user.id do %>
+              <div class="absolute top-2 left-2 w-6 h-6 rounded-full bg-yellow-500/90 flex items-center justify-center shadow-lg" title="Pinned">
+                <svg class="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </div>
@@ -649,6 +674,31 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
+        <% end %>
+
+        <%!-- Pin button (owner/admin only) --%>
+        <%= if @room.owner_id == @current_user.id do %>
+          <button
+            type="button"
+            phx-click={if @item.pinned_at, do: "unpin_item", else: "pin_item"}
+            phx-value-type="note"
+            phx-value-id={@item.id}
+            class="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-all bg-black/50 hover:bg-black/80"
+            title={if @item.pinned_at, do: "Unpin", else: "Pin"}
+          >
+            <svg class={"w-4 h-4 #{if @item.pinned_at, do: "text-yellow-400", else: "text-white/60 hover:text-yellow-400"}"} fill={if @item.pinned_at, do: "currentColor", else: "none"} stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+        <% end %>
+        
+        <%!-- Pinned indicator (always visible for non-owners) --%>
+        <%= if @item.pinned_at && @room.owner_id != @current_user.id do %>
+          <div class="absolute top-2 left-2 w-6 h-6 rounded-full bg-yellow-500/90 flex items-center justify-center shadow-lg" title="Pinned">
+            <svg class="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </div>
         <% end %>
       </div>
     <% end %>
