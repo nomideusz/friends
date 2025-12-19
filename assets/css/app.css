@@ -424,3 +424,166 @@ img.loaded {
     display: none;
   }
 }
+
+/* =========================================================================================
+   EXIT ANIMATIONS
+   Mirror of entry animations for smooth dismissals
+   ========================================================================================= */
+
+@keyframes sheet-slide-down {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes island-shrink {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95) translateY(10px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Exit animation utility classes */
+.animate-sheet-exit {
+  animation: sheet-slide-down 0.3s var(--ease-fluid) forwards;
+}
+
+.animate-island-exit {
+  animation: island-shrink 0.25s var(--ease-fluid) forwards;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.2s var(--ease-fluid) forwards;
+}
+
+/* =========================================================================================
+   COMMON UTILITY PATTERNS
+   Reusable class combinations for Fluid Design consistency
+   ========================================================================================= */
+
+/* Glass Surface: Use for cards, modals, sheets */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-surface-hover:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Spring Button: Primary CTA with bounce effect */
+.spring-button {
+  transition: all 0.3s var(--ease-spring);
+}
+
+.spring-button:hover {
+  transform: scale(1.02);
+}
+
+.spring-button:active {
+  transform: scale(0.98);
+}
+
+/* Muted Text: Consistent secondary text colors */
+.text-muted {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.text-muted-subtle {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.text-muted-dim {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Label: Uppercase section headers */
+.fluid-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Error styling */
+.error-surface {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: rgba(248, 113, 113, 0.9);
+}
+
+/* Success styling */
+.success-surface {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: rgba(74, 222, 128, 0.9);
+}
+
+/* Warning styling */
+.warning-surface {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: rgba(251, 191, 36, 0.9);
+}
+
+/* =========================================================================================
+   DESIGN TOKENS REFERENCE
+   ========================================================================================= 
+   
+   COLOR SYSTEM (use via CSS variables or Tailwind classes):
+   
+   Backgrounds:
+   - void:       #000000    Pure black (OLED, main bg)
+   - abyss:      #080808    Deep layer (cards, sheets)
+   - matter:     #121212    Surface layer
+   - glass:      rgba(20,20,20,0.7)  Glass with backdrop-blur
+   
+   Text:
+   - photon:     #FFFFFF    Primary text
+   - light:      #F5F5F7    Body text
+   - dim:        #8E8E93    Secondary text, labels
+   
+   Accent:
+   - energy:     #007AFF    Apple Blue (links, focus)
+   
+   Glass Opacity Scale (use with white/[opacity]):
+   - white/5     Subtle background
+   - white/10    Borders, dividers
+   - white/20    Hover states
+   - white/30    Focus states, emphasis
+   - white/40    Labels, muted text
+   - white/50    Secondary text
+   
+   RADIUS SCALE:
+   - radius-fluid:  2rem (32px)   Large corners (cards, modals)
+   - radius-inner:  1.5rem (24px) Nested elements
+   - rounded-xl:    1rem (16px)   Buttons, inputs
+   - rounded-lg:    0.5rem (8px)  Pills, tags
+   
+   ANIMATION:
+   - ease-spring:  cubic-bezier(0.3, 1.5, 0.6, 1)  Bouncy interactions
+   - ease-fluid:   cubic-bezier(0.4, 0, 0.2, 1)    Smooth transitions
+   
+   ========================================================================================= */

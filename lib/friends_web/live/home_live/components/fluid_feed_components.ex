@@ -121,6 +121,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   attr :user_private_rooms, :list, default: []
   attr :friends, :list, default: []
   attr :online_friend_ids, :any, default: nil
+  attr :pending_requests, :list, default: []
 
   def user_menu_panel(assigns) do
     ~H"""
@@ -143,28 +144,33 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
           </div>
         </div>
 
-        <%!-- Content (scrollable) --%>
-        <div class="flex-1 overflow-y-auto max-h-[50vh]">
+        <%!-- Content (scrolls only when naturally overflows) --%>
+        <div class="overflow-y-auto" style="max-height: min(50vh, calc(100vh - 200px))">
           <%!-- Groups Section --%>
           <% groups_count = length(@user_private_rooms) %>
           <% groups_to_show = Enum.take(@user_private_rooms, 5) %>
           <div class="p-2">
-            <div class="px-2 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider flex items-center justify-between">
-              <span>Groups</span>
-              <button
+            <button 
+              phx-click={if groups_count > 0, do: "open_groups_sheet", else: "open_create_group_modal"}
+              class="w-full px-2 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider flex items-center justify-between hover:text-white/60 transition-colors cursor-pointer group"
+            >
+              <span class="flex items-center gap-1.5">
+                Spaces
+                <%= if groups_count > 0 do %>
+                  <span class="text-white/20 font-normal">{groups_count}</span>
+                <% end %>
+              </span>
+              <%!-- + icon: always visible when <3 items, hover-only when more --%>
+              <span 
                 phx-click="open_create_group_modal"
-                class="text-white/40 hover:text-white transition-colors cursor-pointer"
-                title="New Group"
-              >
-                + New Group
-              </button>
-            </div>
-            <%!-- Groups list (limited to 5) --%>
-            <%!-- Groups list (limited to 5) --%>
-            <%= for room <- groups_to_show do %>
+                class={"w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:bg-white/10 hover:text-white/60 transition-all #{if groups_count < 3, do: "", else: "opacity-0 group-hover:opacity-100"}"}
+              >+</span>
+            </button>
+            <%!-- Groups list with fade effect on last item --%>
+            <%= for {room, idx} <- Enum.with_index(groups_to_show) do %>
               <.link
                 navigate={~p"/r/#{room.code}"}
-                class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors"
+                class={"flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors #{if idx == 4 and groups_count > 5, do: "opacity-40", else: ""}"}
               >
                 <div class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-white/50">
                   #
@@ -172,63 +178,88 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
                 <span class="text-sm text-white/80 truncate">{room.name || room.code}</span>
               </.link>
             <% end %>
-            <%!-- Overflow link --%>
+            <%!-- Subtle overflow indicator (just dots, no text) --%>
             <%= if groups_count > 5 do %>
               <button
                 phx-click="open_groups_sheet"
-                class="w-full px-2.5 py-1.5 text-xs text-white/40 hover:text-white/60 transition-colors text-left cursor-pointer"
+                class="w-full flex justify-center py-1 text-white/20 hover:text-white/40 transition-colors cursor-pointer"
               >
-                See all {groups_count} groups...
+                ···
               </button>
             <% end %>
           </div>
 
-          <%!-- Direct Messages Section (Friends) --%>
-          <% friends_to_show = Enum.take(@friends, 5) %>
-          <div class="p-2 border-t border-white/5">
-            <div class="px-2 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider flex items-center justify-between">
-              <span>People</span>
-              <button
+          <%!-- People Section - PRESENCE-FIRST SORTED --%>
+          <% 
+            sorted_friends = Enum.sort_by(@friends, fn f -> 
+              user = if Map.has_key?(f, :user), do: f.user, else: f
+              is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, user.id)
+              {!is_online, user.username}
+            end)
+            friends_to_show = Enum.take(sorted_friends, 5)
+            friends_count = length(@friends)
+            online_count = if @online_friend_ids, do: Enum.count(@friends, fn f ->
+              user = if Map.has_key?(f, :user), do: f.user, else: f
+              MapSet.member?(@online_friend_ids, user.id)
+            end), else: 0
+          %>
+          <% pending_count = length(@pending_requests) %>
+          <div class={"p-2 border-t border-white/5 #{if pending_count > 0, do: "ring-1 ring-inset ring-blue-400/20", else: ""}"}>
+            <button 
+              phx-click="open_contact_search"
+              phx-value-mode="list_contacts"
+              class="w-full px-2 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wider flex items-center justify-between hover:text-white/60 transition-colors cursor-pointer group"
+            >
+              <span class="flex items-center gap-1.5">
+                People
+                <%= if online_count > 0 do %>
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                <% end %>
+                <%= if pending_count > 0 do %>
+                  <span class="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 text-[9px] flex items-center justify-center animate-pulse">{pending_count}</span>
+                <% end %>
+              </span>
+              <%!-- Search icon: always visible when <3, hover-only when more --%>
+              <span 
                 phx-click="open_contact_search"
                 phx-value-mode="add_contact"
-                class="text-white/40 hover:text-white transition-colors cursor-pointer"
-                title="Add Person"
+                class={"w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-white/30 hover:bg-white/10 hover:text-white/60 transition-all #{if friends_count < 3, do: "", else: "opacity-0 group-hover:opacity-100"}"}
               >
-                + Add Person
-              </button>
-            </div>
-            <%!-- Friends list (limited to 5) --%>
-            <%= for friend_wrapper <- friends_to_show do %>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+            </button>
+            <%!-- Friends list (sorted: online first) with fade on last --%>
+            <%= for {friend_wrapper, idx} <- Enum.with_index(friends_to_show) do %>
               <% friend = if Map.has_key?(friend_wrapper, :user), do: friend_wrapper.user, else: friend_wrapper %>
               <% dm_code = dm_room_code(@current_user.id, friend.id) %>
               <% is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, friend.id) %>
               <.link
                 navigate={~p"/r/#{dm_code}"}
-                class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors"
+                class={"flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-white/5 transition-colors #{if is_online, do: "bg-white/[0.02]", else: ""} #{if idx == 4 and friends_count > 5, do: "opacity-40", else: ""}"}
               >
                 <div
-                  class={"w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold #{if is_online, do: "avatar-online", else: ""}"}
-                  style={"background-color: #{friend_color(friend)};"}
+                  class={"w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all #{if is_online, do: "ring-2 ring-green-400/40 scale-105", else: "opacity-60"}"}
+                  style={"background-color: #{friend_color(friend)}; #{if is_online, do: "box-shadow: 0 0 12px 2px #{friend_color(friend)}40;", else: ""}"}
                 >
                   <span style="color: white;">{String.first(friend.username) |> String.upcase()}</span>
                 </div>
-                <span class="text-sm text-white/80 truncate flex items-center gap-2">
+                <span class={"text-sm truncate #{if is_online, do: "text-white", else: "text-white/50"}"}>
                   @{friend.username}
-                  <%= if is_online do %>
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                  <% end %>
                 </span>
               </.link>
             <% end %>
-            <%!-- Overflow link --%>
-            <%!-- Footer: Always visible to manage contacts --%>
-            <button
-              phx-click="open_contact_search"
-              phx-value-mode="list_contacts" 
-              class="w-full px-2.5 py-1.5 text-xs text-white/40 hover:text-white/60 transition-colors text-left cursor-pointer"
-            >
-              Manage People...
-            </button>
+            <%!-- Subtle overflow indicator --%>
+            <%= if friends_count > 5 do %>
+              <button
+                phx-click="open_contact_search"
+                phx-value-mode="list_contacts"
+                class="w-full flex justify-center py-1 text-white/20 hover:text-white/40 transition-colors cursor-pointer"
+              >
+                ···
+              </button>
+            <% end %>
           </div>
         </div>
 

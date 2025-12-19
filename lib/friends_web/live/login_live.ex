@@ -107,104 +107,105 @@ defmodule FriendsWeb.LoginLive do
         <div class="text-center mb-8">
           <h1 class="text-3xl font-bold text-white mb-2">Login</h1>
           
-          <p class="text-neutral-400">Sign in with your passkey</p>
+          <p class="text-white/50">Sign in with your passkey</p>
         </div>
         
         <div class="aether-card p-6 space-y-6 bg-black/50">
           <%= case @step do %>
             <% :username -> %>
               <form phx-submit="check_username" class="space-y-4">
-                <div>
-                  <label class="block text-sm text-neutral-400 mb-2">Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={@username}
-                    placeholder="@username"
-                    autocomplete="username"
-                    autofocus
-                    class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
-                  />
-                </div>
+              <div>
+                <label class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  value={@username}
+                  placeholder="@username"
+                  autocomplete="username"
+                  autofocus
+                  class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] font-mono transition-all"
+                />
+              </div>
                 
                 <%= if @error do %>
-                  <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
-                    {@error}
-                  </div>
-                <% end %>
+                <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                  {@error}
+                </div>
+              <% end %>
                 
                 <button
-                  type="submit"
-                  class="w-full py-3 btn-aether btn-aether-primary font-bold uppercase tracking-wider transition-all"
-                >
-                  Continue with Passkey
-                </button>
-              </form>
+                type="submit"
+                class="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 hover:scale-[1.01] transition-all shadow-lg shadow-white/10"
+                style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
+              >
+                Continue with Passkey
+              </button>
+            </form>
               
-              <div class="text-center pt-4 border-t border-neutral-800">
-                <p class="text-sm text-neutral-500 mb-3">Other options</p>
-                
-                <div class="space-y-2">
-                  <a
-                    href="/recover"
-                    class="block text-sm text-neutral-400 hover:text-white transition-colors"
-                  >
-                    Recover account with trusted friends
-                  </a>
-                  <a
-                    href="/register"
-                    class="block text-sm text-neutral-400 hover:text-white transition-colors"
-                  >
-                    Create new account
-                  </a>
-                </div>
+              <div class="text-center pt-4 border-t border-white/10">
+              <p class="text-sm text-white/40 mb-3">Other options</p>
+              
+              <div class="space-y-2">
+                <a
+                  href="/recover"
+                  class="block text-sm text-white/50 hover:text-white transition-colors"
+                >
+                  Recover account with trusted friends
+                </a>
+                <a
+                  href="/register"
+                  class="block text-sm text-white/50 hover:text-white transition-colors"
+                >
+                  Create new account
+                </a>
               </div>
+            </div>
             <% :webauthn -> %>
               <div id="webauthn-login-wrapper" phx-hook="WebAuthnLogin">
                 <div class="text-center space-y-4">
-                  <div class="text-6xl mb-4">🔐</div>
-                  
-                  <h2 class="text-xl font-medium text-white">Use Your Passkey</h2>
-                  
-                  <p class="text-neutral-400">
-                    Use your fingerprint, face, or security key to sign in as
-                    <span class="text-white font-medium">@{@username}</span>
-                  </p>
-                  
-                  <div class="pt-4">
-                    <div class="animate-pulse text-neutral-500">Waiting for passkey...</div>
+                <div class="text-6xl mb-4">🔐</div>
+                
+                <h2 class="text-xl font-medium text-white">Use Your Passkey</h2>
+                
+                <p class="text-white/50">
+                  Use your fingerprint, face, or security key to sign in as
+                  <span class="text-white font-medium">@{@username}</span>
+                </p>
+                
+                <div class="pt-4">
+                  <div class="animate-pulse text-white/40">Waiting for passkey...</div>
+                </div>
+                
+                <%= if @error do %>
+                  <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                    {@error}
                   </div>
-                  
-                  <%= if @error do %>
-                    <div class="p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm">
-                      {@error}
-                    </div>
-                  <% end %>
+                <% end %>
                   
                   <button
-                    type="button"
-                    phx-click="back"
-                    class="text-sm text-neutral-400 hover:text-white transition-colors"
-                  >
-                    ← Back
-                  </button>
+                type="button"
+                phx-click="back"
+                class="text-sm text-white/50 hover:text-white transition-colors"
+              >
+                ← Back
+              </button>
                 </div>
               </div>
             <% :success -> %>
               <div id="webauthn-login-wrapper" phx-hook="WebAuthnLogin">
                 <div class="text-center space-y-4">
-                  <div class="text-6xl mb-4">✅</div>
-                  
-                  <h2 class="text-xl font-medium text-white">Login Successful!</h2>
-                  
-                  <p class="text-neutral-400">Redirecting...</p>
-                </div>
+                <div class="text-6xl mb-4">✅</div>
+                
+                <h2 class="text-xl font-medium text-white">Login Successful!</h2>
+                
+                <p class="text-white/50">Redirecting...</p>
+              </div>
               </div>
           <% end %>
         </div>
         
         <div class="text-center mt-6">
-          <a href="/" class="text-sm text-neutral-500 hover:text-white transition-colors">
+          <a href="/" class="text-sm text-white/40 hover:text-white transition-colors">
             ← Back to home
           </a>
         </div>

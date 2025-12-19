@@ -35,7 +35,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
         @container_class ||
           if @show_mobile_chat,
             do:
-              "fixed inset-x-0 bottom-0 z-50 h-[92vh] bg-[#0A0A0A] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom duration-300 rounded-t-3xl flex flex-col",
+              "fixed inset-x-0 bottom-0 z-50 h-[92vh] bg-neutral-900/95 backdrop-blur-xl border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom duration-300 rounded-t-3xl flex flex-col",
             else: "hidden lg:flex lg:flex-col fixed top-[84px] right-4 bottom-4 w-[380px] z-30"
       }>
         <%= if @show_mobile_chat do %>
@@ -44,7 +44,7 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
             class="w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing shrink-0 touch-none"
             phx-click="toggle_mobile_chat"
           >
-            <div class="w-12 h-1.5 bg-neutral-700/50 rounded-full"></div>
+            <div class="w-12 h-1.5 bg-white/20 rounded-full"></div>
             <%!-- Invisible larger tap target --%>
             <div class="absolute inset-x-0 top-0 h-12"></div>
           </div>
@@ -186,32 +186,31 @@ defmodule FriendsWeb.HomeLive.Components.ChatComponents do
           <% end %>
         </div>
 
-         <%!-- Message Input --%>
-        <div class="p-3 bg-[#0A0A0A] border-t border-white/5 shrink-0">
+         <%!-- Message Input (minimal iOS-style) --%>
+        <div class="px-3 py-2 backdrop-blur-xl border-t border-white/5 shrink-0">
           <div
             id={"#{@id_prefix}-room-message-input-area"}
-            class="flex items-end gap-2"
+            class="flex items-center gap-2"
             phx-hook="RoomChatEncryption"
             data-room-id={@room.id}
           >
-            <div class="flex-1 bg-[#1A1A1A] border border-white/10 rounded-2xl flex items-center px-1 transition-colors focus-within:border-white/20">
-              <input
-                type="text"
-                value={@new_chat_message}
-                phx-keyup="update_chat_message"
-                placeholder="Type a message..."
-                class="w-full bg-transparent border-none px-3 py-3 text-sm focus:ring-0 text-white placeholder-neutral-600 leading-normal"
-                id={"#{@id_prefix}-room-message-input"}
-                autocomplete="off"
-                autofocus
-              />
-            </div>
+            <input
+              type="text"
+              value={@new_chat_message}
+              phx-keyup="update_chat_message"
+              placeholder="Message"
+              style="font-size: 16px;"
+              class="flex-1 bg-transparent py-2.5 focus:outline-none text-white placeholder-white/40 leading-normal"
+              id={"#{@id_prefix}-room-message-input"}
+              autocomplete="off"
+              autofocus
+            />
             <button
               id={"#{@id_prefix}-send-room-message-btn"}
-              class="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center transition-transform active:scale-95 cursor-pointer shadow-lg hover:bg-neutral-200"
+              class={"w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-white text-black scale-100", else: "bg-white/10 text-white/40 scale-90"}"}
             >
-              <svg class="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
           </div>

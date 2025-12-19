@@ -23,10 +23,10 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           phx-click="toggle_contacts"
           class="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-white/5 transition-colors"
         >
-          <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+          <h3 class="text-xs font-bold text-white/40 uppercase tracking-wider">
             Contacts ({length(@users)})
           </h3>
-          <span class="text-neutral-500 text-sm">
+          <span class="text-white/40 text-sm">
             <%= if @contacts_collapsed, do: "▼", else: "▲" %>
           </span>
         </button>
@@ -43,7 +43,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                   <div class="flex items-center gap-3">
                     <div class="relative">
                       <div
-                        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm border border-neutral-200"
+                        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm border border-white/10"
                         style={"background-color: #{friend_color(friend.user)}"}
                       >
                         {String.first(friend.user.username)}
@@ -51,7 +51,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                     </div>
 
                     <div>
-                      <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 transition-colors">
+                      <p class="text-sm font-bold text-white/50 group-hover:text-white transition-colors">
                         {friend.user.username}
                       </p>
                     </div>
@@ -64,10 +64,10 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
 
               <%= if @users == [] do %>
                 <div class="text-center py-4">
-                  <p class="text-xs text-neutral-600 italic mb-2">No contacts yet</p>
+                  <p class="text-xs text-white/30 italic mb-2">No contacts yet</p>
                   <.link
                     navigate="/network"
-                    class="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-300 font-medium transition-colors inline-block border border-white/5"
+                    class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-neutral-700 text-xs text-white/70 font-medium transition-colors inline-block border border-white/5"
                   >
                     + Add Friends
                   </.link>
@@ -92,10 +92,10 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           phx-click="toggle_groups"
           class="w-full flex items-center justify-between p-6 cursor-pointer hover:bg-white/5 transition-colors"
         >
-          <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+          <h3 class="text-xs font-bold text-white/40 uppercase tracking-wider">
             Groups ({length(Enum.reject(@rooms, &(&1.room_type == "dm")))})
           </h3>
-          <span class="text-neutral-500 text-sm">
+          <span class="text-white/40 text-sm">
             <%= if @groups_collapsed, do: "▼", else: "▲" %>
           </span>
         </button>
@@ -108,34 +108,34 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                   navigate={~p"/r/#{room.code}"}
                   class="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-colors group text-left"
                 >
-                  <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-lg font-bold text-neutral-400 group-hover:text-white group-hover:border-white/30 group-hover:scale-105 transition-all">
+                  <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-lg font-bold text-white/50 group-hover:text-white group-hover:border-white/30 group-hover:scale-105 transition-all">
                     #
                   </div>
 
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-neutral-400 group-hover:text-neutral-200 truncate">
+                    <p class="text-sm font-bold text-white/50 group-hover:text-white truncate">
                       {room.name || room.code}
                     </p>
 
-                    <p class="text-xs text-neutral-600 truncate">{length(room.members)} members</p>
+                    <p class="text-xs text-white/30 truncate">{length(room.members)} members</p>
                   </div>
                 </.link>
               <% end %>
             </div>
 
             <form phx-submit="create_group" phx-change="update_room_form" novalidate>
-              <div class="pt-4 border-t border-neutral-200">
+              <div class="pt-4 border-t border-white/10">
                 <input
                   type="text"
                   name="name"
                   value={@new_room_name}
                   placeholder="New Group Name"
                   required
-                  class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500 mb-3"
+                  class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-blue-500 mb-3"
                 />
                 <button
                   type="submit"
-                  class="w-full py-2 btn-aether text-neutral-400 hover:text-white hover:border-white/30 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                  class="w-full py-2 btn-aether text-white/50 hover:text-white hover:border-white/30 text-xs font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Create Group
                 </button>
@@ -160,7 +160,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
     <%= if @feed_mode == "friends" && @current_user do %>
       <div class="mb-10 p-6 aether-card shadow-sm">
         <div class="flex items-center justify-between mb-3">
-          <div class="text-xs font-bold uppercase tracking-wider text-neutral-500">your trust network</div>
+          <div class="text-xs font-bold uppercase tracking-wider text-white/40">your trust network</div>
           
           <button
             type="button"
@@ -174,22 +174,22 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <%= if @trusted_friends != [] do %>
           <div class="flex flex-wrap gap-2">
             <%= for friend <- Enum.take(@trusted_friends, 10) do %>
-              <div class="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded-full">
+              <div class="flex items-center gap-2 px-2 py-1 bg-white/5 rounded-full">
                 <div
                   class="w-2 h-2 rounded-full"
                   style={"background-color: #{trusted_user_color(friend.trusted_user)}"}
-                /> <span class="text-xs text-neutral-300">@{friend.trusted_user.username}</span>
+                /> <span class="text-xs text-white/70">@{friend.trusted_user.username}</span>
               </div>
             <% end %>
             
             <%= if length(@trusted_friends) > 10 do %>
-              <div class="px-2 py-1 text-xs text-neutral-500">
+              <div class="px-2 py-1 text-xs text-white/40">
                 +{length(@trusted_friends) - 10} more
               </div>
             <% end %>
           </div>
           
-          <div class="mt-3 text-xs text-neutral-600">
+          <div class="mt-3 text-xs text-white/30">
             showing activity from {length(@trusted_friends)} trusted connection{if length(
                                                                                      @trusted_friends
                                                                                    ) != 1, do: "s"}
@@ -197,24 +197,24 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <% else %>
           <%= if @outgoing_trust_requests != [] do %>
             <div class="space-y-2">
-              <div class="text-sm text-neutral-400">waiting for confirmation...</div>
+              <div class="text-sm text-white/50">waiting for confirmation...</div>
               
               <div class="flex flex-wrap gap-2">
                 <%= for req <- Enum.take(@outgoing_trust_requests, 10) do %>
-                  <div class="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded-full">
+                  <div class="flex items-center gap-2 px-2 py-1 bg-white/5 rounded-full">
                     <div
                       class="w-2 h-2 rounded-full"
                       style={"background-color: #{trusted_user_color(req.trusted_user)}"}
-                    /> <span class="text-xs text-neutral-300">@{req.trusted_user.username}</span>
+                    /> <span class="text-xs text-white/70">@{req.trusted_user.username}</span>
                   </div>
                 <% end %>
               </div>
               
-              <div class="text-xs text-neutral-600">they'll appear here after they confirm</div>
+              <div class="text-xs text-white/30">they'll appear here after they confirm</div>
             </div>
           <% else %>
             <div class="flex items-center gap-3 p-4 bg-black/30 border border-white/10 rounded-lg">
-              <div class="text-neutral-600">
+              <div class="text-white/30">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -227,9 +227,9 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               </div>
               
               <div class="flex-1">
-                <p class="text-sm text-neutral-500 font-medium">no trusted connections yet</p>
+                <p class="text-sm text-white/40 font-medium">no trusted connections yet</p>
                 
-                <p class="text-xs text-neutral-600 mt-0.5">
+                <p class="text-xs text-white/30 mt-0.5">
                   add friends in settings to see their activity
                 </p>
               </div>
@@ -263,13 +263,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           
           <div class="flex-1 min-w-0">
              <div class="flex justify-between items-end mb-1.5">
-               <span class="text-xs font-bold text-neutral-300 uppercase tracking-wider">
+               <span class="text-xs font-bold text-white/70 uppercase tracking-wider">
                  Uploading <%= count %> <%= if count == 1, do: "photo", else: "photos" %>...
                </span>
                <span class="text-xs font-mono font-bold text-blue-400"><%= avg_progress %>%</span>
              </div>
              
-             <div class="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+             <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
                <div 
                  class="h-full bg-blue-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(59,130,246,0.6)]" 
                  style={"width: #{avg_progress}%"}
@@ -282,7 +282,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                type="button"
                phx-click="cancel_upload"
                phx-value-ref={hd(entries).ref}
-               class="text-neutral-500 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+               class="text-white/40 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                title="Cancel upload"
              >
                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,9 +306,9 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
       <div class="text-center py-20">
         <p class="text-4xl mb-4">🔒</p>
         
-        <p class="text-neutral-400 text-sm font-medium">private room</p>
+        <p class="text-white/50 text-sm font-medium">private room</p>
         
-        <p class="text-neutral-600 text-xs mt-2">you don't have access to this room</p>
+        <p class="text-white/30 text-xs mt-2">you don't have access to this room</p>
         
         <%= if is_nil(@current_user) do %>
           <a
@@ -340,7 +340,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           <%= if @network_filter == "me" do %>
             <div class="mb-4 opacity-40">
               <svg
-                class="w-16 h-16 mx-auto text-neutral-500"
+                class="w-16 h-16 mx-auto text-white/40"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -355,13 +355,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               </svg>
             </div>
             
-            <p class="text-neutral-500 text-base font-medium mb-2">you haven't posted yet</p>
+            <p class="text-white/40 text-base font-medium mb-2">you haven't posted yet</p>
             
-            <p class="text-neutral-600 text-sm">share a photo or note to see it here</p>
+            <p class="text-white/30 text-sm">share a photo or note to see it here</p>
           <% else %>
             <div class="mb-4 opacity-40">
               <svg
-                class="w-16 h-16 mx-auto text-neutral-500"
+                class="w-16 h-16 mx-auto text-white/40"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -385,7 +385,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <% else %>
           <div class="mb-4 opacity-40">
             <svg
-              class="w-16 h-16 mx-auto text-neutral-500"
+              class="w-16 h-16 mx-auto text-white/40"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -498,7 +498,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <%!-- Overlay --%>
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
            <div class="absolute bottom-2 left-2 right-2">
-             <div class="text-xs font-bold text-neutral-500 truncate">@<%= @item.user_name || "unknown" %></div>
+             <div class="text-xs font-bold text-white/40 truncate">@<%= @item.user_name || "unknown" %></div>
            </div>
         </div>
       </div>
@@ -540,7 +540,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                 </svg>
               </div>
               
-              <span class="text-[10px] font-medium text-neutral-400 uppercase tracking-widest mb-2">Voice Note</span>
+              <span class="text-[10px] font-medium text-white/50 uppercase tracking-widest mb-2">Voice Note</span>
               
               <button class="grid-voice-play-btn w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 flex items-center justify-center text-white transition-all group-hover:scale-110 active:scale-95 cursor-pointer z-20 mb-2">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -548,13 +548,13 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                 </svg>
               </button>
               
-              <div class="w-full max-w-[120px] h-1.5 bg-neutral-900/50 rounded-full overflow-hidden border border-white/5">
+              <div class="w-full max-w-[120px] h-1.5 bg-white/5/50 rounded-full overflow-hidden border border-white/5">
                 <div class="grid-voice-progress h-full bg-blue-500 w-0 transition-all"></div>
               </div>
               
-              <div class="mt-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-900 border border-white/10 shadow-sm">
+              <div class="mt-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 shadow-sm">
                 <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                <span class="text-[10px] text-neutral-400 font-medium">@{@item.user_name || "unknown"}</span>
+                <span class="text-[10px] text-white/50 font-medium">@{@item.user_name || "unknown"}</span>
               </div>
             </div>
           </div>
@@ -567,10 +567,10 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
               decoding="async"
             />
           <% else %>
-            <div class="w-full h-full flex items-center justify-center bg-neutral-800 skeleton border-2 border-dashed border-neutral-600">
+            <div class="w-full h-full flex items-center justify-center bg-white/5 skeleton border-2 border-dashed border-neutral-600">
               <div class="text-center">
                 <svg
-                  class="w-8 h-8 mx-auto mb-2 text-neutral-500"
+                  class="w-8 h-8 mx-auto mb-2 text-white/40"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -582,7 +582,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                     d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                   >
                   </path>
-                </svg> <span class="text-neutral-400 text-xs">loading</span>
+                </svg> <span class="text-white/50 text-xs">loading</span>
               </div>
             </div>
           <% end %>
@@ -591,7 +591,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
         <%= if Map.get(@item, :content_type) != "audio/encrypted" do %>
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
             <div class="absolute bottom-2 left-2 right-2">
-              <div class="text-xs font-bold text-neutral-500 truncate">@{@item.user_name || "unknown"}</div>
+              <div class="text-xs font-bold text-white/40 truncate">@{@item.user_name || "unknown"}</div>
             </div>
             
             <%= if @item.user_id == @current_user.id do %>
@@ -600,7 +600,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
                 phx-click="delete_photo"
                 phx-value-id={@item.id}
                 data-confirm="delete?"
-                class="absolute top-2 right-2 text-neutral-500 hover:text-red-500 text-xs cursor-pointer"
+                class="absolute top-2 right-2 text-white/40 hover:text-red-500 text-xs cursor-pointer"
               >
                 delete
               </button>
@@ -621,17 +621,17 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
       >
         <div class="w-full h-full p-4 flex flex-col">
           <div class="flex-1 overflow-hidden">
-            <p class="text-sm text-neutral-200 line-clamp-6">{@item.content}</p>
+            <p class="text-sm text-white line-clamp-6">{@item.content}</p>
           </div>
           
-          <div class="mt-2 pt-2 border-t border-neutral-200">
+          <div class="mt-2 pt-2 border-t border-white/10">
             <div class="flex items-center gap-2">
               <div
                 class="w-5 h-5 rounded-full"
                 style={"background-color: #{@item.user_color || "#888"}"}
               >
               </div>
-               <span class="text-xs text-neutral-500 truncate">@{@item.user_name || "unknown"}</span>
+               <span class="text-xs text-white/40 truncate">@{@item.user_name || "unknown"}</span>
             </div>
           </div>
         </div>
@@ -642,7 +642,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
             phx-click="delete_note"
             phx-value-id={@item.id}
             data-confirm="delete?"
-            class="absolute top-2 right-2 text-neutral-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-2 z-10"
+            class="absolute top-2 right-2 text-white/40 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-2 z-10"
             phx-click-stop
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -666,7 +666,7 @@ defmodule FriendsWeb.HomeLive.Components.RoomComponents do
           type="button"
           phx-click="load_more"
           phx-disable-with="loading..."
-          class="px-4 py-2 text-sm border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px]"
+          class="px-4 py-2 text-sm border border-neutral-700 text-white/70 hover:border-neutral-500 hover:text-white transition-colors cursor-pointer min-w-[140px]"
         >
           show more
         </button>

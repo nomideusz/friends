@@ -170,7 +170,7 @@ defmodule FriendsWeb.RecoverLive do
             
             <form phx-submit="lookup_user">
               <div class="relative mb-4">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">@</span>
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">@</span>
                 <input
                   type="text"
                   name="username"
@@ -179,28 +179,29 @@ defmodule FriendsWeb.RecoverLive do
                   placeholder="username"
                   autocomplete="off"
                   autofocus
-                  class="w-full pl-8 pr-4 py-4 bg-black/30 border border-white/10 rounded-xl text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/30 font-mono text-lg transition-all"
+                  class="w-full pl-8 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] font-mono text-lg transition-all"
                 />
               </div>
               
               <%= if @error do %>
-                <p class="text-red-500 text-xs mb-4 text-center">{@error}</p>
+                <p class="text-red-400/90 text-xs mb-4 text-center font-medium">{@error}</p>
               <% end %>
               
               <button
                 type="submit"
                 disabled={String.trim(@username) == ""}
                 class={[
-                  "w-full py-4 font-semibold rounded-xl text-lg transition-all",
-                  if(String.trim(@username) == "", do: "bg-neutral-700 text-neutral-400 cursor-not-allowed", else: "bg-white text-black hover:bg-neutral-200 cursor-pointer")
+                  "w-full py-4 font-bold rounded-xl text-lg transition-all shadow-lg shadow-white/10",
+                  if(String.trim(@username) == "", do: "bg-white/10 text-white/30 cursor-not-allowed", else: "bg-white text-black hover:bg-white/90 hover:scale-[1.01] cursor-pointer")
                 ]}
+                style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
               >
                 Continue
               </button>
             </form>
             
             <div class="text-center mt-6">
-              <a href="/auth" class="text-xs text-neutral-500 hover:text-white transition-colors">
+              <a href="/auth" class="text-xs text-white/40 hover:text-white transition-colors">
                 ← Back to Sign In
               </a>
             </div>
@@ -208,19 +209,19 @@ defmodule FriendsWeb.RecoverLive do
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">confirm recovery</h1>
               
-              <p class="text-neutral-500 text-sm">we'll notify your recovery contacts</p>
+              <p class="text-white/50 text-sm">we'll notify your recovery contacts</p>
             </div>
             
             <div class="aether-card p-4 mb-6 bg-black/50">
-              <p class="text-sm text-neutral-300 mb-2">
+              <p class="text-sm text-white/70 mb-2">
                 recovering: <span class="text-white">@{@user.username}</span>
               </p>
               
-              <p class="text-xs text-neutral-500">a new crypto key will be generated for this browser.
+              <p class="text-xs text-white/40">a new crypto key will be generated for this browser.
                 your recovery contacts will vote to confirm it's really you.</p>
             </div>
             
-            <div class="bg-amber-500/10 border border-amber-500/20 p-4 mb-6">
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6">
               <p class="text-sm text-amber-400">⚠️ important</p>
               
               <p class="text-xs text-amber-500/80 mt-1">
@@ -230,20 +231,21 @@ defmodule FriendsWeb.RecoverLive do
             </div>
             
             <%= if @error do %>
-              <p class="text-red-500 text-xs mb-4">{@error}</p>
+              <p class="text-red-400/90 text-xs mb-4 font-medium">{@error}</p>
             <% end %>
             
             <button
               type="button"
               phx-click="submit_recovery"
-              class="w-full px-4 py-3 bg-amber-500 text-black font-medium hover:bg-amber-400 cursor-pointer"
+              class="w-full px-4 py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 hover:scale-[1.01] cursor-pointer transition-all shadow-lg shadow-amber-500/20"
+              style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
             >
               start recovery
             </button>
             <button
               type="button"
               phx-click="go_back"
-              class="mt-4 w-full text-center text-xs text-neutral-600 hover:text-white cursor-pointer"
+              class="mt-4 w-full text-center text-xs text-white/40 hover:text-white cursor-pointer transition-colors"
             >
               ← back
             </button>
@@ -253,7 +255,7 @@ defmodule FriendsWeb.RecoverLive do
               
               <h1 class="text-2xl font-medium text-white mb-2">generating new key...</h1>
               
-              <p class="text-neutral-500 text-sm">please wait</p>
+              <p class="text-white/50 text-sm">please wait</p>
             </div>
           <% :waiting -> %>
             <div class="text-center mb-8">
@@ -261,19 +263,19 @@ defmodule FriendsWeb.RecoverLive do
               
               <h1 class="text-2xl font-medium text-white mb-2">waiting for friends</h1>
               
-              <p class="text-neutral-500 text-sm">ask your recovery contacts to confirm</p>
+              <p class="text-white/50 text-sm">ask your recovery contacts to confirm</p>
             </div>
             
             <%= if @recovery_status do %>
               <div class="aether-card p-4 mb-6 bg-black/50">
                 <div class="flex items-center justify-between mb-3">
-                  <span class="text-sm text-neutral-400">confirmations</span>
+                  <span class="text-sm text-white/50">confirmations</span>
                   <span class="text-lg font-mono text-white">
                     {@recovery_status.confirmations} / 4
                   </span>
                 </div>
                 
-                <div class="w-full bg-neutral-800 h-2 rounded-full overflow-hidden">
+                <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
                   <div
                     class="bg-green-500 h-full transition-all"
                     style={"width: #{min(@recovery_status.confirmations * 25, 100)}%"}
@@ -292,16 +294,16 @@ defmodule FriendsWeb.RecoverLive do
               <button
                 type="button"
                 phx-click="check_status"
-                class="w-full px-4 py-3 border border-neutral-700 text-neutral-300 font-medium hover:border-neutral-500 cursor-pointer"
+                class="w-full px-4 py-3 bg-white/5 border border-white/10 text-white font-medium rounded-xl hover:bg-white/10 hover:border-white/20 cursor-pointer transition-all"
               >
                 check status
               </button>
             <% end %>
             
-            <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg">
-              <p class="text-xs text-neutral-500 mb-2">what to tell your friends:</p>
+            <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl">
+              <p class="text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">what to tell your friends:</p>
               
-              <p class="text-xs text-neutral-400">
+              <p class="text-xs text-white/50">
                 "hey, i'm recovering my friends account. can you go to friends and confirm my recovery request? my username is @{@user.username}"
               </p>
             </div>
@@ -311,18 +313,19 @@ defmodule FriendsWeb.RecoverLive do
               
               <h1 class="text-2xl font-medium text-white mb-2">recovered!</h1>
               
-              <p class="text-neutral-500 text-sm mb-8">your account is restored with a new key</p>
+              <p class="text-white/50 text-sm mb-8">your account is restored with a new key</p>
               
               <a
                 href="/"
-                class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
+                class="inline-block px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 hover:scale-[1.02] transition-all shadow-lg shadow-white/10"
+                style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
               >
                 enter new internet
               </a>
-              <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg text-left">
-                <p class="text-xs text-neutral-500 mb-2">what happened:</p>
+              <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl text-left">
+                <p class="text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">what happened:</p>
                 
-                <ul class="text-xs text-neutral-400 space-y-1">
+                <ul class="text-xs text-white/50 space-y-1">
                   <li>• your recovery contacts confirmed your identity</li>
                   
                   <li>• a new crypto key was linked to your account</li>

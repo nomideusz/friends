@@ -223,12 +223,12 @@ defmodule FriendsWeb.RegisterLive do
             <div class="text-center mb-8">
               <h1 class="text-2xl font-medium text-white mb-2">join new internet</h1>
               
-              <p class="text-neutral-500 text-sm">invite is optional; pick a username to continue</p>
+              <p class="text-white/50 text-sm">invite is optional; pick a username to continue</p>
             </div>
             
             <div class="space-y-4">
               <div>
-                <label class="block text-xs text-neutral-500 mb-2">invite code (optional)</label>
+                <label class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">invite code (optional)</label>
                 <input
                   type="text"
                   name="invite_code"
@@ -236,16 +236,16 @@ defmodule FriendsWeb.RegisterLive do
                   phx-input="update_invite_code"
                   placeholder="word-word-123"
                   autocomplete="off"
-                  class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono transition-all"
+                  class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] font-mono transition-all"
                 />
-                <p class="mt-1 text-xs text-neutral-600">
+                <p class="mt-2 text-xs text-white/30">
                   enter an invite for automatic recovery contact connection
                 </p>
               </div>
               
               <form phx-change="check_username" phx-submit="noop" class="space-y-2">
                 <div>
-                  <label class="block text-xs text-neutral-500 mb-2">username</label>
+                  <label class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">username</label>
                   <div class="relative">
                     <input
                       type="text"
@@ -256,27 +256,27 @@ defmodule FriendsWeb.RegisterLive do
                       autocomplete="off"
                       autofocus
                       class={[
-                        "w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none font-mono transition-all",
-                        @username_available == true && "border-green-600",
-                        @username_available == false && "border-red-600",
-                        @username_available == nil && "border-neutral-800 focus:border-neutral-600"
+                        "w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder:text-white/30 focus:outline-none font-mono transition-all",
+                        @username_available == true && "border-green-500/70 focus:border-green-500",
+                        @username_available == false && "border-red-500/70 focus:border-red-500",
+                        @username_available == nil && "border-white/10 focus:border-white/30"
                       ]}
                     />
                     <%= if @username_available == true do %>
-                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-xs">
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-green-400 text-xs font-medium">
                         available
                       </span>
                     <% end %>
                   </div>
                   
-                  <p class="mt-1 text-xs text-neutral-600">
+                  <p class="mt-2 text-xs text-white/30">
                     3-20 characters, lowercase, numbers, underscores
                   </p>
                 </div>
               </form>
               
               <div>
-                <label class="block text-xs text-neutral-500 mb-2">display name (optional)</label>
+                <label class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">display name (optional)</label>
                 <input
                   type="text"
                   name="display_name"
@@ -284,12 +284,12 @@ defmodule FriendsWeb.RegisterLive do
                   phx-input="update_display_name"
                   placeholder="Your Name"
                   maxlength="50"
-                  class="w-full px-4 py-3 bg-black/30 border border-white/10 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500"
+                  class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] transition-all"
                 />
               </div>
               
               <%= if @error do %>
-                <p class="text-red-500 text-xs">{@error}</p>
+                <p class="text-red-400/90 text-xs font-medium">{@error}</p>
               <% end %>
               
               <%= if @username_available == true do %>
@@ -297,31 +297,32 @@ defmodule FriendsWeb.RegisterLive do
                   <button
                     type="button"
                     phx-click="start_webauthn_registration"
-                    class="w-full p-4 bg-white text-black font-medium hover:bg-neutral-200 transition-colors cursor-pointer"
+                    class="w-full p-4 bg-white text-black font-bold rounded-xl hover:bg-white/90 hover:scale-[1.01] transition-all cursor-pointer shadow-lg shadow-white/10"
+                    style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
                   >
                     Create Account with Passkey
                   </button>
-                  <p class="text-xs text-neutral-500 text-center">
+                  <p class="text-xs text-white/40 text-center">
                     Uses Touch ID, Face ID, Windows Hello, or security key
                   </p>
                 <% else %>
-                  <div class="w-full p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 text-center">
+                  <div class="w-full p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center">
                     <p class="font-medium mb-1">Passkeys not available</p>
                     
-                    <p class="text-xs text-neutral-500">
+                    <p class="text-xs text-white/40">
                       Your browser doesn't support passkeys. Try using Chrome, Safari, or Edge on a device with biometrics.
                     </p>
                   </div>
                 <% end %>
               <% else %>
-                <div class="w-full px-4 py-3 bg-neutral-800 text-neutral-500 text-center text-sm">
+                <div class="w-full px-4 py-3 bg-white/5 border border-white/10 text-white/40 text-center text-sm rounded-xl">
                   enter a valid username to continue
                 </div>
               <% end %>
             </div>
             
             <div class="mt-6 text-center">
-              <a href="/login" class="text-xs text-neutral-500 hover:text-white transition-colors">
+              <a href="/login" class="text-xs text-white/40 hover:text-white transition-colors">
                 already have an account? login
               </a>
             </div>
@@ -331,11 +332,12 @@ defmodule FriendsWeb.RegisterLive do
               
               <h1 class="text-2xl font-medium text-white mb-2">welcome, {@user.username}</h1>
               
-              <p class="text-neutral-500 text-sm mb-8">your passkey is set up</p>
+              <p class="text-white/50 text-sm mb-8">your passkey is set up</p>
               
               <a
                 href={if @pending_room_code, do: "/r/#{@pending_room_code}", else: "/"}
-                class="inline-block px-6 py-3 bg-white text-black font-medium hover:bg-neutral-200"
+                class="inline-block px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 hover:scale-[1.02] transition-all shadow-lg shadow-white/10"
+                style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
               >
                 <%= if @pending_room_code do %>
                   enter {@pending_room_code}
@@ -343,10 +345,10 @@ defmodule FriendsWeb.RegisterLive do
                   enter new internet
                 <% end %>
               </a>
-              <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-lg text-left">
-                <p class="text-xs text-neutral-500 mb-2">next steps:</p>
+              <div class="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl text-left">
+                <p class="text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">next steps:</p>
                 
-                <ul class="text-xs text-neutral-400 space-y-1">
+                <ul class="text-xs text-white/50 space-y-1">
                   <li>• add recovery contacts for account recovery</li>
                   
                   <li>• register additional passkeys on other devices</li>

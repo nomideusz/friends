@@ -55,7 +55,7 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
           class="w-full pt-4 pb-2 flex flex-col items-center cursor-grab active:cursor-grabbing shrink-0 touch-none"
           phx-click={@close_event}
         >
-          <div class="w-12 h-1.5 bg-neutral-700/50 rounded-full"></div>
+          <div class="w-12 h-1.5 bg-white/20 rounded-full"></div>
         </div>
 
         <%!-- Header (if title provided) --%>
@@ -92,22 +92,22 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
       <%!-- Contacts Section --%>
       <div>
         <div class="flex items-center justify-between mb-3 px-1">
-          <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+          <h3 class="text-xs font-bold text-white/40 uppercase tracking-wider">
             Contacts ({length(@users)})
           </h3>
           <.link
             navigate="/network"
-            class="text-xs text-neutral-400 hover:text-white transition-colors"
+            class="text-xs text-white/50 hover:text-white transition-colors"
           >
             View All →
           </.link>
         </div>
         <%= if @users == [] do %>
           <div class="text-center py-4">
-            <p class="text-xs text-neutral-600 italic mb-2">No contacts yet</p>
+            <p class="text-xs text-white/30 italic mb-2">No contacts yet</p>
             <.link
               navigate="/network"
-              class="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-300 font-medium transition-colors inline-block border border-white/5"
+              class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 font-medium transition-colors inline-block border border-white/10"
             >
               + Add Contacts
             </.link>
@@ -127,7 +127,7 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
                 >
                   {String.first(friend.user.username)}
                 </div>
-                <span class="text-sm text-neutral-300">{friend.user.username}</span>
+                <span class="text-sm text-white/70">{friend.user.username}</span>
               </button>
             <% end %>
           </div>
@@ -136,7 +136,7 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
 
       <%!-- Groups Section --%>
       <div>
-        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 px-1">
+        <h3 class="text-xs font-bold text-white/40 uppercase tracking-wider mb-3 px-1">
           Groups ({length(Enum.reject(@rooms, &(&1.room_type == "dm")))})
         </h3>
         <div class="space-y-2">
@@ -145,30 +145,30 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
               navigate={~p"/r/#{room.code}"}
               class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors"
             >
-              <div class="w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center text-xs">
+              <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs">
                 <%= if room.is_private do %>
                   🔒
                 <% else %>
                   🌐
                 <% end %>
               </div>
-              <span class="text-sm text-neutral-300 truncate">{room.name || room.code}</span>
+              <span class="text-sm text-white/70 truncate">{room.name || room.code}</span>
             </.link>
           <% end %>
 
           <%!-- Create Group Form --%>
-          <form phx-submit="create_group" class="pt-3 border-t border-white/5">
+          <form phx-submit="create_group" class="pt-3 border-t border-white/10">
             <div class="flex gap-2">
               <input
                 type="text"
                 name="name"
                 value={@new_room_name}
                 placeholder="New group name..."
-                class="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50"
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
               />
               <button
                 type="submit"
-                class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase rounded-lg transition-colors"
+                class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase rounded-xl transition-colors"
               >
                 Create
               </button>

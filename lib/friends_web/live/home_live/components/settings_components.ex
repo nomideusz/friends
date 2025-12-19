@@ -35,7 +35,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                   <button
                     phx-click="switch_settings_tab"
                     phx-value-tab="profile"
-                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "profile", do: "bg-white/10 text-white font-medium", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "profile", do: "bg-white/10 text-white font-medium", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
                   >
                     <span class="md:hidden text-lg">👤</span>
                     <span class="hidden md:inline">Profile</span>
@@ -43,7 +43,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                   <button
                     phx-click="switch_settings_tab"
                     phx-value-tab="general"
-                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "general", do: "bg-white/10 text-white font-medium", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "general", do: "bg-white/10 text-white font-medium", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
                   >
                     <span class="md:hidden text-lg">⚙️</span>
                     <span class="hidden md:inline">General</span>
@@ -91,7 +91,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                           
                           <div class="flex-1">
                             <h4 class="text-xl font-bold text-white mb-1">@{@current_user.username}</h4>
-                            <div class="text-sm text-neutral-400 font-mono bg-black/50 px-2 py-1 rounded inline-block">
+                            <div class="text-sm text-white/50 font-mono bg-black/50 px-2 py-1 rounded inline-block">
                               User ID: {@current_user.id}
                             </div>
                           </div>
@@ -100,20 +100,20 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
 
                       <!-- Name Edit -->
                       <div class="space-y-4">
-                        <h4 class="text-sm font-bold uppercase tracking-wider text-neutral-500">Public Display Name</h4>
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-white/40">Public Display Name</h4>
                         <div class="flex gap-3">
                           <div class="flex-1 relative">
                             <input 
                               type="text" 
                               value={@user_name || @current_user.display_name} 
-                              class="w-full bg-neutral-900 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-neutral-600 focus:border-white/30 focus:outline-none"
+                              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
                               placeholder="Enter display name"
                               phx-blur="update_name_input"
                             />
                           </div>
                           <button class="btn-aether px-4 py-2">Save</button>
                         </div>
-                        <p class="text-xs text-neutral-500">This name is visible to everyone in public spaces.</p>
+                        <p class="text-xs text-white/40">This name is visible to everyone in public spaces.</p>
                       </div>
                     </div>
 
@@ -121,15 +121,15 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                     <div class="space-y-6">
                       <div class="p-4 border border-blue-500/20 bg-blue-500/5 rounded-lg">
                         <h4 class="font-bold text-blue-400 mb-2">Application Info</h4>
-                        <p class="text-sm text-neutral-300">Version 1.0.0 (Beta)</p>
-                        <p class="text-sm text-neutral-300">Secure Context: <span class="text-green-400">Active</span></p>
+                        <p class="text-sm text-white/70">Version 1.0.0 (Beta)</p>
+                        <p class="text-sm text-white/70">Secure Context: <span class="text-green-400">Active</span></p>
                       </div>
 
                       <div class="space-y-4">
-                        <h4 class="text-sm font-bold uppercase tracking-wider text-neutral-500">Interface</h4>
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-white/40">Interface</h4>
                         <label class="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 cursor-pointer">
                           <span class="text-white">Reduced Motion</span>
-                          <input type="checkbox" class="w-4 h-4 rounded bg-neutral-800 border-neutral-600 text-blue-500 focus:ring-blue-500/50" />
+                          <input type="checkbox" class="w-4 h-4 rounded bg-white/5 border-white/10 text-blue-500 focus:ring-blue-500/50" />
                         </label>
                       </div>
                     </div>
@@ -188,14 +188,14 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
               <button
                 phx-click="switch_network_tab"
                 phx-value-tab="friends"
-                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "friends", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "friends", do: "bg-white/10 text-white", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
               >
                 Friends
               </button>
               <button
                 phx-click="switch_network_tab"
                 phx-value-tab="requests"
-                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "requests", do: "bg-white/10 text-white", else: "text-neutral-400 hover:text-white hover:bg-white/5"}"}
+                class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "requests", do: "bg-white/10 text-white", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
               >
                 Requests <span class="bg-red-500 text-white text-[10px] px-1.5 rounded-full ml-1">{length(@pending_requests || [])}</span>
               </button>
@@ -213,8 +213,8 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
               <%= case @tab do %>
                 <% "friends" -> %>
                   <%= if @friends == [] do %>
-                    <div class="flex flex-col items-center justify-center h-full text-center text-neutral-500">
-                      <div class="w-16 h-16 bg-neutral-800/50 rounded-full flex items-center justify-center mb-4">
+                    <div class="flex flex-col items-center justify-center h-full text-center text-white/40">
+                      <div class="w-16 h-16 bg-white/5/50 rounded-full flex items-center justify-center mb-4">
                         <svg class="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                       </div>
                       <h3 class="text-white font-medium mb-1">No friends yet</h3>
@@ -230,10 +230,10 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                           </div>
                           <div>
                             <div class="font-bold text-white">@{friend.username}</div>
-                            <div class="text-xs text-neutral-500">Connected</div>
+                            <div class="text-xs text-white/40">Connected</div>
                           </div>
                           <div class="ml-auto">
-                            <button class="text-neutral-400 hover:text-white p-2">
+                            <button class="text-white/50 hover:text-white p-2">
                               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                             </button>
                           </div>
@@ -244,17 +244,17 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
 
                 <% "requests" -> %>
                   <%= if @pending_requests == [] do %>
-                    <div class="flex flex-col items-center justify-center h-full text-center text-neutral-500">
+                    <div class="flex flex-col items-center justify-center h-full text-center text-white/40">
                       <p>No pending friend requests.</p>
                     </div>
                   <% else %>
                     <div class="space-y-4">
                       <%= for req <- @pending_requests do %>
                         <div class="aether-card p-4 rounded-xl border border-white/10 flex items-center gap-4">
-                          <div class="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center font-bold text-white">?</div>
+                          <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center font-bold text-white">?</div>
                           <div class="flex-1">
                             <div class="font-bold text-white">Request from User #{req.user_id}</div>
-                            <div class="text-xs text-neutral-500">Wants to be your friend</div>
+                            <div class="text-xs text-white/40">Wants to be your friend</div>
                           </div>
                           <div class="flex gap-2">
                             <button class="px-3 py-1.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium">Accept</button>
@@ -274,10 +274,10 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                           name="query"
                           value={@friend_search}
                           placeholder="Search be username..."
-                          class="w-full bg-neutral-900 border border-white/10 rounded-xl px-5 py-3 pl-12 text-white placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                          class="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 pl-12 text-white placeholder-white/30 focus:border-blue-500 focus:outline-none"
                           autocomplete="off"
                         />
-                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                       </div>
@@ -285,7 +285,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
 
                     <%= if @friend_search != "" and @friend_search_results != [] do %>
                       <div class="space-y-2">
-                        <div class="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-2">Results</div>
+                        <div class="text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Results</div>
                         <%= for user <- @friend_search_results do %>
                           <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
                             <div class="flex items-center gap-3">
@@ -347,7 +347,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
             <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
               <div class="space-y-4">
                 <%= if @devices == [] do %>
-                  <div class="text-center py-12 text-neutral-500">
+                  <div class="text-center py-12 text-white/40">
                     <p>No other devices found.</p>
                   </div>
                 <% else %>
@@ -358,7 +358,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                        # For now just list them.
                        "border-white/10 bg-white/5"
                     ]}>
-                      <div class="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-400">
+                      <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/50">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                       </div>
                       
@@ -369,10 +369,10 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                              <span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">Trusted</span>
                           <% end %>
                         </div>
-                        <div class="text-xs text-neutral-500 font-mono mt-0.5">
+                        <div class="text-xs text-white/40 font-mono mt-0.5">
                           {device.device_fingerprint |> String.slice(0, 8)}...
                         </div>
-                        <div class="text-xs text-neutral-400 mt-1">
+                        <div class="text-xs text-white/50 mt-1">
                           Last seen: {Calendar.strftime(device.last_seen_at, "%b %d, %H:%M")}
                         </div>
                       </div>
@@ -393,7 +393,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
               <div class="mt-8 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
                 <div class="flex items-start gap-3">
                   <span class="text-blue-400">ℹ️</span>
-                  <div class="text-sm text-neutral-300">
+                  <div class="text-sm text-white/70">
                     <p class="font-bold text-blue-400 mb-1">Security Note</p>
                     <p>Revoking a device will invalidate its access tokens. If you suspect unauthorized access, revoke the device and rotate your keys.</p>
                 </div>

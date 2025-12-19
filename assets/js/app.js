@@ -637,6 +637,145 @@ const Hooks = {
         }
     },
 
+    // Progressive sign out - hold for 3s with visual ring progress
+    ProgressiveSignOut: {
+        mounted() {
+            this.timer = null
+            this.morphTimer = null
+            this.pressing = false
+            this.duration = 3000 // 3 seconds
+            
+            // Prevent text selection on mobile
+            this.el.style.userSelect = 'none'
+            this.el.style.webkitUserSelect = 'none'
+            this.el.style.touchAction = 'manipulation'
+            
+            // Create progress ring overlay
+            this.createProgressRing()
+            
+            // Store original icon
+            this.originalIcon = this.el.querySelector('svg')?.outerHTML
+            this.iconContainer = this.el.querySelector('div.w-7')
+            
+            const startPress = (e) => {
+                if (e.type === 'mousedown' && e.button !== 0) return
+                e.preventDefault()
+                
+                this.pressing = true
+                
+                // Show and animate ring after 500ms
+                setTimeout(() => {
+                    if (!this.pressing) return
+                    this.progressSvg.style.opacity = '1'
+                    this.progressRing.style.strokeDashoffset = '0'
+                    
+                    // Haptic start
+                    if (navigator.vibrate) navigator.vibrate(10)
+                }, 500)
+                
+                // Morph icon at 1.5s
+                this.morphTimer = setTimeout(() => {
+                    if (!this.pressing) return
+                    if (this.iconContainer) {
+                        this.iconContainer.innerHTML = `
+                            <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                        `
+                    }
+                    // Stronger haptic
+                    if (navigator.vibrate) navigator.vibrate([30, 30, 30])
+                }, 1500)
+                
+                // Fire sign out at 3s
+                this.timer = setTimeout(() => {
+                    if (this.pressing) {
+                        // Success haptic
+                        if (navigator.vibrate) navigator.vibrate([50, 50, 100])
+                        this.pushEvent("sign_out", {})
+                        this.pressing = false
+                        this.resetVisuals()
+                    }
+                }, this.duration)
+            }
+            
+            const endPress = (e) => {
+                if (!this.pressing) return
+                
+                this.pressing = false
+                
+                if (this.timer) {
+                    clearTimeout(this.timer)
+                    this.timer = null
+                }
+                if (this.morphTimer) {
+                    clearTimeout(this.morphTimer)
+                    this.morphTimer = null
+                }
+                
+                this.resetVisuals()
+            }
+            
+            this.el.addEventListener('mousedown', startPress)
+            this.el.addEventListener('touchstart', startPress, { passive: false })
+            this.el.addEventListener('mouseup', endPress)
+            this.el.addEventListener('mouseleave', endPress)
+            this.el.addEventListener('touchend', endPress)
+            this.el.addEventListener('touchcancel', endPress)
+            
+            // Prevent click from firing regular event
+            this.el.addEventListener('click', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+            })
+        },
+        
+        createProgressRing() {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+            svg.setAttribute('class', 'progressive-sign-out-ring')
+            svg.setAttribute('viewBox', '0 0 50 50')
+            svg.style.cssText = 'position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 10;'
+
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+            circle.setAttribute('cx', '25')
+            circle.setAttribute('cy', '25')
+            circle.setAttribute('r', '22')
+            circle.setAttribute('fill', 'none')
+            circle.setAttribute('stroke', 'rgba(239, 68, 68, 0.8)') // red-500
+            circle.setAttribute('stroke-width', '3')
+            circle.setAttribute('stroke-linecap', 'round')
+            circle.setAttribute('stroke-dasharray', '138.23') // 2*PI*22
+            circle.setAttribute('stroke-dashoffset', '138.23')
+            circle.setAttribute('transform', 'rotate(-90 25 25)')
+            circle.style.transition = `stroke-dashoffset ${this.duration - 500}ms linear` // -500ms for delay
+
+            svg.appendChild(circle)
+            this.el.style.position = 'relative'
+            this.el.appendChild(svg)
+            this.progressRing = circle
+            this.progressSvg = svg
+        },
+        
+        resetVisuals() {
+            // Reset ring
+            this.progressSvg.style.opacity = '0'
+            this.progressRing.style.transition = 'none'
+            this.progressRing.style.strokeDashoffset = '138.23'
+            // Force reflow
+            this.progressRing.offsetHeight
+            this.progressRing.style.transition = `stroke-dashoffset ${this.duration - 500}ms linear`
+            
+            // Reset icon
+            if (this.iconContainer && this.originalIcon) {
+                this.iconContainer.innerHTML = this.originalIcon
+            }
+        },
+        
+        destroyed() {
+            if (this.timer) clearTimeout(this.timer)
+            if (this.morphTimer) clearTimeout(this.morphTimer)
+        }
+    },
 
 
     // Unified WebAuthn hook for /auth page (handles both login and registration)

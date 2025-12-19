@@ -1,7 +1,7 @@
 defmodule FriendsWeb.CoreComponents do
   @moduledoc """
   Provides core UI components.
-  Minimal, modern design with no icons - text-based interface.
+  Fluid Design system - glass surfaces, organic corners, spring animations.
   """
   use Phoenix.Component
 
@@ -20,11 +20,13 @@ defmodule FriendsWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all border border-neutral-200",
-        "bg-neutral-200 text-neutral-950 hover:bg-neutral-300 hover:text-neutral-950 shadow-sm",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
+        "px-5 py-2.5 text-sm font-bold tracking-wide rounded-xl transition-all",
+        "bg-white text-black hover:bg-white/90 hover:scale-[1.02]",
+        "shadow-lg shadow-white/10",
+        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
         @class
       ]}
+      style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -45,11 +47,13 @@ defmodule FriendsWeb.CoreComponents do
     <button
       type={@type}
       class={[
-        "px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all",
-        "border border-neutral-200 text-neutral-200 hover:bg-neutral-200 hover:text-neutral-950",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
+        "px-5 py-2.5 text-sm font-bold tracking-wide rounded-xl transition-all",
+        "bg-white/5 border border-white/10 text-white/80",
+        "hover:bg-white/10 hover:border-white/20 hover:text-white hover:scale-[1.02]",
+        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
         @class
       ]}
+      style="transition-timing-function: cubic-bezier(0.3, 1.5, 0.6, 1);"
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -90,16 +94,19 @@ defmodule FriendsWeb.CoreComponents do
       <label
         :if={@label}
         for={@id}
-        class="block text-xs text-neutral-500 mb-1 uppercase tracking-wide"
+        class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium"
       >
         {@label}
-      </label> <textarea
+      </label>
+      <textarea
         id={@id}
         name={@name}
         class={[
-          "w-full px-3 py-2 bg-neutral-900 border border-neutral-800 text-white text-sm",
-          "placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600",
-          "resize-none",
+          "w-full px-4 py-3 rounded-xl text-sm text-white",
+          "bg-white/5 border border-white/10",
+          "placeholder:text-white/30",
+          "focus:outline-none focus:border-white/30 focus:bg-white/[0.07]",
+          "transition-all resize-none",
           @class
         ]}
         {@rest}
@@ -115,7 +122,7 @@ defmodule FriendsWeb.CoreComponents do
       <label
         :if={@label}
         for={@id}
-        class="block text-xs text-neutral-500 mb-1 uppercase tracking-wide"
+        class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium"
       >
         {@label}
       </label>
@@ -125,8 +132,11 @@ defmodule FriendsWeb.CoreComponents do
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         class={[
-          "w-full px-3 py-2 bg-neutral-900 border border-neutral-800 text-white text-sm",
-          "placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600",
+          "w-full px-4 py-3 rounded-xl text-sm text-white",
+          "bg-white/5 border border-white/10",
+          "placeholder:text-white/30",
+          "focus:outline-none focus:border-white/30 focus:bg-white/[0.07]",
+          "transition-all",
           @class
         ]}
         {@rest}
@@ -143,7 +153,7 @@ defmodule FriendsWeb.CoreComponents do
 
   def error(assigns) do
     ~H"""
-    <p class="mt-1 text-xs text-red-500">{render_slot(@inner_block)}</p>
+    <p class="mt-2 text-xs text-red-400/90 font-medium">{render_slot(@inner_block)}</p>
     """
   end
 
@@ -153,8 +163,8 @@ defmodule FriendsWeb.CoreComponents do
   attr :id, :string, required: true
   attr :show, :boolean, default: false
   attr :on_cancel, JS, default: %JS{}
-  attr :container_class, :string, default: "w-full max-w-lg bg-neutral-900 border border-neutral-800 p-6 relative"
-  attr :backdrop_class, :string, default: "bg-black/80"
+  attr :container_class, :string, default: "w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 relative shadow-2xl"
+  attr :backdrop_class, :string, default: "bg-black/70 backdrop-blur-sm"
   slot :inner_block, required: true
 
   def modal(assigns) do
@@ -191,11 +201,14 @@ defmodule FriendsWeb.CoreComponents do
             <button
               phx-click={JS.exec("data-cancel", to: "##{@id}")}
               type="button"
-              class="absolute top-4 right-4 text-neutral-500 hover:text-white z-50"
+              class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-all z-50"
               aria-label="close"
             >
-              ×
-            </button> {render_slot(@inner_block)}
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            {render_slot(@inner_block)}
           </div>
         </div>
       </div>

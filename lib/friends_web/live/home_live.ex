@@ -998,6 +998,105 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:welcome_graph_data, nil)}
   end
 
+  # --- Global User Menu & Sheet Handlers ---
+
+  def handle_event("toggle_user_menu", _params, socket) do
+    {:noreply, assign(socket, :show_user_menu, !socket.assigns[:show_user_menu])}
+  end
+
+  def handle_event("toggle_members_panel", _params, socket) do
+    {:noreply, 
+     socket
+     |> assign(:show_group_sheet, !socket.assigns[:show_group_sheet])
+     |> assign(:group_search, "")}
+  end
+
+  def handle_event("open_invite_sheet", _params, socket) do
+    {:noreply, 
+     socket
+     |> assign(:show_group_sheet, true)
+     |> assign(:group_search, "")}
+  end
+
+  def handle_event("close_group_sheet", _params, socket) do
+    {:noreply, 
+     socket
+     |> assign(:show_group_sheet, false)
+     |> assign(:group_search, "")}
+  end
+
+  def handle_event("invite_friend_to_room", %{"friend_id" => friend_id}, socket) do
+    RoomEvents.invite_to_room(socket, friend_id)
+  end
+
+  def handle_event("open_member_menu", %{"member_id" => member_id_str}, socket) do
+    case Integer.parse(member_id_str) do
+      {member_id, _} ->
+        {:noreply, assign(socket, :context_menu_member_id, member_id)}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("close_member_menu", _params, socket) do
+    {:noreply, assign(socket, :context_menu_member_id, nil)}
+  end
+
+  def handle_event("make_admin", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        room = socket.assigns.room
+        if room && room.owner_id == socket.assigns.current_user.id do
+          Social.update_member_role(room.id, user_id, "admin")
+          room_members = Social.list_room_members(room.id)
+          {:noreply, assign(socket, :room_members, room_members)}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_admin", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        room = socket.assigns.room
+        if room && room.owner_id == socket.assigns.current_user.id do
+          Social.update_member_role(room.id, user_id, "member")
+          room_members = Social.list_room_members(room.id)
+          {:noreply, assign(socket, :room_members, room_members)}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("remove_member", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        room = socket.assigns.room
+        current_user = socket.assigns.current_user
+        
+        # Check if user can remove members (owner or admin)
+        is_owner = room && room.owner_id == current_user.id
+        current_member = Enum.find(socket.assigns[:room_members] || [], fn m -> m.user_id == current_user.id end)
+        is_admin = current_member && current_member.role == "admin"
+        
+        if is_owner or is_admin do
+          Social.remove_room_member(room.id, user_id)
+          room_members = Social.list_room_members(room.id)
+          {:noreply, assign(socket, :room_members, room_members)}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   # --- Progress Handler ---
 
   # Validate file content by checking magic bytes (file signature)
@@ -1166,114 +1265,6 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:user_stopped_typing, payload}, socket) do
     PubSubHandlers.handle_user_stopped_typing(socket, payload)
-  end
-
-  # --- Helpers ---
-  # Note: navigate_photo/2 is imported from FriendsWeb.HomeLive.Helpers
-
-
-
-  # --- Global User Menu & Sheet Handlers ---
-
-  def handle_event("toggle_user_menu", _params, socket) do
-    {:noreply, assign(socket, :show_user_menu, !socket.assigns[:show_user_menu])}
-  end
-
-  def handle_event("toggle_members_panel", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_group_sheet, !socket.assigns[:show_group_sheet])
-     |> assign(:group_search, "")}
-  end
-
-  def handle_event("open_invite_sheet", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_group_sheet, true)
-     |> assign(:group_search, "")}
-  end
-
-  def handle_event("close_group_sheet", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_group_sheet, false)
-     |> assign(:group_search, "")}
-  end
-
-  def handle_event("group_search", %{"value" => query}, socket) do
-    {:noreply, assign(socket, :group_search, query)}
-  end
-
-  def handle_event("invite_friend_to_room", %{"friend_id" => friend_id}, socket) do
-    RoomEvents.invite_to_room(socket, friend_id)
-  end
-
-  def handle_event("open_member_menu", %{"member_id" => member_id_str}, socket) do
-    case Integer.parse(member_id_str) do
-      {member_id, _} ->
-        {:noreply, assign(socket, :context_menu_member_id, member_id)}
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("close_member_menu", _params, socket) do
-    {:noreply, assign(socket, :context_menu_member_id, nil)}
-  end
-
-  def handle_event("make_admin", %{"user_id" => user_id_str}, socket) do
-    case Integer.parse(user_id_str) do
-      {user_id, _} ->
-        room = socket.assigns.room
-        if room && room.owner_id == socket.assigns.current_user.id do
-          Social.update_member_role(room.id, user_id, "admin")
-          room_members = Social.list_room_members(room.id)
-          {:noreply, assign(socket, :room_members, room_members)}
-        else
-          {:noreply, socket}
-        end
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("remove_admin", %{"user_id" => user_id_str}, socket) do
-    case Integer.parse(user_id_str) do
-      {user_id, _} ->
-        room = socket.assigns.room
-        if room && room.owner_id == socket.assigns.current_user.id do
-          Social.update_member_role(room.id, user_id, "member")
-          room_members = Social.list_room_members(room.id)
-          {:noreply, assign(socket, :room_members, room_members)}
-        else
-          {:noreply, socket}
-        end
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("remove_member", %{"user_id" => user_id_str}, socket) do
-    case Integer.parse(user_id_str) do
-      {user_id, _} ->
-        room = socket.assigns.room
-        current_user = socket.assigns.current_user
-        
-        # Check if user can remove members (owner or admin)
-        is_owner = room && room.owner_id == current_user.id
-        current_member = Enum.find(socket.assigns[:room_members] || [], fn m -> m.user_id == current_user.id end)
-        is_admin = current_member && current_member.role == "admin"
-        
-        if is_owner or is_admin do
-          Social.remove_room_member(room.id, user_id)
-          room_members = Social.list_room_members(room.id)
-          {:noreply, assign(socket, :room_members, room_members)}
-        else
-          {:noreply, socket}
-        end
-      _ ->
-        {:noreply, socket}
-    end
   end
 
 end
