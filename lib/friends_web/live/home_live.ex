@@ -12,6 +12,7 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidModalComponents
   import FriendsWeb.HomeLive.Components.FluidContactComponents
   import FriendsWeb.HomeLive.Components.FluidGroupComponents
+  import FriendsWeb.HomeLive.Components.FluidProfileComponents
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -1033,7 +1034,12 @@ defmodule FriendsWeb.HomeLive do
   # --- Global User Menu & Sheet Handlers ---
 
   def handle_event("toggle_user_menu", _params, socket) do
-    {:noreply, assign(socket, :show_user_menu, !socket.assigns[:show_user_menu])}
+    # Open profile sheet instead of old user menu
+    {:noreply, assign(socket, :show_profile_sheet, !socket.assigns[:show_profile_sheet])}
+  end
+
+  def handle_event("close_profile_sheet", _params, socket) do
+    {:noreply, assign(socket, :show_profile_sheet, false)}
   end
 
   def handle_event("toggle_members_panel", _params, socket) do

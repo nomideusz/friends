@@ -118,7 +118,12 @@
     current_user={@current_user}
   />
 
-
+  <%!-- Profile Sheet --%>
+  <.profile_sheet
+    show={assigns[:show_profile_sheet] || false}
+    current_user={@current_user}
+    devices={assigns[:devices] || []}
+  />
 
   <%!-- Global User Menu --%>
   <%= if assigns[:show_user_menu] do %>
