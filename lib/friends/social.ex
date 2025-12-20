@@ -471,6 +471,17 @@ defmodule Friends.Social do
 
   def get_user(_), do: nil
 
+  def update_user_avatar(user_id, avatar_url) do
+    user = get_user(user_id)
+    if user do
+      user
+      |> User.changeset(%{avatar_url: avatar_url})
+      |> Repo.update()
+    else
+      {:error, :user_not_found}
+    end
+  end
+
   def search_users(query, current_user_id) when is_binary(query) and byte_size(query) >= 2 do
     pattern = "%#{query}%"
 

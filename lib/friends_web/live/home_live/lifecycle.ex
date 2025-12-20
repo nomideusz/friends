@@ -158,6 +158,15 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
           progress: &FriendsWeb.HomeLive.Events.PhotoEvents.handle_progress/3
         )
 
+      # Allow avatar uploads
+      socket =
+        allow_upload(socket, :avatar,
+          accept: ~w(.jpg .jpeg .png .gif .webp),
+          max_entries: 1,
+          max_file_size: 5_000_000,
+          auto_upload: true
+        )
+
       socket = SessionEvents.maybe_bootstrap_identity(socket, get_connect_params(socket))
 
       # No real-time updates for welcome graph for now to keep it minimal
@@ -524,12 +533,19 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
   end
   
   defp maybe_allow_upload(socket, true) do
-    allow_upload(socket, :photo,
+    socket
+    |> allow_upload(:photo,
       accept: ~w(.jpg .jpeg .png .gif .webp),
       max_entries: 10,
       max_file_size: 20_000_000,
       auto_upload: true,
       progress: &FriendsWeb.HomeLive.Events.PhotoEvents.handle_progress/3
+    )
+    |> allow_upload(:avatar,
+      accept: ~w(.jpg .jpeg .png .gif .webp),
+      max_entries: 1,
+      max_file_size: 5_000_000,
+      auto_upload: true
     )
   end
 

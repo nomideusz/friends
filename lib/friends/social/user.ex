@@ -23,6 +23,10 @@ defmodule Friends.Social.User do
     # Recovery
     field :recovery_requested_at, :utc_datetime
 
+    # Profile
+    field :avatar_url, :string
+    field :user_color, :string
+
     timestamps()
   end
 
@@ -37,7 +41,9 @@ defmodule Friends.Social.User do
       :status,
       :invited_by_id,
       :invite_code,
-      :recovery_requested_at
+      :recovery_requested_at,
+      :avatar_url,
+      :user_color
     ])
     |> validate_required([:username])
     |> validate_format(:username, @username_regex,

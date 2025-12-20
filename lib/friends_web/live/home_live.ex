@@ -97,6 +97,41 @@ defmodule FriendsWeb.HomeLive do
     PhotoEvents.cancel_upload(socket, ref)
   end
 
+  # Avatar upload handlers
+  def handle_event("validate_avatar", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("upload_avatar", _params, socket) do
+    uploaded_files =
+      consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
+        # Read file
+        {:ok, binary} = File.read(path)
+
+        # Upload to S3
+        filename = "avatars/#{socket.assigns.current_user.id}-#{System.system_time(:second)}#{Path.extname(entry.client_name)}"
+        case Friends.Storage.upload_file(binary, filename, entry.client_type) do
+          {:ok, url} ->
+            # Update user avatar
+            case Social.update_user_avatar(socket.assigns.current_user.id, url) do
+              {:ok, updated_user} ->
+                {:ok, updated_user}
+              {:error, _} ->
+                {:ok, nil}
+            end
+          {:error, _} ->
+            {:ok, nil}
+        end
+      end)
+
+    case uploaded_files do
+      [updated_user | _] when not is_nil(updated_user) ->
+        {:noreply, assign(socket, :current_user, updated_user)}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("delete_photo", %{"id" => id}, socket) do
     PhotoEvents.delete_photo(socket, id)
   end
@@ -948,10 +983,11 @@ defmodule FriendsWeb.HomeLive do
   # --- Groups Sheet Events ---
 
   def handle_event("open_groups_sheet", _, socket) do
-    {:noreply, 
+    {:noreply,
      socket
      |> assign(show_groups_sheet: true, group_search_query: "")
-     |> assign(:show_user_menu, false)}
+     |> assign(:show_user_menu, false)
+     |> assign(:show_profile_sheet, false)}
   end
 
   def handle_event("close_groups_sheet", _, socket) do
@@ -960,14 +996,26 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Contact/People Sheet Events ---
 
+  def handle_event("open_contacts_sheet", _, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_contact_sheet, true)
+     |> assign(:show_user_menu, false)
+     |> assign(:show_profile_sheet, false)
+     |> assign(:contact_mode, :list_contacts)
+     |> assign(:contact_sheet_search, "")
+     |> assign(:contact_search_results, [])}
+  end
+
   def handle_event("open_contact_search", params, socket) do
     mode = params["mode"] || "list_contacts"
-    {:noreply, 
-     socket 
-     |> assign(:show_contact_sheet, true) 
+    {:noreply,
+     socket
+     |> assign(:show_contact_sheet, true)
      |> assign(:show_header_dropdown, false)
      |> assign(:show_user_dropdown, false)
      |> assign(:show_user_menu, false)
+     |> assign(:show_profile_sheet, false)
      |> assign(:contact_mode, mode)
      |> assign(:contact_sheet_search, "")
      |> assign(:contact_search_results, [])}

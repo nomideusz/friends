@@ -14,6 +14,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
   attr :show, :boolean, default: false
   attr :current_user, :map, required: true
   attr :devices, :list, default: []
+  attr :uploads, :map, default: nil
 
   def profile_sheet(assigns) do
     ~H"""
@@ -39,17 +40,33 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
             <%!-- Profile Header --%>
             <div class="px-6 pb-6">
               <div class="flex items-center gap-4">
-                <%!-- Avatar --%>
-                <div
-                  class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-black border-2 border-white/10 shadow-lg flex-shrink-0"
-                  style={"background-color: #{friend_color(@current_user)}"}
-                >
-                  <%= if Map.get(@current_user, :avatar_url) do %>
-                    <img src={@current_user.avatar_url} class="w-full h-full object-cover rounded-full" alt="Avatar" />
-                  <% else %>
-                    {String.first(@current_user.username) |> String.upcase()}
-                  <% end %>
-                </div>
+                <%!-- Avatar with Upload --%>
+                <form phx-change="validate_avatar" phx-submit="upload_avatar" class="relative flex-shrink-0">
+                  <label class="relative block cursor-pointer group">
+                    <div
+                      class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-black border-2 border-white/10 shadow-lg overflow-hidden"
+                      style={"background-color: #{friend_color(@current_user)}"}
+                    >
+                      <%= if Map.get(@current_user, :avatar_url) do %>
+                        <img src={@current_user.avatar_url} class="w-full h-full object-cover" alt="Avatar" />
+                      <% else %>
+                        {String.first(@current_user.username) |> String.upcase()}
+                      <% end %>
+                    </div>
+
+                    <%!-- Upload overlay --%>
+                    <div class="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+
+                    <%= if @uploads && @uploads[:avatar] do %>
+                      <.live_file_input upload={@uploads.avatar} class="sr-only" />
+                    <% end %>
+                  </label>
+                </form>
 
                 <%!-- User Info --%>
                 <div class="flex-1 min-w-0">
@@ -113,9 +130,30 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
               <div>
                 <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-2">Network</h3>
                 <div class="space-y-1">
-                  <%!-- Friends & Trust --%>
+                  <%!-- People/Contacts --%>
                   <button
-                    phx-click="open_network_modal"
+                    phx-click="open_contacts_sheet"
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">People</div>
+                        <div class="text-xs text-white/40">Friends & contacts</div>
+                      </div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <%!-- Groups --%>
+                  <button
+                    phx-click="open_groups_sheet"
                     class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
                   >
                     <div class="flex items-center gap-3">
@@ -125,8 +163,29 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                         </svg>
                       </div>
                       <div class="text-left">
-                        <div class="text-sm font-medium text-white">Friends & Trust</div>
-                        <div class="text-xs text-white/40">Manage your network</div>
+                        <div class="text-sm font-medium text-white">Groups</div>
+                        <div class="text-xs text-white/40">Your private groups</div>
+                      </div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <%!-- Friends & Trust --%>
+                  <button
+                    phx-click="open_network_modal"
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Trust Circle</div>
+                        <div class="text-xs text-white/40">Recovery & trust</div>
                       </div>
                     </div>
                     <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
