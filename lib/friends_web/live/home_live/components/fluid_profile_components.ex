@@ -14,6 +14,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
   attr :show, :boolean, default: false
   attr :current_user, :map, required: true
   attr :devices, :list, default: []
+  attr :uploads, :map, default: nil
 
   def profile_sheet(assigns) do
     ~H"""
@@ -39,17 +40,33 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
             <%!-- Profile Header --%>
             <div class="px-6 pb-6">
               <div class="flex items-center gap-4">
-                <%!-- Avatar --%>
-                <div
-                  class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-black border-2 border-white/10 shadow-lg flex-shrink-0"
-                  style={"background-color: #{friend_color(@current_user)}"}
-                >
-                  <%= if Map.get(@current_user, :avatar_url) do %>
-                    <img src={@current_user.avatar_url} class="w-full h-full object-cover rounded-full" alt="Avatar" />
-                  <% else %>
-                    {String.first(@current_user.username) |> String.upcase()}
-                  <% end %>
-                </div>
+                <%!-- Avatar with Upload --%>
+                <form phx-change="validate_avatar" phx-submit="upload_avatar" class="relative flex-shrink-0">
+                  <label class="relative block cursor-pointer group">
+                    <div
+                      class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-black border-2 border-white/10 shadow-lg overflow-hidden"
+                      style={"background-color: #{friend_color(@current_user)}"}
+                    >
+                      <%= if Map.get(@current_user, :avatar_url) do %>
+                        <img src={@current_user.avatar_url} class="w-full h-full object-cover" alt="Avatar" />
+                      <% else %>
+                        {String.first(@current_user.username) |> String.upcase()}
+                      <% end %>
+                    </div>
+
+                    <%!-- Upload overlay --%>
+                    <div class="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+
+                    <%= if @uploads && @uploads[:avatar] do %>
+                      <.live_file_input upload={@uploads.avatar} class="sr-only" />
+                    <% end %>
+                  </label>
+                </form>
 
                 <%!-- User Info --%>
                 <div class="flex-1 min-w-0">
