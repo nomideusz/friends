@@ -1712,6 +1712,12 @@ const Hooks = {
             const playBtn = this.el.querySelector('.room-voice-play-btn')
             const progressBar = this.el.querySelector('.room-voice-progress')
 
+            // SVG icons for play states
+            const playIcon = '<svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+            const pauseIcon = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>'
+            const loadingIcon = '<span class="text-xs animate-pulse">···</span>'
+            const errorIcon = '<span class="text-red-400 text-xs">✕</span>'
+
             this.audio = null
             this.isPlaying = false
 
@@ -1719,15 +1725,15 @@ const Hooks = {
                 playBtn.addEventListener('click', async () => {
                     if (this.isPlaying && this.audio) {
                         this.audio.pause()
-                        playBtn.textContent = '▶'
+                        playBtn.innerHTML = playIcon
                         this.isPlaying = false
                     } else if (this.audio) {
                         this.audio.play()
-                        playBtn.textContent = '⏸'
+                        playBtn.innerHTML = pauseIcon
                         this.isPlaying = true
                     } else {
                         // First play - need to decrypt and create player
-                        playBtn.textContent = '...'
+                        playBtn.innerHTML = loadingIcon
 
                         try {
                             const msgEl = this.el.querySelector('.room-voice-data')
@@ -1755,24 +1761,24 @@ const Hooks = {
                                     }
 
                                     this.audio.onended = () => {
-                                        playBtn.textContent = '▶'
+                                        playBtn.innerHTML = playIcon
                                         this.isPlaying = false
                                         if (progressBar) progressBar.style.width = '0%'
                                     }
 
                                     this.audio.play()
-                                    playBtn.textContent = '⏸'
+                                    playBtn.innerHTML = pauseIcon
                                     this.isPlaying = true
                                 } else {
-                                    playBtn.textContent = '❌'
+                                    playBtn.innerHTML = errorIcon
                                 }
                             } else {
                                 console.warn("Missing encrypted data for room voice message")
-                                playBtn.textContent = '❌'
+                                playBtn.innerHTML = errorIcon
                             }
                         } catch (e) {
                             console.error("Failed to decrypt room voice note:", e)
-                            playBtn.textContent = '❌'
+                            playBtn.innerHTML = errorIcon
                         }
                     }
                 })
@@ -1840,8 +1846,14 @@ const Hooks = {
             const progressBar = this.el.querySelector('.grid-voice-progress')
             const canvas = this.el.querySelector('canvas.visualizer-canvas')
 
+            // SVG icons for play states (larger for grid)
+            const playIcon = '<svg class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+            const pauseIcon = '<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>'
+            const loadingIcon = '<span class="text-sm animate-pulse">···</span>'
+            const errorIcon = '<span class="text-red-400">✕</span>'
+
             // Auto-decrypt and visualize
-            this.decryptAndVisualize(canvas)
+            this.decryptAndVisualize(canvas, playIcon)
 
             if (playBtn) {
                 this.el.addEventListener('click', async (e) => {
@@ -1852,33 +1864,33 @@ const Hooks = {
                         if (this.isPlaying && this.audio) {
                             this.audio.pause()
                             this.isPlaying = false
-                            playBtn.textContent = '▶'
+                            playBtn.innerHTML = playIcon
                             return
                         }
 
                         // If audio is already prepared (from visualization step), just play
                         if (this.audio) {
                             this.audio.play()
-                            playBtn.textContent = '⏸'
+                            playBtn.innerHTML = pauseIcon
                             this.isPlaying = true
                             return
                         }
 
                         // Fallback: Decrypt if not yet ready
-                        playBtn.textContent = '...'
-                        if (await this.decryptAndVisualize(canvas)) {
+                        playBtn.innerHTML = loadingIcon
+                        if (await this.decryptAndVisualize(canvas, playIcon)) {
                             this.audio.play()
-                            playBtn.textContent = '⏸'
+                            playBtn.innerHTML = pauseIcon
                             this.isPlaying = true
                         } else {
-                            playBtn.textContent = '❌'
+                            playBtn.innerHTML = errorIcon
                         }
                     }
                 })
             }
         },
 
-        async decryptAndVisualize(canvas) {
+        async decryptAndVisualize(canvas, playIcon) {
             // Check if already decrypted
             if (this.audio) return true
 
@@ -1903,23 +1915,25 @@ const Hooks = {
                         }
 
                         // Setup audio events
-                        if (this.el.querySelector('.grid-voice-progress')) {
-                            const progressBar = this.el.querySelector('.grid-voice-progress')
-                            const playBtn = this.el.querySelector('.grid-voice-play-btn')
+                        const progressBar = this.el.querySelector('.grid-voice-progress')
+                        const playBtn = this.el.querySelector('.grid-voice-play-btn')
 
+                        if (progressBar) {
                             this.audio.ontimeupdate = () => {
                                 if (this.audio.duration) {
                                     const percent = (this.audio.currentTime / this.audio.duration) * 100
                                     progressBar.style.width = `${percent}%`
                                 }
                             }
-
-                            this.audio.onended = () => {
-                                if (playBtn) playBtn.textContent = '▶'
-                                this.isPlaying = false
-                                progressBar.style.width = '0%'
-                            }
                         }
+
+                        // Always set up onended handler
+                        this.audio.onended = () => {
+                            if (playBtn) playBtn.innerHTML = playIcon
+                            this.isPlaying = false
+                            if (progressBar) progressBar.style.width = '0%'
+                        }
+
                         return true
                     }
                 }
@@ -1982,6 +1996,104 @@ const Hooks = {
             if (this.audio) {
                 this.audio.pause()
                 URL.revokeObjectURL(this.audio.src)
+            }
+        }
+    },
+
+    // Feed voice player for public feed (supports both encrypted and URL-based audio)
+    FeedVoicePlayer: {
+        mounted() {
+            this.itemId = this.el.dataset.itemId
+            this.contentType = this.el.dataset.contentType
+            this.audio = null
+            this.isPlaying = false
+
+            const playBtn = this.el.querySelector('.feed-voice-play-btn')
+            const dataEl = document.getElementById(`feed-voice-data-${this.itemId}`)
+
+            if (playBtn && dataEl) {
+                playBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+
+                    // Toggle play/pause if audio already loaded
+                    if (this.audio) {
+                        if (this.isPlaying) {
+                            this.audio.pause()
+                            playBtn.innerHTML = '<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+                            this.isPlaying = false
+                        } else {
+                            this.audio.play()
+                            playBtn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>'
+                            this.isPlaying = true
+                        }
+                        return
+                    }
+
+                    // Show loading state
+                    playBtn.innerHTML = '<span class="text-sm">...</span>'
+
+                    try {
+                        // Check if this is a URL-based (non-encrypted) voice note
+                        if (this.contentType === 'audio/webm' && dataEl.dataset.src) {
+                            // Direct URL playback from S3
+                            this.audio = new Audio(dataEl.dataset.src)
+
+                            this.audio.onended = () => {
+                                playBtn.innerHTML = '<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+                                this.isPlaying = false
+                            }
+
+                            this.audio.onerror = () => {
+                                console.error('Failed to load audio from URL')
+                                playBtn.innerHTML = '<span class="text-red-400">❌</span>'
+                            }
+
+                            await this.audio.play()
+                            playBtn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>'
+                            this.isPlaying = true
+                        } else if (dataEl.dataset.encrypted && dataEl.dataset.nonce) {
+                            // Encrypted voice note - decrypt first
+                            const encryptedArray = messageEncryption.base64ToArray(dataEl.dataset.encrypted)
+                            const nonceArray = messageEncryption.base64ToArray(dataEl.dataset.nonce)
+
+                            const audioBlob = await messageEncryption.decryptVoiceNote(
+                                encryptedArray,
+                                nonceArray,
+                                'public-feed'
+                            )
+
+                            if (audioBlob) {
+                                this.audio = new Audio(URL.createObjectURL(audioBlob))
+
+                                this.audio.onended = () => {
+                                    playBtn.innerHTML = '<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+                                    this.isPlaying = false
+                                }
+
+                                await this.audio.play()
+                                playBtn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>'
+                                this.isPlaying = true
+                            } else {
+                                throw new Error('Decryption returned null')
+                            }
+                        } else {
+                            throw new Error('No audio data available')
+                        }
+                    } catch (e) {
+                        console.error('Failed to play voice note:', e)
+                        playBtn.innerHTML = '<span class="text-red-400">❌</span>'
+                    }
+                })
+            }
+        },
+
+        destroyed() {
+            if (this.audio) {
+                this.audio.pause()
+                if (this.audio.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(this.audio.src)
+                }
             }
         }
     },

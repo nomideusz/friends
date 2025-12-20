@@ -393,15 +393,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         </div>
 
       <% :photo -> %>
-        <%= if Map.get(@item, :content_type) == "audio/encrypted" do %>
+        <%= if Map.get(@item, :content_type) in ["audio/encrypted", "audio/webm"] do %>
           <%!-- Voice Note --%>
           <div
             id={@id}
             class="aspect-square relative overflow-hidden bg-neutral-900 flex items-center justify-center"
             phx-hook="FeedVoicePlayer"
             data-item-id={@item.id}
+            data-content-type={@item.content_type}
           >
-            <div class="hidden" id={"feed-voice-data-#{@item.id}"} data-encrypted={@item.image_data} data-nonce={@item.thumbnail_data}></div>
+            <div class="hidden" id={"feed-voice-data-#{@item.id}"} data-src={@item.image_data} data-encrypted={@item.image_data} data-nonce={@item.thumbnail_data}></div>
             <button class="feed-voice-play-btn w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all cursor-pointer">
               <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
@@ -522,6 +523,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
           <%!-- Voice button --%>
           <button
             id="fluid-feed-voice-btn"
+            phx-hook="FeedVoiceRecorder"
             phx-click="start_voice_recording"
             class={"w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @recording_voice, do: "bg-red-500 text-white animate-pulse border-transparent", else: "bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 hover:border-white/20"}"}
           >

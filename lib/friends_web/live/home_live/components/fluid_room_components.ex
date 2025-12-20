@@ -373,17 +373,37 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
       <% :photo -> %>
         <%= if Map.get(@item, :content_type) == "audio/encrypted" do %>
-          <%!-- Voice Note --%>
+          <%!-- Voice Note (Fluid Design) --%>
           <div
             id={@id}
-            class="aspect-square relative overflow-hidden bg-neutral-900 flex items-center justify-center"
+            class="aspect-square relative overflow-hidden bg-gradient-to-br from-purple-900/40 via-neutral-900 to-blue-900/40 flex flex-col items-center justify-center group"
             phx-hook="GridVoicePlayer"
             data-item-id={@item.id}
             data-room-id={@room.id}
           >
+            <%!-- Ambient glow background --%>
+            <div class="absolute inset-0 opacity-30">
+              <div class="absolute top-1/4 left-1/4 w-24 h-24 rounded-full bg-purple-500/30 blur-2xl"></div>
+              <div class="absolute bottom-1/4 right-1/4 w-20 h-20 rounded-full bg-blue-500/30 blur-2xl"></div>
+            </div>
+            
+            <%!-- Hidden data element --%>
             <div class="hidden" id={"grid-voice-data-#{@item.id}"} data-encrypted={@item.image_data} data-nonce={@item.thumbnail_data}></div>
-            <button class="grid-voice-play-btn w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all cursor-pointer">
-              <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            
+            <%!-- Waveform visualization bars --%>
+            <div class="flex items-center gap-[3px] h-12 mb-4 z-10">
+              <% heights = [35, 55, 75, 45, 85, 60, 90, 50, 70, 40, 80, 55, 65, 85, 45] %>
+              <%= for height <- heights do %>
+                <div 
+                  class="w-[4px] rounded-full bg-gradient-to-t from-purple-400/60 to-blue-400/60 transition-all duration-300"
+                  style={"height: #{height}%;"}
+                ></div>
+              <% end %>
+            </div>
+            
+            <%!-- Play button with glow effect --%>
+            <button class="grid-voice-play-btn relative w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all cursor-pointer group-hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] z-10">
+              <svg class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
@@ -579,31 +599,32 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
                   <div class={"max-w-[85%] px-3 py-2 rounded-2xl #{if message.sender_id == @current_user.id, do: "bg-white/10 rounded-tr-sm", else: "bg-white/5 rounded-tl-sm"}"}>
                     <%= if message.content_type == "voice" do %>
-                      <%!-- Voice message with waveform --%>
+                      <%!-- Voice message with waveform (Fluid Design) --%>
                       <div
-                        class="flex items-center gap-3 min-w-[200px]"
+                        class="flex items-center gap-3 min-w-[220px] py-1"
                         id={"chat-voice-#{message.id}"}
                         phx-hook="RoomVoicePlayer"
                         data-message-id={message.id}
                         data-room-id={@room.id}
                       >
-                        <button class="room-voice-play-btn w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white cursor-pointer transition-colors flex-shrink-0">
+                        <%!-- Play button with gradient and glow --%>
+                        <button class={"room-voice-play-btn w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center text-white cursor-pointer transition-all flex-shrink-0 hover:scale-110 #{if message.sender_id == @current_user.id, do: "bg-gradient-to-br from-blue-500/40 to-purple-500/40 border border-blue-400/30 hover:shadow-[0_0_15px_rgba(59,130,246,0.4)]", else: "bg-gradient-to-br from-purple-500/40 to-pink-500/40 border border-purple-400/30 hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]"}"}>
                           <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z" />
                           </svg>
                         </button>
-                        <%!-- Waveform bars container --%>
+                        <%!-- Waveform bars with gradient colors --%>
                         <div class="flex-1 flex items-center gap-[2px] h-8 room-voice-waveform">
                           <% heights = [30, 50, 70, 90, 60, 85, 45, 95, 55, 75, 40, 80, 60, 90, 35, 65, 85, 50, 70, 40] %>
                           <%= for height <- heights do %>
                             <div 
-                              class="room-voice-bar w-[3px] rounded-full bg-white/40 transition-all duration-150"
+                              class={"room-voice-bar w-[3px] rounded-full transition-all duration-150 #{if message.sender_id == @current_user.id, do: "bg-gradient-to-t from-blue-400/50 to-cyan-400/50", else: "bg-gradient-to-t from-purple-400/50 to-pink-400/50"}"}
                               style={"height: #{height}%;"}
                             ></div>
                           <% end %>
                         </div>
-                        <%!-- Duration placeholder --%>
-                        <span class="text-[10px] text-white/40 room-voice-time flex-shrink-0">0:00</span>
+                        <%!-- Duration with subtle styling --%>
+                        <span class="text-[10px] text-white/50 room-voice-time flex-shrink-0 font-medium">0:00</span>
                         <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
                       </div>
                     <% else %>
