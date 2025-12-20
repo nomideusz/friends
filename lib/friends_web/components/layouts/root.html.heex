@@ -2,11 +2,35 @@
 <html lang="en" class="h-full">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <.live_title default="New Internet">{assigns[:page_title]}</.live_title>
-     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    
+    <%!-- PWA Meta Tags --%>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#030303" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Friends" />
+    <link rel="apple-touch-icon" href="/images/icon-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Friends" />
+    <meta name="msapplication-TileColor" content="#030303" />
+    <meta name="msapplication-TileImage" content="/images/icon-192.png" />
+    
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+    
+    <%!-- Service Worker Registration --%>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
     </script>
     
     <style>
