@@ -644,35 +644,35 @@ const Hooks = {
             this.morphTimer = null
             this.pressing = false
             this.duration = 3000 // 3 seconds
-            
+
             // Prevent text selection on mobile
             this.el.style.userSelect = 'none'
             this.el.style.webkitUserSelect = 'none'
             this.el.style.touchAction = 'manipulation'
-            
+
             // Create progress ring overlay
             this.createProgressRing()
-            
+
             // Store original icon
             this.originalIcon = this.el.querySelector('svg')?.outerHTML
             this.iconContainer = this.el.querySelector('div.w-7')
-            
+
             const startPress = (e) => {
                 if (e.type === 'mousedown' && e.button !== 0) return
                 e.preventDefault()
-                
+
                 this.pressing = true
-                
+
                 // Show and animate ring after 500ms
                 setTimeout(() => {
                     if (!this.pressing) return
                     this.progressSvg.style.opacity = '1'
                     this.progressRing.style.strokeDashoffset = '0'
-                    
+
                     // Haptic start
                     if (navigator.vibrate) navigator.vibrate(10)
                 }, 500)
-                
+
                 // Morph icon at 1.5s
                 this.morphTimer = setTimeout(() => {
                     if (!this.pressing) return
@@ -686,7 +686,7 @@ const Hooks = {
                     // Stronger haptic
                     if (navigator.vibrate) navigator.vibrate([30, 30, 30])
                 }, 1500)
-                
+
                 // Fire sign out at 3s
                 this.timer = setTimeout(() => {
                     if (this.pressing) {
@@ -698,12 +698,12 @@ const Hooks = {
                     }
                 }, this.duration)
             }
-            
+
             const endPress = (e) => {
                 if (!this.pressing) return
-                
+
                 this.pressing = false
-                
+
                 if (this.timer) {
                     clearTimeout(this.timer)
                     this.timer = null
@@ -712,24 +712,24 @@ const Hooks = {
                     clearTimeout(this.morphTimer)
                     this.morphTimer = null
                 }
-                
+
                 this.resetVisuals()
             }
-            
+
             this.el.addEventListener('mousedown', startPress)
             this.el.addEventListener('touchstart', startPress, { passive: false })
             this.el.addEventListener('mouseup', endPress)
             this.el.addEventListener('mouseleave', endPress)
             this.el.addEventListener('touchend', endPress)
             this.el.addEventListener('touchcancel', endPress)
-            
+
             // Prevent click from firing regular event
             this.el.addEventListener('click', (e) => {
                 e.preventDefault()
                 e.stopPropagation()
             })
         },
-        
+
         createProgressRing() {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
             svg.setAttribute('class', 'progressive-sign-out-ring')
@@ -755,7 +755,7 @@ const Hooks = {
             this.progressRing = circle
             this.progressSvg = svg
         },
-        
+
         resetVisuals() {
             // Reset ring
             this.progressSvg.style.opacity = '0'
@@ -764,13 +764,13 @@ const Hooks = {
             // Force reflow
             this.progressRing.offsetHeight
             this.progressRing.style.transition = `stroke-dashoffset ${this.duration - 500}ms linear`
-            
+
             // Reset icon
             if (this.iconContainer && this.originalIcon) {
                 this.iconContainer.innerHTML = this.originalIcon
             }
         },
-        
+
         destroyed() {
             if (this.timer) clearTimeout(this.timer)
             if (this.morphTimer) clearTimeout(this.morphTimer)
@@ -1808,7 +1808,7 @@ const Hooks = {
                         this.voiceRecorder.onStop = async (blob, durationMs) => {
                             try {
                                 const { encryptedContent, nonce } = await messageEncryption.encryptVoiceNote(blob, `room-${this.roomId}`)
-                                this.pushEvent("save_grid_voice_note", {
+                                this.pushEvent("send_room_voice_note", {
                                     encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
                                     nonce: messageEncryption.arrayToBase64(nonce),
                                     duration_ms: durationMs
@@ -2317,6 +2317,57 @@ const Hooks = {
             // Remove keyboard listener
             if (this.handleKeyDown) {
                 document.removeEventListener('keydown', this.handleKeyDown)
+            }
+        }
+    },
+
+    // ContentEditable chat input - avoids iOS form assistant toolbar (prev/next arrows)
+    ContentEditableChat: {
+        mounted() {
+            this.lastValue = ''
+
+            // Handle input and sync with LiveView
+            this.el.addEventListener('input', () => {
+                const text = this.el.textContent || ''
+                if (text !== this.lastValue) {
+                    this.lastValue = text
+                    this.pushEvent('update_chat_message', { value: text })
+                }
+            })
+
+            // Handle Enter key - trigger the send button click (uses existing encryption flow)
+            this.el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    // Find and click the send button
+                    const sendBtn = document.getElementById('send-unified-message-btn')
+                    if (sendBtn) {
+                        sendBtn.click()
+                    }
+                }
+            })
+
+            // Handle paste - strip formatting and insert plain text
+            this.el.addEventListener('paste', (e) => {
+                e.preventDefault()
+                const text = e.clipboardData.getData('text/plain')
+                document.execCommand('insertText', false, text)
+            })
+
+            // Clear input after message is sent
+            this.handleEvent('clear_chat_input', () => {
+                this.el.textContent = ''
+                this.lastValue = ''
+            })
+        },
+
+        updated() {
+            // If server clears the message (new_chat_message = ""), clear the contenteditable
+            // This handles the case when message is sent via button
+            if (this.el.dataset.shouldClear === 'true') {
+                this.el.textContent = ''
+                this.lastValue = ''
+                this.el.removeAttribute('data-should-clear')
             }
         }
     }

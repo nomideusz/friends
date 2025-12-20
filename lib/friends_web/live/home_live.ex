@@ -504,7 +504,15 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("close_invite_modal", _, socket) do
-    {:noreply, assign(socket, :show_invite_modal, false)}
+    # Also update the URL to remove ?action=invite so it doesn't reopen on refresh
+    room_code = if socket.assigns[:room], do: socket.assigns.room.code, else: nil
+    socket = assign(socket, :show_invite_modal, false)
+    
+    if room_code do
+      {:noreply, push_patch(socket, to: ~p"/r/#{room_code}", replace: true)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("set_feed_view", %{"view" => view}, socket) do
@@ -583,7 +591,10 @@ defmodule FriendsWeb.HomeLive do
              Base.decode64!(nonce)
            ) do
         {:ok, _message} ->
-          {:noreply, assign(socket, :new_chat_message, "")}
+          {:noreply, 
+           socket
+           |> assign(:new_chat_message, "")
+           |> push_event("clear_chat_input", %{})}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, "Failed to send message")}

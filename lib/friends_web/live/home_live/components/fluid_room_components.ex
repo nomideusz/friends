@@ -330,7 +330,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 p-1"
     >
       <%= for {dom_id, item} <- @items do %>
-        <.fluid_content_item id={dom_id} item={item} room={@room} current_user={@current_user} />
+        <%!-- Skip audio items - they appear in the chat stream instead --%>
+        <%= unless Map.get(item, :content_type) == "audio/encrypted" do %>
+          <.fluid_content_item id={dom_id} item={item} room={@room} current_user={@current_user} />
+        <% end %>
       <% end %>
     </div>
     """
@@ -576,18 +579,31 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
                   <div class={"max-w-[85%] px-3 py-2 rounded-2xl #{if message.sender_id == @current_user.id, do: "bg-white/10 rounded-tr-sm", else: "bg-white/5 rounded-tl-sm"}"}>
                     <%= if message.content_type == "voice" do %>
-                      <%!-- Voice message --%>
+                      <%!-- Voice message with waveform --%>
                       <div
-                        class="flex items-center gap-2"
+                        class="flex items-center gap-3 min-w-[200px]"
                         id={"chat-voice-#{message.id}"}
                         phx-hook="RoomVoicePlayer"
                         data-message-id={message.id}
                         data-room-id={@room.id}
                       >
-                        <button class="room-voice-play-btn w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-xs cursor-pointer">▶</button>
-                        <div class="flex-1 h-1 bg-white/20 rounded-full">
-                          <div class="room-voice-progress h-full bg-white rounded-full" style="width: 0%"></div>
+                        <button class="room-voice-play-btn w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white cursor-pointer transition-colors flex-shrink-0">
+                          <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </button>
+                        <%!-- Waveform bars container --%>
+                        <div class="flex-1 flex items-center gap-[2px] h-8 room-voice-waveform">
+                          <% heights = [30, 50, 70, 90, 60, 85, 45, 95, 55, 75, 40, 80, 60, 90, 35, 65, 85, 50, 70, 40] %>
+                          <%= for height <- heights do %>
+                            <div 
+                              class="room-voice-bar w-[3px] rounded-full bg-white/40 transition-all duration-150"
+                              style={"height: #{height}%;"}
+                            ></div>
+                          <% end %>
                         </div>
+                        <%!-- Duration placeholder --%>
+                        <span class="text-[10px] text-white/40 room-voice-time flex-shrink-0">0:00</span>
                         <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
                       </div>
                     <% else %>
@@ -685,7 +701,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             </svg>
           </button>
 
-          <%!-- Text input (minimal, no border) --%>
+          <%!-- Text input --%>
           <input
             type="text"
             value={@new_chat_message}
@@ -695,12 +711,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             class="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none py-2"
             id="unified-message-input"
             autocomplete="off"
-            autocorrect="off"
-            autocapitalize="sentences"
-            inputmode="text"
-            enterkeyhint="send"
-            data-form-type="other"
-            data-lpignore="true"
           />
 
           <%!-- Voice button --%>
