@@ -983,10 +983,11 @@ defmodule FriendsWeb.HomeLive do
   # --- Groups Sheet Events ---
 
   def handle_event("open_groups_sheet", _, socket) do
-    {:noreply, 
+    {:noreply,
      socket
      |> assign(show_groups_sheet: true, group_search_query: "")
-     |> assign(:show_user_menu, false)}
+     |> assign(:show_user_menu, false)
+     |> assign(:show_profile_sheet, false)}
   end
 
   def handle_event("close_groups_sheet", _, socket) do
@@ -995,14 +996,26 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Contact/People Sheet Events ---
 
+  def handle_event("open_contacts_sheet", _, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_contact_sheet, true)
+     |> assign(:show_user_menu, false)
+     |> assign(:show_profile_sheet, false)
+     |> assign(:contact_mode, :list_contacts)
+     |> assign(:contact_sheet_search, "")
+     |> assign(:contact_search_results, [])}
+  end
+
   def handle_event("open_contact_search", params, socket) do
     mode = params["mode"] || "list_contacts"
-    {:noreply, 
-     socket 
-     |> assign(:show_contact_sheet, true) 
+    {:noreply,
+     socket
+     |> assign(:show_contact_sheet, true)
      |> assign(:show_header_dropdown, false)
      |> assign(:show_user_dropdown, false)
      |> assign(:show_user_menu, false)
+     |> assign(:show_profile_sheet, false)
      |> assign(:contact_mode, mode)
      |> assign(:contact_sheet_search, "")
      |> assign(:contact_search_results, [])}
