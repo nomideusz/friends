@@ -275,6 +275,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:chat_expanded, false)
         # Chat visibility toggle
         |> assign(:show_chat, true)
+        # Add menu toggle (unified + button)
+        |> assign(:show_add_menu, false)
         # Live typing - track what other users are typing
         |> assign(:typing_users, %{})
         # FAB and collapsible UI state

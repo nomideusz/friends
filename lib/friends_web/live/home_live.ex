@@ -113,6 +113,15 @@ defmodule FriendsWeb.HomeLive do
     ChatEvents.toggle_chat_visibility(socket)
   end
 
+  # Add menu toggle events (for unified + button)
+  def handle_event("toggle_add_menu", _params, socket) do
+    {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
+  end
+
+  def handle_event("close_add_menu", _params, socket) do
+    {:noreply, assign(socket, :show_add_menu, false)}
+  end
+
   # Room events
   def handle_event("open_room_modal", _params, socket), do: RoomEvents.open_room_modal(socket)
   def handle_event("close_room_modal", _params, socket), do: RoomEvents.close_room_modal(socket)

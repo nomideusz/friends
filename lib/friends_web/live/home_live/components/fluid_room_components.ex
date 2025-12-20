@@ -31,6 +31,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :show_group_sheet, :boolean, default: false
   attr :group_search, :string, default: ""
   attr :show_chat, :boolean, default: true
+  attr :show_add_menu, :boolean, default: false
 
   def fluid_room(assigns) do
     ~H"""
@@ -95,6 +96,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         new_chat_message={@new_chat_message}
         chat_expanded={@chat_expanded}
         show_chat={@show_chat}
+        show_add_menu={@show_add_menu}
       />
 
       <%!-- Unified Group Sheet --%>
@@ -673,6 +675,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :new_chat_message, :string, default: ""
   attr :chat_expanded, :boolean, default: false
   attr :show_chat, :boolean, default: true
+  attr :show_add_menu, :boolean, default: false
 
   def unified_input_bar(assigns) do
     ~H"""
@@ -698,29 +701,56 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             </button>
           <% end %>
 
-          <%!-- Photo button --%>
-          <form id="fluid-upload-form" phx-change="validate" phx-submit="save" class="contents">
-            <label class="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+          <%!-- Unified Add Button (+) with Menu --%>
+          <div class="relative">
+            <%!-- Plus Button --%>
+            <button
+              type="button"
+              phx-click="toggle_add_menu"
+              class="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Add content"
+            >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
               </svg>
-              <%= if @uploads && @uploads[:photo] do %>
-                <.live_file_input upload={@uploads.photo} class="sr-only" />
-              <% end %>
-            </label>
-          </form>
+            </button>
 
-          <%!-- Note button --%>
-          <button
-            type="button"
-            phx-click="open_note_modal"
-            class="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-            title="Add note"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
+            <%!-- Add Menu --%>
+            <%= if @show_add_menu do %>
+              <div class="absolute bottom-full left-0 mb-2 w-32 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <%!-- Photo option --%>
+                <form id="fluid-upload-form" phx-change="validate" phx-submit="save" class="contents">
+                  <label class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors cursor-pointer border-b border-white/5">
+                    <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span class="text-sm text-white/90">Photo</span>
+                    <%= if @uploads && @uploads[:photo] do %>
+                      <.live_file_input upload={@uploads.photo} class="sr-only" />
+                    <% end %>
+                  </label>
+                </form>
+
+                <%!-- Note option --%>
+                <button
+                  type="button"
+                  phx-click="open_note_modal"
+                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span class="text-sm text-white/90">Note</span>
+                </button>
+              </div>
+
+              <%!-- Backdrop to close menu --%>
+              <div
+                class="fixed inset-0 -z-10"
+                phx-click="close_add_menu"
+              ></div>
+            <% end %>
+          </div>
 
           <%!-- Text input --%>
           <input
