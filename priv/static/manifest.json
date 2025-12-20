@@ -1,6 +1,6 @@
 {
-  "name": "Friends - New Internet",
-  "short_name": "Friends",
+  "name": "New Internet",
+  "short_name": "New Internet",
   "description": "Connect with friends in a new way",
   "start_url": "/",
   "display": "standalone",

@@ -1,0 +1,204 @@
+defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
+  @moduledoc """
+  Fluid design profile and settings components.
+  Simple bottom sheet for user profile and settings.
+  """
+  use FriendsWeb, :html
+  import FriendsWeb.HomeLive.Helpers
+
+  # ============================================================================
+  # PROFILE SHEET
+  # Bottom sheet for viewing profile and settings
+  # ============================================================================
+
+  attr :show, :boolean, default: false
+  attr :current_user, :map, required: true
+  attr :devices, :list, default: []
+
+  def profile_sheet(assigns) do
+    ~H"""
+    <%= if @show do %>
+      <div id="profile-sheet" class="fixed inset-0 z-[200]" phx-window-keydown="close_profile_sheet" phx-key="escape">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="close_profile_sheet"
+        ></div>
+
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
+          <div
+            class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col pointer-events-auto"
+            phx-click-away="close_profile_sheet"
+          >
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="close_profile_sheet">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
+
+            <%!-- Profile Header --%>
+            <div class="px-6 pb-6">
+              <div class="flex items-center gap-4">
+                <%!-- Avatar --%>
+                <div
+                  class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-black border-2 border-white/10 shadow-lg flex-shrink-0"
+                  style={"background-color: #{friend_color(@current_user)}"}
+                >
+                  <%= if Map.get(@current_user, :avatar_url) do %>
+                    <img src={@current_user.avatar_url} class="w-full h-full object-cover rounded-full" alt="Avatar" />
+                  <% else %>
+                    {String.first(@current_user.username) |> String.upcase()}
+                  <% end %>
+                </div>
+
+                <%!-- User Info --%>
+                <div class="flex-1 min-w-0">
+                  <h2 class="text-xl font-bold text-white truncate">@{@current_user.username}</h2>
+                  <p class="text-xs text-white/40 font-mono">ID: {@current_user.id}</p>
+                </div>
+              </div>
+            </div>
+
+            <%!-- Content --%>
+            <div class="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+              <%!-- Account Section --%>
+              <div>
+                <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-2">Account</h3>
+                <div class="space-y-1">
+                  <%!-- Devices --%>
+                  <button
+                    phx-click="open_devices_modal"
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Devices</div>
+                        <div class="text-xs text-white/40">{length(@devices)} connected</div>
+                      </div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <%!-- Username (future: allow editing) --%>
+                  <button
+                    phx-click="open_name_modal"
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Username</div>
+                        <div class="text-xs text-white/40">@{@current_user.username}</div>
+                      </div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <%!-- Network Section --%>
+              <div>
+                <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-2">Network</h3>
+                <div class="space-y-1">
+                  <%!-- Friends & Trust --%>
+                  <button
+                    phx-click="open_network_modal"
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Friends & Trust</div>
+                        <div class="text-xs text-white/40">Manage your network</div>
+                      </div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <%!-- Preferences Section --%>
+              <div>
+                <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-2">Preferences</h3>
+                <div class="space-y-1">
+                  <%!-- Color (Avatar Color) --%>
+                  <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Avatar Color</div>
+                        <div class="text-xs text-white/40">Your personal color</div>
+                      </div>
+                    </div>
+                    <div
+                      class="w-8 h-8 rounded-lg border-2 border-white/20"
+                      style={"background-color: #{friend_color(@current_user)}"}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <%!-- About Section --%>
+              <div>
+                <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-widest px-3 mb-2">About</h3>
+                <div class="space-y-1">
+                  <%!-- Version --%>
+                  <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Version</div>
+                        <div class="text-xs text-white/40">New Internet v0.1</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <%!-- Footer - Sign Out --%>
+            <div class="px-4 py-4 border-t border-white/5 bg-black/40 backdrop-blur-md">
+              <button
+                phx-click="sign_out"
+                class="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 hover:text-red-300 transition-all font-medium"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+end

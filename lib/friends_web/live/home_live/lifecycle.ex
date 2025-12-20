@@ -136,6 +136,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:group_search_query, "")
         |> assign(:group_search_results, [])
         |> assign(:show_contact_sheet, false)
+        |> assign(:show_profile_sheet, false)
         |> assign(:contact_mode, :list_contacts)
         |> assign(:contact_sheet_search, "")
         |> assign(:contact_search_results, [])
@@ -275,6 +276,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:chat_expanded, false)
         # Chat visibility toggle
         |> assign(:show_chat, true)
+        # Add menu toggle (unified + button)
+        |> assign(:show_add_menu, false)
         # Live typing - track what other users are typing
         |> assign(:typing_users, %{})
         # FAB and collapsible UI state
@@ -303,6 +306,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:trusted_friends, [])
         |> assign(:outgoing_trust_requests, [])
         |> assign(:show_contact_sheet, false)
+        |> assign(:show_profile_sheet, false)
         |> assign(:contact_mode, :list_contacts)
         |> assign(:contact_sheet_search, "")
         |> assign(:contact_search_results, [])
