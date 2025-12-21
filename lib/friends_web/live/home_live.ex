@@ -74,6 +74,14 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
   end
 
+  def handle_event("open_profile_sheet", _params, socket) do
+    {:noreply, assign(socket, :show_profile_sheet, true)}
+  end
+
+  def handle_event("close_profile_sheet", _params, socket) do
+    {:noreply, assign(socket, :show_profile_sheet, false)}
+  end
+
   # --- Home Orb Events ---
 
   def handle_event("go_home", _params, socket) do
