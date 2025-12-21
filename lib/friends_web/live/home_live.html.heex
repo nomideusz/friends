@@ -461,6 +461,16 @@
     <%!-- End of main layout container --%>
     </div>
 
+    <%!-- Bottom Toolbar --%>
+    <.bottom_toolbar
+      context={assigns[:toolbar_context] || :feed}
+      current_user={@current_user}
+      room={@room}
+      show_chat={Map.get(assigns, :show_chat, true)}
+      unread_count={0}
+      online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+    />
+
     <% else %>
       <%!-- Guests Landing --%>
       <div class="max-w-md mx-auto mt-20 text-center">

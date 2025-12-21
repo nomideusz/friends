@@ -13,6 +13,7 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidContactComponents
   import FriendsWeb.HomeLive.Components.FluidGroupComponents
   import FriendsWeb.HomeLive.Components.FluidProfileComponents
+  import FriendsWeb.HomeLive.Components.FluidBottomToolbar
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -719,8 +720,34 @@ defmodule FriendsWeb.HomeLive do
   end
 
 
-
   # --- Corner Navigation Events ---
+
+  # --- Bottom Toolbar Events ---
+
+  def handle_event("open_create_menu", _params, socket) do
+    # Open create menu - for now, open create group modal on feed, or add menu in room
+    if socket.assigns[:room] do
+      {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
+    else
+      {:noreply, assign(socket, :create_group_modal, true)}
+    end
+  end
+
+  def handle_event("open_omnibox", _params, socket) do
+    # Phase 2 feature - for now show contacts sheet as fallback
+    {:noreply, 
+     socket
+     |> assign(:show_contact_sheet, true)
+     |> assign(:contact_mode, :search_contacts)}
+  end
+
+  def handle_event("open_room_settings", _params, socket) do
+    # Open room settings - for now open group sheet with room members
+    {:noreply,
+     socket
+     |> assign(:show_contact_sheet, true)
+     |> assign(:contact_mode, :manage_members)}
+  end
 
   def handle_event("open_create_group", _params, socket) do
     {:noreply, assign(socket, :create_group_modal, true)}

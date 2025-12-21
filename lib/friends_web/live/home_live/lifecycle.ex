@@ -94,9 +94,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:join_code, "")
         |> assign(:current_route, "/")
         |> assign(:show_header_dropdown, false)
-        # Required for layout to not crash
         |> assign(:room_access_denied, false)
         |> assign(:feed_mode, "dashboard")
+        |> assign(:toolbar_context, :feed)
         |> assign(:show_nav_menu, false)
         |> assign(:show_create_menu, false)
         # Public feed assigns
@@ -270,6 +270,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:item_count, length(items))
         |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
         |> assign(:feed_mode, "room")
+        |> assign(:toolbar_context, :room)
         # "content" or "chat"
         |> assign(:room_tab, "content")
         |> assign(
