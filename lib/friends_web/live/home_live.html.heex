@@ -475,7 +475,7 @@
       current_user={@current_user}
       room={@room}
       show_chat={Map.get(assigns, :show_chat, true)}
-      unread_count={0}
+      unread_count={Map.get(assigns, :total_unread_count, 0)}
       online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
     />
 

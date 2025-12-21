@@ -29,7 +29,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
               <.toolbar_button icon="plus" label="Create" event="open_create_menu" />
               <.toolbar_button icon="chat" label="Chats" event="open_groups_sheet" badge={@unread_count} />
-              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" />
+              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} />
             <% :room -> %>
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
@@ -45,7 +45,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
               <.toolbar_button icon="plus" label="Create" event="open_create_menu" />
               <.toolbar_button icon="chat" label="Chats" event="open_groups_sheet" />
-              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" />
+              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} />
           <% end %>
         </nav>
       </div>
@@ -99,6 +99,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
 
   attr :current_user, :map, required: true
   attr :event, :string, required: true
+  attr :online_count, :integer, default: 0
 
   defp toolbar_avatar(assigns) do
     ~H"""
@@ -107,14 +108,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
       phx-click={@event}
       class="relative flex flex-col items-center justify-center w-16 h-14 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
     >
-      <div
-        class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-black border-2 border-white/20 overflow-hidden"
-        style={"background-color: #{friend_color(@current_user)}"}
-      >
-        <%= if Map.get(@current_user, :avatar_url) do %>
-          <img src={@current_user.avatar_url} class="w-full h-full object-cover" alt="You" />
-        <% else %>
-          {String.first(@current_user.username) |> String.upcase()}
+      <div class="relative">
+        <div
+          class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-black border-2 border-white/20 overflow-hidden"
+          style={"background-color: #{friend_color(@current_user)}"}
+        >
+          <%= if Map.get(@current_user, :avatar_url) do %>
+            <img src={@current_user.avatar_url} class="w-full h-full object-cover" alt="You" />
+          <% else %>
+            {String.first(@current_user.username) |> String.upcase()}
+          <% end %>
+        </div>
+        <%!-- Online friend indicator --%>
+        <%= if @online_count > 0 do %>
+          <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-neutral-900 animate-pulse"></span>
         <% end %>
       </div>
       <span class="text-[10px] mt-1 font-medium text-white/50">You</span>

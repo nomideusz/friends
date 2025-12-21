@@ -107,6 +107,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:pending_requests, pending_requests)
         |> assign(:user_private_rooms, user_private_rooms)
         |> assign(:direct_rooms, direct_rooms)
+        |> assign(:total_unread_count, Social.get_total_unread_count(session_user.id))
         |> assign(:devices, devices)
         |> assign(:show_devices_modal, false)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
