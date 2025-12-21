@@ -48,7 +48,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidOmnibox do
               autocomplete="off"
               autofocus
               class="w-full pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
-              style="padding-left: 3.5rem;"
+              style="padding-left: 3rem;"
             />
             <button
               type="button"
