@@ -211,20 +211,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <circle cx="19" cy="12" r="2" />
           </svg>
         </button>
-
-        <%!-- User Avatar (Menu + Long Press Graph) --%>
-        <button
-          id="room-user-orb"
-          phx-click="toggle_user_menu"
-          phx-hook="LongPressOrb"
-          data-long-press-duration="3000"
-          data-long-press-event="show_fullscreen_graph"
-          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer ml-2"
-        >
-          <span class="text-xs font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
-        </button>
       </div>
-    </div>
     """
   end
 
@@ -561,7 +548,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
     <%= if @show_chat && (@has_messages or @chat_expanded or @has_typing) do %>
       <div
         id="fluid-chat-overlay"
-        class="fixed bottom-20 left-0 right-0 z-40 pointer-events-none"
+        class="fixed bottom-36 left-0 right-0 z-40 pointer-events-none"
       >
         <div class="max-w-lg mx-auto px-4 pointer-events-auto">
           <%!-- Chat container with glass effect --%>
@@ -679,7 +666,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
   def unified_input_bar(assigns) do
     ~H"""
-    <div class="fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-t from-black via-black/95 to-transparent">
+    <div class="fixed bottom-16 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-t from-black via-black/95 to-transparent">
       <div class="max-w-lg mx-auto">
         <div
           id="unified-input-area"
