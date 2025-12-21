@@ -212,6 +212,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           </svg>
         </button>
       </div>
+    </div>
     """
   end
 
