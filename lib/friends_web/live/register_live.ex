@@ -247,6 +247,7 @@ defmodule FriendsWeb.RegisterLive do
                 <div>
                   <label class="block text-xs text-white/40 mb-2 uppercase tracking-wider font-medium">username</label>
                   <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-lg font-mono">@</span>
                     <input
                       type="text"
                       name="username"
@@ -256,7 +257,7 @@ defmodule FriendsWeb.RegisterLive do
                       autocomplete="off"
                       autofocus
                       class={[
-                        "w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder:text-white/30 focus:outline-none font-mono transition-all",
+                        "w-full pl-10 pr-20 py-3 bg-white/5 border rounded-xl text-white placeholder:text-white/30 focus:outline-none font-mono transition-all",
                         @username_available == true && "border-green-500/70 focus:border-green-500",
                         @username_available == false && "border-red-500/70 focus:border-red-500",
                         @username_available == nil && "border-white/10 focus:border-white/30"
