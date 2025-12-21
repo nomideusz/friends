@@ -91,6 +91,18 @@
     uploads={@uploads}
   />
 
+  <%!-- Room Chat Sheet (opens from Chat button on room toolbar) --%>
+  <%= if assigns[:room] do %>
+    <.chat_sheet
+      show={assigns[:show_chat]}
+      room={@room}
+      room_messages={assigns[:room_messages] || []}
+      current_user={@current_user}
+      new_chat_message={assigns[:new_chat_message] || ""}
+      typing_users={assigns[:typing_users] || %{}}
+    />
+  <% end %>
+
   <%!-- Fluid Note Modal --%>
   <.fluid_note_modal show={assigns[:show_note_modal]} action={assigns[:note_modal_action] || "post_feed_note"} />
 

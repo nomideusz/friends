@@ -89,15 +89,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         viewers={@viewers}
       />
 
-      <%!-- Chat Sheet (opens from toolbar) --%>
-      <.chat_sheet
-        show={@show_chat}
-        room={@room}
-        room_messages={@room_messages}
-        current_user={@current_user}
-        new_chat_message={@new_chat_message}
-        typing_users={@typing_users}
-      />
+      <%!-- Note: Chat Sheet is rendered in home_live.html.heex for proper z-index --%>
     </div>
     """
   end

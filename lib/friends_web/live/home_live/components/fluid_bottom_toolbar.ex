@@ -124,7 +124,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
           <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-neutral-900 animate-pulse"></span>
         <% end %>
       </div>
-      <span class="text-[10px] mt-1 font-medium text-white/50">You</span>
+      <span class="text-[10px] mt-1 font-medium text-white/50 truncate max-w-[3rem]">@{@current_user.username}</span>
     </button>
     """
   end
