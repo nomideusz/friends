@@ -164,7 +164,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
           accept: ~w(.jpg .jpeg .png .gif .webp),
           max_entries: 1,
           max_file_size: 5_000_000,
-          auto_upload: true
+          auto_upload: true,
+          progress: &FriendsWeb.HomeLive.handle_avatar_progress/3
         )
 
       socket = SessionEvents.maybe_bootstrap_identity(socket, get_connect_params(socket))
