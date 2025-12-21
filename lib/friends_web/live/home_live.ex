@@ -14,6 +14,7 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidGroupComponents
   import FriendsWeb.HomeLive.Components.FluidProfileComponents
   import FriendsWeb.HomeLive.Components.FluidBottomToolbar
+  import FriendsWeb.HomeLive.Components.FluidOmnibox
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -733,12 +734,117 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  # --- Omnibox Search Handlers ---
+
   def handle_event("open_omnibox", _params, socket) do
-    # Phase 2 feature - for now show contacts sheet as fallback
     {:noreply, 
      socket
-     |> assign(:show_contact_sheet, true)
-     |> assign(:contact_mode, :search_contacts)}
+     |> assign(:show_omnibox, true)
+     |> assign(:omnibox_query, "")
+     |> assign(:omnibox_results, %{people: [], groups: [], actions: []})}
+  end
+
+  def handle_event("close_omnibox", _params, socket) do
+    {:noreply, assign(socket, :show_omnibox, false)}
+  end
+
+  def handle_event("omnibox_search", %{"value" => query}, socket) do
+    results = perform_omnibox_search(socket, query)
+    {:noreply,
+     socket
+     |> assign(:omnibox_query, query)
+     |> assign(:omnibox_results, results)}
+  end
+
+  def handle_event("omnibox_select_person", %{"id" => id_str}, socket) do
+    # Open DM with this person
+    case Integer.parse(id_str) do
+      {user_id, _} ->
+        if socket.assigns.current_user do
+          case Social.get_or_create_dm_room(socket.assigns.current_user.id, user_id) do
+            {:ok, room} ->
+              {:noreply,
+               socket
+               |> assign(:show_omnibox, false)
+               |> push_navigate(to: ~p"/r/#{room.code}")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not open chat")}
+          end
+        else
+          {:noreply, put_flash(socket, :error, "Please log in")}
+        end
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("omnibox_select_group", %{"code" => code}, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_omnibox, false)
+     |> push_navigate(to: ~p"/r/#{code}")}
+  end
+
+  def handle_event("omnibox_action", %{"action" => action}, socket) do
+    socket = assign(socket, :show_omnibox, false)
+    
+    case action do
+      "open_create_group_modal" ->
+        {:noreply, assign(socket, :create_group_modal, true)}
+      "open_contacts_sheet" ->
+        {:noreply, 
+         socket
+         |> assign(:show_contact_sheet, true)
+         |> assign(:contact_mode, :invite_members)}
+      "open_profile_sheet" ->
+        {:noreply, assign(socket, :show_profile_sheet, true)}
+      "show_fullscreen_graph" ->
+        {:noreply, 
+         socket
+         |> assign(:show_fullscreen_graph, true)
+         |> assign(:fullscreen_graph_data, FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data())}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  defp perform_omnibox_search(socket, query) do
+    query = String.trim(query)
+    
+    cond do
+      query == "" ->
+        %{people: [], groups: [], actions: []}
+        
+      String.starts_with?(query, "@") ->
+        # People search
+        username_query = String.trim_leading(query, "@")
+        people = if username_query != "", do: Social.search_users(username_query, limit: 5), else: []
+        %{people: people, groups: [], actions: []}
+        
+      String.starts_with?(query, "#") ->
+        # Group search  
+        group_query = String.trim_leading(query, "#")
+        groups = if group_query != "" and socket.assigns.current_user do
+          Social.search_user_groups(socket.assigns.current_user.id, group_query, limit: 5)
+        else
+          []
+        end
+        %{people: [], groups: groups, actions: []}
+        
+      String.starts_with?(query, "/") ->
+        # Actions handled in template
+        %{people: [], groups: [], actions: []}
+        
+      true ->
+        # General search - search both people and groups
+        people = Social.search_users(query, limit: 3)
+        groups = if socket.assigns.current_user do
+          Social.search_user_groups(socket.assigns.current_user.id, query, limit: 3)
+        else
+          []
+        end
+        %{people: people, groups: groups, actions: []}
+    end
   end
 
   def handle_event("open_room_settings", _params, socket) do

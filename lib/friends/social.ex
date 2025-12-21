@@ -498,6 +498,40 @@ defmodule Friends.Social do
   def search_users(_, _), do: []
 
   @doc """
+  Search users by username or display name with keyword options.
+  Used by omnibox search.
+  """
+  def search_users(query, opts) when is_binary(query) and is_list(opts) do
+    limit = Keyword.get(opts, :limit, 20)
+    pattern = "%#{String.trim(query)}%"
+
+    if byte_size(String.trim(query)) >= 1 do
+      Repo.all(
+        from u in User,
+          where: ilike(u.username, ^pattern) or ilike(u.display_name, ^pattern),
+          order_by: [asc: u.username],
+          limit: ^limit
+      )
+    else
+      []
+    end
+  end
+
+  @doc """
+  Search user's groups by name.
+  """
+  def search_user_groups(user_id, query, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 10)
+    pattern = "%#{String.trim(query)}%"
+    
+    if byte_size(String.trim(query)) >= 1 do
+      Rooms.search_user_groups(user_id, pattern, limit)
+    else
+      []
+    end
+  end
+
+  @doc """
   Search among user's existing friends/contacts.
   Used when adding members to rooms (only from contacts, not all users).
   """

@@ -393,6 +393,23 @@ defmodule Friends.Social.Rooms do
     )
   end
 
+  @doc """
+  Search user's groups by name or code.
+  Used by omnibox search.
+  """
+  def search_user_groups(user_id, pattern, limit \\ 10) do
+    Repo.all(
+      from r in Room,
+        join: m in RoomMember,
+        on: m.room_id == r.id,
+        where: m.user_id == ^user_id and r.room_type == "private" and
+          (ilike(r.name, ^pattern) or ilike(r.code, ^pattern)),
+        order_by: [desc: r.updated_at],
+        limit: ^limit,
+        preload: [:members]
+    )
+  end
+
   # --- DM Rooms ---
   
   # Using friends.social.rooms for DM rooms makes sense as they are rooms
