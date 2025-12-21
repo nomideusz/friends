@@ -482,7 +482,7 @@ defmodule Friends.Social do
     end
   end
 
-  def search_users(query, current_user_id) when is_binary(query) and byte_size(query) >= 2 do
+  def search_users(query, current_user_id) when is_binary(query) and is_integer(current_user_id) and byte_size(query) >= 2 do
     pattern = "%#{query}%"
 
     Repo.all(
@@ -494,8 +494,6 @@ defmodule Friends.Social do
         limit: 20
     )
   end
-
-  def search_users(_, _), do: []
 
   @doc """
   Search users by username or display name with keyword options.
@@ -516,6 +514,8 @@ defmodule Friends.Social do
       []
     end
   end
+
+  def search_users(_, _), do: []
 
   @doc """
   Search user's groups by name.
