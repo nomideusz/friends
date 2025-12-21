@@ -66,6 +66,14 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :fab_expanded, !socket.assigns[:fab_expanded])}
   end
 
+  def handle_event("toggle_chat_visibility", _params, socket) do
+    ChatEvents.toggle_chat_visibility(socket)
+  end
+
+  def handle_event("toggle_add_menu", _params, socket) do
+    {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
+  end
+
   # --- Home Orb Events ---
 
   def handle_event("go_home", _params, socket) do

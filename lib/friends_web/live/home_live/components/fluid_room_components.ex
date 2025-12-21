@@ -88,6 +88,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         group_search={@group_search}
         viewers={@viewers}
       />
+
+      <%!-- Chat Sheet (opens from toolbar) --%>
+      <.chat_sheet
+        show={@show_chat}
+        room={@room}
+        room_messages={@room_messages}
+        current_user={@current_user}
+        new_chat_message={@new_chat_message}
+        typing_users={@typing_users}
+      />
     </div>
     """
   end
@@ -1020,6 +1030,144 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         <% else %>
           <p class="text-neutral-700 text-xs mt-4">ask the owner to invite you</p>
         <% end %>
+      </div>
+    <% end %>
+    """
+  end
+  # ============================================================================
+  # CHAT SHEET
+  # Full-screen chat overlay opened from toolbar
+  # ============================================================================
+
+  attr :show, :boolean, default: false
+  attr :room, :map, required: true
+  attr :room_messages, :list, default: []
+  attr :current_user, :map, required: true
+  attr :new_chat_message, :string, default: ""
+  attr :typing_users, :map, default: %{}
+
+  def chat_sheet(assigns) do
+    has_typing = map_size(assigns.typing_users) > 0
+    assigns = assign(assigns, :has_typing, has_typing)
+
+    ~H"""
+    <%= if @show do %>
+      <div class="fixed inset-0 z-[150]" phx-window-keydown="toggle_chat_visibility" phx-key="escape">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="toggle_chat_visibility"
+        ></div>
+
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
+          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col">
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_chat_visibility">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
+
+            <%!-- Messages --%>
+            <div
+              id="chat-sheet-messages"
+              class="flex-1 overflow-y-auto px-4 pb-4 space-y-3"
+              phx-hook="RoomChatScroll"
+              data-room-id={@room.id}
+            >
+              <%= if @room_messages == [] do %>
+                <div class="flex items-center justify-center py-12 text-white/30 text-sm">
+                  No messages yet
+                </div>
+              <% else %>
+                <%= for message <- @room_messages do %>
+                  <div class={"flex flex-col #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
+                    <%= if message.sender_id != @current_user.id do %>
+                      <span class="text-[10px] text-white/30 mb-1 ml-1">@{message.sender.username}</span>
+                    <% end %>
+
+                    <div class={"max-w-[85%] px-3 py-2 rounded-2xl #{if message.sender_id == @current_user.id, do: "bg-blue-500/20 rounded-tr-sm", else: "bg-white/5 rounded-tl-sm"}"}>
+                      <%= if message.content_type == "voice" do %>
+                        <%!-- Voice message --%>
+                        <div
+                          class="flex items-center gap-3 min-w-[200px]"
+                          id={"chat-sheet-voice-#{message.id}"}
+                          phx-hook="RoomVoicePlayer"
+                          data-message-id={message.id}
+                          data-room-id={@room.id}
+                        >
+                          <button class="room-voice-play-btn w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-white/20 transition-all">
+                            <svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </button>
+                          <div class="flex-1 flex items-center gap-[2px] h-6 room-voice-waveform">
+                            <% heights = [30, 50, 70, 90, 60, 85, 45, 95, 55, 75] %>
+                            <%= for height <- heights do %>
+                              <div class="room-voice-bar w-[3px] rounded-full bg-white/30" style={"height: #{height}%;"}></div>
+                            <% end %>
+                          </div>
+                          <span class="text-[10px] text-white/50 room-voice-time">0:00</span>
+                          <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
+                        </div>
+                      <% else %>
+                        <%!-- Text message --%>
+                        <p
+                          class="text-sm text-white/90 room-decrypted-content"
+                          id={"chat-sheet-msg-#{message.id}"}
+                          data-encrypted={Base.encode64(message.encrypted_content)}
+                          data-nonce={Base.encode64(message.nonce)}
+                        >
+                          <span class="text-white/30">...</span>
+                        </p>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+
+              <%!-- Typing indicators --%>
+              <%= for {user_id, typing_info} <- @typing_users do %>
+                <div class="flex flex-col items-start animate-in fade-in duration-200" id={"typing-sheet-#{user_id}"}>
+                  <span class="text-[10px] text-blue-400/60 mb-1 ml-1">@{typing_info.username} is typing...</span>
+                  <div class="max-w-[85%] px-3 py-2 rounded-2xl bg-blue-500/10 rounded-tl-sm border border-blue-500/20">
+                    <p class="text-sm text-white/40 italic">
+                      {typing_info.text}<span class="animate-pulse">│</span>
+                    </p>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <%!-- Input --%>
+            <div class="px-4 pb-4 pt-2 border-t border-white/5">
+              <div
+                id="chat-sheet-input-area"
+                class="flex items-center gap-2"
+                phx-hook="RoomChatEncryption"
+                data-room-id={@room.id}
+              >
+                <input
+                  type="text"
+                  value={@new_chat_message}
+                  phx-keyup="update_chat_message"
+                  placeholder="Message..."
+                  style="font-size: 16px;"
+                  class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                  id="chat-sheet-input"
+                  autocomplete="off"
+                />
+                <button
+                  id="chat-sheet-send-btn"
+                  class={"w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-blue-500 text-white", else: "bg-white/10 text-white/40"}"}
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     <% end %>
     """
