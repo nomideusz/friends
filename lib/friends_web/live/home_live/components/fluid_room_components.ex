@@ -76,28 +76,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         <% end %>
       </div>
 
-      <%!-- Fluid Chat Overlay (contextual) --%>
-      <.fluid_chat_overlay
-        room={@room}
-        room_messages={@room_messages}
-        current_user={@current_user}
-        new_chat_message={@new_chat_message}
-        chat_expanded={@chat_expanded}
-        typing_users={@typing_users}
-        show_chat={@show_chat}
-      />
-
-      <%!-- Unified Input Bar (always visible at bottom) --%>
-      <.unified_input_bar
-        room={@room}
-        uploads={@uploads}
-        uploading={@uploading}
-        recording_voice={@recording_voice}
-        new_chat_message={@new_chat_message}
-        chat_expanded={@chat_expanded}
-        show_chat={@show_chat}
-        show_add_menu={@show_add_menu}
-      />
+      <%!-- Note: Chat is now handled by the bottom toolbar --%>
 
       <%!-- Unified Group Sheet --%>
       <.group_sheet
