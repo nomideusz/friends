@@ -15,8 +15,6 @@ RUN apt-get update -y && apt-get install -y build-essential git curl \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get update -y \
     && apt-get install -y nodejs \
-    && echo "=== Node.js version ===" && node --version && npm --version \
-    && node -e "const v=process.versions.node.split('.'); if(+v[0]<20||(v[0]=='20'&&+v[1]<6)){console.error('Node 20.6+ required, got',process.versions.node);process.exit(1)}" \
     && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /app
@@ -34,18 +32,15 @@ RUN mkdir config
 COPY config/config.exs config/${MIX_ENV}.exs config/
 RUN mix deps.compile
 
-# Bust cache to ensure fresh code copy
-ADD https://www.google.com /time.now
-
 # Copy app
 COPY priv priv
 COPY assets assets
 COPY lib lib
 
 # Build assets
+# NOTE: We skip manual `node build.js` here because `mix assets.deploy` runs it.
 WORKDIR /app/assets
 RUN npm ci --prefer-offline --no-audit
-RUN node build.js --deploy
 
 # Tailwind (if configured via mix)
 WORKDIR /app
@@ -86,6 +81,9 @@ COPY --from=build /app/_build/prod/rel/friends ./
 
 # Copy migrate/start wrapper
 COPY rel/migrate_and_start.sh /app/migrate_and_start.sh
+
+# Fix line endings (CRLF -> LF) to prevent "exec format error" or "no such file" on Linux
+RUN sed -i 's/\r$//' /app/migrate_and_start.sh
 RUN chmod +x /app/migrate_and_start.sh
 
 EXPOSE 4000
