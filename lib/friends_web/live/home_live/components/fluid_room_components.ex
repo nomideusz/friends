@@ -1052,7 +1052,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
     ~H"""
     <%= if @show do %>
-      <div class="fixed inset-0 z-[150]" phx-window-keydown="toggle_chat_visibility" phx-key="escape">
+      <div class="fixed inset-0 z-[200]" phx-window-keydown="toggle_chat_visibility" phx-key="escape">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"

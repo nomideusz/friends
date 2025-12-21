@@ -85,6 +85,12 @@
     current_user={@current_user}
   />
 
+  <%!-- Feed Add Sheet (opens from + button on feed) --%>
+  <.feed_add_sheet
+    show={assigns[:show_add_menu] && assigns[:toolbar_context] == :feed}
+    uploads={@uploads}
+  />
+
   <%!-- Fluid Note Modal --%>
   <.fluid_note_modal show={assigns[:show_note_modal]} action={assigns[:note_modal_action] || "post_feed_note"} />
 

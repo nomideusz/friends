@@ -60,12 +60,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         <% end %>
       </div>
 
-      <%!-- Unified Input Bar (photo, note, voice - no chat) --%>
-      <.feed_input_bar
-        uploads={@uploads}
-        uploading={@uploading}
-        recording_voice={@recording_voice}
-      />
+      <%!-- Note: Content creation is now handled by toolbar's + button --%>
     </div>
     """
   end
@@ -654,5 +649,97 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
     Enum.at(colors, rem(id, length(colors)))
   end
   defp user_color(_), do: "#888"
+
+  # ============================================================================
+  # FEED ADD SHEET
+  # Bottom sheet for adding content from feed toolbar's + button
+  # ============================================================================
+
+  attr :show, :boolean, default: false
+  attr :uploads, :map, default: nil
+
+  def feed_add_sheet(assigns) do
+    ~H"""
+    <%= if @show do %>
+      <div class="fixed inset-0 z-[200]" phx-window-keydown="toggle_add_menu" phx-key="escape">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="toggle_add_menu"
+        ></div>
+
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
+          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl">
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_add_menu">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
+
+            <%!-- Options --%>
+            <div class="px-4 pb-8 grid grid-cols-4 gap-4">
+              <%!-- Photo --%>
+              <form id="feed-add-sheet-upload" phx-change="validate_feed_photo" phx-submit="save_feed_photo" class="contents">
+                <label class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer">
+                  <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span class="text-xs text-white/70">Photo</span>
+                  <%= if @uploads && @uploads[:feed_photo] do %>
+                    <.live_file_input upload={@uploads.feed_photo} class="sr-only" />
+                  <% end %>
+                </label>
+              </form>
+
+              <%!-- Note --%>
+              <button
+                type="button"
+                phx-click="open_feed_note_modal"
+                class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+              >
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <span class="text-xs text-white/70">Note</span>
+              </button>
+
+              <%!-- Voice --%>
+              <button
+                id="feed-add-sheet-voice"
+                phx-hook="FeedVoiceRecorder"
+                class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+              >
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <span class="text-xs text-white/70">Voice</span>
+              </button>
+
+              <%!-- New Group --%>
+              <button
+                type="button"
+                phx-click="open_create_group_modal"
+                class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+              >
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <span class="text-xs text-white/70">Group</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
 end
 
