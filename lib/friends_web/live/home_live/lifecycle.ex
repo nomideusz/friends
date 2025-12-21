@@ -53,15 +53,25 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       end
 
       # Load initial public feed items and contacts
-      feed_items = Social.list_public_feed_items(session_user.id, 20)
+      # Admin sees ALL content, regular users see contacts only
+      is_admin = Social.is_admin?(session_user)
+      feed_items = if is_admin do
+        Social.list_admin_feed_items(20)
+      else
+        Social.list_public_feed_items(session_user.id, 20)
+      end
       friends = Social.list_friends(session_user.id)
       trusted_friends = Social.list_trusted_friends(session_user.id)
       incoming_trust_requests = Social.list_pending_trust_requests(session_user.id)
       pending_requests = Social.list_friend_requests(session_user.id)
       devices = Social.list_user_devices(session_user.id)
       
-      # Fetch navigation lists
-      user_private_rooms = Social.list_user_groups(session_user.id)
+      # Fetch navigation lists - admin sees ALL groups, regular users see their own
+      user_private_rooms = if is_admin do
+        Social.list_all_groups(100)
+      else
+        Social.list_user_groups(session_user.id)
+      end
       direct_rooms = Social.list_user_dms(session_user.id)
 
       # Get online friend IDs for presence indicators

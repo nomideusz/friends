@@ -241,7 +241,11 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
             {:noreply, put_flash(socket, :error, "not found")}
 
           photo ->
-            if photo.user_id == socket.assigns.user_id do
+            # Allow deletion if owner OR admin
+            is_owner = photo.user_id == socket.assigns.user_id
+            is_admin = Social.is_admin?(socket.assigns.current_user)
+
+            if is_owner or is_admin do
               room_code = if socket.assigns[:room], do: socket.assigns.room.code, else: nil
               case Social.delete_photo(photo_id, room_code) do
                 {:ok, _} ->
@@ -272,6 +276,37 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
               {:noreply, put_flash(socket, :error, "not yours")}
             end
         end
+    end
+  end
+
+  @doc """
+  Deletes an entire gallery (batch) of photos. Admin only.
+  """
+  def delete_gallery(socket, batch_id) do
+    current_user = socket.assigns.current_user
+
+    if Social.is_admin?(current_user) do
+      case Social.delete_gallery(batch_id) do
+        {:ok, count} ->
+          # Remove gallery from stream
+          socket =
+            if socket.assigns[:feed_item_count] do
+              socket
+              |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
+              |> stream_delete(:feed_items, %{id: "gallery-#{batch_id}", unique_id: "gallery-#{batch_id}", type: :gallery})
+            else
+              socket
+              |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
+              |> stream_delete(:items, %{id: "gallery-#{batch_id}", unique_id: "gallery-#{batch_id}"})
+            end
+
+          {:noreply, put_flash(socket, :info, "Deleted #{count} photos")}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Delete failed")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "Admin only")}
     end
   end
 

@@ -75,7 +75,17 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
         {:noreply, put_flash(socket, :error, "invalid id")}
 
       {:ok, note_id} ->
-        case Social.delete_note(note_id, socket.assigns.user_id, socket.assigns.room.code) do
+        room_code = if socket.assigns[:room], do: socket.assigns.room.code, else: nil
+        is_admin = Social.is_admin?(socket.assigns.current_user)
+
+        # Use admin delete if admin, otherwise regular delete
+        result = if is_admin do
+          Social.admin_delete_note(note_id, room_code)
+        else
+          Social.delete_note(note_id, socket.assigns.user_id, room_code)
+        end
+
+        case result do
           {:ok, _} ->
             {:noreply,
              socket

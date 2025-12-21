@@ -332,8 +332,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   attr :feed_items, :list, required: true
   attr :current_user, :map, required: true
+  attr :is_admin, :boolean, default: false
 
   def fluid_feed_grid(assigns) do
+    # Check if current user is admin
+    is_admin = Friends.Social.is_admin?(assigns.current_user)
+    assigns = assign(assigns, :is_admin, is_admin)
+
     ~H"""
     <div
       id="fluid-feed-grid"
@@ -341,7 +346,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
       class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 p-1"
     >
       <%= for {dom_id, item} <- @feed_items do %>
-        <.fluid_feed_item id={dom_id} item={item} current_user={@current_user} />
+        <.fluid_feed_item id={dom_id} item={item} current_user={@current_user} is_admin={@is_admin} />
       <% end %>
     </div>
     """
@@ -350,6 +355,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   attr :id, :string, required: true
   attr :item, :map, required: true
   attr :current_user, :map, required: true
+  attr :is_admin, :boolean, default: false
 
   def fluid_feed_item(assigns) do
     ~H"""
@@ -376,6 +382,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
           </div>
           <%!-- Hover overlay --%>
           <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <%!-- Delete gallery button (admin only) --%>
+          <%= if @is_admin do %>
+            <button
+              type="button"
+              phx-click="delete_gallery"
+              phx-value-batch_id={@item.batch_id}
+              data-confirm="Delete entire gallery (#{@item.photo_count} photos)?"
+              class="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center z-10"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          <% end %>
         </div>
 
       <% :photo -> %>
@@ -383,7 +403,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
           <%!-- Voice Note --%>
           <div
             id={@id}
-            class="aspect-square relative overflow-hidden bg-neutral-900 flex items-center justify-center"
+            class="aspect-square relative overflow-hidden bg-neutral-900 flex items-center justify-center group"
             phx-hook="FeedVoicePlayer"
             data-item-id={@item.id}
             data-content-type={@item.content_type}
@@ -394,6 +414,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
+            <%!-- Delete button for owner or admin --%>
+            <%= if @item.user_id == "user-#{@current_user.id}" or @is_admin do %>
+              <button
+                type="button"
+                phx-click="delete_photo"
+                phx-value-id={@item.id}
+                data-confirm="Delete this voice message?"
+                class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center z-10"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            <% end %>
           </div>
         <% else %>
           <%!-- Photo --%>
@@ -416,8 +450,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
             <%!-- Hover overlay --%>
             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-            <%!-- Delete button (own photos only) --%>
-            <%= if @item.user_id == @current_user.id do %>
+            <%!-- Delete button (owner or admin) --%>
+            <% is_owner = @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id %>
+            <%= if is_owner or @is_admin do %>
               <button
                 type="button"
                 phx-click="delete_photo"
@@ -447,8 +482,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
             <span class="text-[10px] text-white/40">@{@item.user_name}</span>
           </div>
 
-          <%!-- Delete button (own notes only) --%>
-          <%= if @item.user_id == @current_user.id do %>
+          <%!-- Delete button (owner or admin) --%>
+          <% is_owner = @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id %>
+          <%= if is_owner or @is_admin do %>
             <button
               type="button"
               phx-click="delete_note"

@@ -306,7 +306,7 @@ defmodule FriendsWeb.AuthLive do
             
             <form phx-change="check_username" phx-submit="continue">
               <div class="relative mb-4">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">@</span>
+                <span class="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-500 text-lg font-mono">@</span>
                 <input
                   type="text"
                   name="username"
@@ -315,8 +315,9 @@ defmodule FriendsWeb.AuthLive do
                   placeholder="username"
                   autocomplete="username"
                   autofocus
+                  style="padding-left: 2.2rem !important;"
                   class={[
-                    "w-full pl-8 pr-20 py-4 bg-black/30 border rounded-xl text-white placeholder:text-neutral-600 focus:outline-none font-mono text-lg transition-all",
+                    "w-full pr-20 py-4 bg-black/30 border rounded-xl text-white placeholder:text-neutral-600 focus:outline-none font-mono text-lg transition-all",
                     @mode == :register && "border-emerald-500",
                     @mode == :login && "border-blue-500",
                     @mode == nil && "border-white/10 focus:border-white/30"

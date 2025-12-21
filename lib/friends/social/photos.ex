@@ -427,6 +427,43 @@ defmodule Friends.Social.Photos do
     end
   end
 
+  @doc """
+  Delete all photos in a gallery (batch). Used by admins.
+  """
+  def delete_gallery(batch_id) when is_binary(batch_id) do
+    # Get all photos in the batch
+    photos = Repo.all(from p in Photo, where: p.batch_id == ^batch_id)
+    
+    if Enum.empty?(photos) do
+      {:error, :not_found}
+    else
+      # Delete all photos in the batch
+      {count, _} = Repo.delete_all(from p in Photo, where: p.batch_id == ^batch_id)
+      
+      # Broadcast deletion for each photo
+      Enum.each(photos, fn photo ->
+        if photo.room_id do
+          room = Friends.Social.Rooms.get_room(photo.room_id)
+          if room do
+            Phoenix.PubSub.broadcast(
+              Friends.PubSub,
+              "friends:room:#{room.code}",
+              {:photo_deleted, %{id: photo.id}}
+            )
+          end
+        else
+          Phoenix.PubSub.broadcast(
+            Friends.PubSub,
+            "friends:public_feed:#{photo.user_id}",
+            {:photo_deleted, %{id: photo.id}}
+          )
+        end
+      end)
+      
+      {:ok, count}
+    end
+  end
+
   # --- PIN / UNPIN ---
 
   @doc """

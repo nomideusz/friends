@@ -139,6 +139,28 @@ defmodule Friends.Social.Notes do
     end
   end
 
+  @doc """
+  Admin-only delete: bypasses ownership and grace period checks.
+  """
+  def admin_delete_note(note_id, room_code) do
+    case Repo.get(Note, note_id) do
+      nil ->
+        {:error, :not_found}
+
+      note ->
+        case Repo.delete(note) do
+          {:ok, _} ->
+            if room_code do
+              Phoenix.PubSub.broadcast(Friends.PubSub, "friends:room:#{room_code}", {:note_deleted, %{id: note_id}})
+            end
+            {:ok, note}
+
+          error ->
+            error
+        end
+    end
+  end
+
   # --- PIN / UNPIN ---
 
   @doc """

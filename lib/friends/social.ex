@@ -40,6 +40,15 @@ defmodule Friends.Social do
 
   def admin_username?(_), do: false
 
+  @doc """
+  Check if a user struct is an admin (by username).
+  """
+  def is_admin?(%User{username: username}) when is_binary(username) do
+    admin_username?(username)
+  end
+  def is_admin?(_), do: false
+
+
   # --- PubSub Wrapper ---
 
   def subscribe(room_code) do
@@ -81,6 +90,8 @@ defmodule Friends.Social do
   defdelegate list_user_groups(user_id), to: Rooms
   defdelegate list_user_dms(user_id), to: Rooms
   defdelegate list_user_room_ids(user_id), to: Rooms
+  defdelegate list_all_rooms(limit \\ 100), to: Rooms
+  defdelegate list_all_groups(limit \\ 100), to: Rooms
   defdelegate list_public_rooms(limit \\ 20), to: Rooms
   defdelegate invite_to_room(room_id, inviter_user_id, invitee_user_id), to: Rooms
   defdelegate get_room_member(room_id, user_id), to: Rooms
@@ -89,6 +100,7 @@ defmodule Friends.Social do
   defdelegate leave_room(user, room_id), to: Rooms
   defdelegate get_room_members(room_id), to: Rooms
   defdelegate create_room(user, attrs), to: Rooms # overloaded create_room
+  defdelegate admin_delete_room(room_id), to: Rooms
 
   # --- DM Rooms ---
 
@@ -115,6 +127,7 @@ defmodule Friends.Social do
   defdelegate create_public_photo(attrs, user_id), to: Photos
   defdelegate pin_photo(photo_id, room_code), to: Photos
   defdelegate unpin_photo(photo_id, room_code), to: Photos
+  defdelegate delete_gallery(batch_id), to: Photos
 
   # --- Notes ---
 
@@ -126,6 +139,7 @@ defmodule Friends.Social do
   defdelegate create_note(attrs, room_code), to: Notes
   defdelegate update_note(note_id, attrs, user_id), to: Notes
   defdelegate delete_note(note_id, user_id, room_code), to: Notes
+  defdelegate admin_delete_note(note_id, room_code), to: Notes
   defdelegate create_public_note(attrs, user_id), to: Notes
   defdelegate pin_note(note_id, room_code), to: Notes
   defdelegate unpin_note(note_id, room_code), to: Notes
@@ -479,6 +493,49 @@ defmodule Friends.Social do
       |> Repo.update()
     else
       {:error, :user_not_found}
+    end
+  end
+
+  @doc """
+  Admin: delete a user and all their content.
+  This deletes: photos, notes, room memberships, friendships, devices, etc.
+  """
+  def admin_delete_user(user_id) when is_integer(user_id) do
+    case get_user(user_id) do
+      nil ->
+        {:error, :not_found}
+
+      user ->
+        # Delete user's photos (public feed ones - room photos will cascade with room membership)
+        Repo.delete_all(from p in Friends.Social.Photo, where: p.user_id == ^"user-#{user_id}")
+        
+        # Delete user's notes
+        Repo.delete_all(from n in Friends.Social.Note, where: n.user_id == ^"user-#{user_id}")
+        
+        # Delete friendships
+        Repo.delete_all(from f in Friends.Social.Friendship, where: f.user_id == ^user_id or f.friend_user_id == ^user_id)
+        
+        # Delete trusted friend relationships
+        Repo.delete_all(from tf in Friends.Social.TrustedFriend, where: tf.user_id == ^user_id or tf.trusted_user_id == ^user_id)
+        
+        # Delete room memberships
+        Repo.delete_all(from rm in Friends.Social.RoomMember, where: rm.user_id == ^user_id)
+        
+        # Delete devices
+        Repo.delete_all(from d in Friends.Social.Device, where: d.user_id == ^user_id)
+        
+        # Delete the user
+        case Repo.delete(user) do
+          {:ok, deleted} -> {:ok, deleted}
+          error -> error
+        end
+    end
+  end
+
+  def admin_delete_user(user_id) when is_binary(user_id) do
+    case Integer.parse(user_id) do
+      {id, ""} -> admin_delete_user(id)
+      _ -> {:error, :invalid_id}
     end
   end
 
@@ -924,6 +981,78 @@ defmodule Friends.Social do
       fn item ->
         timestamp = Map.get(item, :uploaded_at) || Map.get(item, :inserted_at)
         
+        case timestamp do
+          %DateTime{} = dt -> DateTime.to_unix(dt)
+          %NaiveDateTime{} = ndt -> NaiveDateTime.diff(ndt, ~N[1970-01-01 00:00:00])
+          _ -> 0
+        end
+      end,
+      :desc
+    )
+    |> Enum.take(limit)
+  end
+
+  @doc """
+  Admin feed: returns ALL public photos and notes system-wide (no contact filtering).
+  """
+  def list_admin_feed_items(limit \\ 50, opts \\ []) do
+    offset_val = Keyword.get(opts, :offset, 0)
+    fetch_limit = limit * 3
+
+    # All public photos (no room_id = public feed)
+    photos =
+      Repo.all(
+        from p in Friends.Social.Photo,
+          where: is_nil(p.room_id),
+          order_by: [desc: p.uploaded_at],
+          limit: ^fetch_limit,
+          offset: ^offset_val,
+          select: %{
+            id: p.id,
+            type: :photo,
+            user_id: p.user_id,
+            user_color: p.user_color,
+            user_name: p.user_name,
+            thumbnail_data: p.thumbnail_data,
+            description: p.description,
+            uploaded_at: p.uploaded_at,
+            content_type: p.content_type,
+            batch_id: p.batch_id,
+            image_data:
+              fragment(
+                "CASE WHEN ? = 'audio/encrypted' THEN ? ELSE NULL END",
+                p.content_type,
+                p.image_data
+              )
+          }
+      )
+
+    {galleries, singles} = group_photos_into_galleries(photos)
+    photo_items = singles ++ galleries
+
+    # All public notes (no room_id = public feed)
+    notes =
+      Repo.all(
+        from n in Friends.Social.Note,
+          where: is_nil(n.room_id),
+          order_by: [desc: n.inserted_at],
+          limit: ^limit,
+          offset: ^offset_val,
+          select: %{
+            id: n.id,
+            type: :note,
+            user_id: n.user_id,
+            user_color: n.user_color,
+            user_name: n.user_name,
+            content: n.content,
+            inserted_at: n.inserted_at
+          }
+      )
+
+    (photo_items ++ notes)
+    |> Enum.sort_by(
+      fn item ->
+        timestamp = Map.get(item, :uploaded_at) || Map.get(item, :inserted_at)
         case timestamp do
           %DateTime{} = dt -> DateTime.to_unix(dt)
           %NaiveDateTime{} = ndt -> NaiveDateTime.diff(ndt, ~N[1970-01-01 00:00:00])

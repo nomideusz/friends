@@ -100,6 +100,38 @@ defmodule Friends.Social.Rooms do
     end
   end
 
+  @doc """
+  Admin: delete a room and all its content (photos, notes, messages, members).
+  This triggers cascade deletes via foreign key constraints.
+  """
+  def admin_delete_room(room_id) when is_integer(room_id) do
+    case get_room(room_id) do
+      nil ->
+        {:error, :not_found}
+
+      room ->
+        # Broadcast to room members before deletion
+        Phoenix.PubSub.broadcast(
+          Friends.PubSub,
+          "friends:room:#{room.code}",
+          {:room_deleted, %{id: room_id, code: room.code}}
+        )
+
+        # Delete the room (cascade will handle photos, notes, messages, members)
+        case Repo.delete(room) do
+          {:ok, deleted} -> {:ok, deleted}
+          error -> error
+        end
+    end
+  end
+
+  def admin_delete_room(room_id) when is_binary(room_id) do
+    case Integer.parse(room_id) do
+      {id, ""} -> admin_delete_room(id)
+      _ -> {:error, :invalid_id}
+    end
+  end
+
   def generate_room_code do
     words = ~w(swift calm warm cool soft deep wild free bold pure)
     nouns = ~w(wave tide peak vale cove glen bay dune reef isle)
@@ -390,6 +422,31 @@ defmodule Friends.Social.Rooms do
       from rm in RoomMember,
         where: rm.user_id == ^user_id,
         select: rm.room_id
+    )
+  end
+
+  @doc """
+  Admin: list ALL rooms in the system (private and public).
+  """
+  def list_all_rooms(limit \\ 100) do
+    Repo.all(
+      from r in Room,
+        order_by: [desc: r.updated_at],
+        limit: ^limit,
+        preload: [:owner, :members]
+    )
+  end
+
+  @doc """
+  Admin: list ALL private groups in the system.
+  """
+  def list_all_groups(limit \\ 100) do
+    Repo.all(
+      from r in Room,
+        where: r.room_type == "private",
+        order_by: [desc: r.updated_at],
+        limit: ^limit,
+        preload: [:owner, :members]
     )
   end
 

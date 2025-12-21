@@ -294,6 +294,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :current_user, :map, required: true
 
   def fluid_content_grid(assigns) do
+    # Check if current user is admin
+    is_admin = Friends.Social.is_admin?(assigns.current_user)
+    assigns = assign(assigns, :is_admin, is_admin)
+
     ~H"""
     <div
       id="fluid-items-grid"
@@ -303,7 +307,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       <%= for {dom_id, item} <- @items do %>
         <%!-- Skip audio items - they appear in the chat stream instead --%>
         <%= unless Map.get(item, :content_type) == "audio/encrypted" do %>
-          <.fluid_content_item id={dom_id} item={item} room={@room} current_user={@current_user} />
+          <.fluid_content_item id={dom_id} item={item} room={@room} current_user={@current_user} is_admin={@is_admin} />
         <% end %>
       <% end %>
     </div>
@@ -314,6 +318,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :item, :map, required: true
   attr :room, :map, required: true
   attr :current_user, :map, required: true
+  attr :is_admin, :boolean, default: false
 
   def fluid_content_item(assigns) do
     ~H"""
@@ -378,6 +383,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
+            <%!-- Delete button for owner or admin --%>
+            <%= if @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id or @is_admin do %>
+              <button
+                type="button"
+                phx-click="delete_photo"
+                phx-value-id={@item.id}
+                data-confirm="Delete this voice message?"
+                class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center z-20"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            <% end %>
           </div>
         <% else %>
           <%!-- Photo --%>
@@ -400,8 +419,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <%!-- Hover overlay --%>
             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-            <%!-- Delete button (own photos only) --%>
-            <%= if @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id do %>
+            <%!-- Delete button (owner or admin) --%>
+            <% is_owner = @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id %>
+            <%= if is_owner or @is_admin do %>
               <button
                 type="button"
                 phx-click="delete_photo"
@@ -459,8 +479,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <span class="text-[10px] text-white/40">@{@item.user_name}</span>
           </div>
 
-          <%!-- Delete button (own notes only) --%>
-          <%= if @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id do %>
+          <%!-- Delete button (owner or admin) --%>
+          <% is_owner = @item.user_id == "user-#{@current_user.id}" or @item.user_id == @current_user.id %>
+          <%= if is_owner or @is_admin do %>
             <button
               type="button"
               phx-click="delete_note"

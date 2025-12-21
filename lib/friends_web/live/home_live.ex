@@ -167,6 +167,44 @@ defmodule FriendsWeb.HomeLive do
     NoteEvents.delete_note(socket, id)
   end
 
+  # Admin bulk deletion handlers
+  def handle_event("delete_gallery", %{"batch_id" => batch_id}, socket) do
+    PhotoEvents.delete_gallery(socket, batch_id)
+  end
+
+  def handle_event("admin_delete_room", %{"room_id" => room_id}, socket) do
+    current_user = socket.assigns.current_user
+    if Social.is_admin?(current_user) do
+      case Social.admin_delete_room(room_id) do
+        {:ok, _} ->
+          # Refresh rooms list
+          user_private_rooms = Social.list_all_groups(100)
+          {:noreply,
+           socket
+           |> assign(:user_private_rooms, user_private_rooms)
+           |> put_flash(:info, "Room deleted")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Delete failed")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "Admin only")}
+    end
+  end
+
+  def handle_event("admin_delete_user", %{"user_id" => user_id}, socket) do
+    current_user = socket.assigns.current_user
+    if Social.is_admin?(current_user) do
+      case Social.admin_delete_user(user_id) do
+        {:ok, _} ->
+          {:noreply, put_flash(socket, :info, "User deleted")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Delete failed")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "Admin only")}
+    end
+  end
+
   # Chat toggle events
   def handle_event("toggle_chat_expanded", _params, socket) do
     ChatEvents.toggle_chat_expanded(socket)

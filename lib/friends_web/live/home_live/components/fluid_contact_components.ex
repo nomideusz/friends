@@ -31,9 +31,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
     mode = assigns[:mode] || :add_contact
     trusted_ids = assigns[:trusted_friend_ids] || []
 
+    # Check if current user is admin
+    is_admin = Friends.Social.is_admin?(assigns.current_user)
+
     assigns = assigns
       |> assign(:mode, mode)
       |> assign(:trusted_ids, trusted_ids)
+      |> assign(:is_admin, is_admin)
       
     # Pre-calculate room member IDs for invite mode
     member_ids = if mode == :invite and assigns[:room_members] do
@@ -113,6 +117,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                         is_recovery={user.id in @trusted_ids}
                         mode={@mode}
                         member_ids={@member_ids}
+                        is_admin={@is_admin}
                       />
                     <% end %>
                   </div>
@@ -185,6 +190,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                         is_recovery={false}
                         mode={@mode}
                         member_ids={@member_ids}
+                        is_admin={@is_admin}
                       />
                     <% end %>
                   </div>
@@ -389,6 +395,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   attr :is_recovery, :boolean, default: false
   attr :mode, :atom, default: :add_contact
   attr :member_ids, :any, default: %MapSet{}
+  attr :is_admin, :boolean, default: false
 
   def person_row(assigns) do
 
@@ -417,7 +424,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Actions --%>
       <div class="flex items-center gap-2">
-        <%= case @status do %>
+          <%= case @status do %>
             <% :self -> %>
               <span class="text-xs text-white/30">You</span>
             <% :connected -> %>
@@ -466,6 +473,21 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
               >
                 Add
               </button>
+          <% end %>
+          <%!-- Admin delete user button --%>
+          <%= if @is_admin && @status != :self do %>
+            <button
+              type="button"
+              phx-click="admin_delete_user"
+              phx-value-user_id={@user.id}
+              data-confirm="DELETE user @#{@user.username} and ALL their content? This cannot be undone!"
+              class="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+              title="Delete user (admin)"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
           <% end %>
       </div>
     </div>
