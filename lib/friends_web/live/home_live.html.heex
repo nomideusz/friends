@@ -101,6 +101,20 @@
       new_chat_message={assigns[:new_chat_message] || ""}
       typing_users={assigns[:typing_users] || %{}}
     />
+
+    <%!-- Room Add Sheet (opens from + button on room toolbar) --%>
+    <.room_add_sheet
+      show={assigns[:show_add_menu] && assigns[:toolbar_context] == :room}
+      room={@room}
+      uploads={@uploads}
+    />
+
+    <%!-- Room Settings Sheet --%>
+    <.room_settings_sheet
+      show={assigns[:show_room_settings]}
+      room={@room}
+      current_user={@current_user}
+    />
   <% end %>
 
   <%!-- Fluid Note Modal --%>

@@ -1143,11 +1143,24 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                   value={@new_chat_message}
                   phx-keyup="update_chat_message"
                   placeholder="Message..."
-                  style="font-size: 16px;"
-                  class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                  style="font-size: 16px; padding-left: 1rem;"
+                  class="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
                   id="chat-sheet-input"
                   autocomplete="off"
                 />
+                <%!-- Voice Recording Button --%>
+                <button
+                  id="chat-sheet-voice-btn"
+                  phx-hook="RoomVoiceRecorder"
+                  data-room-id={@room.id}
+                  class="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 text-white/60 hover:bg-purple-500/20 hover:text-purple-400 transition-all cursor-pointer"
+                  title="Record voice message"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+                <%!-- Send Button --%>
                 <button
                   id="chat-sheet-send-btn"
                   class={"w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-blue-500 text-white", else: "bg-white/10 text-white/40"}"}
@@ -1157,6 +1170,172 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                   </svg>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+  # ============================================================================
+  # ROOM ADD SHEET
+  # Bottom sheet for adding content from room toolbar's + button
+  # ============================================================================
+
+  attr :show, :boolean, default: false
+  attr :room, :map, required: true
+  attr :uploads, :map, default: nil
+
+  def room_add_sheet(assigns) do
+    ~H"""
+    <%= if @show do %>
+      <div class="fixed inset-0 z-[200]" phx-window-keydown="toggle_add_menu" phx-key="escape">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="toggle_add_menu"
+        ></div>
+
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
+          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl">
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_add_menu">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
+
+            <%!-- Options --%>
+            <div class="px-4 pb-8 grid grid-cols-3 gap-4">
+              <%!-- Photo --%>
+              <form id="room-add-sheet-upload" phx-change="validate" phx-submit="save" class="contents">
+                <label class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer">
+                  <div class="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span class="text-xs text-white/70">Photo</span>
+                  <%= if @uploads && @uploads[:photo] do %>
+                    <.live_file_input upload={@uploads.photo} class="sr-only" />
+                  <% end %>
+                </label>
+              </form>
+
+              <%!-- Note --%>
+              <button
+                type="button"
+                phx-click="open_room_note_modal"
+                class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+              >
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <span class="text-xs text-white/70">Note</span>
+              </button>
+
+              <%!-- Voice (goes to chat) --%>
+              <button
+                id="room-add-sheet-voice"
+                phx-hook="RoomVoiceRecorder"
+                data-room-id={@room.id}
+                class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer"
+              >
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <span class="text-xs text-white/70">Voice</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+  # ============================================================================
+  # ROOM SETTINGS SHEET
+  # Opened from "More" button on room toolbar
+  # ============================================================================
+
+  attr :show, :boolean, default: false
+  attr :room, :map, required: true
+  attr :current_user, :map, required: true
+
+  def room_settings_sheet(assigns) do
+    ~H"""
+    <%= if @show do %>
+      <div class="fixed inset-0 z-[200]" phx-window-keydown="open_room_settings" phx-key="escape">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="open_room_settings"
+        ></div>
+
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
+          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl">
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="open_room_settings">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
+
+            <%!-- Content --%>
+            <div class="px-4 pb-8 space-y-2">
+              <h3 class="text-white text-lg font-bold mb-4 px-2"><%= @room.name || "Untitled Room" %></h3>
+
+              <button
+                phx-click="open_contacts_sheet"
+                class="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left"
+              >
+                <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="text-white font-medium">Invite People</div>
+                  <div class="text-white/40 text-xs">Add members to this space</div>
+                </div>
+              </button>
+
+              <button
+                phx-click="remove_room_member"
+                phx-value-user_id={@current_user.id}
+                data-confirm="Are you sure you want to leave this space?"
+                class="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-left group"
+              >
+                <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 group-hover:text-red-500">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <div class="text-red-400 font-medium group-hover:text-red-500">Leave Space</div>
+                  <div class="text-white/40 text-xs">You can rejoin via invite code</div>
+                </div>
+              </button>
+
+              <%= if @room.owner_id == @current_user.id do %>
+                <button
+                   disabled
+                   class="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 opacity-50 cursor-not-allowed text-left"
+                   title="Deletion not implemented yet"
+                >
+                  <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-red-500 font-medium">Delete Space</div>
+                    <div class="text-white/40 text-xs">Permanently remove this room</div>
+                  </div>
+                </button>
+              <% end %>
             </div>
           </div>
         </div>

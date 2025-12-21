@@ -1779,6 +1779,67 @@ const Hooks = {
         }
     },
 
+    RoomVoiceRecorder: {
+        mounted() {
+            this.roomId = this.el.dataset.roomId
+            this.voiceRecorder = null
+            this.isRecording = false
+
+            // Optional: listen for server-side recording state changes if implemented
+
+            this.el.addEventListener('click', async (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+
+                if (this.isRecording) {
+                    // Stop recording
+                    if (this.voiceRecorder) {
+                        this.voiceRecorder.stop()
+                    }
+                    this.isRecording = false
+
+                    // Visual feedback reset (simple toggle)
+                    this.el.classList.remove('animate-pulse', 'text-red-500', 'bg-red-500/20')
+
+                } else {
+                    // Start recording
+                    try {
+                        this.voiceRecorder = new VoiceRecorder()
+
+                        this.voiceRecorder.onStop = async (blob, durationMs) => {
+                            try {
+                                // Encrypt and send
+                                const { encryptedContent, nonce } = await messageEncryption.encryptVoiceNote(blob, `room-${this.roomId}`)
+
+                                this.pushEvent("send_room_voice_note", {
+                                    encrypted_content: messageEncryption.arrayToBase64(encryptedContent),
+                                    nonce: messageEncryption.arrayToBase64(nonce),
+                                    duration_ms: durationMs
+                                })
+                            } catch (e) {
+                                console.error("Failed to encrypt room voice note:", e)
+                            }
+                        }
+
+                        await this.voiceRecorder.start()
+                        this.isRecording = true
+
+                        // Visual feedback (simple toggle)
+                        this.el.classList.add('animate-pulse', 'text-red-500', 'bg-red-500/20')
+
+                    } catch (e) {
+                        console.error("Failed to start recording:", e)
+                    }
+                }
+            })
+        },
+        destroyed() {
+            if (this.voiceRecorder && this.isRecording) {
+                this.voiceRecorder.stop()
+            }
+        }
+    },
+
     GridVoicePlayer: {
         mounted() {
             this.itemId = this.el.dataset.itemId

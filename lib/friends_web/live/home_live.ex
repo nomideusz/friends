@@ -320,6 +320,7 @@ defmodule FriendsWeb.HomeLive do
   # Note events
   def handle_event("open_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
   def handle_event("open_feed_note_modal", _params, socket), do: NoteEvents.open_feed_note_modal(socket)
+  def handle_event("open_room_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
   def handle_event("close_note_modal", _params, socket), do: NoteEvents.close_note_modal(socket)
 
   # Pin/unpin events (admin-only, handled in RoomEvents)
@@ -589,6 +590,14 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("set_feed_view", %{"view" => view}, socket) do
     FeedEvents.set_feed_view(socket, view)
+  end
+
+  def handle_event("open_room_settings", _, socket) do
+    {:noreply, assign(socket, :show_room_settings, true)}
+  end
+
+  def handle_event("send_room_voice_note", params, socket) do
+    ChatEvents.send_room_voice_note(socket, params)
   end
 
   # Toggle the chat panel visibility in split-view layout

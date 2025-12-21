@@ -4,7 +4,7 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
   Includes live typing feature for real-time presence.
   """
   import Phoenix.Component
-  # import Phoenix.LiveView
+  import Phoenix.LiveView
 
   def toggle_mobile_chat(socket) do
     {:noreply, update(socket, :show_mobile_chat, &(!&1))}
@@ -102,6 +102,33 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
     typing_users = socket.assigns[:typing_users] || %{}
     updated = Map.delete(typing_users, user_id)
     {:noreply, assign(socket, :typing_users, updated)}
+  end
+
+  @doc """
+  Handle sending a voice note in a room
+  """
+  def send_room_voice_note(socket, %{"encrypted_content" => content, "nonce" => nonce, "duration_ms" => duration}) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    if room && current_user do
+      case Friends.Social.send_room_message(
+             room.id,
+             current_user.id,
+             content,
+             "voice",
+             %{"duration_ms" => duration},
+             nonce
+           ) do
+        {:ok, _message} ->
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to send voice message")}
+      end
+    else
+      {:noreply, socket}
+    end
   end
 
   @doc """
