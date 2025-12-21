@@ -9,7 +9,7 @@ import FriendGraph from "../svelte/FriendGraph.svelte"
 import GlobalGraph from "../svelte/GlobalGraph.svelte"
 import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
 import WelcomeGraph from "../svelte/WelcomeGraph.svelte"
-import CornerNavigation from "../svelte/CornerNavigation.svelte"
+// CornerNavigation removed - replaced by bottom toolbar
 import { mount, unmount } from 'svelte'
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
 import * as messageEncryption from "./message-encryption"
@@ -317,63 +317,7 @@ const Hooks = {
         }
     },
 
-    CornerNavigation: {
-        mounted() {
-            const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
-            const pendingCount = parseInt(this.el.dataset.pendingCount || '0', 10)
-            const currentRoute = this.el.dataset.currentRoute || '/'
-            const rooms = JSON.parse(this.el.dataset.rooms || '[]')
-
-            this.component = mount(CornerNavigation, {
-                target: this.el,
-                props: {
-                    live: this,
-                    currentUser,
-                    pendingCount,
-                    currentRoute,
-                    rooms
-                }
-            })
-        },
-        updated() {
-            if (!this.component) return;
-
-            const currentUser = JSON.parse(this.el.dataset.currentUser || 'null')
-            const pendingCount = parseInt(this.el.dataset.pendingCount || '0', 10)
-            const currentRoute = this.el.dataset.currentRoute || '/'
-            const rooms = JSON.parse(this.el.dataset.rooms || '[]')
-
-            // Update props directly on the component instance if supported by Svelte 5 mount return
-            // For Svelte 5, the return value of mount is the exports object.
-            // But we can't easily update props on the instance created by `mount` unless we use state/store or specific framework methods.
-            // A common pattern with svelte and liveview hooks is to unmount and remount or use a store signal.
-            // However, with Svelte 5, if we want reactivity, we can wrap the props in a Rune or use a wrapper.
-            // Let's try simple unmount/remount for now as it's robust, or see if we can set props on the component.
-            // Actually, Svelte 5 `mount` interaction is different. 
-            // Let's stick to the robust unmount/remount for this "ignore" block pattern if attributes change, 
-            // OR simpler: since the container has phx-update="ignore", the `updated` hook MIGHT NOT BE CALLED by LiveView 
-            // UNLESS the attributes on the container itself changes.
-            // Wait, if phx-update="ignore" is present, LiveView patches the attributes of the container 
-            // but ignores the content. So `updated()` IS called.
-
-            unmount(this.component)
-            this.component = mount(CornerNavigation, {
-                target: this.el,
-                props: {
-                    live: this,
-                    currentUser,
-                    pendingCount,
-                    currentRoute,
-                    rooms
-                }
-            })
-        },
-        destroyed() {
-            if (this.component) {
-                unmount(this.component)
-            }
-        }
-    },
+    // CornerNavigation hook removed - replaced by bottom toolbar
 
     FriendGraph: {
         mounted() {
