@@ -32,17 +32,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
       phx-hook="FriendsApp"
       phx-window-keydown="handle_keydown"
     >
-      <%!-- Minimal Header with User Menu --%>
-      <.fluid_feed_header
-        current_user={@current_user}
-        user_private_rooms={@user_private_rooms}
-        friends={@friends}
-        online_friend_ids={@online_friend_ids}
-        show_user_menu={@show_user_menu}
-      />
-
-      <%!-- Content Area (scrollable) --%>
-      <div class="flex-1 overflow-y-auto overflow-x-hidden pb-24">
+      <%!-- Content Area (scrollable) - now starts from top --%>
+      <div class="flex-1 overflow-y-auto overflow-x-hidden pb-24 pt-4">
         <%= if @feed_item_count == 0 do %>
           <.fluid_feed_empty_state 
             welcome_graph_data={@welcome_graph_data} 
