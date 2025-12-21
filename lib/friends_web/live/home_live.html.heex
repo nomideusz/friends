@@ -83,13 +83,7 @@
   <%!-- Fluid View Note Modal --%>
   <.fluid_view_note_modal note={assigns[:viewing_note]} />
   
-  <.invite_modal
-    show={assigns[:show_invite_modal]}
-    room={assigns[:room]}
-    invite_username={assigns[:room_invite_username] || ""}
-    friends={assigns[:friends] || []}
-    search_query={assigns[:member_invite_search] || ""}
-  />
+  <%!-- Old invite_modal removed - using fluid contact_search_sheet instead --%>
 
   <%!-- People Sheet --%>
   <.contact_search_sheet
