@@ -32,7 +32,7 @@ defmodule FriendsWeb.HomeLive.Components.InviteComponents do
                   <h2 class="text-2xl font-bold text-white tracking-tight">
                     Invite to {if @room, do: @room.name || @room.code, else: "Room"}
                   </h2>
-                  <p class="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">Add friends to this space</p>
+                  <p class="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">Add people to this group</p>
                 </div>
                 <button 
                   phx-click="close_invite_modal"

@@ -30,6 +30,146 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
     {:noreply, assign(socket, :network_tab, tab)}
   end
 
+  # --- People Sheet (New) ---
+
+  def open_contacts_sheet(socket, mode \\ :add_contact) do
+    mode_atom = if is_binary(mode), do: String.to_existing_atom(mode), else: mode
+    {:noreply,
+     socket
+     |> assign(:show_contact_sheet, true)
+     |> assign(:contact_mode, mode_atom)
+     |> assign(:contact_sheet_search, "")
+     |> assign(:contact_search_results, [])}
+  end
+
+  def close_contact_search(socket) do
+    {:noreply,
+     socket
+     |> assign(:show_contact_search, false)
+     |> assign(:contact_search_query, "")
+     |> assign(:contact_search_results, [])}
+  end
+
+  def contact_search(socket, query) do
+    query = String.trim(query)
+    current_user_id = socket.assigns.current_user && socket.assigns.current_user.id
+    
+    results =
+      if String.length(query) >= 2 do
+        # Exclude self and current friends from "add" results? 
+        # Actually proper search should return everyone but status differs.
+        Social.search_users(query, current_user_id)
+      else
+        []
+      end
+
+    {:noreply,
+     socket
+     |> assign(:contact_search_query, query)
+     |> assign(:contact_search_results, results)}
+  end
+
+  def send_friend_request(socket, user_id_str) do
+    case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        case Social.add_friend(socket.assigns.current_user.id, user_id) do
+          {:ok, _} ->
+             # Refresh outgoing requests
+             sent = Social.list_sent_friend_requests(socket.assigns.current_user.id)
+             {:noreply, 
+              socket 
+              |> assign(:outgoing_friend_requests, sent)
+              |> put_flash(:info, "Friend request sent!")}
+          {:error, _} -> {:noreply, put_flash(socket, :error, "Could not send request")}
+        end
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def accept_friend_request(socket, user_id_str) do
+    case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        case Social.accept_friend(socket.assigns.current_user.id, user_id) do
+          {:ok, _} ->
+             # Refresh friends and requests
+             friends = Social.list_friends(socket.assigns.current_user.id)
+             requests = Social.list_friend_requests(socket.assigns.current_user.id)
+             {:noreply, 
+              socket 
+              |> assign(:friends, friends)
+              |> assign(:pending_friend_requests, requests)
+              |> put_flash(:info, "Friend accepted!")}
+          {:error, _} -> {:noreply, put_flash(socket, :error, "Could not accept")}
+        end
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def decline_friend_request(socket, user_id_str) do
+    # Logic to decline (remove request)
+    # Social.remove_friend works for pending request too?
+    # Relationships.remove_friend checks get_friendship which returns pending/accepted.
+    # So yes, remove_friend works.
+    case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        Social.remove_friend(socket.assigns.current_user.id, user_id)
+        requests = Social.list_friend_requests(socket.assigns.current_user.id)
+        {:noreply, assign(socket, :pending_friend_requests, requests)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def cancel_request(socket, user_id_str) do
+    # Cancel SENT friend request
+    case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        Social.remove_friend(socket.assigns.current_user.id, user_id)
+        sent = Social.list_sent_friend_requests(socket.assigns.current_user.id)
+        {:noreply, assign(socket, :outgoing_friend_requests, sent)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def remove_contact(socket, user_id_str) do
+    case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        Social.remove_friend(socket.assigns.current_user.id, user_id)
+        friends = Social.list_friends(socket.assigns.current_user.id)
+        {:noreply, 
+         socket 
+         |> assign(:friends, friends)
+         |> put_flash(:info, "Friend removed")}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def remove_trusted_friend(socket, user_id_str) do
+    case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        Social.remove_trusted_friend(socket.assigns.current_user.id, user_id)
+        # Refresh
+        trusted = Social.list_trusted_friends(socket.assigns.current_user.id)
+        trusted_ids = Enum.map(trusted, & &1.trusted_user_id)
+        
+        {:noreply,
+         socket
+         |> assign(:trusted_friends, trusted)
+         |> assign(:trusted_friend_ids, trusted_ids)
+         |> put_flash(:info, "Removed from recovery contacts")}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def decline_trusted_friend(socket, user_id_str) do
+     case safe_to_integer(user_id_str) do
+      {:ok, user_id} ->
+        Social.decline_trust_request(socket.assigns.current_user.id, user_id) # user is requester
+        incoming = Social.list_pending_trust_requests(socket.assigns.current_user.id)
+        {:noreply, assign(socket, :incoming_requests, incoming)}
+      _ -> {:noreply, socket}
+    end
+  end
+
   # --- Friend Search ---
 
   def search_friends(socket, query) do
@@ -98,13 +238,17 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
           current_user ->
             case Social.confirm_trusted_friend(current_user.id, user_id) do
               {:ok, _} ->
-                # Refresh the pending requests
+                # Refresh the pending requests and trusted friends list
                 pending = Social.list_pending_trust_requests(current_user.id)
+                trusted = Social.list_trusted_friends(current_user.id)
+                trusted_ids = Enum.map(trusted, & &1.trusted_user_id)
 
                 {:noreply,
                  socket
-                 |> assign(:pending_requests, pending)
-                 |> put_flash(:info, "trust confirmed")}
+                 |> assign(:incoming_requests, pending)
+                 |> assign(:trusted_friends, trusted)
+                 |> assign(:trusted_friend_ids, trusted_ids)
+                 |> put_flash(:info, "Recovery contact confirmed")}
 
               {:error, _} ->
                 {:noreply, put_flash(socket, :error, "failed")}

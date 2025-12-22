@@ -11,12 +11,12 @@
     title="Your Constellation"
   >
     <:header_actions>
-      <.link
-        navigate="/network"
-        class="text-xs text-blue-400 hover:text-blue-300"
+      <button
+        phx-click="open_contacts_sheet"
+        class="bg-blue-600/30 text-blue-200 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-blue-600/50 transition-colors"
       >
-        Full View →
-      </.link>
+        Set up Network
+      </button>
     </:header_actions>
     <div class="p-4 h-full">
       <%= if assigns[:graph_data] do %>
@@ -34,10 +34,10 @@
             <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            <p class="text-sm">Add friends to see your constellation</p>
-            <.link navigate="/network" class="text-xs text-blue-400 hover:underline mt-2 inline-block">
+            <p class="text-sm">Add people to see your constellation</p>
+            <button phx-click="open_contacts_sheet" class="text-xs text-blue-400 hover:underline mt-2 inline-block">
               Go to Network →
-            </.link>
+            </button>
           </div>
         </div>
       <% end %>
@@ -148,16 +148,7 @@
     room_members={assigns[:room_members] || []}
   />
 
-  <.network_modal
-    show={assigns[:show_network_modal]}
-    tab={assigns[:network_tab] || "friends"}
-    current_user={@current_user}
-    friend_search={assigns[:friend_search] || ""}
-    friend_search_results={assigns[:friend_search_results] || []}
-    pending_requests={assigns[:pending_requests] || []}
-    friends={assigns[:friends] || []}
-    trusted_friends={assigns[:trusted_friends] || []}
-  />
+
 
   <.devices_modal
     show={assigns[:show_devices_modal]}
@@ -311,7 +302,7 @@
             </div>
           <% end %>
 
-           <%!-- Direct Spaces List --%>
+           <%!-- Direct Messages List --%>
           <%= if @current_user && @direct_rooms != [] do %>
             <div class="mt-6">
               

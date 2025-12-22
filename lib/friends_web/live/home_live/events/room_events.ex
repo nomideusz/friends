@@ -175,7 +175,7 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
         {:noreply, put_flash(socket, :error, "login to invite")}
 
       room.owner_id != owner_id or not room.is_private ->
-        {:noreply, put_flash(socket, :error, "only owners can invite to private spaces")}
+        {:noreply, put_flash(socket, :error, "only owners can invite to private groups")}
 
       true ->
         user = Social.get_user_by_username(username)
@@ -196,7 +196,7 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
 
                 {:noreply,
                  socket
-                 |> put_flash(:info, "@#{user.username} added to space")
+                 |> put_flash(:info, "@#{user.username} added to group")
                  |> assign(:invite_username, "") # Clear input
                  |> assign(:room_invite_username, "") # Clear input (legacy)
                  |> assign(:member_invite_search, "")}

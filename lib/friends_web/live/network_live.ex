@@ -657,8 +657,8 @@ defmodule FriendsWeb.NetworkLive do
           <section class="aether-card p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 class="text-lg font-semibold text-white mb-1">Invite Friends</h2>
-                <p class="text-sm text-neutral-400">Share your personal link - they'll automatically become your friend!</p>
+                <h2 class="text-lg font-semibold text-white mb-1">Invite People</h2>
+                <p class="text-sm text-neutral-400">Share your personal link - they'll automatically join your network!</p>
               </div>
               <div class="flex items-center gap-3">
                 <div class="flex-1 sm:flex-none">

@@ -27,10 +27,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
         <nav class="pointer-events-auto flex items-center gap-1 px-2 py-2 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
           <%= case @context do %>
             <% :feed -> %>
-              <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
+              <.toolbar_button icon="plus" label="Create" event="toggle_add_menu" />
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
-              <.toolbar_button icon="spaces" label="Spaces" event="open_groups_sheet" badge={@unread_count} />
-              <.toolbar_button icon="people" label="People" event="navigate_to_people" badge={@pending_request_count} />
+              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" badge={@unread_count} />
+              <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
             <% :room -> %>
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
@@ -43,10 +43,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="more" label="More" event="show_item_actions" />
             <% _ -> %>
               <%!-- Fallback to feed --%>
-              <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
+              <.toolbar_button icon="plus" label="Create" event="toggle_add_menu" />
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
-              <.toolbar_button icon="spaces" label="Spaces" event="open_groups_sheet" />
-              <.toolbar_button icon="people" label="People" event="navigate_to_people" badge={@pending_request_count} />
+              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
+              <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
           <% end %>
         </nav>
       </div>

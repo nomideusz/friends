@@ -49,8 +49,8 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :contacts_collapsed, !socket.assigns[:contacts_collapsed])}
   end
 
-  def handle_event("navigate_to_people", _params, socket) do
-    {:noreply, push_navigate(socket, to: "/network")}
+  def handle_event("open_contacts_sheet", _, socket) do
+    NetworkEvents.open_contacts_sheet(socket)
   end
 
   def handle_event("toggle_groups", _params, socket) do
@@ -1400,8 +1400,11 @@ defmodule FriendsWeb.HomeLive do
   # --- Global User Menu & Sheet Handlers ---
 
   def handle_event("toggle_user_menu", _params, socket) do
-    # Open profile sheet instead of old user menu
-    {:noreply, assign(socket, :show_profile_sheet, !socket.assigns[:show_profile_sheet])}
+    {:noreply, assign(socket, :show_user_menu, !Map.get(socket.assigns, :show_user_menu, false))}
+  end
+
+  def handle_event("open_profile_sheet", _params, socket) do
+    {:noreply, assign(socket, :show_profile_sheet, true)}
   end
 
   def handle_event("close_profile_sheet", _params, socket) do

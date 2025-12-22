@@ -494,7 +494,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
     end
   end
 
-  def handle_params(_params, _uri, socket) when socket.assigns.live_action == :index do
+  def handle_params(params, _uri, socket) when socket.assigns.live_action == :index do
     # When navigating to dashboard, ensure we clean up room subscriptions if coming from a room
     if socket.assigns[:room] do
       old_room = socket.assigns.room
@@ -513,6 +513,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       else
         []
       end
+      
+    # Check if we should open the contacts sheet
+    show_contacts = params["action"] == "contacts"
 
     {:noreply,
      socket
@@ -520,7 +523,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
      |> assign(:page_title, "New Internet")
      |> assign(:user_rooms, user_rooms)
      |> assign(:feed_mode, "dashboard")
-     |> assign(:current_route, "/")}
+     |> assign(:current_route, "/")
+     |> assign(:show_contact_sheet, show_contacts)}
   end
 
   def handle_params(_params, _uri, socket), do: {:noreply, socket}

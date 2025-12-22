@@ -86,7 +86,7 @@ defmodule FriendsWeb.Layouts do
                   <%= if @show_user_dropdown do %>
                     <div class="absolute top-10 right-0 w-48 aether-card bg-black/90 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 py-1">
                       <.link
-                        navigate={~p"/network"}
+                        navigate={~p"/?action=contacts"}
                         class="flex items-center gap-3 px-3 py-2 text-xs text-neutral-300 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
                       >
                         <span>👥</span> Contacts

@@ -29,3 +29,6 @@ Thumbs.db
 
 # Secrets
 *.secret.exs
+
+# Debug/Archive files
+*.har

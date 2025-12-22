@@ -174,7 +174,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
 
                   <%!-- Friends & Trust --%>
                   <button
-                    phx-click="open_network_modal"
+                    phx-click="open_contacts_sheet"
                     class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
                   >
                     <div class="flex items-center gap-3">

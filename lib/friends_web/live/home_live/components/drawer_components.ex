@@ -95,22 +95,22 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
           <h3 class="text-xs font-bold text-white/40 uppercase tracking-wider">
             People ({length(@users)})
           </h3>
-          <.link
-            navigate="/network"
+          <button
+            phx-click="open_contacts_sheet"
             class="text-xs text-white/50 hover:text-white transition-colors"
           >
             View All →
-          </.link>
+          </button>
         </div>
         <%= if @users == [] do %>
           <div class="text-center py-4">
             <p class="text-xs text-white/30 italic mb-2">No contacts yet</p>
-            <.link
-              navigate="/network"
+            <button
+              phx-click="open_contacts_sheet"
               class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 font-medium transition-colors inline-block border border-white/10"
             >
               + Add People
-            </.link>
+            </button>
           </div>
         <% else %>
           <div class="space-y-2">

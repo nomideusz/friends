@@ -10,4 +10,9 @@ defmodule FriendsWeb.RedirectController do
     conn
     |> Phoenix.Controller.redirect(to: ~p"/auth")
   end
+
+  def home(conn, _params) do
+    conn
+    |> Phoenix.Controller.redirect(to: ~p"/")
+  end
 end

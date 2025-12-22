@@ -1306,7 +1306,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
             <%!-- Content --%>
             <div class="px-4 pb-8 space-y-2">
-              <h3 class="text-white text-lg font-bold mb-4 px-2"><%= @room.name || "Untitled Room" %></h3>
+              <h3 class="text-white text-lg font-bold mb-4 px-2"><%= @room.name || "Untitled Group" %></h3>
 
               <button
                 phx-click="open_contacts_sheet"
@@ -1319,14 +1319,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 </div>
                 <div class="flex-1">
                   <div class="text-white font-medium">Invite People</div>
-                  <div class="text-white/40 text-xs">Add members to this space</div>
+                  <div class="text-white/40 text-xs">Add members to this group</div>
                 </div>
               </button>
 
               <button
                 phx-click="remove_room_member"
                 phx-value-user_id={@current_user.id}
-                data-confirm="Are you sure you want to leave this space?"
+                data-confirm="Are you sure you want to leave this group?"
                 class="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-left group"
               >
                 <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 group-hover:text-red-500">
@@ -1335,8 +1335,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <div class="text-red-400 font-medium group-hover:text-red-500">Leave Space</div>
-                  <div class="text-white/40 text-xs">You can rejoin via invite code</div>
+                  <div class="text-red-400 font-medium group-hover:text-red-500">Leave Group</div>
+                  <div class="text-white/40 text-xs">You can rejoin via invite link</div>
                 </div>
               </button>
 
@@ -1352,8 +1352,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                     </svg>
                   </div>
                   <div class="flex-1">
-                    <div class="text-red-500 font-medium">Delete Space</div>
-                    <div class="text-white/40 text-xs">Permanently remove this room</div>
+                    <div class="text-red-500 font-medium">Delete Group</div>
+                    <div class="text-white/40 text-xs">Permanently remove this group</div>
                   </div>
                 </button>
               <% end %>

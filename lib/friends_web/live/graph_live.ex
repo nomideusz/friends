@@ -125,7 +125,7 @@ defmodule FriendsWeb.GraphLive do
         <%!-- Header --%>
         <div class="flex items-center justify-between p-4 bg-black/30 backdrop-blur-sm border-b border-white/5">
           <div class="flex items-center gap-4">
-            <.link navigate={~p"/network"} class="text-neutral-400 hover:text-white transition-colors">
+            <.link navigate={~p"/?action=contacts"} class="text-neutral-400 hover:text-white transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>

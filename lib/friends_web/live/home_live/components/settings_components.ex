@@ -113,7 +113,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                           </div>
                           <button class="btn-aether px-4 py-2">Save</button>
                         </div>
-                        <p class="text-xs text-white/40">This name is visible to everyone in public spaces.</p>
+                        <p class="text-xs text-white/40">This name is visible to everyone in groups.</p>
                       </div>
                     </div>
 
@@ -190,7 +190,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                 phx-value-tab="friends"
                 class={"px-4 py-2 rounded-xl text-sm font-medium transition-colors #{if @tab == "friends", do: "bg-white/10 text-white", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
               >
-                Friends
+                People
               </button>
               <button
                 phx-click="switch_network_tab"
@@ -217,9 +217,9 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                       <div class="w-16 h-16 bg-white/5/50 rounded-full flex items-center justify-center mb-4">
                         <svg class="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                       </div>
-                      <h3 class="text-white font-medium mb-1">No friends yet</h3>
+                      <h3 class="text-white font-medium mb-1">No people yet</h3>
                       <p class="text-sm">Search for people to build your network.</p>
-                      <button phx-click="switch_network_tab" phx-value-tab="search" class="mt-4 btn-aether btn-aether-primary px-4 py-2">Find Friends</button>
+                      <button phx-click="switch_network_tab" phx-value-tab="search" class="mt-4 btn-aether btn-aether-primary px-4 py-2">Find People</button>
                     </div>
                   <% else %>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
