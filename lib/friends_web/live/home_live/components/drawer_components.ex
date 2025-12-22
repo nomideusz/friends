@@ -89,11 +89,11 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
   def navigation_drawer_content(assigns) do
     ~H"""
     <div class="p-4 space-y-6">
-      <%!-- Contacts Section --%>
+      <%!-- People Section --%>
       <div>
         <div class="flex items-center justify-between mb-3 px-1">
           <h3 class="text-xs font-bold text-white/40 uppercase tracking-wider">
-            Contacts ({length(@users)})
+            People ({length(@users)})
           </h3>
           <.link
             navigate="/network"
@@ -109,7 +109,7 @@ defmodule FriendsWeb.HomeLive.Components.DrawerComponents do
               navigate="/network"
               class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/70 font-medium transition-colors inline-block border border-white/10"
             >
-              + Add Contacts
+              + Add People
             </.link>
           </div>
         <% else %>

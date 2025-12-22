@@ -45,7 +45,7 @@ defmodule FriendsWeb.NetworkLive do
 
   defp assign_defaults(socket) do
     socket
-    |> assign(:page_title, "Contacts")
+    |> assign(:page_title, "People")
     |> assign(:friend_search, "")
     |> assign(:friend_search_results, [])
     |> assign(:show_header_dropdown, false)
@@ -649,7 +649,7 @@ defmodule FriendsWeb.NetworkLive do
       <div class="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 relative z-10">
         <%!-- Header --%>
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold">Network</h1>
+          <h1 class="text-3xl font-bold">People</h1>
         </div>
 
         <div class="space-y-6">
@@ -710,7 +710,7 @@ defmodule FriendsWeb.NetworkLive do
 
           <%!-- Search & Add Friends --%>
           <section>
-            <h2 class="text-lg font-semibold text-white mb-3">Add Contact</h2>
+            <h2 class="text-lg font-semibold text-white mb-3">Find People</h2>
             <div class="p-4 aether-card shadow-lg">
               <form phx-change="search_friends" phx-submit="search_friends" class="flex gap-2">
                 <div class="relative flex-1">
@@ -814,16 +814,16 @@ defmodule FriendsWeb.NetworkLive do
             </section>
           <% end %>
 
-          <%!-- All Contacts --%>
+          <%!-- Your People --%>
           <section>
             <h2 class="text-lg font-semibold text-white mb-3">
-              All Contacts ({length(@friends)})
+              Your People ({length(@friends)})
             </h2>
 
             <%= if @friends == [] do %>
               <div class="p-8 aether-card text-center">
                 <div class="text-neutral-500 text-sm">
-                  No contacts yet. Search above to add some!
+                  No people yet. Search above to add some!
                 </div>
               </div>
             <% else %>
@@ -855,7 +855,7 @@ defmodule FriendsWeb.NetworkLive do
                         </div>
                         <%= if f.mutual_count && f.mutual_count > 0 do %>
                           <div class="text-xs text-neutral-400">
-                            {f.mutual_count} mutual {if f.mutual_count == 1, do: "friend", else: "friends"}
+                            {f.mutual_count} mutual
                           </div>
                         <% end %>
                       </div>

@@ -30,7 +30,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
               <.toolbar_button icon="spaces" label="Spaces" event="open_groups_sheet" badge={@unread_count} />
-              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} pending_count={@pending_request_count} />
+              <.toolbar_button icon="people" label="People" event="navigate_to_people" badge={@pending_request_count} />
             <% :room -> %>
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
@@ -46,7 +46,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
               <.toolbar_button icon="spaces" label="Spaces" event="open_groups_sheet" />
-              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} pending_count={@pending_request_count} />
+              <.toolbar_button icon="people" label="People" event="navigate_to_people" badge={@pending_request_count} />
           <% end %>
         </nav>
       </div>

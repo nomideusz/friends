@@ -49,6 +49,10 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :contacts_collapsed, !socket.assigns[:contacts_collapsed])}
   end
 
+  def handle_event("navigate_to_people", _params, socket) do
+    {:noreply, push_navigate(socket, to: "/network")}
+  end
+
   def handle_event("toggle_groups", _params, socket) do
     {:noreply, assign(socket, :groups_collapsed, !socket.assigns[:groups_collapsed])}
   end
