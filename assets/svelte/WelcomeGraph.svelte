@@ -35,7 +35,184 @@
     let linkGroup;
     let nodeMap = new Map();
 
-    // ... (addNode, removeNode, addLink, removeLink logic remains the same) ...
+    // Context menu state
+    let showContextMenu = false;
+    let contextMenuX = 0;
+    let contextMenuY = 0;
+    let contextMenuUser = null;
+    let contextMenuStatus = 'none'; // 'connected', 'pending', or 'none'
+
+    // === Exported functions for live updates from LiveView ===
+    
+    // Add a new user node to the graph with animation
+    export function addNode(userData) {
+        if (!simulation || !nodeGroup) return;
+        
+        const id = String(userData.id);
+        if (nodeMap.has(id)) return; // Already exists
+        
+        const newNode = {
+            id: id,
+            username: userData.username,
+            display_name: userData.display_name || userData.username,
+            x: width / 2 + (Math.random() - 0.5) * 100,
+            y: height / 2 + (Math.random() - 0.5) * 100
+        };
+        
+        nodesData.push(newNode);
+        nodeMap.set(id, newNode);
+        
+        // Update simulation
+        simulation.nodes(nodesData);
+        simulation.alpha(0.3).restart();
+        
+        updateNodes();
+    }
+    
+    // Remove a user node from the graph with animation
+    export function removeNode(userId) {
+        if (!simulation || !nodeGroup) return;
+        
+        const id = String(userId);
+        const nodeIndex = nodesData.findIndex(n => n.id === id);
+        if (nodeIndex === -1) return;
+        
+        // Remove associated links first
+        linksData = linksData.filter(l => 
+            String(l.source.id || l.source) !== id && 
+            String(l.target.id || l.target) !== id
+        );
+        
+        // Remove the node
+        nodesData.splice(nodeIndex, 1);
+        nodeMap.delete(id);
+        
+        // Update simulation
+        simulation.nodes(nodesData);
+        simulation.force("link").links(linksData);
+        simulation.alpha(0.3).restart();
+        
+        updateNodes();
+        updateLinks();
+    }
+    
+    // Add a connection between two nodes with animation
+    export function addLink(fromId, toId) {
+        if (!simulation || !linkGroup) return;
+        
+        const sourceId = String(fromId);
+        const targetId = String(toId);
+        
+        const sourceNode = nodeMap.get(sourceId);
+        const targetNode = nodeMap.get(targetId);
+        
+        if (!sourceNode || !targetNode) return;
+        
+        // Check if link already exists
+        const exists = linksData.some(l => 
+            (String(l.source.id || l.source) === sourceId && String(l.target.id || l.target) === targetId) ||
+            (String(l.source.id || l.source) === targetId && String(l.target.id || l.target) === sourceId)
+        );
+        if (exists) return;
+        
+        linksData.push({ source: sourceNode, target: targetNode });
+        
+        // Update simulation
+        simulation.force("link").links(linksData);
+        simulation.alpha(0.3).restart();
+        
+        updateLinks();
+    }
+    
+    // Remove a connection between two nodes with animation
+    export function removeLink(fromId, toId) {
+        if (!simulation || !linkGroup) return;
+        
+        const sourceId = String(fromId);
+        const targetId = String(toId);
+        
+        linksData = linksData.filter(l => {
+            const sId = String(l.source.id || l.source);
+            const tId = String(l.target.id || l.target);
+            return !((sId === sourceId && tId === targetId) || (sId === targetId && tId === sourceId));
+        });
+        
+        // Update simulation
+        simulation.force("link").links(linksData);
+        simulation.alpha(0.1).restart();
+        
+        updateLinks();
+    }
+    
+    // Pulse a node to indicate activity (e.g., new post)
+    export function pulseNode(userId) {
+        if (!nodeGroup) return;
+        
+        const id = String(userId);
+        nodeGroup.selectAll("circle")
+            .filter(d => d.id === id)
+            .transition()
+            .duration(200)
+            .attr("r", 14)
+            .style("fill-opacity", 0.6)
+            .transition()
+            .duration(400)
+            .attr("r", 8)
+            .style("fill-opacity", 0.3);
+    }
+    
+    // Handle node click - show context menu at node position
+    function handleNodeClick(event, d) {
+        event.stopPropagation();
+        const currentUserIdStr = currentUserId ? String(currentUserId) : null;
+        
+        // Don't trigger on self
+        if (d.id === currentUserIdStr) return;
+        
+        // Get mouse position relative to container
+        const rect = container.getBoundingClientRect();
+        contextMenuX = event.clientX - rect.left;
+        contextMenuY = event.clientY - rect.top;
+        
+        // Store user info
+        contextMenuUser = d;
+        
+        // Check connection status from server
+        if (live) {
+            live.pushEvent("check_friendship_status", { user_id: d.id }, (reply) => {
+                contextMenuStatus = reply?.status || 'none';
+                showContextMenu = true;
+            });
+        } else {
+            // Fallback: show without status info
+            contextMenuStatus = 'none';
+            showContextMenu = true;
+        }
+    }
+    
+    // Handle context menu action
+    function handleMenuAction(action) {
+        if (live && contextMenuUser) {
+            live.pushEvent("graph_node_action", { 
+                user_id: contextMenuUser.id, 
+                action: action 
+            });
+        }
+        closeContextMenu();
+    }
+    
+    // Close context menu
+    function closeContextMenu() {
+        showContextMenu = false;
+        contextMenuUser = null;
+    }
+    
+    // Close menu when clicking outside
+    function handleBackdropClick(event) {
+        if (showContextMenu) {
+            closeContextMenu();
+        }
+    }
 
     function updateNodes() {
         const nodes = nodeGroup
@@ -99,6 +276,8 @@
                     .style("fill-opacity", 0.3)
                     .attr("stroke-opacity", 0.6);
             })
+            .on("click", handleNodeClick)
+            .style("cursor", "pointer")
             .transition()
             .duration(500)
             .attr("r", 8); // Uniform size
@@ -134,7 +313,7 @@
             .remove();
     }
 
-    // ... (removeLink, pulseNode logic remains the same) ...
+
 
     function initGraph() {
         if (!container || !graphData) return;
@@ -280,7 +459,8 @@
                         d.fx = null;
                         d.fy = null;
                     }),
-            );
+            )
+            .on("click", handleNodeClick);
 
         // Add current user's label
         if (currentUserIdStr) {
@@ -442,10 +622,127 @@
     });
 </script>
 
-<div class="w-full h-full">
-    <!-- Subtle Gradient Background - Always Visible -->
-    <!-- Removed fixed background; parent handles overlay style -->
-
+<div class="w-full h-full" on:click={handleBackdropClick} on:keydown={(e) => e.key === 'Escape' && closeContextMenu()} role="presentation">
     <!-- Graph Container -->
     <div bind:this={container} class="w-full h-full relative z-10"></div>
+    
+    <!-- Context Menu -->
+    {#if showContextMenu && contextMenuUser}
+        <div 
+            class="context-menu"
+            style="left: {contextMenuX}px; top: {contextMenuY}px;"
+            on:click|stopPropagation
+            on:keydown|stopPropagation
+            role="menu"
+            tabindex="-1"
+        >
+            <!-- User header -->
+            <div class="menu-header">
+                <span class="menu-username">@{contextMenuUser.username || contextMenuUser.display_name}</span>
+            </div>
+            
+            <!-- Actions -->
+            <div class="menu-actions">
+                {#if contextMenuStatus === 'connected'}
+                    <button class="menu-item" on:click={() => handleMenuAction('message')}>
+                        <span>Message</span>
+                    </button>
+                {:else if contextMenuStatus === 'pending'}
+                    <button class="menu-item menu-item-pending" disabled>
+                        <span>Pending...</span>
+                    </button>
+                {:else}
+                    <button class="menu-item" on:click={() => handleMenuAction('add_friend')}>
+                        <span>Connect</span>
+                    </button>
+                {/if}
+            </div>
+        </div>
+    {/if}
 </div>
+
+<style>
+    .context-menu {
+        position: absolute;
+        z-index: 100;
+        min-width: 160px;
+        transform: translate(-50%, 10px);
+        
+        /* Fluid Glass Design */
+        background: rgba(10, 10, 10, 0.85);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+        box-shadow: 
+            0 10px 40px -10px rgba(0, 0, 0, 0.6),
+            0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        
+        /* Spring animation */
+        animation: menu-pop 0.25s cubic-bezier(0.3, 1.5, 0.6, 1);
+        overflow: hidden;
+    }
+    
+    @keyframes menu-pop {
+        0% {
+            transform: translate(-50%, 10px) scale(0.9);
+            opacity: 0;
+        }
+        100% {
+            transform: translate(-50%, 10px) scale(1);
+            opacity: 1;
+        }
+    }
+    
+    .menu-header {
+        padding: 0.75rem 1rem 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .menu-username {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        letter-spacing: 0.01em;
+    }
+    
+    .menu-actions {
+        padding: 0.5rem;
+    }
+    
+    .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.65rem 0.75rem;
+        border: none;
+        background: transparent;
+        color: #F5F5F7;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-align: left;
+        border-radius: 0.6rem;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .menu-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .menu-item:active {
+        transform: scale(0.98);
+        background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .menu-item-pending {
+        color: rgba(255, 255, 255, 0.4);
+        cursor: default;
+    }
+    
+    .menu-item-pending:hover {
+        background: transparent;
+    }
+</style>

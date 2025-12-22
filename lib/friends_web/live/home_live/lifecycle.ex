@@ -50,6 +50,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         Presence.subscribe_global()
         # Track this user as online globally
         Presence.track_global(self(), session_user.id, session_user_color, session_user_name)
+        # Subscribe to global updates for live network graph
+        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:global")
+        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
       end
 
       # Load initial public feed items and contacts
@@ -121,11 +124,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:devices, devices)
         |> assign(:show_devices_modal, false)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
-        # Welcome graph data (used by fluid_feed AND fullscreen overlay if empty)
+        # Welcome graph data for empty feed state
         |> assign(:welcome_graph_data, GraphHelper.build_welcome_graph_data())
-        # Show fullscreen overlay if feed is empty
-        |> assign(:show_fullscreen_graph, length(feed_items) == 0)
-        |> assign(:fullscreen_graph_data, if(length(feed_items) == 0, do: GraphHelper.build_welcome_graph_data(), else: nil))
         # New user = no friends yet (for showing opt-out checkbox)
         |> assign(:is_new_user, length(friends) == 0)
         |> assign(:show_nav_drawer, false)

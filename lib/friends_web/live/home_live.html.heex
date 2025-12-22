@@ -44,38 +44,6 @@
     </div>
   </.bottom_drawer>
 
-  <%!-- Fullscreen Graph Overlay (Hidden feature: 3s long-press on nav orb) --%>
-  <%= if assigns[:show_fullscreen_graph] && assigns[:fullscreen_graph_data] do %>
-    <div
-      id="fullscreen-graph-overlay"
-      class="fixed inset-0 z-[200] bg-[#050505]/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200"
-      phx-window-keydown="close_fullscreen_graph"
-      phx-key="escape"
-    >
-      <%!-- Close button --%>
-      <button
-        phx-click="close_fullscreen_graph"
-        class="absolute top-6 right-6 z-[300] w-12 h-12 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all cursor-pointer"
-      >
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-
-      <%!-- Live Graph (no hideControls - zoom enabled) --%>
-      <div
-        id="fullscreen-welcome-graph"
-        phx-hook="WelcomeGraph"
-        phx-update="ignore"
-        class="w-full h-full"
-        data-graph-data={Jason.encode!(@fullscreen_graph_data)}
-        data-current-user-id={if @current_user, do: @current_user.id, else: nil}
-        data-always-show="true"
-      >
-      </div>
-    </div>
-  <% end %>
-
 
   <%!-- Omnibox Search --%>
   <.omnibox
@@ -570,6 +538,7 @@
       show_chat={Map.get(assigns, :show_chat, true)}
       unread_count={Map.get(assigns, :total_unread_count, 0)}
       online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+      pending_request_count={length(assigns[:pending_requests] || [])}
     />
 
     <% else %>

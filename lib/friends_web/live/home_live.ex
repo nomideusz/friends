@@ -5,7 +5,6 @@ defmodule FriendsWeb.HomeLive do
 
   import FriendsWeb.HomeLive.Helpers
   import FriendsWeb.HomeLive.Components.SettingsComponents
-  import FriendsWeb.HomeLive.Components.InviteComponents
   import FriendsWeb.HomeLive.Components.DrawerComponents
   import FriendsWeb.HomeLive.Components.FluidRoomComponents
   import FriendsWeb.HomeLive.Components.FluidFeedComponents
@@ -945,13 +944,7 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("open_room_settings", _params, socket) do
-    # Open room settings - for now open group sheet with room members
-    {:noreply,
-     socket
-     |> assign(:show_contact_sheet, true)
-     |> assign(:contact_mode, :manage_members)}
-  end
+
 
   def handle_event("open_create_group", _params, socket) do
     {:noreply, assign(socket, :create_group_modal, true)}
@@ -1007,6 +1000,87 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:fullscreen_graph_data, nil)}
   end
 
+  # Check connection status with another user (for graph context menu)
+  def handle_event("check_friendship_status", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        
+        if current_user do
+          friendship = Social.get_friendship(current_user.id, user_id) || 
+                       Social.get_friendship(user_id, current_user.id)
+          
+          status = case friendship do
+            %{status: "accepted"} -> "connected"
+            %{status: "pending"} -> "pending"
+            _ -> "none"
+          end
+          
+          {:reply, %{status: status}, socket}
+        else
+          {:reply, %{status: "none"}, socket}
+        end
+        
+      _ ->
+        {:reply, %{status: "none"}, socket}
+    end
+  end
+
+  # Handle action from graph context menu
+  def handle_event("graph_node_action", %{"user_id" => user_id_str, "action" => action}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        
+        if current_user && user_id != current_user.id do
+          case action do
+            "message" ->
+              # Open DM with this user
+              case Social.get_or_create_dm_room(current_user.id, user_id) do
+                {:ok, room} ->
+                  {:noreply,
+                   socket
+                   |> assign(:show_fullscreen_graph, false)
+                   |> assign(:fullscreen_graph_data, nil)
+                   |> push_navigate(to: ~p"/r/#{room.code}")}
+                _ ->
+                  {:noreply, socket}
+              end
+            
+            "add_friend" ->
+              # Send friend request
+              case Social.add_friend(current_user.id, user_id) do
+                {:ok, _} ->
+                  {:noreply, put_flash(socket, :info, "Friend request sent!")}
+                {:error, :already_friends} ->
+                  {:noreply, put_flash(socket, :info, "Already friends!")}
+                {:error, :request_already_sent} ->
+                  {:noreply, put_flash(socket, :info, "Request already sent")}
+                _ ->
+                  {:noreply, socket}
+              end
+            
+            "profile" ->
+              # Show profile sheet
+              user = Social.get_user(user_id)
+              {:noreply,
+               socket
+               |> assign(:show_fullscreen_graph, false)
+               |> assign(:fullscreen_graph_data, nil)
+               |> assign(:show_profile_sheet, true)
+               |> assign(:viewing_user, user)}
+            
+            _ ->
+              {:noreply, socket}
+          end
+        else
+          {:noreply, socket}
+        end
+        
+      _ ->
+        {:noreply, socket}
+    end
+  end
 
 
   # --- Contact Search Events ---
@@ -1506,6 +1580,38 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_new_public_note(socket, note)
   end
 
+  # Handle photo deletion - update feed stream live
+  def handle_info({:photo_deleted, %{id: photo_id}}, socket) do
+    if socket.assigns[:feed_item_count] do
+      # Public feed context
+      {:noreply,
+       socket
+       |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
+       |> stream_delete(:feed_items, %{id: photo_id, unique_id: "photo-#{photo_id}", type: :photo})}
+    else
+      # Room context
+      {:noreply,
+       socket
+       |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
+       |> stream_delete(:items, %{id: photo_id, unique_id: "photo-#{photo_id}"})}
+    end
+  end
+
+  # Handle note deletion - update feed stream live
+  def handle_info({:note_deleted, %{id: note_id}}, socket) do
+    if socket.assigns[:feed_item_count] do
+      {:noreply,
+       socket
+       |> assign(:feed_item_count, max(0, socket.assigns.feed_item_count - 1))
+       |> stream_delete(:feed_items, %{id: note_id, unique_id: "note-#{note_id}", type: :note})}
+    else
+      {:noreply,
+       socket
+       |> assign(:item_count, max(0, (socket.assigns[:item_count] || 0) - 1))
+       |> stream_delete(:items, %{id: note_id, unique_id: "note-#{note_id}"})}
+    end
+  end
+
   # Handle incoming friend request - someone sent us a request
   def handle_info({:friend_request, _friendship}, socket) do
     if socket.assigns.current_user do
@@ -1518,7 +1624,8 @@ defmodule FriendsWeb.HomeLive do
 
   # Handle new user joining (for live graph updates)
   def handle_info({:new_user_joined, user_data}, socket) do
-    if socket.assigns[:show_fullscreen_graph] do
+    # Push to graph when feed is empty (graph shows as empty state)
+    if socket.assigns[:feed_item_count] == 0 do
       {:noreply,
        push_event(socket, "welcome_new_user", %{
          id: user_data.id,
@@ -1546,8 +1653,8 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:friends, friends)
         |> assign(:pending_requests, pending_requests)
         
-      # If welcome graph OR fullscreen graph is displayed, push live update for new connection
-      socket = if socket.assigns[:show_welcome_graph] or socket.assigns[:show_fullscreen_graph] do
+      # If feed is empty (graph shown as empty state), push live update for new connection
+      socket = if socket.assigns[:feed_item_count] == 0 do
         socket
         |> push_event("welcome_new_connection", %{
           from_id: friendship.user_id,
@@ -1571,8 +1678,8 @@ defmodule FriendsWeb.HomeLive do
 
       socket = assign(socket, :graph_data, graph_data)
       
-      # If welcome graph OR fullscreen graph is displayed, push live update for removed connection
-      socket = if socket.assigns[:show_welcome_graph] or socket.assigns[:show_fullscreen_graph] do
+      # If feed is empty (graph shown as empty state), push live update for removed connection
+      socket = if socket.assigns[:feed_item_count] == 0 do
         socket
         |> push_event("welcome_connection_removed", %{
           from_id: friendship.user_id,

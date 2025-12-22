@@ -129,7 +129,16 @@ defmodule Friends.Social.Notes do
           true ->
             case Repo.delete(note) do
               {:ok, _} ->
-                Phoenix.PubSub.broadcast(Friends.PubSub, "friends:room:#{room_code}", {:note_deleted, %{id: note_id}})
+                if room_code do
+                  Phoenix.PubSub.broadcast(Friends.PubSub, "friends:room:#{room_code}", {:note_deleted, %{id: note_id}})
+                else
+                  # Public feed note - broadcast to contacts
+                  case Integer.parse(String.replace(to_string(note.user_id), "user-", "")) do
+                    {int_id, ""} ->
+                      Relationships.broadcast_to_contacts(int_id, :note_deleted, %{id: note_id})
+                    _ -> nil
+                  end
+                end
                 {:ok, note}
 
               error ->
@@ -152,6 +161,13 @@ defmodule Friends.Social.Notes do
           {:ok, _} ->
             if room_code do
               Phoenix.PubSub.broadcast(Friends.PubSub, "friends:room:#{room_code}", {:note_deleted, %{id: note_id}})
+            else
+              # Public feed note - broadcast to contacts
+              case Integer.parse(String.replace(to_string(note.user_id), "user-", "")) do
+                {int_id, ""} ->
+                  Relationships.broadcast_to_contacts(int_id, :note_deleted, %{id: note_id})
+                _ -> nil
+              end
             end
             {:ok, note}
 

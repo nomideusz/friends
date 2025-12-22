@@ -18,6 +18,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
   attr :show_chat, :boolean, default: true
   attr :unread_count, :integer, default: 0
   attr :online_friend_count, :integer, default: 0
+  attr :pending_request_count, :integer, default: 0
 
   def bottom_toolbar(assigns) do
     ~H"""
@@ -29,7 +30,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
               <.toolbar_button icon="spaces" label="Spaces" event="open_groups_sheet" badge={@unread_count} />
-              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} />
+              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} pending_count={@pending_request_count} />
             <% :room -> %>
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
@@ -45,7 +46,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="search" label="Search" event="open_omnibox" />
               <.toolbar_button icon="spaces" label="Spaces" event="open_groups_sheet" />
-              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} />
+              <.toolbar_avatar current_user={@current_user} event="open_profile_sheet" online_count={@online_friend_count} pending_count={@pending_request_count} />
           <% end %>
         </nav>
       </div>
@@ -100,6 +101,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
   attr :current_user, :map, required: true
   attr :event, :string, required: true
   attr :online_count, :integer, default: 0
+  attr :pending_count, :integer, default: 0
 
   defp toolbar_avatar(assigns) do
     ~H"""
@@ -119,9 +121,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
             {String.first(@current_user.username) |> String.upcase()}
           <% end %>
         </div>
-        <%!-- Online friend indicator --%>
-        <%= if @online_count > 0 do %>
-          <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-neutral-900 animate-pulse"></span>
+        <%!-- Pending request badge - takes priority --%>
+        <%= if @pending_count > 0 do %>
+          <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1 animate-pulse">
+            <%= if @pending_count > 9, do: "9+", else: @pending_count %>
+          </span>
+        <% else %>
+          <%!-- Online friend indicator when no pending requests --%>
+          <%= if @online_count > 0 do %>
+            <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-neutral-900"></span>
+          <% end %>
         <% end %>
       </div>
       <span class="text-[10px] mt-1 font-medium text-white/50 truncate max-w-[3rem]">@{@current_user.username}</span>

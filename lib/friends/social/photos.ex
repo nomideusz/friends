@@ -413,11 +413,19 @@ defmodule Friends.Social.Photos do
                 {:photo_deleted, %{id: photo_id}}
               )
             else
-              Phoenix.PubSub.broadcast(
-                Friends.PubSub, 
-                "friends:public_feed:#{photo.user_id}", 
-                {:photo_deleted, %{id: photo_id}}
-              )
+              # Public feed photo - broadcast to all contacts
+              # photo.user_id is in format "user-123", extract the integer
+              case Integer.parse(String.replace(to_string(photo.user_id), "user-", "")) do
+                {int_id, ""} ->
+                  Friends.Social.Relationships.broadcast_to_contacts(int_id, :photo_deleted, %{id: photo_id})
+                _ ->
+                  # Fallback: just broadcast to the user's own channel
+                  Phoenix.PubSub.broadcast(
+                    Friends.PubSub, 
+                    "friends:public_feed:#{photo.user_id}", 
+                    {:photo_deleted, %{id: photo_id}}
+                  )
+              end
             end
             {:ok, photo}
 

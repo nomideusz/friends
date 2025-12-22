@@ -299,6 +299,9 @@ defmodule Friends.Social.Relationships do
       Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{uid}", {event, result})
     end)
 
+    # Also broadcast to global channel for live graph updates
+    Phoenix.PubSub.broadcast(Friends.PubSub, "friends:global", {event, result})
+
     {:ok, result}
   end
 

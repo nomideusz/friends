@@ -291,36 +291,27 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   def fluid_feed_empty_state(assigns) do
     ~H"""
-    <div class="relative flex items-center justify-center h-[70vh] overflow-hidden">
-      <%!-- Ambient glow background --%>
-      <div class="absolute inset-0 opacity-30">
-        <div class="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-br from-purple-500/20 to-transparent blur-3xl"></div>
-        <div class="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full bg-gradient-to-br from-blue-500/20 to-transparent blur-3xl"></div>
-      </div>
-
-      <%!-- Static Graphic (Abstract Node Network) --%>
-      <div class="relative w-64 h-64 opacity-30">
-        <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <%!-- Central Node --%>
-          <circle cx="100" cy="100" r="12" fill="white" fill-opacity="0.2" />
-          
-          <%!-- Satellite Nodes --%>
-          <circle cx="100" cy="40" r="6" fill="white" fill-opacity="0.1" />
-          <circle cx="160" cy="100" r="6" fill="white" fill-opacity="0.1" />
-          <circle cx="100" cy="160" r="6" fill="white" fill-opacity="0.1" />
-          <circle cx="40" cy="100" r="6" fill="white" fill-opacity="0.1" />
-          
-          <%!-- Connections --%>
-          <line x1="100" y1="88" x2="100" y2="46" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
-          <line x1="112" y1="100" x2="154" y2="100" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
-          <line x1="100" y1="112" x2="100" y2="154" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
-          <line x1="88" y1="100" x2="46" y2="100" stroke="white" stroke-opacity="0.1" stroke-width="1" stroke-dasharray="4 4" />
-          
-          <%!-- Orbital Rings --%>
-          <circle cx="100" cy="100" r="50" stroke="white" stroke-opacity="0.05" stroke-width="1" />
-          <circle cx="100" cy="100" r="70" stroke="white" stroke-opacity="0.03" stroke-width="1" />
-        </svg>
-      </div>
+    <div class="relative flex items-center justify-center h-[calc(100vh-120px)] overflow-hidden">
+      <%= if @welcome_graph_data do %>
+        <%!-- Live Network Graph as empty state --%>
+        <div
+          id="feed-empty-welcome-graph"
+          phx-hook="WelcomeGraph"
+          phx-update="ignore"
+          class="absolute inset-0"
+          data-graph-data={Jason.encode!(@welcome_graph_data)}
+          data-current-user-id={if @current_user, do: @current_user.id, else: nil}
+          data-always-show="true"
+          data-hide-controls="true"
+        >
+        </div>
+      <% else %>
+        <%!-- Fallback: Static ambient graphic --%>
+        <div class="absolute inset-0 opacity-30">
+          <div class="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-br from-purple-500/20 to-transparent blur-3xl"></div>
+          <div class="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full bg-gradient-to-br from-blue-500/20 to-transparent blur-3xl"></div>
+        </div>
+      <% end %>
     </div>
     """
   end
