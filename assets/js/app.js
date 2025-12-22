@@ -9,6 +9,7 @@ import FriendGraph from "../svelte/FriendGraph.svelte"
 import GlobalGraph from "../svelte/GlobalGraph.svelte"
 import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
 import WelcomeGraph from "../svelte/WelcomeGraph.svelte"
+import ChordDiagram from "../svelte/ChordDiagram.svelte"
 // CornerNavigation removed - replaced by bottom toolbar
 import { mount, unmount } from 'svelte'
 import { isWebAuthnSupported, isPlatformAuthenticatorAvailable, registerCredential, authenticateWithCredential } from "./webauthn"
@@ -16,7 +17,7 @@ import * as messageEncryption from "./message-encryption"
 import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
 import QRCode from "qrcode"
 
-const Components = { FriendsMap, FriendGraph, GlobalGraph, ConstellationGraph, WelcomeGraph }
+const Components = { FriendsMap, FriendGraph, GlobalGraph, ConstellationGraph, WelcomeGraph, ChordDiagram }
 
 // Generate device fingerprint - hardware characteristics that are consistent across browsers
 function generateFingerprint() {
@@ -404,6 +405,51 @@ const Hooks = {
         }
     },
 
+    ChordDiagram: {
+        mounted() {
+            const chordData = JSON.parse(this.el.dataset.chord || 'null')
+
+            this.component = mount(ChordDiagram, {
+                target: this.el,
+                props: {
+                    chordData,
+                    live: this
+                }
+            })
+
+            // Listen for chord updates from the server
+            this.handleEvent("chord-updated", ({ chord_data }) => {
+                if (this.component) {
+                    unmount(this.component)
+                }
+                this.component = mount(ChordDiagram, {
+                    target: this.el,
+                    props: {
+                        chordData: chord_data,
+                        live: this
+                    }
+                })
+            })
+        },
+        updated() {
+            if (this.component) {
+                unmount(this.component)
+            }
+            const chordData = JSON.parse(this.el.dataset.chord || 'null')
+            this.component = mount(ChordDiagram, {
+                target: this.el,
+                props: {
+                    chordData,
+                    live: this
+                }
+            })
+        },
+        destroyed() {
+            if (this.component) {
+                unmount(this.component)
+            }
+        }
+    },
 
 
     ConstellationGraph: {

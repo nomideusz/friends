@@ -192,8 +192,32 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
+
+                  <%!-- Network Chord Visualization --%>
+                  <button
+                    phx-click="open_chord_diagram"
+                    class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-purple-500/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="9" stroke-width="1.5"/>
+                          <path stroke-linecap="round" stroke-width="1.5" d="M12 3a9 9 0 014.243 16.97M12 3a9 9 0 00-4.243 16.97"/>
+                          <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.3"/>
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="text-sm font-medium text-white">Network Chord</div>
+                        <div class="text-xs text-white/40">Visualize connections</div>
+                      </div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
               </div>
+
 
               <%!-- Preferences Section --%>
               <div>

@@ -471,6 +471,41 @@ defmodule FriendsWeb.HomeLive do
     SettingsEvents.sign_out(socket)
   end
 
+  # Chord Diagram events
+  def handle_event("open_chord_diagram", _params, socket) do
+    chord_data = FriendsWeb.HomeLive.GraphHelper.build_chord_data(socket.assigns.current_user)
+    {:noreply,
+     socket
+     |> assign(:show_chord_modal, true)
+     |> assign(:chord_data, chord_data)}
+  end
+
+  def handle_event("open_room_chord", _params, socket) do
+    room = socket.assigns[:room]
+    if room do
+      chord_data = FriendsWeb.HomeLive.GraphHelper.build_room_chord_data(socket.assigns.current_user, room.id)
+      {:noreply,
+       socket
+       |> assign(:show_chord_modal, true)
+       |> assign(:chord_data, chord_data)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("close_chord_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_chord_modal, false)
+     |> assign(:chord_data, nil)}
+  end
+
+  def handle_event("chord_node_clicked", %{"user_id" => user_id}, socket) do
+    # Navigate to user profile or open DM
+    RoomEvents.open_dm(socket, user_id)
+  end
+
+
   def handle_event("view_full_image", %{"photo_id" => photo_id}, socket) do
     PhotoEvents.view_full_image(socket, photo_id)
   end

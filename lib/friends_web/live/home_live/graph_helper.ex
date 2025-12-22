@@ -364,4 +364,214 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
       edges: edges
     }
   end
+  @doc """
+  Builds chord diagram data for a user's personal network.
+  Returns nodes (user + connections) and a connection matrix for D3 chord layout.
+  """
+  def build_chord_data(nil), do: nil
+  def build_chord_data(user) do
+    user_id = user.id
+
+    # Get all connections
+    my_trusted = Social.list_trusted_friends(user_id)
+    people_who_trust_me =
+      Repo.all(
+        from tf in Friends.Social.TrustedFriend,
+          where: tf.trusted_user_id == ^user_id and tf.status == "confirmed",
+          preload: [:user]
+      )
+    friends = Social.list_friends(user_id)
+
+    # Build node list: self first, then grouped by type
+    nodes = []
+    
+    # Self node
+    self_node = %{
+      id: user.id,
+      name: user.display_name || user.username,
+      username: user.username,
+      group: "self",
+      color: "#ffffff"
+    }
+    nodes = [self_node]
+
+    # Trusted nodes (now called Recovery)
+    trusted_nodes = Enum.map(my_trusted, fn tf ->
+      %{
+        id: tf.trusted_user.id,
+        name: tf.trusted_user.display_name || tf.trusted_user.username,
+        username: tf.trusted_user.username,
+        group: "recovery",
+        color: "#34d399"
+      }
+    end)
+
+    # People who trust me (exclude those already in trusted to avoid dupes)
+    trusted_ids = MapSet.new(Enum.map(my_trusted, fn tf -> tf.trusted_user.id end))
+    trusts_me_nodes = 
+      people_who_trust_me
+      |> Enum.reject(fn tf -> MapSet.member?(trusted_ids, tf.user.id) end)
+      |> Enum.map(fn tf ->
+        %{
+          id: tf.user.id,
+          name: tf.user.display_name || tf.user.username,
+          username: tf.user.username,
+          group: "recovers_me",
+          color: "#a78bfa"
+        }
+      end)
+
+    # Friend nodes (exclude those already in trusted/trusts_me)
+    existing_ids = MapSet.union(trusted_ids, MapSet.new(Enum.map(people_who_trust_me, fn tf -> tf.user.id end)))
+    friend_nodes =
+      friends
+      |> Enum.reject(fn f -> MapSet.member?(existing_ids, f.user.id) end)
+      |> Enum.map(fn f ->
+        %{
+          id: f.user.id,
+          name: f.user.display_name || f.user.username,
+          username: f.user.username,
+          group: "friend",
+          color: "#3b82f6"
+        }
+      end)
+
+    # Combine all nodes with indices
+    all_nodes = nodes ++ trusted_nodes ++ trusts_me_nodes ++ friend_nodes
+    all_nodes = all_nodes |> Enum.with_index() |> Enum.map(fn {node, idx} -> Map.put(node, :index, idx) end)
+    
+    # Build ID to index map
+    id_to_index = Map.new(all_nodes, fn n -> {n.id, n.index} end)
+    n = length(all_nodes)
+
+    # Initialize empty matrix
+    matrix = for _ <- 1..n, do: for(_ <- 1..n, do: 0)
+
+    # Fill matrix with connections
+    # Self connections to all direct connections
+    self_idx = 0
+    matrix = 
+      all_nodes
+      |> Enum.reduce(matrix, fn node, mat ->
+        if node.id != user_id do
+          # Connection from self to this node
+          mat = put_matrix(mat, self_idx, node.index, 1)
+          put_matrix(mat, node.index, self_idx, 1)
+        else
+          mat
+        end
+      end)
+
+    # Get friendships between connections
+    connection_ids = Enum.map(all_nodes, fn n -> n.id end) |> Enum.filter(fn id -> id != user_id end)
+    inter_friendships = get_friendships_between(connection_ids)
+
+    # Add inter-connection edges
+    matrix =
+      Enum.reduce(inter_friendships, matrix, fn {id1, id2}, mat ->
+        idx1 = Map.get(id_to_index, id1)
+        idx2 = Map.get(id_to_index, id2)
+        if idx1 && idx2 do
+          mat = put_matrix(mat, idx1, idx2, 1)
+          put_matrix(mat, idx2, idx1, 1)
+        else
+          mat
+        end
+      end)
+
+    %{
+      nodes: all_nodes,
+      matrix: matrix,
+      groups: ["self", "recovery", "recovers_me", "friend"]
+    }
+  end
+
+  @doc """
+  Builds chord diagram data for a specific room.
+  Shows all room members and their inter-connections.
+  """
+  def build_room_chord_data(nil, _room_id), do: nil
+  def build_room_chord_data(_user, nil), do: nil
+  def build_room_chord_data(user, room_id) do
+    # Get all room members
+    members = Social.list_room_members(room_id)
+    
+    if Enum.empty?(members) do
+      nil
+    else
+      user_id = user.id
+      
+      # Build nodes from members
+      all_nodes = 
+        members
+        |> Enum.with_index()
+        |> Enum.map(fn {member, idx} ->
+          is_self = member.user.id == user_id
+          %{
+            id: member.user.id,
+            name: member.user.display_name || member.user.username,
+            username: member.user.username,
+            group: if(is_self, do: "self", else: "member"),
+            role: member.role,
+            color: if(is_self, do: "#ffffff", else: "#14b8a6"),
+            index: idx
+          }
+        end)
+
+      # Build ID to index map
+      id_to_index = Map.new(all_nodes, fn n -> {n.id, n.index} end)
+      n = length(all_nodes)
+
+      # Initialize empty matrix
+      matrix = for _ <- 1..n, do: for(_ <- 1..n, do: 0)
+
+      # Get all friendships between room members
+      member_ids = Enum.map(all_nodes, fn n -> n.id end)
+      inter_friendships = get_friendships_between(member_ids)
+
+      # Fill matrix with connections
+      matrix =
+        Enum.reduce(inter_friendships, matrix, fn {id1, id2}, mat ->
+          idx1 = Map.get(id_to_index, id1)
+          idx2 = Map.get(id_to_index, id2)
+          if idx1 && idx2 do
+            mat = put_matrix(mat, idx1, idx2, 1)
+            put_matrix(mat, idx2, idx1, 1)
+          else
+            mat
+          end
+        end)
+
+      %{
+        nodes: all_nodes,
+        matrix: matrix,
+        groups: ["self", "member"],
+        room_id: room_id
+      }
+    end
+  end
+
+  # Helper to update matrix value at [row][col]
+  defp put_matrix(matrix, row, col, value) do
+    List.update_at(matrix, row, fn row_list ->
+      List.update_at(row_list, col, fn _ -> value end)
+    end)
+  end
+
+  # Get all friendships between a list of user IDs
+  # Returns a list of {user_id1, user_id2} tuples
+  defp get_friendships_between([]), do: []
+  defp get_friendships_between([_]), do: []
+  defp get_friendships_between(user_ids) do
+    alias Friends.Social.Friendship
+    import Ecto.Query
+
+    Repo.all(
+      from f in Friendship,
+        where: f.status == "accepted" and
+               f.user_id in ^user_ids and
+               f.friend_user_id in ^user_ids,
+        select: {f.user_id, f.friend_user_id}
+    )
+  end
 end

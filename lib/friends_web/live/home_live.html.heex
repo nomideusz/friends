@@ -196,6 +196,67 @@
     devices={assigns[:devices] || []}
     current_device_id={assigns[:current_device_id]}
   />
+
+  <%!-- Chord Diagram Modal --%>
+  <%= if assigns[:show_chord_modal] && assigns[:chord_data] do %>
+    <div
+      id="chord-modal-overlay"
+      class="fixed inset-0 z-[80]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Network Chord Diagram"
+      phx-window-keydown="close_chord_modal"
+      phx-key="escape"
+    >
+      <%!-- Backdrop --%>
+      <div 
+        class="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+        phx-click="close_chord_modal"
+      ></div>
+
+      <%!-- Modal Container --%>
+      <div class="absolute inset-4 sm:inset-8 flex items-center justify-center pointer-events-none">
+        <div class="w-full max-w-4xl h-full max-h-[80vh] bg-[#0a0a0f]/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden pointer-events-auto animate-in zoom-in-95 duration-200">
+          
+          <%!-- Header --%>
+          <div class="absolute top-0 left-0 right-0 p-4 flex items-center justify-between z-20 bg-gradient-to-b from-black/50 to-transparent">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke-width="1.5"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6l4 2"/>
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-sm font-semibold text-white">Network Chord</h2>
+                <p class="text-xs text-white/40">Your connections visualized</p>
+              </div>
+            </div>
+            
+            <button
+              phx-click="close_chord_modal"
+              class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <%!-- Chord Diagram --%>
+          <div
+            id="chord-diagram"
+            phx-hook="ChordDiagram"
+            phx-update="ignore"
+            data-chord={Jason.encode!(@chord_data)}
+            class="w-full h-full"
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   
   <%!-- Fluid Create Group Modal --%>
   <.fluid_create_group_modal show={assigns[:create_group_modal]} new_room_name={assigns[:new_room_name] || ""} />
