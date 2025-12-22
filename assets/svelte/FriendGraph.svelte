@@ -494,7 +494,8 @@
 
   <!-- Legend -->
 
-  <!-- Time Travel (Aether Design: Deep Void & Energy) -->
+  <!-- Timeline controls (hidden for now - can be enabled with showTimeline prop) -->
+  {#if false}
   <div
     class="absolute bottom-10 left-6 right-6 p-4 rounded-2xl border border-white/5 bg-black/30 backdrop-blur-md flex items-center gap-4 z-20"
   >
@@ -566,6 +567,7 @@
       </div>
     </div>
   </div>
+  {/if}
 </div>
 
 <style>

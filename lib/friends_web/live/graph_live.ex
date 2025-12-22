@@ -150,9 +150,12 @@ defmodule FriendsWeb.GraphLive do
           <%= if @graph_data do %>
             <div
               id="global-graph"
-              phx-hook="GlobalGraph"
+              phx-hook="WelcomeGraph"
               phx-update="ignore"
-              data-graph={Jason.encode!(@graph_data)}
+              data-graph-data={Jason.encode!(@graph_data)}
+              data-is-new-user="false"
+              data-hide-controls="true"
+              data-always-show="true"
               data-current-user-id={if @current_user, do: @current_user.id, else: ""}
               class="w-full h-full block"
             ></div>

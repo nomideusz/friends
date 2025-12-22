@@ -4,10 +4,7 @@ import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 import { getHooks } from "live_svelte"
-import FriendsMap from "../svelte/FriendsMap.svelte"
 import FriendGraph from "../svelte/FriendGraph.svelte"
-import GlobalGraph from "../svelte/GlobalGraph.svelte"
-import ConstellationGraph from "../svelte/ConstellationGraph.svelte"
 import WelcomeGraph from "../svelte/WelcomeGraph.svelte"
 import ChordDiagram from "../svelte/ChordDiagram.svelte"
 // CornerNavigation removed - replaced by bottom toolbar
@@ -17,7 +14,7 @@ import * as messageEncryption from "./message-encryption"
 import { VoiceRecorder, VoicePlayer } from "./voice-recorder"
 import QRCode from "qrcode"
 
-const Components = { FriendsMap, FriendGraph, GlobalGraph, ConstellationGraph, WelcomeGraph, ChordDiagram }
+const Components = { FriendGraph, WelcomeGraph, ChordDiagram }
 
 // Generate device fingerprint - hardware characteristics that are consistent across browsers
 function generateFingerprint() {
@@ -364,43 +361,7 @@ const Hooks = {
         },
         destroyed() {
             if (this.component) {
-                unmount(this.component)
-            }
-        }
-    },
-
-    GlobalGraph: {
-        mounted() {
-            const graphData = JSON.parse(this.el.dataset.graph || 'null')
-            const currentUserId = this.el.dataset.currentUserId || null
-
-            this.component = mount(GlobalGraph, {
-                target: this.el,
-                props: {
-                    graphData,
-                    currentUserId,
-                    live: this
-                }
-            })
-        },
-        updated() {
-            if (this.component) {
-                unmount(this.component)
-            }
-            const graphData = JSON.parse(this.el.dataset.graph || 'null')
-            const currentUserId = this.el.dataset.currentUserId || null
-            this.component = mount(GlobalGraph, {
-                target: this.el,
-                props: {
-                    graphData,
-                    currentUserId,
-                    live: this
-                }
-            })
-        },
-        destroyed() {
-            if (this.component) {
-                unmount(this.component)
+            unmount(this.component)
             }
         }
     },

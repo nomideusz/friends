@@ -23,7 +23,6 @@ defmodule FriendsWeb.Router do
     # Redirects from old auth URLs to unified /auth
     get "/login", RedirectController, :auth
     get "/register", RedirectController, :auth
-    get "/network", RedirectController, :home
 
     # Public countdown page
     live_session :countdown, layout: {FriendsWeb.Layouts, :auth} do
@@ -45,6 +44,7 @@ defmodule FriendsWeb.Router do
       live "/devices", DevicesLive, :index
 
       live "/graph", GraphLive, :index
+      live "/graph-showcase", GraphShowcaseLive, :index
       live "/r/:room", HomeLive, :room
     end
   end
