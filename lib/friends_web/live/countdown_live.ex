@@ -41,13 +41,9 @@ defmodule FriendsWeb.CountdownLive do
 
     if diff <= 0 do
       # Launch has happened, redirect to auth
-      assign(socket,
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0,
-        launched: true
-      )
+      socket
+      |> assign(launched: true)
+      |> push_redirect(to: "/secret-auth")
     else
       days = div(diff, 86400)
       remaining = rem(diff, 86400)
