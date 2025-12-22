@@ -24,9 +24,14 @@ defmodule FriendsWeb.Router do
     get "/login", RedirectController, :auth
     get "/register", RedirectController, :auth
 
-    # Auth pages - no shared header needed
-    live_session :auth, layout: {FriendsWeb.Layouts, :auth} do
-      live "/auth", AuthLive, :index
+    # Public countdown page
+    live_session :countdown, layout: {FriendsWeb.Layouts, :auth} do
+      live "/auth", CountdownLive, :index
+    end
+
+    # Secret auth routes for testing (hidden from public)
+    live_session :secret_auth, layout: {FriendsWeb.Layouts, :auth} do
+      live "/secret-auth", AuthLive, :index
       live "/recover", RecoverLive, :index
       live "/link", LinkDeviceLive, :index
     end
