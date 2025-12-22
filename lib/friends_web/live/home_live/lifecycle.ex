@@ -236,6 +236,12 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
           Social.subscribe_to_room_chat(room.id)
           # Subscribe to live typing events
           Phoenix.PubSub.subscribe(Friends.PubSub, "room:#{room.id}:typing")
+          # Subscribe to warmth pulse events (ambient awareness)
+          Phoenix.PubSub.subscribe(Friends.PubSub, "room:#{room.id}:warmth")
+          # Subscribe to viewing events (shared attention)
+          Phoenix.PubSub.subscribe(Friends.PubSub, "room:#{room.id}:viewing")
+          # Subscribe to walkie-talkie events (live audio)
+          Phoenix.PubSub.subscribe(Friends.PubSub, "room:#{room.id}:walkie")
         end
 
         # Subscribe to user-specific events (room creations, etc.)
@@ -304,6 +310,10 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_add_menu, false)
         # Live typing - track what other users are typing
         |> assign(:typing_users, %{})
+        # Warmth pulses - track content currently being viewed by others
+        |> assign(:warmth_pulses, %{})
+        # Photo viewers - track who's viewing which photos (shared attention)
+        |> assign(:photo_viewers, %{})
         # FAB and collapsible UI state
         |> assign(:fab_expanded, false)
         |> assign(:contacts_collapsed, false)

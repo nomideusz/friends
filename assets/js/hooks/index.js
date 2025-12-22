@@ -8,6 +8,7 @@ import AuthHooks from './auth-hooks'
 import MediaHooks from './media-hooks'
 import UIHooks from './ui-hooks'
 import ChatHooks from './chat-hooks'
+import WalkieHooks from './walkie-hook'
 
 // Re-export getAudioContext for use in main app
 export { getAudioContext } from './media-hooks'
@@ -18,5 +19,6 @@ export default {
     ...AuthHooks,
     ...MediaHooks,
     ...UIHooks,
-    ...ChatHooks
+    ...ChatHooks,
+    ...WalkieHooks
 }

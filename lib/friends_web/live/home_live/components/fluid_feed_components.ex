@@ -104,9 +104,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         <button
           id="user-avatar-easter-egg"
           phx-click="toggle_user_menu"
-          phx-hook="LongPressOrb"
-          data-long-press-event="show_fullscreen_graph"
-          data-long-press-duration="3000"
+          phx-touchstart="toggle_user_menu"
           class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
         >
           <span class="text-[10px] font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
@@ -529,7 +527,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
                     <span class="text-sm text-white/80 truncate flex items-center gap-2">
                       {partner.name}
                       <%= if is_online do %>
-                        <span class="w-2 h-2 rounded-full bg-green-400 presence-dot-online" style="color: #4ade80;"></span>
+                        <span class="text-[10px] text-green-400/70">Here now</span>
                       <% end %>
                     </span>
                   </.link>

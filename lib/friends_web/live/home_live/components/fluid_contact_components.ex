@@ -257,7 +257,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         <div class="flex items-center gap-2">
           <span class="text-sm text-white truncate">@{@user.username}</span>
           <%= if @online do %>
-            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+            <span class="text-[10px] text-green-400/70">Here now</span>
           <% end %>
           <.shield_icon class="w-3.5 h-3.5 text-green-400" />
         </div>
@@ -414,7 +414,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         <div class="flex items-center gap-2">
           <span class="text-sm text-white truncate">@{@user.username}</span>
           <%= if @online do %>
-            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+            <span class="text-[10px] text-green-400/70">Here now</span>
           <% end %>
           <%= if @is_recovery && @status == :connected do %>
             <.shield_icon class="w-3.5 h-3.5 text-green-400" />

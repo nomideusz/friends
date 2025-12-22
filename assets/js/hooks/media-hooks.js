@@ -444,8 +444,15 @@ export const RoomVoicePlayerHook = {
                     let encryptedBytes = messageEncryption.base64ToArray(encryptedBase64)
                     let nonceBytes = messageEncryption.base64ToArray(nonceBase64)
 
+                    // Debug: Log sizes to diagnose decryption issues
+                    console.log("[RoomVoicePlayer] encryptedBase64 length:", encryptedBase64.length)
+                    console.log("[RoomVoicePlayer] encryptedBytes length:", encryptedBytes.length)
+                    console.log("[RoomVoicePlayer] nonceBytes length:", nonceBytes.length)
+
                     // Fix for potentially double-encoded data (DB storing Base64 string as bytes)
-                    if (nonceBytes.length === 16) {
+                    // Only attempt fix if nonce length is exactly 16 (base64 of 12 bytes) AND
+                    // the encrypted content size is unreasonably small after decoding (< 100 bytes suggests corruption)
+                    if (nonceBytes.length === 16 && encryptedBytes.length < 100) {
                         try {
                             const str = Array.from(nonceBytes).map(b => String.fromCharCode(b)).join('')
                             // Check if it looks like Base64 (alphanumeric + +/ = )

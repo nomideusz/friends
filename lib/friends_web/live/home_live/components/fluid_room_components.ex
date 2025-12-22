@@ -34,10 +34,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :show_add_menu, :boolean, default: false
 
   def fluid_room(assigns) do
+    # Calculate energy level based on number of online viewers (1-5 scale)
+    viewer_count = length(assigns.viewers)
+    energy_level = min(5, max(1, viewer_count))
+    assigns = assign(assigns, :energy_level, energy_level)
+
     ~H"""
     <div
       id="fluid-room"
-      class="fixed inset-0 bg-black flex flex-col z-[100]"
+      class="fixed inset-0 bg-black flex flex-col z-[100] group-energy"
+      data-energy={@energy_level}
       phx-hook="FriendsApp"
       phx-window-keydown="handle_keydown"
     >
@@ -191,6 +197,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <circle cx="12" cy="12" r="2" />
             <circle cx="19" cy="12" r="2" />
           </svg>
+        </button>
+
+        <%!-- User Avatar / Menu --%>
+        <button
+          phx-click="toggle_user_menu"
+          phx-touchstart="toggle_user_menu"
+          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
+          title="Your profile"
+        >
+          <span class="text-[10px] font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
         </button>
       </div>
     </div>
@@ -617,7 +633,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                         </div>
                         <%!-- Duration with subtle styling --%>
                         <span class="text-[10px] text-white/50 room-voice-time flex-shrink-0 font-medium">
-                          <% duration_ms = message.metadata["duration_ms"] || message.metadata[:duration_ms] || 0 %>
+                          <% metadata = message.metadata || %{} %>
+                          <% duration_ms = Map.get(metadata, "duration_ms") || Map.get(metadata, :duration_ms) || 0 %>
                           {div(duration_ms, 60000)}:{rem(div(duration_ms, 1000), 60) |> Integer.to_string() |> String.pad_leading(2, "0")}
                         </span>
                         <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
@@ -757,17 +774,37 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             autocomplete="off"
           />
 
-          <%!-- Voice button --%>
+          <%!-- Voice button (record message) --%>
           <button
             id="fluid-voice-btn"
             phx-hook="RoomVoiceRecorder"
             data-room-id={@room.id}
             class={"w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer #{if @recording_voice, do: "bg-red-500 text-white animate-pulse", else: "text-white/40 hover:text-white hover:bg-white/10"}"}
+            title="Record voice message"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
           </button>
+
+          <%!-- Walkie-Talkie button (hold to talk) --%>
+          <div
+            id="walkie-talkie-container"
+            phx-hook="WalkieTalkie"
+            data-room-id={@room.id}
+            class="relative"
+          >
+            <button
+              class="walkie-talk-btn w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/20 active:bg-purple-500/40 active:scale-110"
+              title="Hold to talk (walkie-talkie)"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+              </svg>
+            </button>
+            <%!-- Indicator when someone is talking --%>
+            <div class="walkie-indicator hidden absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-purple-300 bg-purple-900/80 px-2 py-1 rounded-full"></div>
+          </div>
 
           <%!-- Send button (adaptive: dims when no content) --%>
           <button
@@ -852,7 +889,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
     ~H"""
     <%= if @show do %>
-      <div class="fixed inset-0 z-[150]" phx-window-keydown="close_group_sheet" phx-key="escape">
+      <div class="fixed inset-0 z-[200]" phx-window-keydown="close_group_sheet" phx-key="escape">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
@@ -1184,6 +1221,23 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
                 </button>
+                <%!-- Walkie-Talkie Button (hold to talk) --%>
+                <div
+                  id="chat-walkie-container"
+                  phx-hook="WalkieTalkie"
+                  data-room-id={@room.id}
+                  class="relative"
+                >
+                  <button
+                    class="walkie-talk-btn w-10 h-10 rounded-full flex items-center justify-center bg-white/10 text-purple-400/60 hover:bg-purple-500/20 hover:text-purple-300 transition-all cursor-pointer"
+                    title="Hold to talk (live)"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+                    </svg>
+                  </button>
+                  <div class="walkie-indicator hidden absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-purple-300 bg-purple-900/80 px-2 py-1 rounded-full"></div>
+                </div>
                 <%!-- Send Button --%>
                 <button
                   id="chat-sheet-send-btn"

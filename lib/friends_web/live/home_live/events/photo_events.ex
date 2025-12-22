@@ -342,10 +342,19 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   end
 
   def view_full_image(socket, photo_id) do
+    # Broadcast that we're viewing this photo (shared attention)
+    socket = broadcast_viewing_start(socket, photo_id)
     {:noreply, load_photo_into_modal(socket, photo_id)}
   end
 
   def close_image_modal(socket) do
+    # Broadcast that we stopped viewing (if we were viewing a photo)
+    socket = if socket.assigns[:current_photo_id] do
+      broadcast_viewing_stop(socket, socket.assigns.current_photo_id)
+    else
+      socket
+    end
+
     {:noreply,
      socket
      |> assign(:show_image_modal, false)
@@ -407,6 +416,46 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
   # --- Private Helpers ---
 
   # --- Private Helpers ---
+
+  # Broadcast when user starts viewing a photo (shared attention)
+  defp broadcast_viewing_start(socket, photo_id) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    if room && current_user do
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "room:#{room.id}:viewing",
+        {:user_viewing, %{
+          user_id: current_user.id,
+          username: current_user.username,
+          photo_id: photo_id,
+          timestamp: System.system_time(:millisecond)
+        }}
+      )
+    end
+
+    socket
+  end
+
+  # Broadcast when user stops viewing a photo
+  defp broadcast_viewing_stop(socket, photo_id) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    if room && current_user do
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "room:#{room.id}:viewing",
+        {:user_stopped_viewing, %{
+          user_id: current_user.id,
+          photo_id: photo_id
+        }}
+      )
+    end
+
+    socket
+  end
 
   defp process_photo_entry(socket, path, entry, context, batch_id) do
     try do

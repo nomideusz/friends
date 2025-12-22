@@ -43,10 +43,13 @@
    ========================================================================================= */
 
 @keyframes presence-breathe {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 currentColor;
     opacity: 0.7;
   }
+
   50% {
     box-shadow: 0 0 8px 3px currentColor;
     opacity: 1;
@@ -77,6 +80,98 @@
 /* Presence dot breathing (more subtle) */
 .presence-dot-online {
   animation: presence-breathe 3s var(--ease-fluid) infinite;
+}
+
+/* =========================================================================================
+   WARMTH PULSE ANIMATION
+   Subtle awareness indicator when someone is looking at content - anti-notification design
+   ========================================================================================= */
+
+@keyframes warmth-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 20px 4px rgba(74, 222, 128, 0.3);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+.warmth-pulse {
+  animation: warmth-pulse 2s var(--ease-fluid) forwards;
+}
+
+/* =========================================================================================
+   GROUP ENERGY VISUALIZATION
+   Room glows brighter when more people are present - collective presence indicator
+   ========================================================================================= */
+
+/* Base energy glow using CSS custom property for intensity */
+.group-energy {
+  position: relative;
+}
+
+.group-energy::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at 50% 20%,
+      rgba(74, 222, 128, calc(var(--energy-intensity, 0) * 0.15)) 0%,
+      rgba(74, 222, 128, calc(var(--energy-intensity, 0) * 0.05)) 30%,
+      transparent 70%);
+  transition: opacity 1s var(--ease-fluid);
+}
+
+/* Energy levels based on viewer count */
+.group-energy[data-energy="1"] {
+  --energy-intensity: 0.2;
+}
+
+.group-energy[data-energy="2"] {
+  --energy-intensity: 0.4;
+}
+
+.group-energy[data-energy="3"] {
+  --energy-intensity: 0.6;
+}
+
+.group-energy[data-energy="4"] {
+  --energy-intensity: 0.8;
+}
+
+.group-energy[data-energy="5"] {
+  --energy-intensity: 1.0;
+}
+
+/* =========================================================================================
+   WALKIE-TALKIE MODE
+   Visual feedback for hold-to-talk live audio
+   ========================================================================================= */
+
+.walkie-active .walkie-talk-btn {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.6), rgba(59, 130, 246, 0.6));
+  animation: walkie-pulse 0.5s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+}
+
+@keyframes walkie-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  }
+
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.7);
+  }
 }
 
 :root {
@@ -435,6 +530,7 @@ img.loaded {
     transform: translateY(0);
     opacity: 1;
   }
+
   100% {
     transform: translateY(100%);
     opacity: 0;
@@ -446,6 +542,7 @@ img.loaded {
     transform: scale(1) translateY(0);
     opacity: 1;
   }
+
   100% {
     transform: scale(0.95) translateY(10px);
     opacity: 0;
@@ -456,6 +553,7 @@ img.loaded {
   0% {
     opacity: 1;
   }
+
   100% {
     opacity: 0;
   }

@@ -825,6 +825,24 @@ defmodule FriendsWeb.HomeLive do
     ChatEvents.toggle_mobile_chat(socket)
   end
 
+  # Warmth Pulse - send when hovering over content (ambient awareness)
+  def handle_event("send_warmth_pulse", %{"type" => item_type, "id" => item_id}, socket) do
+    ChatEvents.send_warmth_pulse(socket, item_type, item_id)
+  end
+
+  # Walkie-Talkie - hold-to-speak live audio
+  def handle_event("walkie_chunk", params, socket) do
+    ChatEvents.send_walkie_chunk(socket, params)
+  end
+
+  def handle_event("walkie_start", _params, socket) do
+    ChatEvents.send_walkie_start(socket)
+  end
+
+  def handle_event("walkie_stop", _params, socket) do
+    ChatEvents.send_walkie_stop(socket)
+  end
+
 
 
   def handle_event("toggle_nav_panel", _params, socket) do
@@ -1721,6 +1739,40 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:user_stopped_typing, payload}, socket) do
     PubSubHandlers.handle_user_stopped_typing(socket, payload)
+  end
+
+  # --- Warmth Pulse Events (Ambient Awareness) ---
+
+  def handle_info({:warmth_pulse, payload}, socket) do
+    ChatEvents.handle_warmth_pulse(socket, payload)
+  end
+
+  def handle_info({:clear_warmth, key}, socket) do
+    ChatEvents.clear_warmth(socket, key)
+  end
+
+  # --- Viewing Indicators (Shared Attention) ---
+
+  def handle_info({:user_viewing, payload}, socket) do
+    ChatEvents.handle_viewing(socket, payload)
+  end
+
+  def handle_info({:user_stopped_viewing, payload}, socket) do
+    ChatEvents.handle_stopped_viewing(socket, payload)
+  end
+
+  # --- Walkie-Talkie Events (Live Audio) ---
+
+  def handle_info({:walkie_chunk, payload}, socket) do
+    ChatEvents.handle_walkie_chunk(socket, payload)
+  end
+
+  def handle_info({:walkie_start, payload}, socket) do
+    ChatEvents.handle_walkie_start(socket, payload)
+  end
+
+  def handle_info({:walkie_stop, payload}, socket) do
+    ChatEvents.handle_walkie_stop(socket, payload)
   end
 
 end
