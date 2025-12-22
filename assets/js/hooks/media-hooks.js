@@ -200,6 +200,7 @@ export const RoomVoiceRecorderHook = {
     mounted() {
         this.recorder = null
         this.isRecording = false
+        this.roomId = this.el.dataset.roomId
 
         this.el.addEventListener('click', async () => {
             if (this.isRecording) {
@@ -213,18 +214,27 @@ export const RoomVoiceRecorderHook = {
                     this.recorder = new VoiceRecorder()
 
                     this.recorder.onStop = async (blob, durationMs) => {
-                        const arrayBuffer = await blob.arrayBuffer()
-                        const bytes = new Uint8Array(arrayBuffer)
-                        let binary = ''
-                        for (let i = 0; i < bytes.length; i++) {
-                            binary += String.fromCharCode(bytes[i])
-                        }
-                        const base64 = btoa(binary)
+                        try {
+                            // Get room encryption key
+                            const conversationId = `room:${this.roomId}`
+                            const key = await messageEncryption.loadOrCreateConversationKey(conversationId)
 
-                        this.pushEvent("room_voice_recorded", {
-                            audio_data: base64,
-                            duration_ms: durationMs
-                        })
+                            // Read audio as bytes
+                            const arrayBuffer = await blob.arrayBuffer()
+                            const audioBytes = new Uint8Array(arrayBuffer)
+
+                            // Encrypt the audio
+                            const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(audioBytes, key)
+
+                            // Send encrypted voice note
+                            this.pushEvent("send_room_voice_note", {
+                                encrypted_content: messageEncryption.arrayToBase64(encrypted),
+                                nonce: messageEncryption.arrayToBase64(nonce),
+                                duration_ms: durationMs
+                            })
+                        } catch (err) {
+                            console.error("Failed to encrypt voice:", err)
+                        }
                     }
 
                     const started = await this.recorder.start()
@@ -310,6 +320,230 @@ export const VoicePlayerHook = {
     }
 }
 
+// FeedVoicePlayer - Simple voice player for public feed grid items
+export const FeedVoicePlayerHook = {
+    mounted() {
+        this.audio = null
+        this.isPlaying = false
+
+        const itemId = this.el.dataset.itemId
+
+        // Find the play button
+        const playBtn = this.el.querySelector('.feed-voice-play-btn')
+        if (!playBtn) return
+
+        playBtn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+
+            if (this.isPlaying && this.audio) {
+                this.audio.pause()
+                this.audio.currentTime = 0
+                this.isPlaying = false
+                playBtn.innerHTML = `<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>`
+                return
+            }
+
+            // Get audio source on click (deferred lookup)
+            const dataEl = document.getElementById(`feed-voice-data-${itemId}`)
+            if (!dataEl) {
+                console.warn('FeedVoicePlayer: Data element not found for item', itemId)
+                return
+            }
+
+            const audioSrc = dataEl.dataset.src
+            if (!audioSrc) {
+                console.warn('FeedVoicePlayer: No audio source for item', itemId)
+                return
+            }
+
+            try {
+                this.audio = new Audio(audioSrc)
+
+                this.audio.onplay = () => {
+                    this.isPlaying = true
+                    playBtn.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+                }
+
+                this.audio.onended = () => {
+                    this.isPlaying = false
+                    playBtn.innerHTML = `<svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>`
+                }
+
+                this.audio.onerror = (err) => {
+                    console.error('FeedVoicePlayer: Audio error', err)
+                    this.isPlaying = false
+                }
+
+                await this.audio.play()
+            } catch (err) {
+                console.error('FeedVoicePlayer: Playback error', err)
+            }
+        })
+    },
+
+    destroyed() {
+        if (this.audio) {
+            this.audio.pause()
+            this.audio = null
+        }
+    }
+}
+
+// RoomVoicePlayer - Voice player for encrypted room chat messages
+export const RoomVoicePlayerHook = {
+    async mounted() {
+        this.audio = null
+        this.isPlaying = false
+
+        const messageId = this.el.dataset.messageId
+        const roomId = this.el.dataset.roomId
+
+        // Get encrypted data from hidden element
+        const dataEl = this.el.querySelector('.room-voice-data')
+        if (!dataEl) {
+            console.warn('RoomVoicePlayer: No data element for message', messageId)
+            return
+        }
+
+        const encryptedBase64 = dataEl.dataset.encrypted
+        const nonceBase64 = dataEl.dataset.nonce
+
+        if (!encryptedBase64 || !nonceBase64) {
+            console.warn('RoomVoicePlayer: Missing encrypted data')
+            return
+        }
+
+        // Get UI elements
+        const playBtn = this.el.querySelector('.room-voice-play-btn')
+        const timeDisplay = this.el.querySelector('.room-voice-time')
+        const waveformBars = this.el.querySelectorAll('.room-voice-bar')
+
+        if (!playBtn) return
+
+        // Decrypt audio on first play
+        let audioBlob = null
+
+        playBtn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+
+            if (this.isPlaying && this.audio) {
+                this.audio.pause()
+                this.audio.currentTime = 0
+                this.isPlaying = false
+                playBtn.innerHTML = `<svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>`
+                return
+            }
+
+            try {
+                // Decrypt if not already done
+                if (!audioBlob) {
+                    const conversationId = `room:${roomId}`
+                    console.log("[RoomVoicePlayer] Decrypting for:", conversationId)
+                    const key = await messageEncryption.loadOrCreateConversationKey(conversationId)
+
+                    let encryptedBytes = messageEncryption.base64ToArray(encryptedBase64)
+                    let nonceBytes = messageEncryption.base64ToArray(nonceBase64)
+
+                    // Fix for potentially double-encoded data (DB storing Base64 string as bytes)
+                    if (nonceBytes.length === 16) {
+                        try {
+                            const str = Array.from(nonceBytes).map(b => String.fromCharCode(b)).join('')
+                            // Check if it looks like Base64 (alphanumeric + +/ = )
+                            if (/^[A-Za-z0-9+/=]+$/.test(str)) {
+                                const decoded = atob(str)
+                                if (decoded.length === 12) {
+                                    console.warn("[RoomVoicePlayer] Detected double-encoded nonce, fixing.")
+                                    nonceBytes = new Uint8Array(decoded.length)
+                                    for (let i = 0; i < decoded.length; i++) nonceBytes[i] = decoded.charCodeAt(i)
+
+                                    // If nonce was double encoded, likely encrypted content was too
+                                    const encStr = Array.from(encryptedBytes).map(b => String.fromCharCode(b)).join('')
+                                    const encDecoded = atob(encStr)
+                                    encryptedBytes = new Uint8Array(encDecoded.length)
+                                    for (let i = 0; i < encDecoded.length; i++) encryptedBytes[i] = encDecoded.charCodeAt(i)
+                                    console.warn("[RoomVoicePlayer] Fixed encrypted content size:", encryptedBytes.length)
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("Failed to fix double-encoding:", e)
+                        }
+                    }
+
+                    // decryptWithKey returns string for text, we need raw bytes for audio
+                    const decryptedBytes = await window.crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv: nonceBytes },
+                        key,
+                        encryptedBytes
+                    )
+                    audioBlob = new Blob([decryptedBytes], { type: 'audio/webm' })
+                }
+
+                const audioUrl = URL.createObjectURL(audioBlob)
+                this.audio = new Audio(audioUrl)
+
+                this.audio.onplay = () => {
+                    this.isPlaying = true
+                    playBtn.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`
+                }
+
+                this.audio.onended = () => {
+                    this.isPlaying = false
+                    playBtn.innerHTML = `<svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>`
+                }
+
+                this.audio.onerror = (e) => {
+                    console.error("Audio playback error", e)
+                    this.isPlaying = false
+                    playBtn.innerHTML = `<svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>`
+                }
+
+                await this.audio.play()
+
+                this.audio.ontimeupdate = () => {
+                    if (timeDisplay) {
+                        timeDisplay.textContent = formatTime(this.audio.currentTime)
+                    }
+                    // Animate waveform bars based on playback progress
+                    if (waveformBars.length > 0 && this.audio.duration) {
+                        const progress = this.audio.currentTime / this.audio.duration
+                        const activeBar = Math.floor(progress * waveformBars.length)
+                        waveformBars.forEach((bar, i) => {
+                            if (i <= activeBar) {
+                                bar.style.opacity = '1'
+                            } else {
+                                bar.style.opacity = '0.5'
+                            }
+                        })
+                    }
+                }
+
+                this.audio.onended = () => {
+                    this.isPlaying = false
+                    playBtn.innerHTML = `<svg class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>`
+                    if (timeDisplay) timeDisplay.textContent = '0:00'
+                    waveformBars.forEach(bar => bar.style.opacity = '0.5')
+                }
+
+                this.audio.onerror = (err) => {
+                    console.error('RoomVoicePlayer: Audio error', err)
+                    this.isPlaying = false
+                }
+
+                await this.audio.play()
+            } catch (err) {
+                console.error('RoomVoicePlayer: Playback/decryption error', err)
+            }
+        })
+    },
+
+    destroyed() {
+        if (this.audio) {
+            this.audio.pause()
+            this.audio = null
+        }
+    }
+}
+
 function formatTime(seconds) {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
@@ -319,7 +553,9 @@ function formatTime(seconds) {
 export default {
     VoiceWaveform: VoiceWaveformHook,
     FeedVoiceRecorder: FeedVoiceRecorderHook,
+    FeedVoicePlayer: FeedVoicePlayerHook,
     GridVoiceRecorder: GridVoiceRecorderHook,
     RoomVoiceRecorder: RoomVoiceRecorderHook,
+    RoomVoicePlayer: RoomVoicePlayerHook,
     VoicePlayer: VoicePlayerHook
 }

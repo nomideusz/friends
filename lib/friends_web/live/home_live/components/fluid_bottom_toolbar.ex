@@ -34,7 +34,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
             <% :room -> %>
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
-              <.toolbar_button icon="people" label="Members" event="open_contacts_sheet" />
+              <.toolbar_button icon="people" label="Members" event="toggle_members_panel" />
               <.toolbar_button icon="more" label="More" event="open_room_settings" />
             <% :focused -> %>
               <.toolbar_button icon="back" label="Back" event="close_focused_view" />

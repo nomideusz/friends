@@ -761,7 +761,17 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  # Start voice recording
+  # Start voice recording (from hook)
+  def handle_event("start_room_voice_recording", _, socket) do
+    {:noreply, assign(socket, :recording_voice, true)}
+  end
+
+  # Stop voice recording (from hook)
+  def handle_event("stop_room_voice_recording", _, socket) do
+    {:noreply, assign(socket, :recording_voice, false)}
+  end
+
+  # Start voice recording (from button)
   def handle_event("start_room_recording", _, socket) do
     {:noreply,
      socket
@@ -769,7 +779,7 @@ defmodule FriendsWeb.HomeLive do
      |> push_event("start_room_voice_recording", %{})}
   end
 
-  # Stop voice recording
+  # Stop voice recording (from button)
   def handle_event("stop_room_recording", _, socket) do
     {:noreply,
      socket

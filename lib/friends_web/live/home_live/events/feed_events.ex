@@ -49,31 +49,70 @@ defmodule FriendsWeb.HomeLive.Events.FeedEvents do
   end
 
   def load_more(socket) do
-    if socket.assigns.room_access_denied or socket.assigns.no_more_items do
+    # Detect context: dashboard (feed_items) vs room (items)
+    is_dashboard = is_nil(socket.assigns[:room])
+    
+    # Check access and no_more conditions
+    room_denied = socket.assigns[:room_access_denied] || false
+    no_more = socket.assigns[:no_more_items] || false
+    
+    if room_denied or no_more do
       {:noreply, socket}
     else
       batch = @initial_batch
-      offset = socket.assigns.item_count || 0
-
-      {items, no_more?} = fetch_items(socket, batch, offset)
-
-      # Update state
-      new_count = offset + length(items)
-      new_photo_order = merge_photo_order(socket.assigns.photo_order, photo_ids(items), :back)
-
-      socket =
-        socket
-        |> assign(:item_count, new_count)
-        |> assign(:no_more_items, no_more?)
-        |> assign(:photo_order, new_photo_order)
-
-      # Stream items (append)
-      socket =
-        Enum.reduce(items, socket, fn item, acc ->
-          stream_insert(acc, :items, item)
-        end)
-
-      {:noreply, socket}
+      
+      if is_dashboard do
+        # Dashboard context - use feed_items stream and feed_item_count
+        offset = socket.assigns[:feed_item_count] || 0
+        current_user = socket.assigns.current_user
+        
+        # Load more public feed items
+        is_admin = Social.is_admin?(current_user)
+        items = if is_admin do
+          Social.list_admin_feed_items(batch, offset: offset)
+        else
+          Social.list_public_feed_items(current_user.id, batch, offset: offset)
+        end
+        
+        new_count = offset + length(items)
+        new_photo_order = merge_photo_order(socket.assigns[:photo_order] || [], photo_ids(items), :back)
+        
+        socket =
+          socket
+          |> assign(:feed_item_count, new_count)
+          |> assign(:no_more_items, length(items) < batch)
+          |> assign(:photo_order, new_photo_order)
+        
+        # Stream into feed_items
+        socket =
+          Enum.reduce(items, socket, fn item, acc ->
+            stream_insert(acc, :feed_items, item)
+          end)
+        
+        {:noreply, socket}
+      else
+        # Room context - use items stream and item_count
+        offset = socket.assigns[:item_count] || 0
+        
+        {items, no_more?} = fetch_items(socket, batch, offset)
+        
+        new_count = offset + length(items)
+        new_photo_order = merge_photo_order(socket.assigns[:photo_order] || [], photo_ids(items), :back)
+        
+        socket =
+          socket
+          |> assign(:item_count, new_count)
+          |> assign(:no_more_items, no_more?)
+          |> assign(:photo_order, new_photo_order)
+        
+        # Stream into items
+        socket =
+          Enum.reduce(items, socket, fn item, acc ->
+            stream_insert(acc, :items, item)
+          end)
+        
+        {:noreply, socket}
+      end
     end
   end
 

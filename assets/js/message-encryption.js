@@ -183,3 +183,84 @@ export function base64ToArray(base64) {
   }
   return array;
 }
+
+// ============================================
+// Key-based API (used by modular hooks)
+// ============================================
+
+/**
+ * Load or create a conversation key (exported alias for getOrCreateKey)
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<CryptoKey>} The AES-GCM key
+ */
+export async function loadOrCreateConversationKey(conversationId) {
+  return await getOrCreateKey(conversationId);
+}
+
+/**
+ * Encrypt a text message using a pre-loaded key
+ * @param {string} message - Plain text message
+ * @param {CryptoKey} key - AES-GCM key
+ * @returns {Promise<{encrypted: Uint8Array, nonce: Uint8Array}>}
+ */
+export async function encryptWithKey(message, key) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  
+  const nonce = window.crypto.getRandomValues(new Uint8Array(12));
+  
+  const encryptedContent = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: nonce },
+    key,
+    data
+  );
+
+  return {
+    encrypted: new Uint8Array(encryptedContent),
+    nonce: nonce
+  };
+}
+
+/**
+ * Decrypt a message using a pre-loaded key
+ * @param {Uint8Array} encryptedBytes - Encrypted data
+ * @param {Uint8Array} nonce - Nonce/IV used for encryption
+ * @param {CryptoKey} key - AES-GCM key
+ * @returns {Promise<string>} Decrypted plain text
+ */
+export async function decryptWithKey(encryptedBytes, nonce, key) {
+  try {
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: nonce },
+      key,
+      encryptedBytes
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  } catch (e) {
+    console.error("Decryption failed:", e);
+    return "[Unable to decrypt]";
+  }
+}
+
+/**
+ * Encrypt raw bytes (e.g., audio data) using a pre-loaded key
+ * @param {Uint8Array} bytes - Raw bytes to encrypt
+ * @param {CryptoKey} key - AES-GCM key
+ * @returns {Promise<{encrypted: Uint8Array, nonce: Uint8Array}>}
+ */
+export async function encryptBytesWithKey(bytes, key) {
+  const nonce = window.crypto.getRandomValues(new Uint8Array(12));
+  
+  const encryptedContent = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: nonce },
+    key,
+    bytes
+  );
+
+  return {
+    encrypted: new Uint8Array(encryptedContent),
+    nonce: nonce
+  };
+}

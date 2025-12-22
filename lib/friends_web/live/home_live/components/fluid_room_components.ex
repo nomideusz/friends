@@ -616,7 +616,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                           <% end %>
                         </div>
                         <%!-- Duration with subtle styling --%>
-                        <span class="text-[10px] text-white/50 room-voice-time flex-shrink-0 font-medium">0:00</span>
+                        <span class="text-[10px] text-white/50 room-voice-time flex-shrink-0 font-medium">
+                          <% duration_ms = message.metadata["duration_ms"] || message.metadata[:duration_ms] || 0 %>
+                          {div(duration_ms, 60000)}:{rem(div(duration_ms, 1000), 60) |> Integer.to_string() |> String.pad_leading(2, "0")}
+                        </span>
                         <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
                       </div>
                     <% else %>
@@ -757,7 +760,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           <%!-- Voice button --%>
           <button
             id="fluid-voice-btn"
-            phx-hook="GridVoiceRecorder"
+            phx-hook="RoomVoiceRecorder"
             data-room-id={@room.id}
             class={"w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer #{if @recording_voice, do: "bg-red-500 text-white animate-pulse", else: "text-white/40 hover:text-white hover:bg-white/10"}"}
           >
