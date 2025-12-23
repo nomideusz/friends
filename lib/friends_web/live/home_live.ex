@@ -733,6 +733,15 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :new_chat_message, message)}
   end
 
+  # Live typing events
+  def handle_event("typing", %{"text" => text}, socket) do
+    ChatEvents.handle_typing(socket, text)
+  end
+
+  def handle_event("stop_typing", _params, socket) do
+    ChatEvents.handle_stop_typing(socket)
+  end
+
 
 
   def handle_event("toggle_members_panel", _, socket) do

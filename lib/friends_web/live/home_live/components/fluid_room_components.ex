@@ -598,7 +598,12 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <%= for message <- @room_messages do %>
                 <div class={"flex flex-col #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
                   <%= if message.sender_id != @current_user.id do %>
-                    <span class="text-[10px] text-white/30 mb-1 ml-1">@{message.sender.username}</span>
+                    <button
+                      type="button"
+                      phx-click="open_dm"
+                      phx-value-user_id={message.sender_id}
+                      class="text-[10px] text-white/30 hover:text-white/60 mb-1 ml-1 cursor-pointer transition-colors"
+                    >@{message.sender.username}</button>
                   <% end %>
 
                   <div class={"max-w-[85%] px-3 py-2 rounded-2xl #{if message.sender_id == @current_user.id, do: "bg-white/10 rounded-tr-sm", else: "bg-white/5 rounded-tl-sm"}"}>
@@ -653,10 +658,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <%!-- Live Typing Indicators (Ghost Messages) --%>
               <%= for {user_id, typing_info} <- @typing_users do %>
                 <div class="flex flex-col items-start animate-in fade-in duration-200" id={"typing-#{user_id}"}>
-                  <span class="text-[10px] text-blue-400/60 mb-1 ml-1">@{typing_info.username} is typing...</span>
-                  <div class="max-w-[85%] px-3 py-2 rounded-2xl bg-blue-500/10 rounded-tl-sm border border-blue-500/20">
-                    <p class="text-sm text-white/40 italic">
-                      {typing_info.text}<span class="animate-pulse">│</span>
+                  <span class="text-[10px] text-white/30 mb-1 ml-1">@{typing_info.username}</span>
+                  <div class="max-w-[85%] px-3 py-2 rounded-2xl bg-white/5 rounded-tl-sm border border-white/10">
+                    <p class="text-sm text-white/30">
+                      {typing_info.text}<span class="animate-pulse text-white/20">│</span>
                     </p>
                   </div>
                 </div>
@@ -690,8 +695,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         <form
           id="unified-input-area"
           class="flex items-center gap-2"
-          phx-submit="send_chat_message"
-          phx-change="update_chat_input"
+          phx-hook="RoomChatEncryption"
+          data-room-code={@room.code}
         >
           <%!-- Chat toggle button (shows when chat is hidden) --%>
           <%= if not @show_chat do %>
@@ -1137,7 +1142,12 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 <%= for message <- @room_messages do %>
                   <div class={"flex flex-col #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
                     <%= if message.sender_id != @current_user.id do %>
-                      <span class="text-[10px] text-white/30 mb-1 ml-1">@{message.sender.username}</span>
+                      <button
+                        type="button"
+                        phx-click="open_dm"
+                        phx-value-user_id={message.sender_id}
+                        class="text-[10px] text-white/30 hover:text-white/60 mb-1 ml-1 cursor-pointer transition-colors"
+                      >@{message.sender.username}</button>
                     <% end %>
 
                     <div class={"max-w-[85%] px-3 py-2 rounded-2xl #{if message.sender_id == @current_user.id, do: "bg-blue-500/20 rounded-tr-sm", else: "bg-white/5 rounded-tl-sm"}"}>
@@ -1161,7 +1171,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                               <div class="room-voice-bar w-[3px] rounded-full bg-white/30" style={"height: #{height}%;"}></div>
                             <% end %>
                           </div>
-                          <span class="text-[10px] text-white/50 room-voice-time">0:00</span>
+                          <span class="text-[10px] text-white/50 room-voice-time">
+                            <% metadata = message.metadata || %{} %>
+                            <% duration_ms = Map.get(metadata, "duration_ms") || Map.get(metadata, :duration_ms) || 0 %>
+                            {div(duration_ms, 60000)}:{rem(div(duration_ms, 1000), 60) |> Integer.to_string() |> String.pad_leading(2, "0")}
+                          </span>
                           <%= if message.nonce do %>
                             <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
                           <% end %>
@@ -1193,10 +1207,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <%!-- Typing indicators --%>
               <%= for {user_id, typing_info} <- @typing_users do %>
                 <div class="flex flex-col items-start animate-in fade-in duration-200" id={"typing-sheet-#{user_id}"}>
-                  <span class="text-[10px] text-blue-400/60 mb-1 ml-1">@{typing_info.username} is typing...</span>
-                  <div class="max-w-[85%] px-3 py-2 rounded-2xl bg-blue-500/10 rounded-tl-sm border border-blue-500/20">
-                    <p class="text-sm text-white/40 italic">
-                      {typing_info.text}<span class="animate-pulse">│</span>
+                  <span class="text-[10px] text-white/30 mb-1 ml-1">@{typing_info.username}</span>
+                  <div class="max-w-[85%] px-3 py-2 rounded-2xl bg-white/5 rounded-tl-sm border border-white/10">
+                    <p class="text-sm text-white/30">
+                      {typing_info.text}<span class="animate-pulse text-white/20">│</span>
                     </p>
                   </div>
                 </div>

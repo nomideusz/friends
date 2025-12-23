@@ -53,7 +53,7 @@ export const MessageEncryptionHook = {
                         const arrayBuffer = await blob.arrayBuffer()
                         const audioBytes = new Uint8Array(arrayBuffer)
                         const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(audioBytes, this.key)
-                        
+
                         const encryptedBase64 = btoa(String.fromCharCode(...encrypted))
                         const nonceBase64 = btoa(String.fromCharCode(...nonce))
 
@@ -204,11 +204,56 @@ export const RoomChatEncryptionHook = {
         this.key = await messageEncryption.loadOrCreateConversationKey(`room:${roomCode}`)
         this.recorder = null
         this.isRecording = false
+        this.typingTimer = null
+        this.lastBroadcastText = ''
+        this.TYPING_DELAY = 5000 // 5 second delay before broadcast
 
         // The element itself is a form now, or find form inside
         const form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
         const input = this.el.querySelector('input[name="message"]') || this.el.querySelector('[contenteditable]')
-        
+
+        // Broadcast typing with 5s delay
+        const broadcastTyping = (text) => {
+            if (this.typingTimer) {
+                clearTimeout(this.typingTimer)
+            }
+
+            this.typingTimer = setTimeout(() => {
+                if (text && text.trim() && text !== this.lastBroadcastText) {
+                    this.lastBroadcastText = text
+                    this.pushEvent("typing", { text: text.trim() })
+                }
+            }, this.TYPING_DELAY)
+        }
+
+        // Stop typing broadcast
+        const stopTyping = () => {
+            if (this.typingTimer) {
+                clearTimeout(this.typingTimer)
+                this.typingTimer = null
+            }
+            if (this.lastBroadcastText) {
+                this.lastBroadcastText = ''
+                this.pushEvent("stop_typing", {})
+            }
+        }
+
+        // Listen for typing on input
+        if (input) {
+            input.addEventListener('input', (e) => {
+                const text = input.value || input.textContent || ''
+                if (text.trim()) {
+                    broadcastTyping(text)
+                } else {
+                    stopTyping()
+                }
+            })
+
+            input.addEventListener('blur', () => {
+                stopTyping()
+            })
+        }
+
         // Send message function
         const sendMessage = async () => {
             if (!input) return
@@ -216,6 +261,9 @@ export const RoomChatEncryptionHook = {
             if (!text || !text.trim()) return
 
             try {
+                // Stop typing indicator immediately
+                stopTyping()
+
                 const { encrypted, nonce } = await messageEncryption.encryptWithKey(text.trim(), this.key)
                 const encryptedBase64 = btoa(String.fromCharCode(...encrypted))
                 const nonceBase64 = btoa(String.fromCharCode(...nonce))
@@ -268,7 +316,7 @@ export const RoomChatEncryptionHook = {
                         const arrayBuffer = await blob.arrayBuffer()
                         const audioBytes = new Uint8Array(arrayBuffer)
                         const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(audioBytes, this.key)
-                        
+
                         const encryptedBase64 = btoa(String.fromCharCode(...encrypted))
                         const nonceBase64 = btoa(String.fromCharCode(...nonce))
 
@@ -284,6 +332,12 @@ export const RoomChatEncryptionHook = {
                     if (started) this.isRecording = true
                 }
             })
+        }
+    },
+
+    destroyed() {
+        if (this.typingTimer) {
+            clearTimeout(this.typingTimer)
         }
     }
 }

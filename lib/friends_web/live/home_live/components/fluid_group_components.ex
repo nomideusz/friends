@@ -26,7 +26,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
 
     ~H"""
     <%= if @show do %>
-      <div id="groups-sheet" class="fixed inset-0 z-[300]">
+      <div id="groups-sheet" class="fixed inset-0 z-[300]" phx-hook="LockScroll">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"

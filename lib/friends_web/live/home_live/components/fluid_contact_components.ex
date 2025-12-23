@@ -51,7 +51,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
     ~H"""
     <%= if @show do %>
-      <div id="people-sheet" class="fixed inset-0 z-[201]">
+      <div id="people-sheet" class="fixed inset-0 z-[201]" phx-hook="LockScroll">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"

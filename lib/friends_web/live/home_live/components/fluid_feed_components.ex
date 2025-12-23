@@ -41,9 +41,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         show_user_menu={@show_user_menu}
       />
 
-      <%!-- Content Area (scrollable) - now starts from top --%>
-      <%!-- Content Area (scrollable) - now starts from top --%>
-      <div class="flex-1 overflow-y-auto overflow-x-hidden pb-24">
+      <%!-- Content Area - hide overflow when empty to remove scrollbar --%>
+      <div class={"flex-1 overflow-x-hidden pb-24 #{if @feed_item_count == 0, do: "overflow-hidden", else: "overflow-y-auto"}"}>
         <%= if @feed_item_count == 0 do %>
           <.fluid_feed_empty_state 
             welcome_graph_data={@welcome_graph_data} 
@@ -88,17 +87,18 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   def fluid_feed_header(assigns) do
     ~H"""
-    <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-center bg-gradient-to-b from-black via-black/90 to-transparent">
-      <%!-- Compact Search Pill - taps to open omnibox --%>
+    <div class="sticky top-0 z-50 flex items-center justify-center pt-2 pb-1">
+      <%!-- Minimal Search Indicator - tap to open omnibox --%>
       <button
         type="button"
         phx-click="open_omnibox"
-        class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white/60 transition-all cursor-pointer"
+        class="flex flex-col items-center gap-0.5 text-white/20 hover:text-white/40 transition-colors cursor-pointer group"
+        title="Search"
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <div class="w-8 h-0.5 rounded-full bg-current"></div>
+        <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
         </svg>
-        <span class="hidden sm:inline">Search...</span>
       </button>
     </div>
     """

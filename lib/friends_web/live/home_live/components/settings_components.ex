@@ -11,7 +11,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
   def settings_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div id="settings-sheet" class="fixed inset-0 z-[200]">
+      <div id="settings-sheet" class="fixed inset-0 z-[200]" phx-hook="LockScroll">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
