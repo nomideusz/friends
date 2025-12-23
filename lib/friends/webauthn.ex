@@ -707,4 +707,108 @@ defmodule Friends.WebAuthn do
   def has_credentials?(user_id) do
     Repo.exists?(from c in WebAuthnCredential, where: c.user_id == ^user_id)
   end
+
+  # ============================================================================
+  # DEVICE PAIRING
+  # Functions to enable adding new devices via pairing tokens
+  # ============================================================================
+
+  alias Friends.Social.DevicePairing
+
+  @doc """
+  Create a new pairing token for a user.
+  Token expires in 5 minutes and can only be used once.
+  """
+  def create_pairing_token(user_id) do
+    token = DevicePairing.generate_token()
+    expires_at = DevicePairing.default_expiry()
+
+    %DevicePairing{}
+    |> DevicePairing.changeset(%{
+      user_id: user_id,
+      token: token,
+      expires_at: expires_at
+    })
+    |> Repo.insert()
+  end
+
+  @doc """
+  Verify a pairing token is valid (exists, not expired, not claimed).
+  Returns {:ok, pairing} or {:error, reason}
+  """
+  def verify_pairing_token(token) do
+    token = String.upcase(String.trim(token))
+    now = DateTime.utc_now()
+
+    case Repo.get_by(DevicePairing, token: token) do
+      nil ->
+        {:error, :invalid_token}
+
+      %{claimed: true} ->
+        {:error, :already_claimed}
+
+      %{expires_at: expires_at} = pairing ->
+        if DateTime.compare(expires_at, now) == :gt do
+          {:ok, Repo.preload(pairing, :user)}
+        else
+          {:error, :expired}
+        end
+    end
+  end
+
+  @doc """
+  Claim a pairing token and register a new credential for the user.
+  Returns {:ok, credential} or {:error, reason}
+  """
+  def claim_pairing_token(token, credential_data, device_name \\ nil) do
+    case verify_pairing_token(token) do
+      {:ok, pairing} ->
+        # Mark token as claimed
+        pairing
+        |> Ecto.Changeset.change(%{claimed: true, device_name: device_name})
+        |> Repo.update!()
+
+        # Store the new credential
+        credential_attrs = Map.put(credential_data, :user_id, pairing.user_id)
+        store_credential(credential_attrs, device_name || "Paired Device")
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Get a pairing token's details (for display).
+  """
+  def get_pairing_token(token) do
+    token = String.upcase(String.trim(token))
+    Repo.get_by(DevicePairing, token: token)
+    |> case do
+      nil -> nil
+      pairing -> Repo.preload(pairing, :user)
+    end
+  end
+
+  @doc """
+  List active (unclaimed, non-expired) pairing tokens for a user.
+  """
+  def list_active_pairings(user_id) do
+    now = DateTime.utc_now()
+
+    from(p in DevicePairing,
+      where: p.user_id == ^user_id and p.claimed == false and p.expires_at > ^now,
+      order_by: [desc: p.inserted_at]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Clean up expired pairing tokens.
+  """
+  def cleanup_expired_pairings do
+    now = DateTime.utc_now()
+
+    from(p in DevicePairing, where: p.expires_at < ^now)
+    |> Repo.delete_all()
+  end
 end

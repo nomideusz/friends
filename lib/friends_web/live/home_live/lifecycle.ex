@@ -125,6 +125,10 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:total_unread_count, Social.get_total_unread_count(session_user.id))
         |> assign(:devices, devices)
         |> assign(:show_devices_modal, false)
+        |> assign(:show_pairing_modal, false)
+        |> assign(:pairing_token, nil)
+        |> assign(:pairing_url, nil)
+        |> assign(:pairing_expires_at, nil)
         |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
         # Welcome graph data for empty feed state
         |> assign(:welcome_graph_data, GraphHelper.build_welcome_graph_data())
@@ -392,6 +396,10 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Group/members sheet state
         |> assign(:show_group_sheet, false)
         |> assign(:group_search, "")
+        |> assign(:show_pairing_modal, false)
+        |> assign(:pairing_token, nil)
+        |> assign(:pairing_url, nil)
+        |> assign(:pairing_expires_at, nil)
         # Live presence - friend IDs currently online
         |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")

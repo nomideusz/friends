@@ -470,6 +470,40 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("revoke_device", params, socket),
     do: SettingsEvents.revoke_device(socket, params)
 
+  # Device Pairing events
+  def handle_event("create_pairing_token", _params, socket) do
+    case socket.assigns.current_user do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Please log in first")}
+
+      user ->
+        case Friends.WebAuthn.create_pairing_token(user.id) do
+          {:ok, pairing} ->
+            # Build pairing URL
+            origin = Friends.WebAuthn.origin()
+            pairing_url = "#{origin}/pair/#{pairing.token}"
+
+            {:noreply,
+             socket
+             |> assign(:show_pairing_modal, true)
+             |> assign(:pairing_token, pairing.token)
+             |> assign(:pairing_url, pairing_url)
+             |> assign(:pairing_expires_at, pairing.expires_at)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to create pairing token")}
+        end
+    end
+  end
+
+  def handle_event("close_pairing_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_pairing_modal, false)
+     |> assign(:pairing_token, nil)
+     |> assign(:pairing_url, nil)}
+  end
+
   # Network modal events
   def handle_event("open_network_modal", _params, socket),
     do: NetworkEvents.open_network_modal(socket)
@@ -1913,6 +1947,12 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_info({:walkie_stop, payload}, socket) do
     ChatEvents.handle_walkie_stop(socket, payload)
+  end
+
+  # --- Group Invite Events (Real-time) ---
+
+  def handle_info({:group_invite_received, invite_info}, socket) do
+    PubSubHandlers.handle_group_invite_received(socket, invite_info)
   end
 
 end

@@ -34,6 +34,8 @@ defmodule FriendsWeb.Router do
       live "/secret-auth", AuthLive, :index
       live "/recover", RecoverLive, :index
       live "/link", LinkDeviceLive, :index
+      live "/pair", PairLive, :index
+      live "/pair/:token", PairLive, :index
     end
 
     # App pages - shared header with user auth

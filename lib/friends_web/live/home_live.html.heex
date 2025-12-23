@@ -182,6 +182,72 @@
     current_device_id={assigns[:current_device_id]}
   />
 
+  <%!-- Device Pairing Modal --%>
+  <%= if assigns[:show_pairing_modal] && assigns[:pairing_token] do %>
+    <div
+      id="pairing-modal"
+      class="fixed inset-0 z-[250]"
+      phx-window-keydown="close_pairing_modal"
+      phx-key="escape"
+    >
+      <%!-- Backdrop --%>
+      <div
+        class="absolute inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-200"
+        phx-click="close_pairing_modal"
+      ></div>
+
+      <%!-- Modal Content --%>
+      <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
+        <div
+          class="w-full max-w-md bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl p-6 pointer-events-auto"
+          phx-click-away="close_pairing_modal"
+        >
+          <%!-- Handle --%>
+          <div class="flex justify-center mb-4" phx-click="close_pairing_modal">
+            <div class="w-10 h-1 rounded-full bg-white/20 cursor-pointer"></div>
+          </div>
+
+          <%!-- Header --%>
+          <div class="text-center mb-6">
+            <h2 class="text-xl font-bold text-white mb-2">Add New Device</h2>
+            <p class="text-white/50 text-sm">Scan the QR code or enter the code on your new device</p>
+          </div>
+
+          <%!-- QR Code --%>
+          <div class="flex justify-center mb-6">
+            <div
+              id="pairing-qr"
+              phx-hook="QRDisplay"
+              data-qr={assigns[:pairing_url]}
+              class="bg-white p-4 rounded-2xl"
+            >
+              <canvas width="200" height="200"></canvas>
+            </div>
+          </div>
+
+          <%!-- Token Display --%>
+          <div class="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 text-center">
+            <div class="text-[10px] text-white/40 uppercase tracking-widest mb-2">Pairing Code</div>
+            <div class="text-3xl font-mono font-bold text-white tracking-[0.2em]">
+              <%= @pairing_token %>
+            </div>
+          </div>
+
+          <%!-- Instructions --%>
+          <div class="text-center text-white/40 text-xs mb-4">
+            <p>On your new device, go to:</p>
+            <p class="text-blue-400 font-mono mt-1"><%= Friends.WebAuthn.origin() %>/pair</p>
+          </div>
+
+          <%!-- Expiry Timer --%>
+          <div class="text-center text-white/30 text-xs">
+            Code expires in 5 minutes
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <%!-- Chord Diagram Modal --%>
   <%= if assigns[:show_chord_modal] && assigns[:chord_data] do %>
     <div

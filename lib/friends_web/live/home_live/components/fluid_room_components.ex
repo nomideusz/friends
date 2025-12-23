@@ -189,16 +189,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <circle cx="19" cy="12" r="2" />
           </svg>
         </button>
-
-        <%!-- User Avatar / Menu --%>
-        <button
-          phx-click="toggle_user_menu"
-          phx-touchstart="toggle_user_menu"
-          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
-          title="Your profile"
-        >
-          <span class="text-[10px] font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
-        </button>
       </div>
     </div>
     """

@@ -414,5 +414,34 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       {:noreply, socket}
     end
   end
+
+  @doc """
+  Handle when user is invited to a group.
+  Refreshes the groups list and shows a subtle notification.
+  """
+  def handle_group_invite_received(socket, invite_info) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      # Refresh the user's private rooms list
+      private_rooms = Social.list_user_rooms(current_user.id)
+      
+      # Create notification info for subtle display
+      notification = %{
+        type: :group_invite,
+        room_name: invite_info.room_name || "New Group",
+        room_code: invite_info.room_code,
+        inviter: invite_info.inviter_username,
+        timestamp: DateTime.utc_now()
+      }
+      
+      {:noreply,
+       socket
+       |> assign(:user_private_rooms, private_rooms)
+       |> assign(:group_notification, notification)
+       |> put_flash(:info, "You've been invited to #{invite_info.room_name || "a group"} by @#{invite_info.inviter_username}")}
+    else
+      {:noreply, socket}
+    end
+  end
 end
 

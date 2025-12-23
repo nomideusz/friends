@@ -267,10 +267,21 @@ defmodule FriendsWeb.HomeLive.Events.RoomEvents do
           _ ->
             case Social.invite_to_room(room.id, current_user.id, user_id) do
               {:ok, _member} ->
-                # Refresh room members is separate?
-                # Original code (2441) calls Social.list_room_members?
-                # Let's include refresh.
+                # Refresh room members
                 members = Social.list_room_members(room.id)
+                
+                # Broadcast to invited user so they see the new group in real-time
+                Phoenix.PubSub.broadcast(
+                  Friends.PubSub,
+                  "user:#{user_id}",
+                  {:group_invite_received, %{
+                    room_id: room.id,
+                    room_code: room.code,
+                    room_name: room.name,
+                    inviter_id: current_user.id,
+                    inviter_username: current_user.username
+                  }}
+                )
 
                 {:noreply,
                  socket
