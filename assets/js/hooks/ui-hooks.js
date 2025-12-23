@@ -425,6 +425,19 @@ export const LongPressOrbHook = {
     }
 }
 
+export const PhotoUploadLabelHook = {
+    mounted() {
+        // Find the file input inside this label
+        const fileInput = this.el.querySelector('input[type="file"]')
+        if (fileInput) {
+            fileInput.addEventListener('change', () => {
+                // Close the create menu after file is selected
+                this.pushEvent("close_create_menu", {})
+            })
+        }
+    }
+}
+
 export default {
     HomeOrb: HomeOrbHook,
     NavOrbLongPress: NavOrbLongPressHook,
@@ -434,5 +447,6 @@ export default {
     PhotoGrid: PhotoGridHook,
     CopyToClipboard: CopyToClipboardHook,
     AutoFocus: AutoFocusHook,
-    LongPressOrb: LongPressOrbHook
+    LongPressOrb: LongPressOrbHook,
+    PhotoUploadLabel: PhotoUploadLabelHook
 }

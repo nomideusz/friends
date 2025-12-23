@@ -87,7 +87,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
             <div class="flex-1 overflow-y-auto px-4 pb-8">
               <% contacts = @contacts || [] %>
               <% outgoing = @outgoing_requests || [] %>
-              <% outgoing_ids = Enum.map(outgoing, & &1.trusted_user_id) %>
+              <% outgoing_ids = Enum.map(outgoing, & &1.friend_user_id) %>
               <% trusted_count = length(@trusted_friend_ids || []) %>
 
               <%= if @search_query != "" do %>
@@ -137,6 +137,19 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 <% end %>
                 
+                <%!-- Pending Connections (outgoing friend requests) --%>
+                <%= if Enum.any?(outgoing) do %>
+                  <div class="mb-4">
+                    <div class="text-[10px] font-medium text-white/40 uppercase tracking-wider mb-2">Pending Connections</div>
+                    <div class="space-y-1">
+                      <%= for req <- outgoing do %>
+                        <% user = if Map.has_key?(req, :friend_user), do: req.friend_user, else: req %>
+                        <.pending_connection_row user={user} />
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                
                 <%!-- Pending Trust/Recovery Requests (incoming) --%>
                 <% incoming = @incoming_requests || [] %>
                 <%= if Enum.any?(incoming) do %>
@@ -168,8 +181,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                         />
                       <% end %>
                     </div>
-                  <% else %>
-                    <p class="text-xs text-white/30 mb-3">No recovery contacts yet</p>
                   <% end %>
                 </div>
                 
@@ -217,16 +228,15 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
     ~H"""
     <div class="flex items-center gap-1.5">
       <div class="flex gap-0.5">
-        <%= for i <- 1..5 do %>
+        <%= for i <- 1..4 do %>
           <div class={"w-1.5 h-3 rounded-sm #{if i <= @count, do: "bg-green-400", else: "bg-white/10"}"}></div>
         <% end %>
       </div>
-      <span class={"text-[10px] #{if @count >= 4, do: "text-green-400", else: "text-white/30"}"}>
-        <%= cond do %>
-          <% @count >= 4 -> %>Protected
-          <% @count >= 2 -> %>{@count}/4
-          <% @count > 0 -> %>Weak
-          <% true -> %>None
+      <span class={"text-[10px] #{if @count >= 4, do: "text-green-400", else: "text-white/40"}"}>
+        <%= if @count >= 4 do %>
+          Protected
+        <% else %>
+          {@count}/4
         <% end %>
       </span>
     </div>
@@ -271,6 +281,44 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         class="text-xs text-white/30 hover:text-red-400 transition-colors cursor-pointer px-2"
       >
         Remove
+      </button>
+    </div>
+    """
+  end
+
+  # ============================================================================
+  # PENDING CONNECTION ROW
+  # For outgoing friend requests (waiting for them to accept)
+  # ============================================================================
+
+  attr :user, :map, required: true
+
+  def pending_connection_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-white/5 border border-white/10">
+      <%!-- Avatar --%>
+      <div
+        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+        style={"background-color: #{friend_color(@user)};"}
+      >
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      </div>
+
+      <%!-- Name --%>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white truncate">@{@user.username}</span>
+          <span class="text-[10px] text-white/40">pending</span>
+        </div>
+      </div>
+
+      <%!-- Cancel button --%>
+      <button
+        phx-click="cancel_request"
+        phx-value-user_id={@user.id}
+        class="text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer px-2"
+      >
+        Cancel
       </button>
     </div>
     """

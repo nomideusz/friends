@@ -256,4 +256,26 @@ window.addEventListener("phx:sign_out", () => {
     window.location.href = '/'
 })
 
+// Handle trigger_file_input event globally
+window.addEventListener("phx:trigger_file_input", (e) => {
+    const selector = e.detail.selector
+    if (selector) {
+        const input = document.querySelector(selector)
+        if (input) {
+            // Add a one-time listener to close the menu after file selection
+            input.addEventListener('change', () => {
+                // Close the create menu after file is selected
+                if (window.liveSocket) {
+                    const hook = document.querySelector('[phx-hook="FriendsApp"]')
+                    if (hook && hook._liveSocket) {
+                        // Push an event to close the menu
+                        window.liveSocket.execJS(hook, '[["push",{"event":"close_create_menu"}]]')
+                    }
+                }
+            }, { once: true })
+            input.click()
+        }
+    }
+})
+
 window.liveSocket = liveSocket

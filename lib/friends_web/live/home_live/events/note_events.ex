@@ -13,7 +13,12 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
     # Only registered users can open note modal
     if socket.assigns.current_user && not socket.assigns.room_access_denied do
       action = if socket.assigns[:room], do: "save_note", else: "post_feed_note"
-      {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "") |> assign(:note_modal_action, action)}
+      {:noreply,
+       socket
+       |> assign(:show_create_menu, false)
+       |> assign(:show_note_modal, true)
+       |> assign(:note_input, "")
+       |> assign(:note_modal_action, action)}
     else
       {:noreply, socket}
     end
@@ -144,7 +149,12 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
   # --- Feed Notes (Public) ---
 
   def open_feed_note_modal(socket) do
-    {:noreply, socket |> assign(:show_note_modal, true) |> assign(:note_input, "") |> assign(:note_modal_action, "post_feed_note")}
+    {:noreply,
+     socket
+     |> assign(:show_create_menu, false)
+     |> assign(:show_note_modal, true)
+     |> assign(:note_input, "")
+     |> assign(:note_modal_action, "post_feed_note")}
   end
 
   def post_feed_note(socket, content) do
@@ -199,6 +209,7 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
   def start_voice_recording(socket) do
     {:noreply,
      socket
+     |> assign(:show_create_menu, false)
      |> assign(:recording_voice, true)
      |> push_event("start_js_recording", %{})}
   end

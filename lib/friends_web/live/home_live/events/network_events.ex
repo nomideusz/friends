@@ -34,6 +34,12 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
 
   def open_contacts_sheet(socket, mode \\ :add_contact) do
     mode_atom = if is_binary(mode), do: String.to_existing_atom(mode), else: mode
+    
+    # Subscribe to user-specific updates for live changes
+    if socket.assigns.current_user do
+      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{socket.assigns.current_user.id}")
+    end
+    
     {:noreply,
      socket
      |> assign(:show_contact_sheet, true)
@@ -43,6 +49,11 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
   end
 
   def close_contact_search(socket) do
+    # Unsubscribe from user-specific updates
+    if socket.assigns.current_user do
+      Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:user:#{socket.assigns.current_user.id}")
+    end
+    
     {:noreply,
      socket
      |> assign(:show_contact_search, false)

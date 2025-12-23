@@ -13,7 +13,9 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidGroupComponents
   import FriendsWeb.HomeLive.Components.FluidProfileComponents
   import FriendsWeb.HomeLive.Components.FluidBottomToolbar
+  import FriendsWeb.HomeLive.Components.FluidCreateMenu
   import FriendsWeb.HomeLive.Components.FluidOmnibox
+  import FriendsWeb.HomeLive.Components.FluidUploadIndicator
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -581,6 +583,12 @@ defmodule FriendsWeb.HomeLive do
       socket.assigns[:show_contact_sheet] ->
         {:noreply, assign(socket, :show_contact_sheet, false)}
 
+      socket.assigns[:show_create_menu] ->
+        {:noreply, assign(socket, :show_create_menu, false)}
+
+      socket.assigns[:show_omnibox] ->
+        {:noreply, assign(socket, :show_omnibox, false)}
+
       true ->
         {:noreply, socket}
     end
@@ -855,12 +863,16 @@ defmodule FriendsWeb.HomeLive do
   # --- Bottom Toolbar Events ---
 
   def handle_event("open_create_menu", _params, socket) do
-    # Open create menu - for now, open create group modal on feed, or add menu in room
-    if socket.assigns[:room] do
-      {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
-    else
-      {:noreply, assign(socket, :create_group_modal, true)}
-    end
+    {:noreply, assign(socket, :show_create_menu, !socket.assigns[:show_create_menu])}
+  end
+
+  def handle_event("close_create_menu", _params, socket) do
+    {:noreply, assign(socket, :show_create_menu, false)}
+  end
+
+  def handle_event("trigger_photo_upload", _params, socket) do
+    # Trigger photo file selector - don't close menu yet (let file selection close it)
+    {:noreply, push_event(socket, "trigger_file_input", %{selector: "input[name='feed_photo']"})}
   end
 
   # --- Omnibox Search Handlers ---
@@ -976,6 +988,39 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  # --- Groups Sheet Events ---
+
+  def handle_event("open_groups_sheet", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_groups_sheet, true)
+     |> assign(:show_group_create_form, false)
+     |> assign(:group_search_query, "")}
+  end
+
+  def handle_event("close_groups_sheet", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_groups_sheet, false)
+     |> assign(:show_group_create_form, false)
+     |> assign(:group_search_query, "")}
+  end
+
+  def handle_event("toggle_group_create_form", _params, socket) do
+    {:noreply, assign(socket, :show_group_create_form, !socket.assigns[:show_group_create_form])}
+  end
+
+  def handle_event("group_search", %{"value" => query}, socket) do
+    results = if query != "" and socket.assigns.current_user do
+      Friends.Social.search_user_groups(socket.assigns.current_user.id, query, limit: 20)
+    else
+      []
+    end
+    {:noreply,
+     socket
+     |> assign(:group_search_query, query)
+     |> assign(:group_search_results, results)}
+  end
 
 
   def handle_event("open_create_group", _params, socket) do
@@ -1206,17 +1251,18 @@ defmodule FriendsWeb.HomeLive do
       {user_id, _} ->
         current_user = socket.assigns.current_user
         if current_user do
-          case Social.cancel_trust_request(current_user.id, user_id) do
-            :ok ->
-              # Refresh outgoing requests
-              outgoing = Social.list_sent_trust_requests(current_user.id)
-              {:noreply,
-               socket
-               |> assign(:outgoing_trust_requests, outgoing)
-               |> put_flash(:info, "Request cancelled")}
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, "Could not cancel")}
-          end
+          # Try to remove friend request first (most common case)
+          Social.remove_friend(current_user.id, user_id)
+          
+          # Refresh both friend and trust requests
+          sent_friends = Social.list_sent_friend_requests(current_user.id)
+          sent_trust = Social.list_sent_trust_requests(current_user.id)
+          
+          {:noreply,
+           socket
+           |> assign(:outgoing_friend_requests, sent_friends)
+           |> assign(:outgoing_trust_requests, sent_trust)
+           |> put_flash(:info, "Request cancelled")}
         else
           {:noreply, socket}
         end

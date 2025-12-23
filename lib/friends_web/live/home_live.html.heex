@@ -1,6 +1,5 @@
 <div class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white min-h-screen bg-black relative">
 
-
   <%!-- Graph Drawer --%>
   <.bottom_drawer
     id="graph-drawer"
@@ -53,11 +52,20 @@
     current_user={@current_user}
   />
 
-  <%!-- Feed Add Sheet (opens from + button on feed) --%>
-  <.feed_add_sheet
-    show={assigns[:show_add_menu] && assigns[:toolbar_context] == :feed}
+  <%!-- Fluid Create Menu (radial menu from + button) --%>
+  <.fluid_create_menu
+    show={assigns[:show_create_menu] || false}
+    context={assigns[:toolbar_context] || :feed}
     uploads={@uploads}
   />
+
+  <%!-- Fluid Upload Indicator --%>
+  <.upload_indicator 
+    uploading={assigns[:uploading] || false}
+    entries={if @uploads && @uploads[:feed_photo], do: @uploads.feed_photo.entries, else: []}
+  />
+
+  <%!-- Old feed_add_sheet removed - replaced by fluid_create_menu above --%>
 
   <%!-- Room Chat Sheet (opens from Chat button on room toolbar) --%>
   <%= if assigns[:room] do %>
@@ -104,6 +112,7 @@
     trusted_friends={@trusted_friends}
     incoming_trust_requests={@incoming_trust_requests}
     incoming_requests={@incoming_trust_requests}
+    outgoing_requests={assigns[:outgoing_friend_requests] || []}
     pending_friend_requests={@pending_requests}
     room={@room}
     room_members={@room_members || []}
@@ -118,6 +127,8 @@
     groups={if assigns[:group_search_query] != "", do: assigns[:group_search_results], else: @user_private_rooms}
     search_query={assigns[:group_search_query] || ""}
     current_user={@current_user}
+    new_room_name={assigns[:new_room_name] || ""}
+    show_create_form={assigns[:show_group_create_form] || false}
   />
 
   <%!-- Profile Sheet --%>
@@ -141,11 +152,9 @@
 
   <.settings_modal
     show={assigns[:show_settings_modal]}
-    tab={assigns[:settings_tab] || "profile"}
     current_user={@current_user}
     user_name={assigns[:user_name]}
-    user_color={assigns[:user_color]}
-    room_members={assigns[:room_members] || []}
+    devices={assigns[:devices] || []}
   />
 
 

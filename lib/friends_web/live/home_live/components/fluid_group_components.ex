@@ -8,7 +8,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
 
   # ============================================================================
   # GROUPS SHEET
-  # Bottom sheet for viewing all groups
+  # Bottom sheet for viewing all groups with inline creation
   # ============================================================================
 
   attr :show, :boolean, default: false
@@ -16,6 +16,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
   attr :search_query, :string, default: ""
   attr :current_user, :map, required: true
   attr :is_admin, :boolean, default: false
+  attr :new_room_name, :string, default: ""
+  attr :show_create_form, :boolean, default: false
 
   def groups_sheet(assigns) do
     # Check if current user is admin
@@ -43,18 +45,30 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
             </div>
 
             <%!-- Header --%>
-            <div class="px-4 pb-4 flex items-center justify-between">
-              <h2 class="text-lg font-bold text-white">Groups</h2>
-              <button
-                phx-click="open_create_group_modal"
-                class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-medium text-white transition-colors"
-              >
-                + New Group
-              </button>
-            </div>
-
-            <%!-- Search --%>
             <div class="px-4 pb-3">
+              <h2 class="text-lg font-bold text-white mb-3">Groups</h2>
+
+              <%!-- Always-visible Create Form --%>
+              <form phx-submit="create_group" class="mb-3">
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    name="name"
+                    value={@new_room_name}
+                    placeholder="Group name..."
+                    class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                    autocomplete="off"
+                  />
+                  <button
+                    type="submit"
+                    class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+                  >
+                    Create
+                  </button>
+                </div>
+              </form>
+
+              <%!-- Search --%>
               <input
                 type="text"
                 name="group_search"
@@ -76,7 +90,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <p class="text-white/40 text-sm">No groups found</p>
+                  <p class="text-white/40 text-sm">No groups yet</p>
+                  <p class="text-white/30 text-xs">Create your first group above</p>
                 </div>
               <% else %>
                 <div class="space-y-2">
@@ -92,6 +107,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
     <% end %>
     """
   end
+
 
   # ============================================================================
   # GROUP ROW

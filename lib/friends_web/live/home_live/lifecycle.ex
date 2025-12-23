@@ -67,6 +67,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       trusted_friends = Social.list_trusted_friends(session_user.id)
       incoming_trust_requests = Social.list_pending_trust_requests(session_user.id)
       pending_requests = Social.list_friend_requests(session_user.id)
+      outgoing_friend_requests = Social.list_sent_friend_requests(session_user.id)
       devices = Social.list_user_devices(session_user.id)
       
       # Fetch navigation lists - admin sees ALL groups, regular users see their own
@@ -118,6 +119,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:trusted_friend_ids, Enum.map(trusted_friends, & &1.trusted_user.id))
         |> assign(:incoming_trust_requests, incoming_trust_requests)
         |> assign(:pending_requests, pending_requests)
+        |> assign(:outgoing_friend_requests, outgoing_friend_requests)
         |> assign(:user_private_rooms, user_private_rooms)
         |> assign(:direct_rooms, direct_rooms)
         |> assign(:total_unread_count, Social.get_total_unread_count(session_user.id))

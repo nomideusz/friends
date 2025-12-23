@@ -2,138 +2,138 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
   use FriendsWeb, :html
   import FriendsWeb.HomeLive.Helpers
 
-  # --- Settings Modal ---
+  # --- Settings Sheet (Fluid Design) ---
   attr :show, :boolean, default: false
-  attr :tab, :string, default: "profile"
   attr :current_user, :map, required: true
   attr :user_name, :string, default: nil
-  attr :user_color, :string, default: nil
-  attr :room_members, :list, default: []
+  attr :devices, :list, default: []
 
   def settings_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div class="surface-overlay" style="z-index: 300;">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200" phx-click="close_settings_modal"></div>
+      <div id="settings-sheet" class="fixed inset-0 z-[200]">
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click="close_settings_modal"
+        ></div>
 
-        <div 
-          id="settings-modal-container"
-          class="surface-island aether-card w-full max-w-4xl h-[85vh] md:h-[80vh] flex flex-col shadow-[0_30px_100px_rgba(0,0,0,0.8)] rounded-t-[2rem] rounded-b-none lg:rounded-b-[2rem]"
-          phx-window-keydown="close_settings_modal"
-          phx-key="escape"
-        >
-          <div class="sheet-handle" phx-click="close_settings_modal"><div></div></div>
-          
-          <div class="flex flex-1 overflow-hidden">
-              <!-- Sidebar -->
-              <div class="w-20 md:w-48 border-r border-white/10 bg-white/5 flex flex-col">
-                <div class="p-4 border-b border-white/5 hidden md:block">
-                  <h2 class="font-bold text-white">Settings</h2>
+        <%!-- Sheet --%>
+        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
+          <div 
+            class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col pointer-events-auto"
+            phx-window-keydown="close_settings_modal"
+            phx-key="escape"
+          >
+            <%!-- Handle --%>
+            <div class="py-3 flex justify-center cursor-pointer" phx-click="close_settings_modal">
+              <div class="w-10 h-1 rounded-full bg-white/20"></div>
+            </div>
+
+            <%!-- User Header --%>
+            <div class="px-6 pb-4 border-b border-white/10">
+              <div class="flex items-center gap-4">
+                <div
+                  class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white/10"
+                  style={"background: linear-gradient(135deg, #{friend_color(@current_user)} 0%, #{friend_color(@current_user)}dd 100%);"}
+                >
+                  <%= if Map.get(@current_user, :avatar_url) do %>
+                    <img src={@current_user.avatar_url} class="w-full h-full object-cover rounded-full" alt="Avatar" />
+                  <% else %>
+                    <span class="text-white">{String.first(@current_user.username) |> String.upcase()}</span>
+                  <% end %>
                 </div>
-                
-                <nav class="flex-1 p-2 space-y-1">
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-lg font-bold text-white truncate">@{@current_user.username}</h3>
+                  <p class="text-xs text-white/40">Online</p>
+                </div>
+              </div>
+            </div>
+
+            <%!-- Settings Content --%>
+            <div class="flex-1 overflow-y-auto">
+              <%!-- Account Section --%>
+              <div class="px-4 py-4">
+                <h4 class="text-xs font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Account</h4>
+                <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                  <%!-- Display Name Row --%>
+                  <div class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors">
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm text-white/90">Display Name</div>
+                      <div class="text-xs text-white/50 truncate">{@user_name || @current_user.display_name || "Not set"}</div>
+                    </div>
+                    <button class="text-blue-400 text-sm font-medium cursor-pointer hover:text-blue-300">
+                      Edit
+                    </button>
+                  </div>
+
+                  <%!-- Devices Row --%>
+                  <div class="border-t border-white/10"></div>
                   <button
-                    phx-click="switch_settings_tab"
-                    phx-value-tab="profile"
-                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "profile", do: "bg-white/10 text-white font-medium", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
+                    phx-click="open_devices_modal"
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    <span class="md:hidden text-lg">👤</span>
-                    <span class="hidden md:inline">Profile</span>
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div class="flex-1 text-left">
+                      <div class="text-sm text-white/90">Devices</div>
+                      <div class="text-xs text-white/50">{length(@devices)} connected</div>
+                    </div>
+                    <svg class="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
-                  <button
-                    phx-click="switch_settings_tab"
-                    phx-value-tab="general"
-                    class={"w-full text-center md:text-left px-3 py-2 rounded-xl text-sm transition-colors #{if @tab == "general", do: "bg-white/10 text-white font-medium", else: "text-white/50 hover:text-white hover:bg-white/5"}"}
-                  >
-                    <span class="md:hidden text-lg">⚙️</span>
-                    <span class="hidden md:inline">General</span>
-                  </button>
-                </nav>
-                
-                <div class="p-2 border-t border-white/5">
-                  <button
-                    phx-click="sign_out"
-                    class="w-full text-center md:text-left px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-500/10 transition-colors flex items-center justify-center md:justify-start gap-2"
-                  >
-                    <span>🚪</span> <span class="hidden md:inline">Sign Out</span>
-                  </button>
+
+                  <%!-- User ID Row --%>
+                  <div class="border-t border-white/10"></div>
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                      </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm text-white/90">User ID</div>
+                      <div class="text-xs text-white/50 font-mono truncate">{@current_user.id}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Content Area -->
-              <div class="flex-1 flex flex-col min-w-0 bg-black/40">
-                <div class="flex items-center justify-between p-4 md:p-6 border-b border-white/10">
-                  <h3 class="font-bold text-white text-lg md:text-xl capitalize">{@tab}</h3>
-                  <button phx-click="close_settings_modal" class="text-white/30 hover:text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+              <%!-- About Section --%>
+              <div class="px-4 py-4">
+                <h4 class="text-xs font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">About</h4>
+                <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div class="flex-1">
+                      <div class="text-sm text-white/90">Version</div>
+                      <div class="text-xs text-white/50">1.0.0 Beta</div>
+                    </div>
+                  </div>
                 </div>
+              </div>
 
-                <div class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-                  <%= case @tab do %>
-                  <% "profile" -> %>
-                    <div class="space-y-8">
-                      <!-- Identity Card -->
-                      <div class="aether-card p-6 rounded-xl bg-white/5 border border-white/10">
-                        <div class="flex items-center gap-6">
-                          <div
-                            class="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-black border-4 border-black shadow-lg"
-                            style={"background-color: #{friend_color(@current_user)}"}
-                          >
-                            <%= if Map.get(@current_user, :avatar_url) do %>
-                              <img src={@current_user.avatar_url} class="w-full h-full object-cover rounded-full" />
-                            <% else %>
-                              {String.first(@current_user.username)}
-                            <% end %>
-                          </div>
-                          
-                          <div class="flex-1">
-                            <h4 class="text-xl font-bold text-white mb-1">@{@current_user.username}</h4>
-                            <div class="text-sm text-white/50 font-mono bg-black/50 px-2 py-1 rounded inline-block">
-                              User ID: {@current_user.id}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Name Edit -->
-                      <div class="space-y-4">
-                        <h4 class="text-sm font-bold uppercase tracking-wider text-white/40">Public Display Name</h4>
-                        <div class="flex gap-3">
-                          <div class="flex-1 relative">
-                            <input 
-                              type="text" 
-                              value={@user_name || @current_user.display_name} 
-                              class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
-                              placeholder="Enter display name"
-                              phx-blur="update_name_input"
-                            />
-                          </div>
-                          <button class="btn-aether px-4 py-2">Save</button>
-                        </div>
-                        <p class="text-xs text-white/40">This name is visible to everyone in groups.</p>
-                      </div>
-                    </div>
-
-                  <% "general" -> %>
-                    <div class="space-y-6">
-                      <div class="p-4 border border-blue-500/20 bg-blue-500/5 rounded-lg">
-                        <h4 class="font-bold text-blue-400 mb-2">Application Info</h4>
-                        <p class="text-sm text-white/70">Version 1.0.0 (Beta)</p>
-                        <p class="text-sm text-white/70">Secure Context: <span class="text-green-400">Active</span></p>
-                      </div>
-
-                      <div class="space-y-4">
-                        <h4 class="text-sm font-bold uppercase tracking-wider text-white/40">Interface</h4>
-                        <label class="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 cursor-pointer">
-                          <span class="text-white">Reduced Motion</span>
-                          <input type="checkbox" class="w-4 h-4 rounded bg-white/5 border-white/10 text-blue-500 focus:ring-blue-500/50" />
-                        </label>
-                      </div>
-                    </div>
-                <% end %>
+              <%!-- Sign Out Button --%>
+              <div class="px-4 py-6">
+                <button
+                  phx-click="sign_out"
+                  class="w-full py-3 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-medium transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
               </div>
             </div>
           </div>

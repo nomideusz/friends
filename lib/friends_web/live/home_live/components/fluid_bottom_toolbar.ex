@@ -27,10 +27,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
         <nav class="pointer-events-auto flex items-center gap-1 px-2 py-2 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
           <%= case @context do %>
             <% :feed -> %>
-              <.toolbar_button icon="plus" label="Create" event="toggle_add_menu" />
-              <.toolbar_button icon="search" label="Search" event="open_omnibox" />
+              <.toolbar_button icon="plus" label="Create" event="open_create_menu" />
               <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" badge={@unread_count} />
               <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
+              <.toolbar_avatar current_user={@current_user} event="open_settings_modal" online_count={@online_friend_count} pending_count={0} />
             <% :room -> %>
               <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
               <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
@@ -43,10 +43,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="more" label="More" event="show_item_actions" />
             <% _ -> %>
               <%!-- Fallback to feed --%>
-              <.toolbar_button icon="plus" label="Create" event="toggle_add_menu" />
-              <.toolbar_button icon="search" label="Search" event="open_omnibox" />
+              <.toolbar_button icon="plus" label="Create" event="open_create_menu" />
               <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
               <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
+              <.toolbar_avatar current_user={@current_user} event="toggle_user_menu" online_count={@online_friend_count} pending_count={0} />
           <% end %>
         </nav>
       </div>
@@ -112,7 +112,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
     >
       <div class="relative">
         <div
-          class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-black border-2 border-white/20 overflow-hidden"
+          class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-black border border-white/20 overflow-hidden"
           style={"background-color: #{friend_color(@current_user)}"}
         >
           <%= if Map.get(@current_user, :avatar_url) do %>

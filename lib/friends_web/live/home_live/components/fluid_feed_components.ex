@@ -88,27 +88,15 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   def fluid_feed_header(assigns) do
     ~H"""
-    <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black via-black/90 to-transparent">
-      <%!-- Left: Title (Matches Private Group "Back + Name" visual weight) --%>
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-center bg-gradient-to-b from-black via-black/90 to-transparent">
+      <%!-- Centered Title --%>
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-white/50">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
           </svg>
         </div>
-        <h1 class="text-sm font-bold text-white tracking-tight">New Internet</h1>
-      </div>
-
-      <%!-- User Menu Trigger --%>
-      <div class="relative">
-        <button
-          id="user-avatar-easter-egg"
-          phx-click="toggle_user_menu"
-          phx-touchstart="toggle_user_menu"
-          class="w-8 h-8 rounded-full bg-neutral-800/80 border border-white/10 flex items-center justify-center overflow-hidden hover:border-white/30 hover:bg-neutral-700/80 transition-all cursor-pointer"
-        >
-          <span class="text-[10px] font-bold text-white/80"><%= String.first(@current_user.username) |> String.upcase() %></span>
-        </button>
+        <h1 class="text-sm font-bold text-white/70 tracking-tight">New Internet</h1>
       </div>
     </div>
     """
@@ -127,52 +115,56 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   def user_menu_panel(assigns) do
     ~H"""
-    <%!-- Backdrop (Invisible, just for clicking away) --%>
-    <div 
-      class="fixed inset-0 z-[199]"
-      phx-click="toggle_user_menu"
-    ></div>
+    <%!-- Bottom Sheet Style User Menu --%>
+    <div id="user-menu-sheet" class="fixed inset-0 z-[200]">
+      <%!-- Backdrop --%>
+      <div
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        phx-click="toggle_user_menu"
+      ></div>
 
-    <%!-- Minimal Floating Dropdown --%>
-    <div class="fixed top-14 right-4 z-[200] w-60 animate-in fade-in slide-in-from-top-1 duration-200">
-      <div class="bg-[#121212] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col p-1.5 ring-1 ring-black/50">
-        
-        <%!-- User Header --%>
-        <div class="px-3 py-2.5 flex items-center gap-3 border-b border-white/5 mb-1">
-          <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/90 font-bold border border-white/10">
-            <%= String.first(@current_user.username) |> String.upcase() %>
+      <%!-- Sheet --%>
+      <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
+        <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl pointer-events-auto">
+          <%!-- Handle --%>
+          <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_user_menu">
+            <div class="w-10 h-1 rounded-full bg-white/20"></div>
           </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-semibold text-white truncate">@{@current_user.username}</div>
-            <div class="text-[10px] text-white/40 truncate">Online</div>
+
+          <%!-- User Header --%>
+          <div class="px-6 pb-4 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold text-white border border-white/10">
+              <%= String.first(@current_user.username) |> String.upcase() %>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-base font-semibold text-white truncate">@{@current_user.username}</div>
+              <div class="text-xs text-white/40">Online</div>
+            </div>
           </div>
-        </div>
 
-        <%!-- Actions --%>
-        <div class="flex flex-col gap-0.5">
-          <button 
-            phx-click="open_settings_modal"
-            class="w-full h-10 px-3 rounded-lg hover:bg-white/5 text-left text-sm text-neutral-300 hover:text-white flex items-center gap-3 transition-colors text-white/80"
-          >
-            <svg class="w-4 h-4 text-neutral-500 group-hover:text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Settings
-          </button>
+          <%!-- Actions --%>
+          <div class="px-4 pb-8 space-y-1">
+            <button
+              phx-click="open_settings_modal"
+              class="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-left text-sm text-white/80 hover:text-white flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Settings
+            </button>
 
-          <%!-- Divider --%>
-          <div class="h-px bg-white/5 my-0.5 mx-2"></div>
-
-          <button
-            phx-click="sign_out"
-            class="w-full h-10 px-3 rounded-lg hover:bg-red-500/10 text-left text-sm text-neutral-400 hover:text-red-400 flex items-center gap-3 transition-colors cursor-pointer"
-          >
-            <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Sign Out
-          </button>
+            <button
+              phx-click="sign_out"
+              class="w-full py-3 px-4 rounded-xl hover:bg-red-500/10 text-left text-sm text-white/50 hover:text-red-400 flex items-center gap-3 transition-colors cursor-pointer"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </div>
