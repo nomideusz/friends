@@ -89,17 +89,17 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   def fluid_feed_header(assigns) do
     ~H"""
     <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-center bg-gradient-to-b from-black via-black/90 to-transparent">
-      <%!-- Centered Search Input --%>
-      <div class="w-full max-w-[280px]">
-        <input
-          type="text"
-          placeholder="Search..."
-          phx-focus="open_omnibox"
-          phx-keyup="search_omnibox"
-          autocomplete="off"
-          class="w-full bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-white placeholder-white/30 focus:bg-white/10 focus:border-white/20 focus:outline-none transition-all text-center"
-        />
-      </div>
+      <%!-- Compact Search Pill - taps to open omnibox --%>
+      <button
+        type="button"
+        phx-click="open_omnibox"
+        class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white/40 hover:bg-white/10 hover:border-white/20 hover:text-white/60 transition-all cursor-pointer"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span class="hidden sm:inline">Search...</span>
+      </button>
     </div>
     """
   end

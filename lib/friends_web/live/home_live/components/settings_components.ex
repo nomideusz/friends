@@ -21,9 +21,12 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
         <%!-- Sheet --%>
         <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
           <div 
+            id="settings-sheet-content"
             class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col pointer-events-auto"
             phx-window-keydown="close_settings_modal"
             phx-key="escape"
+            phx-hook="SwipeableDrawer"
+            data-close-event="close_settings_modal"
           >
             <%!-- Handle --%>
             <div class="py-3 flex justify-center cursor-pointer" phx-click="close_settings_modal">

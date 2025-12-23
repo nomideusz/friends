@@ -229,13 +229,15 @@ export const ProgressiveSignOutHook = {
 
 export const SwipeableDrawerHook = {
     mounted() {
-        const handle = this.el.querySelector('[data-drawer-handle]') || this.el
+        const handle = this.el.querySelector('[data-drawer-handle]') || this.el.querySelector('.py-3') || this.el
+        const closeEvent = this.el.dataset.closeEvent || 'close_drawer'
         let startY = 0
         let currentY = 0
         let dragging = false
 
         const onTouchStart = (e) => {
             startY = e.touches[0].clientY
+            currentY = startY
             dragging = true
             this.el.style.transition = 'none'
         }
@@ -256,15 +258,30 @@ export const SwipeableDrawerHook = {
 
             const diff = currentY - startY
             if (diff > 100) {
-                this.pushEvent("close_drawer", {})
+                // Swipe down threshold reached - close
+                this.el.style.transform = `translateY(100%)`
+                setTimeout(() => this.pushEvent(closeEvent, {}), 200)
             } else {
                 this.el.style.transform = 'translateY(0)'
             }
         }
 
         handle.addEventListener('touchstart', onTouchStart, { passive: true })
-        handle.addEventListener('touchmove', onTouchMove, { passive: true })
-        handle.addEventListener('touchend', onTouchEnd)
+        this.el.addEventListener('touchmove', onTouchMove, { passive: true })
+        this.el.addEventListener('touchend', onTouchEnd)
+
+        this._onTouchStart = onTouchStart
+        this._onTouchMove = onTouchMove
+        this._onTouchEnd = onTouchEnd
+        this._handle = handle
+    },
+
+    destroyed() {
+        if (this._handle) {
+            this._handle.removeEventListener('touchstart', this._onTouchStart)
+        }
+        this.el.removeEventListener('touchmove', this._onTouchMove)
+        this.el.removeEventListener('touchend', this._onTouchEnd)
     }
 }
 
@@ -449,25 +466,25 @@ export const PinchZoomOutHook = {
     mounted() {
         this.initialDistance = null
         this.triggered = false
-        
+
         const getDistance = (touches) => {
             const dx = touches[0].clientX - touches[1].clientX
             const dy = touches[0].clientY - touches[1].clientY
             return Math.sqrt(dx * dx + dy * dy)
         }
-        
+
         const onTouchStart = (e) => {
             if (e.touches.length === 2) {
                 this.initialDistance = getDistance(e.touches)
                 this.triggered = false
             }
         }
-        
+
         const onTouchMove = (e) => {
             if (e.touches.length === 2 && this.initialDistance && !this.triggered) {
                 const currentDistance = getDistance(e.touches)
                 const delta = currentDistance - this.initialDistance
-                
+
                 // Pinch OUT (fingers spreading apart) - delta is positive
                 // Require at least 100px spread to trigger
                 if (delta > 100) {
@@ -477,21 +494,21 @@ export const PinchZoomOutHook = {
                 }
             }
         }
-        
+
         const onTouchEnd = () => {
             this.initialDistance = null
         }
-        
+
         this.el.addEventListener('touchstart', onTouchStart, { passive: true })
         this.el.addEventListener('touchmove', onTouchMove, { passive: true })
         this.el.addEventListener('touchend', onTouchEnd)
         this.el.addEventListener('touchcancel', onTouchEnd)
-        
+
         this._onTouchStart = onTouchStart
         this._onTouchMove = onTouchMove
         this._onTouchEnd = onTouchEnd
     },
-    
+
     destroyed() {
         this.el.removeEventListener('touchstart', this._onTouchStart)
         this.el.removeEventListener('touchmove', this._onTouchMove)
@@ -509,13 +526,13 @@ export const AutoDismissHook = {
             this.el.style.transition = 'opacity 0.3s, transform 0.3s'
             this.el.style.opacity = '0'
             this.el.style.transform = 'translate(-50%, 10px)'
-            
+
             setTimeout(() => {
                 this.pushEvent("lv:clear-flash", { key: this.el.id.replace('flash-', '') })
             }, 300)
         }, 4000)
     },
-    
+
     destroyed() {
         if (this.timer) clearTimeout(this.timer)
     }

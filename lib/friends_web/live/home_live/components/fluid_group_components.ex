@@ -36,8 +36,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
         <%!-- Modal --%>
         <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
           <div
+            id="groups-sheet-content"
             class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col pointer-events-auto"
             phx-click-away="close_groups_sheet"
+            phx-hook="SwipeableDrawer"
+            data-close-event="close_groups_sheet"
           >
             <%!-- Handle --%>
             <div class="py-3 flex justify-center cursor-pointer" phx-click="close_groups_sheet">

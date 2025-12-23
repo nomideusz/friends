@@ -23,6 +23,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   attr :trusted_friend_ids, :list, default: []
   attr :trusted_friends, :list, default: []
   attr :incoming_trust_requests, :list, default: []
+  attr :outgoing_trust_requests, :list, default: []
   attr :pending_friend_requests, :list, default: []  # Actual friend requests to accept/decline
   attr :room, :map, default: nil
   attr :room_members, :list, default: []
@@ -60,8 +61,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         <%!-- Modal --%>
         <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
           <div
+            id="people-sheet-content"
             class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col pointer-events-auto"
             phx-click-away="close_contact_search"
+            phx-hook="SwipeableDrawer"
+            data-close-event="close_contact_search"
           >
             <%!-- Handle --%>
             <div class="py-3 flex justify-center cursor-pointer" phx-click="close_contact_search">
