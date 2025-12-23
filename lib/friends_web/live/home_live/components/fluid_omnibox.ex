@@ -29,6 +29,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidOmnibox do
         phx-window-keydown="close_omnibox"
         phx-key="escape"
       >
+        <%!-- Click on overlay background to close --%>
+        <div 
+          class="absolute inset-0" 
+          phx-click="close_omnibox"
+        ></div>
         <div class="flex flex-col h-full max-w-2xl mx-auto p-4 pt-safe">
           <%!-- Search Input --%>
           <div class="relative mb-4">
@@ -44,9 +49,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidOmnibox do
               value={@query}
               phx-keyup="omnibox_search"
               phx-debounce="150"
-              placeholder="Search people, groups, or type / for commands..."
+              phx-hook="AutoFocus"
+              placeholder="Search..."
               autocomplete="off"
-              autofocus
               class="w-full pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white text-lg placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20"
               style="padding-left: 3rem;"
             />

@@ -58,15 +58,26 @@ defmodule FriendsWeb.Layouts do
               </.link>
             <% end %>
           </div>
-           <%!-- Center: Context Title --%>
-          <div class="absolute left-1/2 -translate-x-1/2 font-medium text-neutral-200 tracking-wide flex items-center justify-center gap-2 pointer-events-none">
+           <%!-- Center: Search or Room Title --%>
+          <div class="absolute left-1/2 -translate-x-1/2 w-full max-w-[280px] px-4">
             <%= if @room do %>
-              <%= if @room.is_private do %>
-                <span class="text-neutral-500 text-xs">🔒</span>
-              <% end %>
-               <span>{@context_title}</span>
+              <%!-- Room context: show room name --%>
+              <div class="font-medium text-neutral-200 tracking-wide flex items-center justify-center gap-2">
+                <%= if @room.is_private do %>
+                  <span class="text-neutral-500 text-xs">🔒</span>
+                <% end %>
+                <span>{@context_title}</span>
+              </div>
             <% else %>
-              <span>{@context_title}</span>
+              <%!-- Main page: show search input --%>
+              <input
+                type="text"
+                placeholder="Search people, groups..."
+                phx-focus="open_omnibox"
+                phx-keyup="search_omnibox"
+                autocomplete="off"
+                class="w-full bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-white placeholder-white/30 focus:bg-white/10 focus:border-white/20 focus:outline-none transition-all text-center"
+              />
             <% end %>
           </div>
            <%!-- Right: User Profile --%>
@@ -133,11 +144,12 @@ defmodule FriendsWeb.Layouts do
     <div
       :if={msg = Phoenix.Flash.get(@flash, @kind)}
       id={"flash-#{@kind}"}
+      phx-hook="AutoDismiss"
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> JS.hide(to: "#flash-#{@kind}")}
       phx-mounted={JS.show(transition: {"animate-in slide-in-from-bottom-4 fade-in duration-300", "", ""})}
       role="alert"
       class={[
-        "fixed bottom-24 left-1/2 -translate-x-1/2 z-[200]",
+        "fixed bottom-24 left-1/2 -translate-x-1/2 z-[300]",
         "px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer",
         "backdrop-blur-xl border shadow-2xl",
         "animate-in slide-in-from-bottom-4 fade-in duration-300",

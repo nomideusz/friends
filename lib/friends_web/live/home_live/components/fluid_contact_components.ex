@@ -164,6 +164,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 <% end %>
                 
+                <%!-- Pending Recovery Invites (outgoing trust requests you sent) --%>
+                <% outgoing_trust = assigns[:outgoing_trust_requests] || [] %>
+                <%= if Enum.any?(outgoing_trust) do %>
+                  <div class="mb-4">
+                    <div class="text-[10px] font-medium text-purple-400/70 uppercase tracking-wider mb-2">Pending Recovery Invites</div>
+                    <div class="space-y-1">
+                      <%= for tr <- outgoing_trust do %>
+                        <% user = if Map.has_key?(tr, :trusted_user), do: tr.trusted_user, else: tr %>
+                        <.pending_recovery_invite_row user={user} />
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+                
                 <%!-- Recovery Contacts Section --%>
                 <div class="mb-4">
                   <div class="flex items-center justify-between mb-2">
@@ -245,7 +259,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
   # ============================================================================
   # RECOVERY CONTACT ROW
-  # For the recovery contacts list
+  # For the recovery contacts list - clickable to open 1-1 chat
   # ============================================================================
 
   attr :user, :map, required: true
@@ -253,7 +267,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
   def recovery_contact_row(assigns) do
     ~H"""
-    <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-green-500/10 border border-green-500/20">
+    <div
+      class="flex items-center gap-3 py-2 px-2 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/15 transition-colors cursor-pointer"
+      phx-click="open_dm"
+      phx-value-user_id={@user.id}
+    >
       <%!-- Avatar --%>
       <div
         class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold #{if @online, do: "avatar-online", else: ""}"}
@@ -367,6 +385,44 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
           Decline
         </button>
       </div>
+    </div>
+    """
+  end
+
+  # ============================================================================
+  # PENDING RECOVERY INVITE ROW
+  # For outgoing trust requests (waiting for them to accept your recovery invite)
+  # ============================================================================
+
+  attr :user, :map, required: true
+
+  def pending_recovery_invite_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+      <%!-- Avatar --%>
+      <div
+        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+        style={"background-color: #{friend_color(@user)};"}
+      >
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      </div>
+
+      <%!-- Name --%>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white truncate">@{@user.username}</span>
+          <span class="text-[10px] text-purple-400/70">awaiting response</span>
+        </div>
+      </div>
+
+      <%!-- Cancel button --%>
+      <button
+        phx-click="cancel_trust_request"
+        phx-value-user_id={@user.id}
+        class="text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer px-2"
+      >
+        Cancel
+      </button>
     </div>
     """
   end

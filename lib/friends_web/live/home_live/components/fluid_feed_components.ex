@@ -89,14 +89,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
   def fluid_feed_header(assigns) do
     ~H"""
     <div class="sticky top-0 z-50 px-4 py-3 flex items-center justify-center bg-gradient-to-b from-black via-black/90 to-transparent">
-      <%!-- Centered Title --%>
-      <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-white/50">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-          </svg>
-        </div>
-        <h1 class="text-sm font-bold text-white/70 tracking-tight">New Internet</h1>
+      <%!-- Centered Search Input --%>
+      <div class="w-full max-w-[280px]">
+        <input
+          type="text"
+          placeholder="Search..."
+          phx-focus="open_omnibox"
+          phx-keyup="search_omnibox"
+          autocomplete="off"
+          class="w-full bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm text-white placeholder-white/30 focus:bg-white/10 focus:border-white/20 focus:outline-none transition-all text-center"
+        />
       </div>
     </div>
     """

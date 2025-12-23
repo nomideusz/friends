@@ -75,7 +75,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                   <%!-- Devices Row --%>
                   <div class="border-t border-white/10"></div>
                   <button
-                    phx-click="open_devices_modal"
+                    phx-click={JS.push("close_settings_modal") |> JS.push("open_devices_modal")}
                     class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -105,6 +105,34 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                       <div class="text-xs text-white/50 font-mono truncate">{@current_user.id}</div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <%!-- Your Network Section --%>
+              <div class="px-4 py-4">
+                <h4 class="text-xs font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Your Network</h4>
+                <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                  <button
+                    phx-click={JS.push("close_settings_modal") |> JS.push("show_welcome_graph")}
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <%!-- Constellation/network graph icon --%>
+                        <circle cx="12" cy="5" r="2" stroke-width="1.5" />
+                        <circle cx="6" cy="17" r="2" stroke-width="1.5" />
+                        <circle cx="18" cy="17" r="2" stroke-width="1.5" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 7v5M8.5 15.5L11 12M15.5 15.5L13 12" />
+                      </svg>
+                    </div>
+                    <div class="flex-1 text-left">
+                      <div class="text-sm text-white/90">Your Constellation</div>
+                      <div class="text-xs text-white/50">View your network graph</div>
+                    </div>
+                    <svg class="w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 

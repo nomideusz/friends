@@ -59,6 +59,11 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :groups_collapsed, !socket.assigns[:groups_collapsed])}
   end
 
+  # No-op handler for forms where JS handles submit but phx-submit needs a value
+  def handle_event("noop", _params, socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("toggle_nav_drawer", _params, socket) do
     {:noreply, assign(socket, :show_nav_drawer, !socket.assigns[:show_nav_drawer])}
   end
@@ -633,6 +638,10 @@ defmodule FriendsWeb.HomeLive do
     NetworkEvents.confirm_trust(socket, user_id_str)
   end
 
+  def handle_event("open_dm", %{"user_id" => user_id_str}, socket) do
+    NetworkEvents.open_dm(socket, user_id_str)
+  end
+
   # --- Room Member Management ---
 
   def handle_event("search_member_invite", %{"query" => query}, socket) do
@@ -686,6 +695,56 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("send_room_voice_note", params, socket) do
     ChatEvents.send_room_voice_note(socket, params)
+  end
+
+  def handle_event("send_room_message", params, socket) do
+    ChatEvents.send_room_text_message(socket, params)
+  end
+
+  # Server-side chat message sending (plain text, no client-side encryption)
+  def handle_event("send_chat_message", %{"message" => message}, socket) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    if room && current_user && message != "" do
+      # Store as plain text (not encrypted) for now
+      result = Friends.Social.Chat.send_room_message(
+             room.id,
+             current_user.id,
+             message,
+             "text",
+             %{},
+             nil
+           )
+      
+      case result do
+        {:ok, _message} ->
+          {:noreply, assign(socket, :new_chat_message, "")}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, "Failed to send message")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("update_chat_input", %{"message" => message}, socket) do
+    {:noreply, assign(socket, :new_chat_message, message)}
+  end
+
+
+
+  def handle_event("toggle_members_panel", _, socket) do
+    {:noreply, update(socket, :show_members_panel, &(!&1))}
+  end
+
+  def handle_event("close_group_sheet", _, socket) do
+    {:noreply, assign(socket, :show_members_panel, false)}
+  end
+
+  def handle_event("group_search", %{"value" => query}, socket) do
+    {:noreply, assign(socket, :group_search, query)}
   end
 
   # Toggle the chat panel visibility in split-view layout

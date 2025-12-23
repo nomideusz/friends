@@ -26,7 +26,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
 
     ~H"""
     <%= if @show do %>
-      <div id="groups-sheet" class="fixed inset-0 z-[200]">
+      <div id="groups-sheet" class="fixed inset-0 z-[300]">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
@@ -81,9 +81,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
               />
             </div>
 
-            <%!-- Groups List --%>
+            <%!-- Groups List (exclude DM rooms) --%>
             <div class="flex-1 overflow-y-auto px-4 pb-8">
-              <%= if @groups == [] do %>
+              <% multi_member_groups = Enum.filter(@groups, fn g -> g.room_type != "dm" end) %>
+              <%= if multi_member_groups == [] do %>
                 <div class="flex flex-col items-center justify-center py-12 text-center">
                   <div class="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
                     <svg class="w-6 h-6 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +96,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
                 </div>
               <% else %>
                 <div class="space-y-2">
-                  <%= for group <- @groups do %>
+                  <%= for group <- multi_member_groups do %>
                     <.group_row group={group} is_admin={@is_admin} />
                   <% end %>
                 </div>

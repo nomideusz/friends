@@ -196,22 +196,27 @@ export const RoomChatScrollHook = {
 export const RoomChatEncryptionHook = {
     async mounted() {
         const roomCode = this.el.dataset.roomCode
-        if (!roomCode) return
+        if (!roomCode) {
+            console.warn('RoomChatEncryption: No roomCode found')
+            return
+        }
 
         this.key = await messageEncryption.loadOrCreateConversationKey(`room:${roomCode}`)
         this.recorder = null
         this.isRecording = false
 
-        // Handle form submit
-        const form = this.el.querySelector('form')
-        if (form) {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault()
-                const input = form.querySelector('[contenteditable]') || form.querySelector('input[name="message"]')
-                const text = input.textContent || input.value
-                if (!text.trim()) return
+        // The element itself is a form now, or find form inside
+        const form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
+        const input = this.el.querySelector('input[name="message"]') || this.el.querySelector('[contenteditable]')
+        
+        // Send message function
+        const sendMessage = async () => {
+            if (!input) return
+            const text = input.textContent !== undefined ? input.textContent : input.value
+            if (!text || !text.trim()) return
 
-                const { encrypted, nonce } = await messageEncryption.encryptWithKey(text, this.key)
+            try {
+                const { encrypted, nonce } = await messageEncryption.encryptWithKey(text.trim(), this.key)
                 const encryptedBase64 = btoa(String.fromCharCode(...encrypted))
                 const nonceBase64 = btoa(String.fromCharCode(...nonce))
 
@@ -221,10 +226,31 @@ export const RoomChatEncryptionHook = {
                     content_type: "text"
                 })
 
+                // Clear input
                 if (input.textContent !== undefined) {
                     input.textContent = ''
                 } else {
                     input.value = ''
+                }
+            } catch (err) {
+                console.error('Failed to encrypt/send message:', err)
+            }
+        }
+
+        // Handle form submit
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault()
+                await sendMessage()
+            })
+        }
+
+        // Handle Enter key on input as fallback
+        if (input) {
+            input.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    await sendMessage()
                 }
             })
         }

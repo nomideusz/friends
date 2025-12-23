@@ -315,4 +315,37 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
         end
     end
   end
+
+  # --- Direct Message (1-1 Chat) ---
+  
+  def open_dm(socket, user_id_str) do
+    case safe_to_integer(user_id_str) do
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+
+      {:ok, target_user_id} ->
+        case socket.assigns.current_user do
+          nil ->
+            {:noreply, put_flash(socket, :error, "Please register first")}
+
+          current_user ->
+            # Get or create a DM room between current user and target user
+            alias Friends.Social.Rooms
+            
+            case Rooms.get_or_create_dm_room(current_user.id, target_user_id) do
+              {:ok, room} ->
+                # Close the contacts sheet and navigate to the room
+                socket =
+                  socket
+                  |> assign(:show_contact_sheet, false)
+                  |> push_navigate(to: "/r/#{room.code}")
+                  
+                {:noreply, socket}
+
+              {:error, _reason} ->
+                {:noreply, put_flash(socket, :error, "Could not open chat")}
+            end
+        end
+    end
+  end
 end

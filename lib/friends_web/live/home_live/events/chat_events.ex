@@ -136,6 +136,38 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
   end
 
   @doc """
+  Handle sending a text message in a room (called from JS hook)
+  """
+  def send_room_text_message(socket, %{"encrypted_content" => content, "nonce" => nonce}) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    if room && current_user do
+      # Decode base64 strings to binary for proper storage
+      decoded_content = Base.decode64!(content)
+      decoded_nonce = Base.decode64!(nonce)
+
+      case Friends.Social.send_room_message(
+             room.id,
+             current_user.id,
+             decoded_content,
+             "text",
+             %{},
+             decoded_nonce
+           ) do
+        {:ok, _message} ->
+          # Clear the local chat message state
+          {:noreply, assign(socket, :new_chat_message, "")}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to send message")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
   Clean up stale typing indicators (users who stopped typing but didn't send clear event)
   Called periodically or on new messages
   """

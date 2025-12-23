@@ -346,7 +346,10 @@ export const CopyToClipboardHook = {
 
 export const AutoFocusHook = {
     mounted() {
-        this.el.focus()
+        // Small delay to ensure DOM is ready after LiveView update
+        setTimeout(() => {
+            this.el.focus()
+        }, 50)
     }
 }
 
@@ -497,6 +500,27 @@ export const PinchZoomOutHook = {
     }
 }
 
+/**
+ * AutoDismiss - Auto-hides flash/toast messages after delay
+ */
+export const AutoDismissHook = {
+    mounted() {
+        this.timer = setTimeout(() => {
+            this.el.style.transition = 'opacity 0.3s, transform 0.3s'
+            this.el.style.opacity = '0'
+            this.el.style.transform = 'translate(-50%, 10px)'
+            
+            setTimeout(() => {
+                this.pushEvent("lv:clear-flash", { key: this.el.id.replace('flash-', '') })
+            }, 300)
+        }, 4000)
+    },
+    
+    destroyed() {
+        if (this.timer) clearTimeout(this.timer)
+    }
+}
+
 export default {
     HomeOrb: HomeOrbHook,
     NavOrbLongPress: NavOrbLongPressHook,
@@ -508,5 +532,6 @@ export default {
     AutoFocus: AutoFocusHook,
     LongPressOrb: LongPressOrbHook,
     PhotoUploadLabel: PhotoUploadLabelHook,
-    PinchZoomOut: PinchZoomOutHook
+    PinchZoomOut: PinchZoomOutHook,
+    AutoDismiss: AutoDismissHook
 }

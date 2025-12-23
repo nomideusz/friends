@@ -41,7 +41,7 @@ defmodule Friends.Social.Message do
       :nonce,
       :reply_to_id
     ])
-    |> validate_required([:sender_id, :encrypted_content, :content_type, :nonce])
+    |> validate_required([:sender_id, :encrypted_content, :content_type])
     |> validate_inclusion(:content_type, ["text", "voice", "image"])
     |> validate_voice_duration()
     |> validate_conversation_or_room()

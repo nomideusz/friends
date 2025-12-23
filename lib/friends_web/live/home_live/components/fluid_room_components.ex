@@ -84,16 +84,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
       <%!-- Note: Chat is now handled by the bottom toolbar --%>
 
-      <%!-- Unified Group Sheet --%>
-      <.group_sheet
-        show={@show_group_sheet}
-        room={@room}
-        room_members={@room_members}
-        current_user={@current_user}
-        friends={@friends}
-        group_search={@group_search}
-        viewers={@viewers}
-      />
+      <%!-- Note: Member Sheet moved to home_live.html.heex for proper z-index --%>
 
       <%!-- Note: Chat Sheet is rendered in home_live.html.heex for proper z-index --%>
     </div>
@@ -691,11 +682,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
     ~H"""
     <div class="fixed bottom-16 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-t from-black via-black/95 to-transparent">
       <div class="max-w-lg mx-auto">
-        <div
+        <form
           id="unified-input-area"
           class="flex items-center gap-2"
-          phx-hook="RoomChatEncryption"
-          data-room-id={@room.id}
+          phx-submit="send_chat_message"
+          phx-change="update_chat_input"
         >
           <%!-- Chat toggle button (shows when chat is hidden) --%>
           <%= if not @show_chat do %>
@@ -729,17 +720,17 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <%= if @show_add_menu do %>
               <div class="absolute bottom-full left-0 mb-2 w-32 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                 <%!-- Photo option --%>
-                <form id="fluid-upload-form" phx-change="validate" phx-submit="save" class="contents">
+                <div class="contents">
                   <label class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors cursor-pointer border-b border-white/5">
                     <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <span class="text-sm text-white/90">Photo</span>
                     <%= if @uploads && @uploads[:photo] do %>
-                      <.live_file_input upload={@uploads.photo} class="sr-only" />
+                      <.live_file_input upload={@uploads.photo} class="sr-only" form="fluid-upload-form-outer" />
                     <% end %>
                   </label>
-                </form>
+                </div>
 
                 <%!-- Note option --%>
                 <button
@@ -765,6 +756,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           <%!-- Text input --%>
           <input
             type="text"
+            name="message"
             value={@new_chat_message}
             phx-keyup="update_chat_message"
             placeholder="Message"
@@ -776,6 +768,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
           <%!-- Voice button (record message) --%>
           <button
+            type="button"
             id="fluid-voice-btn"
             phx-hook="RoomVoiceRecorder"
             data-room-id={@room.id}
@@ -795,6 +788,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             class="relative"
           >
             <button
+              type="button"
               class="walkie-talk-btn w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/20 active:bg-purple-500/40 active:scale-110"
               title="Hold to talk (walkie-talkie)"
             >
@@ -806,8 +800,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <div class="walkie-indicator hidden absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-purple-300 bg-purple-900/80 px-2 py-1 rounded-full"></div>
           </div>
 
-          <%!-- Send button (adaptive: dims when no content) --%>
+          <%!-- Send button (submit form) --%>
           <button
+            type="submit"
             id="send-unified-message-btn"
             class={"w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-white text-black scale-100", else: "bg-white/10 text-white/40 scale-90"}"}
           >
@@ -815,7 +810,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
-        </div>
+        </form>
 
         <%!-- Upload progress --%>
         <%= if @uploading do %>
@@ -889,7 +884,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
     ~H"""
     <%= if @show do %>
-      <div class="fixed inset-0 z-[200]" phx-window-keydown="close_group_sheet" phx-key="escape">
+      <div class="fixed inset-0 z-[300]" phx-window-keydown="close_group_sheet" phx-key="escape">
         <%!-- Backdrop --%>
         <div
           class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
@@ -898,7 +893,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
         <%!-- Sheet --%>
         <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300">
-          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col">
+          <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col"
+            phx-click-away="close_group_sheet"
+          >
             <%!-- Handle --%>
             <div class="py-3 flex justify-center cursor-pointer" phx-click="close_group_sheet">
               <div class="w-10 h-1 rounded-full bg-white/20"></div>
@@ -1160,18 +1157,28 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                             <% end %>
                           </div>
                           <span class="text-[10px] text-white/50 room-voice-time">0:00</span>
-                          <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
+                          <%= if message.nonce do %>
+                            <span class="hidden room-voice-data" data-encrypted={Base.encode64(message.encrypted_content)} data-nonce={Base.encode64(message.nonce)}></span>
+                          <% end %>
                         </div>
                       <% else %>
                         <%!-- Text message --%>
-                        <p
-                          class="text-sm text-white/90 room-decrypted-content"
-                          id={"chat-sheet-msg-#{message.id}"}
-                          data-encrypted={Base.encode64(message.encrypted_content)}
-                          data-nonce={Base.encode64(message.nonce)}
-                        >
-                          <span class="text-white/30">...</span>
-                        </p>
+                        <%= if message.nonce do %>
+                          <%!-- Encrypted message - needs JS decryption --%>
+                          <p
+                            class="text-sm text-white/90 room-decrypted-content"
+                            id={"chat-sheet-msg-#{message.id}"}
+                            data-encrypted={Base.encode64(message.encrypted_content)}
+                            data-nonce={Base.encode64(message.nonce)}
+                          >
+                            <span class="text-white/30">...</span>
+                          </p>
+                        <% else %>
+                          <%!-- Plain text message - display directly --%>
+                          <p class="text-sm text-white/90">
+                            {message.encrypted_content}
+                          </p>
+                        <% end %>
                       <% end %>
                     </div>
                   </div>
@@ -1193,14 +1200,15 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
             <%!-- Input --%>
             <div class="px-4 pb-4 pt-2 border-t border-white/5">
-              <div
+              <form
                 id="chat-sheet-input-area"
                 class="flex items-center gap-2"
-                phx-hook="RoomChatEncryption"
-                data-room-id={@room.id}
+                phx-submit="send_chat_message"
+                phx-change="update_chat_input"
               >
                 <input
                   type="text"
+                  name="message"
                   value={@new_chat_message}
                   phx-keyup="update_chat_message"
                   placeholder="Message..."
@@ -1211,6 +1219,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 />
                 <%!-- Voice Recording Button --%>
                 <button
+                  type="button"
                   id="chat-sheet-voice-btn"
                   phx-hook="RoomVoiceRecorder"
                   data-room-id={@room.id}
@@ -1229,6 +1238,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                   class="relative"
                 >
                   <button
+                    type="button"
                     class="walkie-talk-btn w-10 h-10 rounded-full flex items-center justify-center bg-white/10 text-purple-400/60 hover:bg-purple-500/20 hover:text-purple-300 transition-all cursor-pointer"
                     title="Hold to talk (live)"
                   >
@@ -1240,6 +1250,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 </div>
                 <%!-- Send Button --%>
                 <button
+                  type="submit"
                   id="chat-sheet-send-btn"
                   class={"w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-blue-500 text-white", else: "bg-white/10 text-white/40"}"}
                 >
@@ -1247,7 +1258,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
-              </div>
+              </form>
             </div>
           </div>
         </div>
@@ -1366,7 +1377,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <h3 class="text-white text-lg font-bold mb-4 px-2"><%= @room.name || "Untitled Group" %></h3>
 
               <button
-                phx-click="open_contacts_sheet"
+                phx-click={JS.push("close_room_settings") |> JS.push("open_contacts_sheet")}
                 class="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left"
               >
                 <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
