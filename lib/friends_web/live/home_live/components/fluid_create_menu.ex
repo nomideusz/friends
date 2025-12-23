@@ -62,7 +62,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidCreateMenu do
           <%!-- Voice - only show in feed context --%>
           <%= if @context != :room do %>
             <div class="border-t border-white/10"></div>
-            <.create_option icon="mic" label="Voice" event="start_voice_recording" />
+            <button
+              type="button"
+              id="create-menu-voice-btn"
+              phx-hook="FeedVoiceRecorder"
+              phx-click="start_voice_recording"
+              class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer group"
+            >
+              <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/15 transition-colors">
+                <.create_icon name="mic" />
+              </div>
+              <span class="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
+                Voice
+              </span>
+            </button>
           <% end %>
 
           <%!-- Note --%>
