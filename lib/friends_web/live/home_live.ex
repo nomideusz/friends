@@ -1191,9 +1191,9 @@ defmodule FriendsWeb.HomeLive do
               # Send friend request
               case Social.add_friend(current_user.id, user_id) do
                 {:ok, _} ->
-                  {:noreply, put_flash(socket, :info, "Friend request sent!")}
+                  {:noreply, put_flash(socket, :info, "Connection request sent!")}
                 {:error, :already_friends} ->
-                  {:noreply, put_flash(socket, :info, "Already friends!")}
+                  {:noreply, put_flash(socket, :info, "Already connected!")}
                 {:error, :request_already_sent} ->
                   {:noreply, put_flash(socket, :info, "Request already sent")}
                 _ ->
@@ -1242,11 +1242,11 @@ defmodule FriendsWeb.HomeLive do
                |> assign(:show_contact_sheet, false)
                |> assign(:contact_sheet_search, "")
                |> assign(:contact_search_results, [])
-               |> put_flash(:info, "Friend request sent!")}
+               |> put_flash(:info, "Connection request sent!")}
             {:error, :cannot_friend_self} ->
               {:noreply, put_flash(socket, :error, "Can't add yourself")}
             {:error, :already_friends} ->
-              {:noreply, put_flash(socket, :error, "Already friends")}
+              {:noreply, put_flash(socket, :error, "Already connected")}
             {:error, :request_already_sent} ->
               {:noreply, put_flash(socket, :error, "Request already sent")}
             {:error, _} ->
@@ -1348,7 +1348,7 @@ defmodule FriendsWeb.HomeLive do
                socket
                |> assign(:friends, friends)
                |> assign(:pending_requests, pending_requests)
-               |> put_flash(:info, "Friend request accepted!")}
+               |> put_flash(:info, "Connected!")}
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "Could not accept request")}
           end
@@ -1373,7 +1373,7 @@ defmodule FriendsWeb.HomeLive do
               {:noreply,
                socket
                |> assign(:pending_requests, pending_requests)
-               |> put_flash(:info, "Friend request declined")}
+               |> put_flash(:info, "Request declined")}
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "Could not decline request")}
           end
@@ -1764,6 +1764,28 @@ defmodule FriendsWeb.HomeLive do
     else
       {:noreply, socket}
     end
+  end
+
+  # --- New Real-time Social Event Handlers ---
+  
+  # Handle when someone sends you a connection request (live update)
+  def handle_info({:connection_request_received, from_user_id}, socket) do
+    PubSubHandlers.handle_connection_request_received(socket, from_user_id)
+  end
+
+  # Handle when someone accepts your connection request (live update)
+  def handle_info({:connection_accepted, by_user_id}, socket) do
+    PubSubHandlers.handle_connection_accepted(socket, by_user_id)
+  end
+
+  # Handle when someone sends you a trust/recovery request (live update)
+  def handle_info({:trust_request_received, from_user_id}, socket) do
+    PubSubHandlers.handle_trust_request_received(socket, from_user_id)
+  end
+
+  # Handle when someone confirms your trust request (live update)
+  def handle_info({:trust_confirmed, by_user_id}, socket) do
+    PubSubHandlers.handle_trust_confirmed(socket, by_user_id)
   end
 
   # Handle new user joining (for live graph updates)

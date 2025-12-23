@@ -32,9 +32,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
               <.toolbar_avatar current_user={@current_user} event="open_settings_modal" online_count={@online_friend_count} pending_count={0} />
             <% :room -> %>
-              <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
-              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
+              <.toolbar_button icon="plus" label="Create" event="open_create_menu" />
+              <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
               <.toolbar_button icon="people" label="Members" event="toggle_members_panel" />
+              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
               <.toolbar_avatar current_user={@current_user} event="open_settings_modal" online_count={@online_friend_count} pending_count={0} />
             <% :focused -> %>
               <.toolbar_button icon="back" label="Back" event="close_focused_view" />

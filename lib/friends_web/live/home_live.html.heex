@@ -60,9 +60,14 @@
   />
 
   <%!-- Fluid Upload Indicator --%>
+  <% 
+    feed_entries = if @uploads && @uploads[:feed_photo], do: @uploads.feed_photo.entries, else: []
+    room_entries = if @uploads && @uploads[:photo], do: @uploads.photo.entries, else: []
+    all_entries = feed_entries ++ room_entries
+  %>
   <.upload_indicator 
     uploading={assigns[:uploading] || false}
-    entries={if @uploads && @uploads[:feed_photo], do: @uploads.feed_photo.entries, else: []}
+    entries={all_entries}
   />
 
   <%!-- Old feed_add_sheet removed - replaced by fluid_create_menu above --%>

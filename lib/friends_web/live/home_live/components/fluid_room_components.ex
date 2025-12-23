@@ -560,6 +560,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         id="fluid-chat-overlay"
         class="fixed bottom-36 left-0 right-0 z-40 pointer-events-none"
       >
+        <%!-- Invisible backdrop to close chat when clicking outside --%>
+        <div
+          class="fixed inset-0 z-[-1] pointer-events-auto"
+          phx-click="toggle_chat_visibility"
+        ></div>
         <div class="max-w-lg mx-auto px-4 pointer-events-auto">
           <%!-- Chat container with glass effect --%>
           <div class="bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300">

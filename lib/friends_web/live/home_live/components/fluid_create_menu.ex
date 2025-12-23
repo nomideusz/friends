@@ -15,6 +15,15 @@ defmodule FriendsWeb.HomeLive.Components.FluidCreateMenu do
   attr :uploads, :any, default: nil
 
   def fluid_create_menu(assigns) do
+    # Determine which upload key to use based on context
+    upload_key = if assigns.context == :room, do: :photo, else: :feed_photo
+    has_upload = assigns.uploads && assigns.uploads[upload_key]
+    
+    assigns = assigns
+      |> assign(:upload_key, upload_key)
+      |> assign(:has_upload, has_upload)
+      |> assign(:upload, if(has_upload, do: assigns.uploads[upload_key], else: nil))
+
     ~H"""
     <%= if @show do %>
       <%!-- Invisible backdrop for click-to-close --%>
@@ -44,15 +53,17 @@ defmodule FriendsWeb.HomeLive.Components.FluidCreateMenu do
               <span class="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
                 Photo
               </span>
-              <%= if @uploads && @uploads[:feed_photo] do %>
-                <.live_file_input upload={@uploads.feed_photo} class="sr-only" />
+              <%= if @has_upload do %>
+                <.live_file_input upload={@upload} class="sr-only" />
               <% end %>
             </label>
           </form>
 
-          <%!-- Voice --%>
-          <div class="border-t border-white/10"></div>
-          <.create_option icon="mic" label="Voice" event="start_voice_recording" />
+          <%!-- Voice - only show in feed context --%>
+          <%= if @context != :room do %>
+            <div class="border-t border-white/10"></div>
+            <.create_option icon="mic" label="Voice" event="start_voice_recording" />
+          <% end %>
 
           <%!-- Note --%>
           <div class="border-t border-white/10"></div>

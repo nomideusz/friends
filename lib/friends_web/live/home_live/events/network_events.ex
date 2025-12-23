@@ -85,12 +85,14 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
       {:ok, user_id} ->
         case Social.add_friend(socket.assigns.current_user.id, user_id) do
           {:ok, _} ->
+             # Broadcast to target user for live update
+             Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:connection_request_received, socket.assigns.current_user.id})
              # Refresh outgoing requests
              sent = Social.list_sent_friend_requests(socket.assigns.current_user.id)
              {:noreply, 
               socket 
               |> assign(:outgoing_friend_requests, sent)
-              |> put_flash(:info, "Friend request sent!")}
+              |> put_flash(:info, "Connection request sent!")}
           {:error, _} -> {:noreply, put_flash(socket, :error, "Could not send request")}
         end
       _ -> {:noreply, socket}
@@ -102,6 +104,8 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
       {:ok, user_id} ->
         case Social.accept_friend(socket.assigns.current_user.id, user_id) do
           {:ok, _} ->
+             # Broadcast to requester for live update
+             Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:connection_accepted, socket.assigns.current_user.id})
              # Refresh friends and requests
              friends = Social.list_friends(socket.assigns.current_user.id)
              requests = Social.list_friend_requests(socket.assigns.current_user.id)
@@ -109,7 +113,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
               socket 
               |> assign(:friends, friends)
               |> assign(:pending_friend_requests, requests)
-              |> put_flash(:info, "Friend accepted!")}
+              |> put_flash(:info, "Connected!")}
           {:error, _} -> {:noreply, put_flash(socket, :error, "Could not accept")}
         end
       _ -> {:noreply, socket}
@@ -149,7 +153,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
         {:noreply, 
          socket 
          |> assign(:friends, friends)
-         |> put_flash(:info, "Friend removed")}
+         |> put_flash(:info, "Removed from your people")}
       _ -> {:noreply, socket}
     end
   end
@@ -214,6 +218,8 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
           current_user ->
             case Social.add_trusted_friend(current_user.id, user_id) do
               {:ok, _tf} ->
+                # Broadcast to target user for live update
+                Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:trust_request_received, current_user.id})
                 outgoing = Social.list_sent_trust_requests(current_user.id)
 
                 {:noreply,
@@ -221,13 +227,13 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
                  |> assign(:friend_search, "")
                  |> assign(:friend_search_results, [])
                  |> assign(:outgoing_trust_requests, outgoing)
-                 |> put_flash(:info, "trust request sent")}
+                 |> put_flash(:info, "Recovery invite sent")}
 
               {:error, :cannot_trust_self} ->
                 {:noreply, put_flash(socket, :error, "can't trust yourself")}
 
               {:error, :max_trusted_friends} ->
-                {:noreply, put_flash(socket, :error, "max 5 trusted friends")}
+                {:noreply, put_flash(socket, :error, "Max 5 recovery contacts")}
 
               {:error, _} ->
                 {:noreply, put_flash(socket, :error, "already requested")}
@@ -249,6 +255,8 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
           current_user ->
             case Social.confirm_trusted_friend(current_user.id, user_id) do
               {:ok, _} ->
+                # Broadcast to requester for live update
+                Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:trust_confirmed, current_user.id})
                 # Refresh the pending requests and trusted friends list
                 pending = Social.list_pending_trust_requests(current_user.id)
                 trusted = Social.list_trusted_friends(current_user.id)
@@ -306,7 +314,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
                    |> put_flash(:info, "vote recorded (#{count}/4 needed)")}
 
                 {:error, :not_trusted_friend} ->
-                  {:noreply, put_flash(socket, :error, "not a trusted friend")}
+                  {:noreply, put_flash(socket, :error, "Not a recovery contact")}
 
                 {:error, _} ->
                   {:noreply, put_flash(socket, :error, "already voted")}

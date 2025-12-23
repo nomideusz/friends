@@ -273,7 +273,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                 <% "requests" -> %>
                   <%= if @pending_requests == [] do %>
                     <div class="flex flex-col items-center justify-center h-full text-center text-white/40">
-                      <p>No pending friend requests.</p>
+                      <p>No pending requests.</p>
                     </div>
                   <% else %>
                     <div class="space-y-4">
@@ -282,7 +282,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                           <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center font-bold text-white">?</div>
                           <div class="flex-1">
                             <div class="font-bold text-white">Request from User #{req.user_id}</div>
-                            <div class="text-xs text-white/40">Wants to be your friend</div>
+                            <div class="text-xs text-white/40">Wants to connect</div>
                           </div>
                           <div class="flex gap-2">
                             <button class="px-3 py-1.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 text-sm font-medium">Accept</button>
@@ -322,7 +322,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                               </div>
                               <span class="text-white font-medium">@{user.username}</span>
                             </div>
-                            <button class="text-blue-400 hover:text-white text-sm font-medium">Add Friend</button>
+                            <button class="text-blue-400 hover:text-white text-sm font-medium">Connect</button>
                           </div>
                         <% end %>
                       </div>

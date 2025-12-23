@@ -345,4 +345,74 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
          else: s
      end)}
   end
+
+  # --- Social/Network Events ---
+  # These handlers enable real-time updates when connections change
+
+  @doc """
+  Handle when someone sends you a connection request.
+  Refreshes the pending friend requests list.
+  """
+  def handle_connection_request_received(socket, _from_user_id) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      pending = Social.list_friend_requests(current_user.id)
+      {:noreply, assign(socket, :pending_requests, pending)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Handle when someone accepts your connection request.
+  Refreshes the friends list and outgoing requests.
+  """
+  def handle_connection_accepted(socket, _by_user_id) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      friends = Social.list_friends(current_user.id)
+      outgoing = Social.list_sent_friend_requests(current_user.id)
+      {:noreply,
+       socket
+       |> assign(:friends, friends)
+       |> assign(:outgoing_friend_requests, outgoing)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Handle when someone sends you a trust/recovery request.
+  Refreshes the incoming trust requests list.
+  """
+  def handle_trust_request_received(socket, _from_user_id) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      incoming = Social.list_pending_trust_requests(current_user.id)
+      {:noreply, assign(socket, :incoming_trust_requests, incoming)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Handle when someone confirms your trust request.
+  Refreshes the trusted friends list.
+  """
+  def handle_trust_confirmed(socket, _by_user_id) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      trusted = Social.list_trusted_friends(current_user.id)
+      trusted_ids = Enum.map(trusted, & &1.trusted_user_id)
+      outgoing = Social.list_sent_trust_requests(current_user.id)
+      {:noreply,
+       socket
+       |> assign(:trusted_friends, trusted)
+       |> assign(:trusted_friend_ids, trusted_ids)
+       |> assign(:outgoing_trust_requests, outgoing)}
+    else
+      {:noreply, socket}
+    end
+  end
 end
+
