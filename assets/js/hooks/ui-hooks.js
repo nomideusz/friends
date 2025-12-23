@@ -438,6 +438,65 @@ export const PhotoUploadLabelHook = {
     }
 }
 
+/**
+ * PinchZoomOut - Detects 2-finger pinch-out (zoom-out) gesture
+ * Shows the welcome graph when user pinches out, like zooming out to see the network
+ */
+export const PinchZoomOutHook = {
+    mounted() {
+        this.initialDistance = null
+        this.triggered = false
+        
+        const getDistance = (touches) => {
+            const dx = touches[0].clientX - touches[1].clientX
+            const dy = touches[0].clientY - touches[1].clientY
+            return Math.sqrt(dx * dx + dy * dy)
+        }
+        
+        const onTouchStart = (e) => {
+            if (e.touches.length === 2) {
+                this.initialDistance = getDistance(e.touches)
+                this.triggered = false
+            }
+        }
+        
+        const onTouchMove = (e) => {
+            if (e.touches.length === 2 && this.initialDistance && !this.triggered) {
+                const currentDistance = getDistance(e.touches)
+                const delta = currentDistance - this.initialDistance
+                
+                // Pinch OUT (fingers spreading apart) - delta is positive
+                // Require at least 100px spread to trigger
+                if (delta > 100) {
+                    this.triggered = true
+                    if (navigator.vibrate) navigator.vibrate(15)
+                    this.pushEvent("show_welcome_graph", {})
+                }
+            }
+        }
+        
+        const onTouchEnd = () => {
+            this.initialDistance = null
+        }
+        
+        this.el.addEventListener('touchstart', onTouchStart, { passive: true })
+        this.el.addEventListener('touchmove', onTouchMove, { passive: true })
+        this.el.addEventListener('touchend', onTouchEnd)
+        this.el.addEventListener('touchcancel', onTouchEnd)
+        
+        this._onTouchStart = onTouchStart
+        this._onTouchMove = onTouchMove
+        this._onTouchEnd = onTouchEnd
+    },
+    
+    destroyed() {
+        this.el.removeEventListener('touchstart', this._onTouchStart)
+        this.el.removeEventListener('touchmove', this._onTouchMove)
+        this.el.removeEventListener('touchend', this._onTouchEnd)
+        this.el.removeEventListener('touchcancel', this._onTouchEnd)
+    }
+}
+
 export default {
     HomeOrb: HomeOrbHook,
     NavOrbLongPress: NavOrbLongPressHook,
@@ -448,5 +507,6 @@ export default {
     CopyToClipboard: CopyToClipboardHook,
     AutoFocus: AutoFocusHook,
     LongPressOrb: LongPressOrbHook,
-    PhotoUploadLabel: PhotoUploadLabelHook
+    PhotoUploadLabel: PhotoUploadLabelHook,
+    PinchZoomOut: PinchZoomOutHook
 }

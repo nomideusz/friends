@@ -67,6 +67,10 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_graph_drawer, !socket.assigns[:show_graph_drawer])}
   end
 
+  def handle_event("show_welcome_graph", _params, socket) do
+    {:noreply, assign(socket, :show_graph_drawer, true)}
+  end
+
   def handle_event("toggle_fab", _params, socket) do
     {:noreply, assign(socket, :fab_expanded, !socket.assigns[:fab_expanded])}
   end
