@@ -757,6 +757,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           <input
             type="text"
             name="message"
+            value={@new_chat_message}
+            phx-keyup="update_chat_message"
             placeholder="Message"
             style="font-size: 16px;"
             class="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none py-2"
@@ -1210,12 +1212,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <form
                 id="chat-sheet-input-area"
                 class="flex items-center gap-2"
-                phx-hook="RoomChatEncryption"
-                data-room-code={@room.code}
+                phx-submit="send_chat_message"
+                phx-change="update_chat_input"
               >
                 <input
                   type="text"
                   name="message"
+                  value={@new_chat_message}
+                  phx-keyup="update_chat_message"
                   placeholder="Message..."
                   style="font-size: 16px; padding-left: 1rem;"
                   class="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
