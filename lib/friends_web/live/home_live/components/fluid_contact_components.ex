@@ -192,36 +192,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 <% end %>
                 
-                <%!-- Recovery Contacts Section --%>
-                <div class="mb-4">
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                      <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Recovery Contacts</span>
-                    </div>
-                    <.recovery_strength count={trusted_count} />
-                  </div>
-                  
-                  <%= if trusted_count > 0 do %>
-                    <div class="space-y-1 mb-3">
-                      <%= for tf <- @trusted_friends || [] do %>
-                        <% user = if Map.has_key?(tf, :trusted_user), do: tf.trusted_user, else: tf %>
-                        <.recovery_contact_row 
-                          user={user}
-                          online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
-                        />
-                      <% end %>
-                    </div>
-                  <% end %>
-                </div>
-                
-                <%!-- Your People (excluding recovery contacts) --%>
-                <% non_recovery_contacts = Enum.reject(contacts, fn c -> 
-                  u = if Map.has_key?(c, :user), do: c.user, else: c
-                  u.id in @trusted_ids
-                end) %>
+                <%!-- Your People (all contacts) --%>
+                <% non_recovery_contacts = contacts %>
                 <div class="flex items-center gap-2 mb-2">
                   <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -535,25 +507,32 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   def person_row(assigns) do
 
     ~H"""
-    <div class="flex items-center gap-3 py-2">
-      <%!-- Avatar --%>
+    <div class="flex items-center gap-3 py-2 group">
+      <%!-- Avatar + Name (clickable to open DM) --%>
       <div
-        class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold #{if @online, do: "avatar-online", else: ""}"}
-        style={"background-color: #{friend_color(@user)};"}
+        class={"flex items-center gap-3 flex-1 min-w-0 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 #{if @status == :connected, do: "hover:bg-white/5 transition-colors", else: ""}"}
+        phx-click={if @status == :connected, do: "open_dm", else: nil}
+        phx-value-user_id={@user.id}
       >
-        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
-      </div>
+        <%!-- Avatar --%>
+        <div
+          class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 #{if @online, do: "avatar-online", else: ""}"}
+          style={"background-color: #{friend_color(@user)};"}
+        >
+          <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+        </div>
 
-      <%!-- Name --%>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-white truncate">@{@user.username}</span>
-          <%= if @online do %>
-            <span class="text-[10px] text-green-400/70">Here now</span>
-          <% end %>
-          <%= if @is_recovery && @status == :connected do %>
-            <.shield_icon class="w-3.5 h-3.5 text-green-400" />
-          <% end %>
+        <%!-- Name --%>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-white truncate">@{@user.username}</span>
+            <%= if @online do %>
+              <span class="text-[10px] text-green-400/70">Here now</span>
+            <% end %>
+            <%= if @is_recovery && @status == :connected do %>
+              <.shield_icon class="w-3.5 h-3.5 text-green-400" />
+            <% end %>
+          </div>
         </div>
       </div>
 
