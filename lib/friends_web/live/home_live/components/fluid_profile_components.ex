@@ -15,6 +15,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
   attr :current_user, :map, required: true
   attr :devices, :list, default: []
   attr :uploads, :map, default: nil
+  attr :trusted_friends, :list, default: []
+  attr :trusted_friend_ids, :list, default: []
+  attr :online_friend_ids, :any, default: nil
 
   def profile_sheet(assigns) do
     ~H"""
@@ -148,6 +151,42 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                     </svg>
                   </button>
                 </div>
+              </div>
+
+              <%!-- Recovery Contacts Section --%>
+              <div>
+                <% trusted_count = length(@trusted_friend_ids || []) %>
+                <div class="flex items-center justify-between px-3 mb-2">
+                  <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Recovery Contacts</h3>
+                  <.recovery_strength count={trusted_count} />
+                </div>
+
+                <%= if trusted_count > 0 do %>
+                  <div class="space-y-1">
+                    <%= for tf <- @trusted_friends || [] do %>
+                      <% user = if Map.has_key?(tf, :trusted_user), do: tf.trusted_user, else: tf %>
+                      <.recovery_contact_row
+                        user={user}
+                        online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
+                      />
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="text-center py-6">
+                    <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <svg class="w-6 h-6 text-green-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <p class="text-white/30 text-xs mb-3">No recovery contacts yet</p>
+                    <button
+                      phx-click="open_contacts_sheet"
+                      class="px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 hover:border-green-500/30 text-xs text-green-400 font-medium transition-colors inline-block"
+                    >
+                      Add Recovery Contacts
+                    </button>
+                  </div>
+                <% end %>
               </div>
 
               <%!-- Network Section --%>
@@ -306,6 +345,84 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
         </div>
       </div>
     <% end %>
+    """
+  end
+
+  # ============================================================================
+  # RECOVERY STRENGTH INDICATOR
+  # Shows how protected the account is
+  # ============================================================================
+
+  attr :count, :integer, default: 0
+
+  def recovery_strength(assigns) do
+    ~H"""
+    <div class="flex items-center gap-1.5">
+      <div class="flex gap-0.5">
+        <%= for i <- 1..4 do %>
+          <div class={"w-1.5 h-3 rounded-sm #{if i <= @count, do: "bg-green-400", else: "bg-white/10"}"}></div>
+        <% end %>
+      </div>
+      <span class={"text-[10px] #{if @count >= 4, do: "text-green-400", else: "text-white/40"}"}>
+        <%= if @count >= 4 do %>
+          Protected
+        <% else %>
+          {@count}/4
+        <% end %>
+      </span>
+    </div>
+    """
+  end
+
+  # ============================================================================
+  # RECOVERY CONTACT ROW
+  # For the recovery contacts list - clickable to open 1-1 chat
+  # ============================================================================
+
+  attr :user, :map, required: true
+  attr :online, :boolean, default: false
+
+  def recovery_contact_row(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="open_dm"
+      phx-value-user_id={@user.id}
+      class="w-full flex items-center gap-3 py-2 px-3 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/15 transition-colors cursor-pointer"
+    >
+      <%!-- Avatar --%>
+      <div
+        class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold #{if @online, do: "avatar-online", else: ""}"}
+        style={"background-color: #{friend_color(@user)};"}
+      >
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      </div>
+
+      <%!-- Name with shield --%>
+      <div class="flex-1 min-w-0 text-left">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white truncate">@{@user.username}</span>
+          <%= if @online do %>
+            <span class="text-[10px] text-green-400/70">Here now</span>
+          <% end %>
+          <svg class="w-3.5 h-3.5 text-green-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd" />
+          </svg>
+        </div>
+      </div>
+
+      <%!-- Remove button with confirmation --%>
+      <button
+        type="button"
+        phx-click="remove_trusted_friend"
+        phx-value-user_id={@user.id}
+        data-confirm="Remove this person from your recovery contacts?"
+        class="text-xs text-white/30 hover:text-red-400 transition-colors cursor-pointer px-2 shrink-0"
+        onclick="event.stopPropagation();"
+      >
+        Remove
+      </button>
+    </button>
     """
   end
 end
