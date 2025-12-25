@@ -1488,7 +1488,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       # Less than 7 days - "Monday 3:45 PM"
       diff_seconds < 604800 ->
         day_name = Calendar.strftime(assigns.inserted_at, "%a")
-        time = Calendar.strftime(assigns.inserted_at, "%l:%M %p") |> String.trim()
+        time = Calendar.strftime(assigns.inserted_at, "%-I:%M %p") |> String.trim()
         {"#{day_name} #{time}", "text-white/20"}
 
       # Older - "Dec 25"
