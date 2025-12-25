@@ -1461,7 +1461,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
   def message_timestamp(assigns) do
     now = DateTime.utc_now()
-    diff_seconds = DateTime.diff(now, assigns.inserted_at, :second)
+
+    # Convert NaiveDateTime to DateTime (assume UTC)
+    inserted_at_utc = case assigns.inserted_at do
+      %DateTime{} = dt -> dt
+      %NaiveDateTime{} = ndt -> DateTime.from_naive!(ndt, "Etc/UTC")
+    end
+
+    diff_seconds = DateTime.diff(now, inserted_at_utc, :second)
 
     {text, _class} = cond do
       # Less than 1 minute - "Just now"
