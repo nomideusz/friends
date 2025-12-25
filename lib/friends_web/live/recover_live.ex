@@ -170,7 +170,7 @@ defmodule FriendsWeb.RecoverLive do
             
             <form phx-submit="lookup_user">
               <div class="relative mb-4">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">@</span>
+                <span class="absolute left-5 top-1/2 -translate-y-1/2 text-white/40 text-lg font-mono">@</span>
                 <input
                   type="text"
                   name="username"
@@ -179,7 +179,8 @@ defmodule FriendsWeb.RecoverLive do
                   placeholder="username"
                   autocomplete="off"
                   autofocus
-                  class="w-full pl-8 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] font-mono text-lg transition-all"
+                  style="padding-left: 2.2rem !important;"
+                  class="w-full pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 focus:bg-white/[0.07] font-mono text-lg transition-all"
                 />
               </div>
               
