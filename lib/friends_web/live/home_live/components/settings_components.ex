@@ -116,7 +116,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                 <h4 class="text-xs font-semibold text-white/40 uppercase tracking-wider px-2 mb-2">Your Network</h4>
                 <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
                   <button
-                    phx-click={JS.push("close_settings_modal") |> JS.push("show_welcome_graph")}
+                    phx-click={JS.push("close_settings_modal") |> JS.push("show_my_constellation")}
                     class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -130,7 +130,29 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                     </div>
                     <div class="flex-1 text-left">
                       <div class="text-sm text-white/90">Your Constellation</div>
-                      <div class="text-xs text-white/50">View your network graph</div>
+                      <div class="text-xs text-white/50">Your personal network</div>
+                    </div>
+                    <svg class="w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <div class="border-t border-white/10"></div>
+
+                  <button
+                    phx-click={JS.push("close_settings_modal") |> JS.push("show_welcome_graph")}
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <%!-- Globe/global network icon --%>
+                        <circle cx="12" cy="12" r="10" stroke-width="1.5" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                      </svg>
+                    </div>
+                    <div class="flex-1 text-left">
+                      <div class="text-sm text-white/90">Global Network</div>
+                      <div class="text-xs text-white/50">Everyone on the platform</div>
                     </div>
                     <svg class="w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

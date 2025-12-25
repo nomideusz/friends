@@ -73,6 +73,10 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("show_welcome_graph", _params, socket) do
+    {:noreply, assign(socket, :show_welcome_graph, true)}
+  end
+
+  def handle_event("show_my_constellation", _params, socket) do
     {:noreply, assign(socket, :show_graph_drawer, true)}
   end
 
@@ -1265,6 +1269,41 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+
+  # --- Graph Events ---
+
+  # Send friend request from graph by clicking on 2nd degree nodes
+  def handle_event("add_friend_from_graph", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          case Social.add_friend(current_user.id, user_id) do
+            {:ok, _} ->
+              # Refresh graph data and outgoing requests
+              graph_data = FriendsWeb.HomeLive.GraphHelper.build_graph_data(current_user)
+              outgoing = Social.list_sent_friend_requests(current_user.id)
+              {:noreply,
+               socket
+               |> assign(:graph_data, graph_data)
+               |> assign(:outgoing_friend_requests, outgoing)
+               |> put_flash(:info, "Connection request sent!")}
+            {:error, :cannot_friend_self} ->
+              {:noreply, put_flash(socket, :error, "Can't add yourself")}
+            {:error, :already_friends} ->
+              {:noreply, put_flash(socket, :info, "Already connected!")}
+            {:error, :request_already_sent} ->
+              {:noreply, put_flash(socket, :info, "Request already sent")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Could not send request")}
+          end
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
 
   # --- Contact Search Events ---
 

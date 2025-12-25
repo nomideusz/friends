@@ -239,14 +239,14 @@
     // Add zoom behavior
     const zoom = d3
       .zoom()
-      .scaleExtent([0.3, 3])
+      .scaleExtent([0.2, 3])
       .on("zoom", (event) => {
         mainGroup.attr("transform", event.transform);
       });
     svg.call(zoom);
 
-    // Apply initial zoom to scale up and center the graph
-    const initialScale = 1.8;
+    // Apply initial zoom to scale down and show all nodes (zoomed out by default)
+    const initialScale = 0.6;
     const initialTransform = d3.zoomIdentity
       .translate(width / 2, height / 2)
       .scale(initialScale)
