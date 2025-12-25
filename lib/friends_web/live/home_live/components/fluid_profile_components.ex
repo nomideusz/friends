@@ -18,6 +18,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
   attr :trusted_friends, :list, default: []
   attr :trusted_friend_ids, :list, default: []
   attr :online_friend_ids, :any, default: nil
+  attr :incoming_trust_requests, :list, default: []
+  attr :outgoing_trust_requests, :list, default: []
 
   def profile_sheet(assigns) do
     ~H"""
@@ -161,6 +163,34 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                   <.recovery_strength count={trusted_count} />
                 </div>
 
+                <%!-- Pending Trust/Recovery Requests (incoming) --%>
+                <% incoming = assigns[:incoming_trust_requests] || [] %>
+                <%= if Enum.any?(incoming) do %>
+                  <div class="mb-3">
+                    <div class="text-[10px] font-medium text-yellow-400/70 uppercase tracking-wider mb-2 px-3">Recovery Requests</div>
+                    <div class="space-y-1">
+                      <%= for tf <- incoming do %>
+                        <% user = if Map.has_key?(tf, :user), do: tf.user, else: tf %>
+                        <.trust_request_row user={user} />
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+
+                <%!-- Pending Recovery Invites (outgoing trust requests you sent) --%>
+                <% outgoing_trust = assigns[:outgoing_trust_requests] || [] %>
+                <%= if Enum.any?(outgoing_trust) do %>
+                  <div class="mb-3">
+                    <div class="text-[10px] font-medium text-purple-400/70 uppercase tracking-wider mb-2 px-3">Pending Recovery Invites</div>
+                    <div class="space-y-1">
+                      <%= for tr <- outgoing_trust do %>
+                        <% user = if Map.has_key?(tr, :trusted_user), do: tr.trusted_user, else: tr %>
+                        <.pending_recovery_invite_row user={user} />
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+
                 <%= if trusted_count > 0 do %>
                   <div class="space-y-1">
                     <%= for tf <- @trusted_friends || [] do %>
@@ -172,20 +202,22 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                     <% end %>
                   </div>
                 <% else %>
-                  <div class="text-center py-6">
-                    <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <svg class="w-6 h-6 text-green-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
+                  <%= if Enum.empty?(incoming) && Enum.empty?(outgoing_trust) do %>
+                    <div class="text-center py-6">
+                      <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </div>
+                      <p class="text-white/30 text-xs mb-3">No recovery contacts yet</p>
+                      <button
+                        phx-click="open_contacts_sheet"
+                        class="px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 hover:border-green-500/30 text-xs text-green-400 font-medium transition-colors inline-block"
+                      >
+                        Add Recovery Contacts
+                      </button>
                     </div>
-                    <p class="text-white/30 text-xs mb-3">No recovery contacts yet</p>
-                    <button
-                      phx-click="open_contacts_sheet"
-                      class="px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 hover:border-green-500/30 text-xs text-green-400 font-medium transition-colors inline-block"
-                    >
-                      Add Recovery Contacts
-                    </button>
-                  </div>
+                  <% end %>
                 <% end %>
               </div>
 
@@ -423,6 +455,91 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
         Remove
       </button>
     </button>
+    """
+  end
+
+  # ============================================================================
+  # TRUST REQUEST ROW
+  # For incoming recovery contact requests (pending acceptance)
+  # ============================================================================
+
+  attr :user, :map, required: true
+
+  def trust_request_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 py-2 px-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+      <%!-- Avatar --%>
+      <div
+        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+        style={"background-color: #{friend_color(@user)};"}
+      >
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      </div>
+
+      <%!-- Name --%>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white truncate">@{@user.username}</span>
+          <span class="text-[10px] text-yellow-400/70">wants you as recovery</span>
+        </div>
+      </div>
+
+      <%!-- Accept/Decline --%>
+      <div class="flex items-center gap-2">
+        <button
+          phx-click="confirm_trusted_friend"
+          phx-value-user_id={@user.id}
+          class="text-xs text-green-400 hover:text-green-300 font-medium transition-colors cursor-pointer"
+        >
+          Accept
+        </button>
+        <button
+          phx-click="decline_trusted_friend"
+          phx-value-user_id={@user.id}
+          class="text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer"
+        >
+          Decline
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  # ============================================================================
+  # PENDING RECOVERY INVITE ROW
+  # For outgoing trust requests (waiting for them to accept your recovery invite)
+  # ============================================================================
+
+  attr :user, :map, required: true
+
+  def pending_recovery_invite_row(assigns) do
+    ~H"""
+    <div class="flex items-center gap-3 py-2 px-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+      <%!-- Avatar --%>
+      <div
+        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+        style={"background-color: #{friend_color(@user)};"}
+      >
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      </div>
+
+      <%!-- Name --%>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white truncate">@{@user.username}</span>
+          <span class="text-[10px] text-purple-400/70">awaiting response</span>
+        </div>
+      </div>
+
+      <%!-- Cancel button --%>
+      <button
+        phx-click="cancel_trust_request"
+        phx-value-user_id={@user.id}
+        class="text-xs text-white/40 hover:text-red-400 transition-colors cursor-pointer px-2"
+      >
+        Cancel
+      </button>
+    </div>
     """
   end
 end

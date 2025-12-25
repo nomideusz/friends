@@ -310,8 +310,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Fluid room state
         |> assign(:show_members_panel, false)
         |> assign(:chat_expanded, false)
-        # Chat visibility toggle (hidden by default, user can toggle with toolbar)
-        |> assign(:show_chat, false)
+        # Chat visibility toggle (show by default if room is private and has access)
+        |> assign(:show_chat, room.is_private and can_access)
         # Add menu toggle (unified + button)
         |> assign(:show_add_menu, false)
         # Live typing - track what other users are typing

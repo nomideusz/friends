@@ -586,7 +586,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               data-room-id={@room.id}
             >
               <%= for message <- @room_messages do %>
-                <div class={"flex flex-col #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
+                <div class={"flex flex-col gap-0.5 #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
                   <%= if message.sender_id != @current_user.id do %>
                     <button
                       type="button"
@@ -616,7 +616,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                         <div class="flex-1 flex items-center gap-[2px] h-8 room-voice-waveform">
                           <% heights = [30, 50, 70, 90, 60, 85, 45, 95, 55, 75, 40, 80, 60, 90, 35, 65, 85, 50, 70, 40] %>
                           <%= for height <- heights do %>
-                            <div 
+                            <div
                               class={"room-voice-bar w-[3px] rounded-full transition-all duration-150 #{if message.sender_id == @current_user.id, do: "bg-gradient-to-t from-blue-400/50 to-cyan-400/50", else: "bg-gradient-to-t from-purple-400/50 to-pink-400/50"}"}
                               style={"height: #{height}%;"}
                             ></div>
@@ -642,6 +642,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                       </p>
                     <% end %>
                   </div>
+
+                  <%!-- Timestamp --%>
+                  <span class={"text-[9px] text-white/20 #{if message.sender_id == @current_user.id, do: "mr-2", else: "ml-2"}"}>
+                    <.message_timestamp inserted_at={message.inserted_at} />
+                  </span>
                 </div>
               <% end %>
 
@@ -1130,7 +1135,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 </div>
               <% else %>
                 <%= for message <- @room_messages do %>
-                  <div class={"flex flex-col #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
+                  <div class={"flex flex-col gap-0.5 #{if message.sender_id == @current_user.id, do: "items-end", else: "items-start"}"}>
                     <%= if message.sender_id != @current_user.id do %>
                       <button
                         type="button"
@@ -1190,6 +1195,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                         <% end %>
                       <% end %>
                     </div>
+
+                    <%!-- Timestamp --%>
+                    <span class={"text-[9px] text-white/20 #{if message.sender_id == @current_user.id, do: "mr-2", else: "ml-2"}"}>
+                      <.message_timestamp inserted_at={message.inserted_at} />
+                    </span>
                   </div>
                 <% end %>
               <% end %>
@@ -1442,5 +1452,49 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
     """
   end
 
+  # ============================================================================
+  # MESSAGE TIMESTAMP
+  # Shows relative or absolute timestamp for chat messages
+  # ============================================================================
+
+  attr :inserted_at, :any, required: true
+
+  def message_timestamp(assigns) do
+    now = DateTime.utc_now()
+    diff_seconds = DateTime.diff(now, assigns.inserted_at, :second)
+
+    {text, _class} = cond do
+      # Less than 1 minute - "Just now"
+      diff_seconds < 60 ->
+        {"Just now", "text-white/30"}
+
+      # Less than 1 hour - "5m ago"
+      diff_seconds < 3600 ->
+        minutes = div(diff_seconds, 60)
+        {"#{minutes}m", "text-white/25"}
+
+      # Less than 24 hours - "2h ago"
+      diff_seconds < 86400 ->
+        hours = div(diff_seconds, 3600)
+        {"#{hours}h", "text-white/20"}
+
+      # Less than 7 days - "Monday 3:45 PM"
+      diff_seconds < 604800 ->
+        day_name = Calendar.strftime(assigns.inserted_at, "%a")
+        time = Calendar.strftime(assigns.inserted_at, "%l:%M %p") |> String.trim()
+        {"#{day_name} #{time}", "text-white/20"}
+
+      # Older - "Dec 25"
+      true ->
+        date = Calendar.strftime(assigns.inserted_at, "%b %d")
+        {date, "text-white/15"}
+    end
+
+    assigns = assign(assigns, :text, text)
+
+    ~H"""
+    {text}
+    """
+  end
 end
 
