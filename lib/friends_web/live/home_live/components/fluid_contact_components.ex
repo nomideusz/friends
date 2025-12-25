@@ -164,34 +164,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 <% end %>
                 
-                <%!-- Pending Trust/Recovery Requests (incoming) --%>
-                <% incoming = @incoming_requests || [] %>
-                <%= if Enum.any?(incoming) do %>
-                  <div class="mb-4">
-                    <div class="text-[10px] font-medium text-yellow-400/70 uppercase tracking-wider mb-2">Recovery Requests</div>
-                    <div class="space-y-1">
-                      <%= for tf <- incoming do %>
-                        <% user = if Map.has_key?(tf, :user), do: tf.user, else: tf %>
-                        <.trust_request_row user={user} />
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-                
-                <%!-- Pending Recovery Invites (outgoing trust requests you sent) --%>
-                <% outgoing_trust = assigns[:outgoing_trust_requests] || [] %>
-                <%= if Enum.any?(outgoing_trust) do %>
-                  <div class="mb-4">
-                    <div class="text-[10px] font-medium text-purple-400/70 uppercase tracking-wider mb-2">Pending Recovery Invites</div>
-                    <div class="space-y-1">
-                      <%= for tr <- outgoing_trust do %>
-                        <% user = if Map.has_key?(tr, :trusted_user), do: tr.trusted_user, else: tr %>
-                        <.pending_recovery_invite_row user={user} />
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-                
                 <%!-- Your People (all contacts) --%>
                 <% non_recovery_contacts = contacts %>
                 <div class="flex items-center gap-2 mb-2">
