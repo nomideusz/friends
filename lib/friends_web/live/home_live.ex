@@ -69,6 +69,14 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("toggle_graph_drawer", _params, socket) do
+    # Lazy-load graph data only when drawer is opened for the first time
+    socket = if !socket.assigns[:show_graph_drawer] && is_nil(socket.assigns[:graph_data]) do
+      graph_data = Friends.GraphCache.get_graph_data(socket.assigns.current_user)
+      assign(socket, :graph_data, graph_data)
+    else
+      socket
+    end
+
     {:noreply, assign(socket, :show_graph_drawer, !socket.assigns[:show_graph_drawer])}
   end
 
@@ -78,6 +86,31 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("show_my_constellation", _params, socket) do
     {:noreply, assign(socket, :show_graph_drawer, true)}
+  end
+
+  def handle_event("node_clicked", %{"user_id" => user_id_str}, socket) do
+    # Handle graph node clicks - open DM with the clicked user
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+
+        if current_user && user_id != current_user.id do
+          case Social.get_or_create_dm_room(current_user.id, user_id) do
+            {:ok, room} ->
+              {:noreply,
+               socket
+               |> assign(:show_graph_drawer, false)
+               |> push_navigate(to: ~p"/r/#{room.code}")}
+            _ ->
+              {:noreply, socket}
+          end
+        else
+          {:noreply, socket}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("toggle_fab", _params, socket) do
