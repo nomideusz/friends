@@ -49,6 +49,8 @@ defmodule Friends.Social.Relationships do
         case result do
           {:ok, _} ->
             create_reverse_trust(user_id, requester_id)
+            # Invalidate graph cache for both users since their trust networks changed
+            Friends.GraphCache.invalidate_many([user_id, requester_id])
             result
 
           error ->
@@ -225,6 +227,9 @@ defmodule Friends.Social.Relationships do
           _ ->
             :ok
         end
+
+        # Invalidate graph cache for both users since their networks changed
+        Friends.GraphCache.invalidate_many([user_id, requester_id])
 
         result
         |> broadcast_friend_update(:friend_accepted, [user_id, requester_id])

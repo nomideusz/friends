@@ -49,6 +49,8 @@ defmodule Friends.MixProject do
       {:ex_aws_s3, "~> 2.5"},
       {:hackney, "~> 1.20"},
       {:sweet_xml, "~> 0.7"},
+      # Caching for performance optimization
+      {:cachex, "~> 3.6"},
       # NOTE: For thumbnail generation on Linux production, add:
       {:image, "~> 0.54", only: :prod}
       # This doesn't work on Windows due to libvips/vix not supporting Windows.

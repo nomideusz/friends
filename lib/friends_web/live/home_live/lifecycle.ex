@@ -129,7 +129,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:pairing_token, nil)
         |> assign(:pairing_url, nil)
         |> assign(:pairing_expires_at, nil)
-        |> assign(:graph_data, GraphHelper.build_graph_data(session_user))
+        # Graph data is lazy-loaded when graph drawer opens (performance optimization)
+        |> assign(:graph_data, nil)
         # Welcome graph data for empty feed state
         |> assign(:welcome_graph_data, GraphHelper.build_welcome_graph_data())
         # New user = no friends yet (for showing opt-out checkbox)

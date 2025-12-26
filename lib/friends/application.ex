@@ -11,6 +11,8 @@ defmodule Friends.Application do
       {DNSCluster, query: Application.get_env(:friends, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Friends.PubSub},
       Friends.Social.Presence,
+      # Cache for graph data and other performance optimizations
+      {Cachex, name: :graph_cache},
       FriendsWeb.Endpoint
     ]
 
