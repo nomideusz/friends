@@ -141,7 +141,7 @@
   <%!-- Groups Sheet --%>
   <.groups_sheet
     show={assigns[:show_groups_sheet] || false}
-    groups={if assigns[:group_search_query] != "", do: assigns[:group_search_results], else: @user_private_rooms}
+    groups={if assigns[:group_search_query] && assigns[:group_search_query] != "", do: assigns[:group_search_results] || [], else: @user_private_rooms || []}
     search_query={assigns[:group_search_query] || ""}
     current_user={@current_user}
     new_room_name={assigns[:new_room_name] || ""}
