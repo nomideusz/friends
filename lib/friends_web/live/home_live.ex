@@ -1031,6 +1031,9 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Groups Sheet Events ---
 
+  def handle_event("open_groups_sheet", _params, socket) do
+    {:noreply, assign(socket, :show_groups_sheet, true)}
+  end
 
   def handle_event("close_groups_sheet", _params, socket) do
     {:noreply,
