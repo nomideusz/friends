@@ -619,6 +619,25 @@
     onMount(() => {
         initGraph();
 
+        // Handle real-time updates from LiveView
+        if (live) {
+            live.handleEvent("welcome_new_user", (data) => {
+                addNode(data);
+            });
+
+            live.handleEvent("welcome_new_connection", (data) => {
+                addLink(data.from_id, data.to_id);
+            });
+
+            live.handleEvent("welcome_connection_removed", (data) => {
+                removeLink(data.from_id, data.to_id);
+            });
+
+            live.handleEvent("welcome_user_removed", (data) => {
+                removeNode(data.user_id);
+            });
+        }
+
         // Handle resize
         const handleResize = () => {
             initGraph();

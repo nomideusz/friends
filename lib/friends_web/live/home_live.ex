@@ -1758,8 +1758,19 @@ defmodule FriendsWeb.HomeLive do
        push_event(socket, "welcome_new_user", %{
          id: user_data.id,
          username: user_data.username,
-         display_name: user_data.display_name || user_data.username
-       })}
+         display_name: user_data.display_name || user_data.username,
+         color: FriendsWeb.HomeLive.GraphHelper.user_color(user_data)
+        })}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Handle user removal (for live graph updates)
+  def handle_info({:user_removed, user_id}, socket) do
+    if socket.assigns[:welcome_graph_data] != nil or 
+       socket.assigns[:fullscreen_graph_data] != nil do
+      {:noreply, push_event(socket, "welcome_user_removed", %{user_id: user_id})}
     else
       {:noreply, socket}
     end
@@ -1783,8 +1794,8 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:friends, friends)
         |> assign(:pending_requests, pending_requests)
         
-      # If feed is empty (graph shown as empty state), push live update for new connection
-      socket = if socket.assigns[:feed_item_count] == 0 do
+      # If feed is empty or fullscreen graph is shown, push live update for new connection
+      socket = if socket.assigns[:feed_item_count] == 0 or socket.assigns[:show_fullscreen_graph] do
         socket
         |> push_event("welcome_new_connection", %{
           from_id: friendship.user_id,
@@ -1808,8 +1819,8 @@ defmodule FriendsWeb.HomeLive do
 
       socket = assign(socket, :graph_data, graph_data)
       
-      # If feed is empty (graph shown as empty state), push live update for removed connection
-      socket = if socket.assigns[:feed_item_count] == 0 do
+      # If feed is empty or fullscreen graph is shown, push live update for removed connection
+      socket = if socket.assigns[:feed_item_count] == 0 or socket.assigns[:show_fullscreen_graph] do
         socket
         |> push_event("welcome_connection_removed", %{
           from_id: friendship.user_id,

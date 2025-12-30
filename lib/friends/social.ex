@@ -526,7 +526,12 @@ defmodule Friends.Social do
         
         # Delete the user
         case Repo.delete(user) do
-          {:ok, deleted} -> {:ok, deleted}
+          {:ok, deleted} ->
+            # Broadcast user removal for real-time graph updates
+            Phoenix.PubSub.broadcast(Friends.PubSub, "friends:global", {:user_removed, user_id})
+            Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:user_removed, user_id})
+            
+            {:ok, deleted}
           error -> error
         end
     end

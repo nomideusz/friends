@@ -176,10 +176,10 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
     }
   end
 
-  defp user_color(%{id: id}) when is_integer(id) do
+  def user_color(%{id: id}) when is_integer(id) do
     Enum.at(@colors, rem(id, length(@colors)))
   end
-  defp user_color(_), do: Enum.at(@colors, 0)
+  def user_color(_), do: Enum.at(@colors, 0)
 
   defp get_friendships_between(user_ids) when length(user_ids) < 2, do: []
   defp get_friendships_between(user_ids) do
