@@ -234,7 +234,7 @@ defmodule Friends.Social.Chat do
           Enum.each(participants, fn user_id ->
             Phoenix.PubSub.broadcast(
               Friends.PubSub,
-              "friends:user_messages:#{user_id}",
+              "friends:user:#{user_id}",
               {:new_message_notification, %{conversation_id: conversation_id, message: message}}
             )
           end)
@@ -342,6 +342,25 @@ defmodule Friends.Social.Chat do
       {:ok, message} ->
         message = Repo.preload(message, :sender)
         broadcast_room_message(room_id, message)
+
+        # Notify room members who are NOT the sender
+        # Note: In a large system we'd check presence or use a different strategy,
+        # but for this "New Internet" experience, global notifications are key.
+        room = Repo.get(Friends.Social.Room, room_id)
+        if room && room.is_private do
+          # Get all members
+          members = Friends.Social.Rooms.list_room_members(room_id)
+          Enum.each(members, fn member ->
+            if member.user_id != sender_id do
+              Phoenix.PubSub.broadcast(
+                Friends.PubSub,
+                "friends:user:#{member.user_id}",
+                {:new_message_notification, %{room_id: room_id, room_name: room.name, message: message}}
+              )
+            end
+          end)
+        end
+
         {:ok, message}
 
       error ->

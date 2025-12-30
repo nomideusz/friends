@@ -12,13 +12,13 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
 
   # --- Upload Handlers ---
 
-  def validate(socket), do: {:noreply, assign(socket, :uploading, true)}
+  def validate(socket), do: {:noreply, socket}
   def save(socket), do: {:noreply, socket}
-  def validate_feed_photo(socket), do: {:noreply, assign(socket, :uploading, true)}
+  def validate_feed_photo(socket), do: {:noreply, socket}
   def save_feed_photo(socket), do: {:noreply, socket}
 
   def cancel_upload(socket, ref) do
-    {:noreply, socket |> cancel_upload(:photo, ref) |> assign(:uploading, false)}
+    {:noreply, socket |> cancel_upload(:photo, ref)}
   end
 
   def handle_progress(:photo, _entry, socket) do
@@ -113,10 +113,10 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
             socket
           end
         
-        {:noreply, assign(socket, :uploading, false)}
+        {:noreply, socket}
       end
     else
-      {:noreply, assign(socket, :uploading, true)}
+      {:noreply, socket}
     end
   end
 
@@ -219,10 +219,10 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
         # Keep constellation visible
         socket = socket
           
-        {:noreply, assign(socket, :uploading, false)}
+        {:noreply, socket}
       end
     else
-      {:noreply, assign(socket, :uploading, true)}
+      {:noreply, socket}
     end
   end
 

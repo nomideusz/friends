@@ -1352,6 +1352,29 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
+  def handle_event("cancel_trust_request", %{"user_id" => user_id_str}, socket) do
+    case Integer.parse(user_id_str) do
+      {user_id, _} ->
+        current_user = socket.assigns.current_user
+        if current_user do
+          Social.remove_trusted_friend(current_user.id, user_id)
+          sent_trust = Social.list_sent_trust_requests(current_user.id)
+          {:noreply,
+           socket
+           |> assign(:outgoing_trust_requests, sent_trust)
+           |> put_flash(:info, "Recovery invite cancelled")}
+        else
+          {:noreply, socket}
+        end
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid user")}
+    end
+  end
+
+  def handle_event("send_friend_request", %{"user_id" => user_id_str}, socket) do
+    NetworkEvents.send_friend_request(socket, user_id_str)
+  end
+
   def handle_event("accept_friend_request", %{"user_id" => user_id_str}, socket) do
     case Integer.parse(user_id_str) do
       {user_id, _} ->
@@ -1428,6 +1451,14 @@ defmodule FriendsWeb.HomeLive do
   end
 
 
+
+  def handle_event("add_trusted_friend", %{"user_id" => user_id_str}, socket) do
+    NetworkEvents.add_trusted_friend(socket, user_id_str)
+  end
+
+  def handle_event("confirm_trusted_friend", %{"user_id" => user_id_str}, socket) do
+    NetworkEvents.confirm_trust(socket, user_id_str)
+  end
 
   def handle_event("decline_trusted_friend", %{"user_id" => user_id_str}, socket) do
     case Integer.parse(user_id_str) do
@@ -1737,6 +1768,11 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_connection_accepted(socket, by_user_id)
   end
 
+  # Handle when a connection is removed (live update)
+  def handle_info({:friend_removed, friendship}, socket) do
+    PubSubHandlers.handle_friend_removed(socket, friendship)
+  end
+
   # Handle when someone sends you a trust/recovery request (live update)
   def handle_info({:trust_request_received, from_user_id}, socket) do
     PubSubHandlers.handle_trust_request_received(socket, from_user_id)
@@ -1745,6 +1781,11 @@ defmodule FriendsWeb.HomeLive do
   # Handle when someone confirms your trust request (live update)
   def handle_info({:trust_confirmed, by_user_id}, socket) do
     PubSubHandlers.handle_trust_confirmed(socket, by_user_id)
+  end
+
+  # Handle new message notifications for both rooms and conversations
+  def handle_info({:new_message_notification, data}, socket) do
+    PubSubHandlers.handle_new_message_notification(socket, data)
   end
 
   # Handle new user joining (for live graph updates)

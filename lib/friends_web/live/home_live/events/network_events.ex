@@ -87,10 +87,16 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
           {:ok, _} ->
              # Broadcast to target user for live update
              Phoenix.PubSub.broadcast(Friends.PubSub, "friends:user:#{user_id}", {:connection_request_received, socket.assigns.current_user.id})
-             # Refresh outgoing requests
+             
+             # Refresh all relevant lists - auto-accept might have happened
+             friends = Social.list_friends(socket.assigns.current_user.id)
+             pending = Social.list_friend_requests(socket.assigns.current_user.id)
              sent = Social.list_sent_friend_requests(socket.assigns.current_user.id)
+             
              {:noreply, 
               socket 
+              |> assign(:friends, friends)
+              |> assign(:pending_requests, pending)
               |> assign(:outgoing_friend_requests, sent)
               |> put_flash(:info, "Connection request sent!")}
           {:error, _} -> {:noreply, put_flash(socket, :error, "Could not send request")}
@@ -112,7 +118,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
              {:noreply, 
               socket 
               |> assign(:friends, friends)
-              |> assign(:pending_friend_requests, requests)
+              |> assign(:pending_requests, requests)
               |> put_flash(:info, "Connected!")}
           {:error, _} -> {:noreply, put_flash(socket, :error, "Could not accept")}
         end
@@ -129,7 +135,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
       {:ok, user_id} ->
         Social.remove_friend(socket.assigns.current_user.id, user_id)
         requests = Social.list_friend_requests(socket.assigns.current_user.id)
-        {:noreply, assign(socket, :pending_friend_requests, requests)}
+        {:noreply, assign(socket, :pending_requests, requests)}
       _ -> {:noreply, socket}
     end
   end
@@ -264,7 +270,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
 
                 {:noreply,
                  socket
-                 |> assign(:incoming_requests, pending)
+                 |> assign(:incoming_trust_requests, pending)
                  |> assign(:trusted_friends, trusted)
                  |> assign(:trusted_friend_ids, trusted_ids)
                  |> put_flash(:info, "Recovery contact confirmed")}

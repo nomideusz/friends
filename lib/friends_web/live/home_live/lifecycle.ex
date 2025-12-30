@@ -145,7 +145,6 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:show_mobile_chat, false)
         |> assign(:note_input, "")
         |> assign(:recording_voice, false)
-        |> assign(:uploading, false)
         |> assign(:show_image_modal, false)
         |> assign(:full_image_data, nil)
         |> assign(:feed_item_count, length(feed_items))
@@ -344,7 +343,6 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:create_private_room, false)
         |> assign(:create_group_modal, false)
         |> assign(:name_input, "")
-        |> assign(:uploading, false)
         |> assign(:invites, [])
         |> assign(:trusted_friends, [])
         |> assign(:outgoing_trust_requests, [])
@@ -499,7 +497,6 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
        |> assign(:public_rooms, public_rooms)
        |> assign(:feed_mode, "room")
        |> assign(:recording_voice, false)
-       |> assign(:uploading, false)
        |> assign(:show_chat_panel, room.is_private)
        |> assign(:current_route, "/r/#{room.code}")
        |> assign(

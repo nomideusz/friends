@@ -1,4 +1,10 @@
 <div id="main-app-container" phx-hook="PinchZoomOut" class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white min-h-screen bg-black relative">
+  <%
+    feed_entries = if @uploads && @uploads[:feed_photo], do: @uploads.feed_photo.entries, else: []
+    room_entries = if @uploads && @uploads[:photo], do: @uploads.photo.entries, else: []
+    all_entries = feed_entries ++ room_entries
+    is_uploading = all_entries != []
+  %>
   <%!-- Global Hidden Upload Form --%>
   <form id="global-upload-form" phx-change="validate" phx-submit="save" class="hidden">
     <%= if @uploads[:photo] do %>
@@ -69,13 +75,8 @@
   />
 
   <%!-- Fluid Upload Indicator --%>
-  <% 
-    feed_entries = if @uploads && @uploads[:feed_photo], do: @uploads.feed_photo.entries, else: []
-    room_entries = if @uploads && @uploads[:photo], do: @uploads.photo.entries, else: []
-    all_entries = feed_entries ++ room_entries
-  %>
   <.upload_indicator 
-    uploading={assigns[:uploading] || false}
+    uploading={is_uploading}
     entries={all_entries}
   />
 
@@ -136,7 +137,6 @@
     trusted_friend_ids={@trusted_friend_ids}
     trusted_friends={@trusted_friends}
     incoming_trust_requests={@incoming_trust_requests}
-    incoming_requests={@incoming_trust_requests}
     outgoing_requests={assigns[:outgoing_friend_requests] || []}
     outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
     pending_friend_requests={@pending_requests}
@@ -186,6 +186,7 @@
     current_user={@current_user}
     user_name={assigns[:user_name]}
     devices={assigns[:devices] || []}
+    pending_requests={@pending_requests || []}
   />
 
 
@@ -565,7 +566,7 @@
               feed_items={@streams.feed_items}
               feed_item_count={@feed_item_count}
               uploads={assigns[:uploads]}
-              uploading={@uploading}
+              uploading={is_uploading}
               recording_voice={@recording_voice}
               no_more_items={@no_more_items}
               user_private_rooms={@user_private_rooms}
@@ -588,7 +589,7 @@
                 item_count={@item_count}
                 new_chat_message={@new_chat_message}
                 uploads={assigns[:uploads]}
-                uploading={@uploading}
+                uploading={is_uploading}
                 recording_voice={@recording_voice}
                 no_more_items={@no_more_items}
                 show_members_panel={@show_members_panel}

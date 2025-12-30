@@ -371,10 +371,33 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
     current_user = socket.assigns[:current_user]
     if current_user do
       friends = Social.list_friends(current_user.id)
+      pending = Social.list_friend_requests(current_user.id)
       outgoing = Social.list_sent_friend_requests(current_user.id)
       {:noreply,
        socket
        |> assign(:friends, friends)
+       |> assign(:pending_requests, pending)
+       |> assign(:outgoing_friend_requests, outgoing)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Handle when a connection is removed (friendship deleted).
+  Refreshes friends and pending/outgoing requests.
+  """
+  def handle_friend_removed(socket, _friendship) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      friends = Social.list_friends(current_user.id)
+      pending = Social.list_friend_requests(current_user.id)
+      outgoing = Social.list_sent_friend_requests(current_user.id)
+      
+      {:noreply,
+       socket
+       |> assign(:friends, friends)
+       |> assign(:pending_requests, pending)
        |> assign(:outgoing_friend_requests, outgoing)}
     else
       {:noreply, socket}
@@ -439,6 +462,50 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
        |> assign(:user_private_rooms, private_rooms)
        |> assign(:group_notification, notification)
        |> put_flash(:info, "You've been invited to #{invite_info.room_name || "a group"} by @#{invite_info.inviter_username}")}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Handle when a new message notification is received via the user's personal channel.
+  Shows a flash message if the user is not currently looking at the chat.
+  """
+  def handle_new_message_notification(socket, %{message: message} = data) do
+    # Check if we should alert.
+    # We alert if:
+    # 1. It's a room message and we are NOT in that room, OR we ARE in the room but chat is closed.
+    # 2. It's a conversation message and we are NOT in that conversation.
+
+    is_current_room = socket.assigns[:room] && (
+      (data[:room_id] && socket.assigns.room.id == data.room_id) ||
+      (message.room_id && socket.assigns.room.id == message.room_id)
+    )
+
+    should_alert = cond do
+      is_current_room ->
+        # If we are in the room, only alert if chat isn't visible
+        not (socket.assigns[:show_chat_panel] || socket.assigns[:room_tab] == "chat")
+
+      data[:conversation_id] ->
+        # For new-style conversations, check if it's the active one
+        socket.assigns[:active_conversation_id] != data.conversation_id
+
+      true ->
+        true
+    end
+
+    if should_alert do
+      sender = message.sender
+      username = if sender, do: "@#{sender.username}", else: "Someone"
+      
+      # Determine context name
+      context_name = cond do
+        data[:room_name] -> "in #{data.room_name}"
+        true -> ""
+      end
+
+      {:noreply, put_flash(socket, :info, "New message from #{username} #{context_name}")}
     else
       {:noreply, socket}
     end
