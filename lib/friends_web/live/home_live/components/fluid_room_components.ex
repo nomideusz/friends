@@ -117,9 +117,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       |> assign(:message_count, message_count)
 
     ~H"""
-    <div class={"fixed bottom-0 inset-x-0 z-[150] transition-all duration-300 #{if @expanded, do: "h-[50vh]", else: "h-auto"}"}>
+    <div class={"fixed bottom-0 inset-x-0 z-[150] transition-all duration-300 flex justify-center #{if @expanded, do: "h-[50vh]", else: "h-auto"}"}>
       <%!-- Glassmorphic container --%>
-      <div class="h-full bg-neutral-900/95 backdrop-blur-xl border-t border-white/10 flex flex-col">
+      <div class="h-full w-full max-w-3xl bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 flex flex-col">
         
         <%!-- Expand/Collapse Handle --%>
         <button

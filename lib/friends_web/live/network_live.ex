@@ -679,7 +679,7 @@ defmodule FriendsWeb.NetworkLive do
           <%!-- Network Graph Trigger --%>
           <section>
             <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold text-white">Your Constellation</h2>
+              <h2 class="text-lg font-semibold text-white">Your Network</h2>
             </div>
             
              <div class="aether-card p-8 flex flex-col items-center justify-center text-center">
@@ -694,7 +694,7 @@ defmodule FriendsWeb.NetworkLive do
                  phx-click="open_graph_modal" 
                  class="px-6 py-3 bg-white text-black font-bold uppercase tracking-wider rounded-lg hover:bg-neutral-200 transition-colors shadow-lg active:translate-y-px"
                >
-                 View Constellation
+                 View Network
                </button>
              </div>
           </section>

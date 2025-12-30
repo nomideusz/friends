@@ -98,53 +98,69 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   def user_menu_panel(assigns) do
     ~H"""
-    <%!-- Bottom Sheet Style User Menu --%>
-    <div id="user-menu-sheet" class="fixed inset-0 z-[200]">
+    <div id="user-menu-dropdown" class="fixed inset-0 z-[200]">
       <%!-- Backdrop --%>
       <div
-        class="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+        class="absolute inset-0 z-0"
         phx-click="toggle_user_menu"
       ></div>
 
-      <%!-- Sheet --%>
-      <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
-        <div class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl pointer-events-auto">
-          <%!-- Handle --%>
-          <div class="py-3 flex justify-center cursor-pointer" phx-click="toggle_user_menu">
-            <div class="w-10 h-1 rounded-full bg-white/20"></div>
-          </div>
-
-          <%!-- User Header --%>
-          <div class="px-6 pb-4 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold text-white border border-white/10">
+      <%!-- Dropdown Menu --%>
+      <div 
+        class="absolute top-16 right-4 w-64 z-10 animate-in zoom-in-95 fade-in duration-200"
+      >
+        <div class="bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+          <%!-- User Info --%>
+          <div class="px-4 py-3 border-b border-white/10 flex items-center gap-3">
+             <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white border border-white/10">
               <%= String.first(@current_user.username) |> String.upcase() %>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-base font-semibold text-white truncate">@{@current_user.username}</div>
-              <div class="text-xs text-white/40">Online</div>
+              <div class="text-sm font-semibold text-white truncate">@{@current_user.username}</div>
+              <div class="text-[10px] text-white/40 uppercase tracking-widest leading-none">Online</div>
             </div>
           </div>
 
-          <%!-- Actions --%>
-          <div class="px-4 pb-8 space-y-1">
+          <%!-- Menu Items --%>
+          <div class="p-1">
             <button
-              phx-click="open_settings_modal"
-              class="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-left text-sm text-white/80 hover:text-white flex items-center gap-3 transition-colors cursor-pointer"
+              phx-click={JS.push("toggle_user_menu") |> JS.push("show_my_constellation")}
+              class="w-full py-2.5 px-3 rounded-xl hover:bg-white/10 text-left text-sm text-white/80 hover:text-white flex items-center gap-3 transition-colors cursor-pointer group"
             >
-              <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Settings
+              <div class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                <svg class="w-4 h-4 text-white/50 group-hover:text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="5" r="2" stroke-width="1.5" />
+                  <circle cx="6" cy="17" r="2" stroke-width="1.5" />
+                  <circle cx="18" cy="17" r="2" stroke-width="1.5" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 7v5M8.5 15.5L11 12M15.5 15.5L13 12" />
+                </svg>
+              </div>
+              Your Network
             </button>
 
             <button
-              phx-click="sign_out"
-              class="w-full py-3 px-4 rounded-xl hover:bg-red-500/10 text-left text-sm text-white/50 hover:text-red-400 flex items-center gap-3 transition-colors cursor-pointer"
+              phx-click={JS.push("toggle_user_menu") |> JS.push("open_devices_modal")}
+              class="w-full py-2.5 px-3 rounded-xl hover:bg-white/10 text-left text-sm text-white/80 hover:text-white flex items-center gap-3 transition-colors cursor-pointer group"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <div class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                <svg class="w-4 h-4 text-white/50 group-hover:text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              Devices
+            </button>
+
+            <div class="border-t border-white/10 my-1 mx-1"></div>
+
+            <button
+              phx-click={JS.push("toggle_user_menu") |> JS.push("sign_out")}
+              class="w-full py-2.5 px-3 rounded-xl hover:bg-red-500/10 text-left text-sm text-white/50 hover:text-red-400 flex items-center gap-3 transition-colors cursor-pointer group"
+            >
+              <div class="w-8 h-8 rounded-full bg-red-500/5 border border-red-500/10 flex items-center justify-center group-hover:bg-red-500/10 transition-colors">
+                <svg class="w-4 h-4 text-red-400 group-hover:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
               Sign Out
             </button>
           </div>

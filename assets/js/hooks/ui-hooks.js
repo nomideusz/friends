@@ -165,7 +165,7 @@ export const ProgressiveSignOutHook = {
             this.pressing = false
 
             if (duration < 500) {
-                this.pushEvent("open_settings_modal", {})
+                this.pushEvent("toggle_user_menu", {})
             }
 
             if (this.timer) {

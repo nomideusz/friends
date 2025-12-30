@@ -129,7 +129,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                       </svg>
                     </div>
                     <div class="flex-1 text-left">
-                      <div class="text-sm text-white/90">Your Constellation</div>
+                      <div class="text-sm text-white/90">Your Network</div>
                       <div class="text-xs text-white/50">Your personal network</div>
                     </div>
                     <svg class="w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
