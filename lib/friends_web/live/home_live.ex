@@ -47,17 +47,11 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_user_dropdown, false)}
   end
 
-  def handle_event("toggle_contacts", _params, socket) do
-    {:noreply, assign(socket, :contacts_collapsed, !socket.assigns[:contacts_collapsed])}
-  end
 
   def handle_event("open_contacts_sheet", _, socket) do
     NetworkEvents.open_contacts_sheet(socket)
   end
 
-  def handle_event("toggle_groups", _params, socket) do
-    {:noreply, assign(socket, :groups_collapsed, !socket.assigns[:groups_collapsed])}
-  end
 
   # No-op handler for forms where JS handles submit but phx-submit needs a value
   def handle_event("noop", _params, socket) do
@@ -125,13 +119,6 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
   end
 
-  def handle_event("open_profile_sheet", _params, socket) do
-    {:noreply, assign(socket, :show_profile_sheet, true)}
-  end
-
-  def handle_event("close_profile_sheet", _params, socket) do
-    {:noreply, assign(socket, :show_profile_sheet, false)}
-  end
 
   # --- Home Orb Events ---
 
@@ -261,14 +248,7 @@ defmodule FriendsWeb.HomeLive do
     ChatEvents.toggle_chat_expanded(socket)
   end
 
-  def handle_event("toggle_chat_visibility", _params, socket) do
-    ChatEvents.toggle_chat_visibility(socket)
-  end
 
-  # Add menu toggle events (for unified + button)
-  def handle_event("toggle_add_menu", _params, socket) do
-    {:noreply, assign(socket, :show_add_menu, !socket.assigns[:show_add_menu])}
-  end
 
   def handle_event("close_add_menu", _params, socket) do
     {:noreply, assign(socket, :show_add_menu, false)}
@@ -282,8 +262,6 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("open_create_group_modal", _params, socket),
     do: RoomEvents.open_create_group_modal(socket)
 
-  def handle_event("close_create_group_modal", _params, socket),
-    do: RoomEvents.close_create_group_modal(socket)
 
   def handle_event("create_group", %{"name" => name}, socket) do
     RoomEvents.create_group(socket, name)
@@ -353,23 +331,12 @@ defmodule FriendsWeb.HomeLive do
     NoteEvents.save_grid_voice_note(socket, params)
   end
 
-  def handle_event("stop_room_recording", _, socket) do
-    {:noreply,
-     socket
-     |> assign(:recording_voice, false)
-     |> push_event("stop_room_voice_recording", %{})}
-  end
-
   def handle_event("open_dm", %{"user_id" => friend_user_id}, socket) do
     RoomEvents.open_dm(socket, friend_user_id)
   end
 
   def handle_event("update_room_invite_username", %{"username" => username}, socket) do
     RoomEvents.update_room_invite_username(socket, username)
-  end
-
-  def handle_event("add_room_member", %{"username" => username}, socket) do
-    RoomEvents.add_room_member(socket, username)
   end
 
   def handle_event("set_network_filter", %{"filter" => filter}, socket) do
@@ -407,7 +374,6 @@ defmodule FriendsWeb.HomeLive do
   end
 
   # Note events
-  def handle_event("open_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
   def handle_event("open_feed_note_modal", _params, socket), do: NoteEvents.open_feed_note_modal(socket)
   def handle_event("open_room_note_modal", _params, socket), do: NoteEvents.open_note_modal(socket)
   def handle_event("close_note_modal", _params, socket), do: NoteEvents.close_note_modal(socket)
@@ -425,15 +391,6 @@ defmodule FriendsWeb.HomeLive do
     NoteEvents.view_feed_note(socket, note_id)
   end
 
-  def handle_event("view_full_note", %{"id" => _id, "content" => content, "user" => user, "time" => time}, socket) do
-    # For room notes, we already have the data in params, just display it
-    note_data = %{
-      content: content,
-      user: %{username: user},
-      inserted_at: time
-    }
-    {:noreply, assign(socket, :viewing_note, note_data)}
-  end
 
   def handle_event("update_note", %{"note" => content}, socket) do
     NoteEvents.update_note(socket, content)
@@ -709,9 +666,6 @@ defmodule FriendsWeb.HomeLive do
     NetworkEvents.confirm_trust(socket, user_id_str)
   end
 
-  def handle_event("open_dm", %{"user_id" => user_id_str}, socket) do
-    NetworkEvents.open_dm(socket, user_id_str)
-  end
 
   # --- Room Member Management ---
 
@@ -823,9 +777,6 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_members_panel, false)}
   end
 
-  def handle_event("group_search", %{"value" => query}, socket) do
-    {:noreply, assign(socket, :group_search, query)}
-  end
 
   # Toggle the chat panel visibility in split-view layout
   def handle_event("toggle_chat_panel", _, socket) do
@@ -883,34 +834,6 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :new_chat_message, text)}
   end
 
-  # Send a chat message (encrypted)
-  def handle_event(
-        "send_room_message",
-        %{"encrypted_content" => encrypted, "nonce" => nonce},
-        socket
-      ) do
-    if socket.assigns.current_user do
-      case Social.send_room_message(
-             socket.assigns.room.id,
-             socket.assigns.current_user.id,
-             Base.decode64!(encrypted),
-             "text",
-             %{},
-             Base.decode64!(nonce)
-           ) do
-        {:ok, _message} ->
-          {:noreply, 
-           socket
-           |> assign(:new_chat_message, "")
-           |> push_event("clear_chat_input", %{})}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, "Failed to send message")}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
 
   # Start voice recording (from hook)
   def handle_event("start_room_voice_recording", _, socket) do
@@ -938,31 +861,6 @@ defmodule FriendsWeb.HomeLive do
      |> push_event("stop_room_voice_recording", %{})}
   end
 
-  # Send voice note (encrypted)
-  def handle_event(
-        "send_room_voice_note",
-        %{"encrypted_content" => encrypted, "nonce" => nonce, "duration_ms" => duration},
-        socket
-      ) do
-    if socket.assigns.current_user do
-      case Social.send_room_message(
-             socket.assigns.room.id,
-             socket.assigns.current_user.id,
-             Base.decode64!(encrypted),
-             "voice",
-             %{"duration_ms" => duration},
-             Base.decode64!(nonce)
-           ) do
-        {:ok, _message} ->
-          {:noreply, assign(socket, :recording_voice, false)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, "Failed to send voice note")}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
 
   def handle_event("load_more", _params, socket) do
     FeedEvents.load_more(socket)
@@ -1133,13 +1031,6 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Groups Sheet Events ---
 
-  def handle_event("open_groups_sheet", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:show_groups_sheet, true)
-     |> assign(:show_group_create_form, false)
-     |> assign(:group_search_query, "")}
-  end
 
   def handle_event("close_groups_sheet", _params, socket) do
     {:noreply,
@@ -1550,32 +1441,6 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  # --- Groups Sheet Events ---
-
-  def handle_event("open_groups_sheet", _, socket) do
-    {:noreply,
-     socket
-     |> assign(show_groups_sheet: true, group_search_query: "")
-     |> assign(:show_user_menu, false)
-     |> assign(:show_profile_sheet, false)}
-  end
-
-  def handle_event("close_groups_sheet", _, socket) do
-    {:noreply, assign(socket, show_groups_sheet: false)}
-  end
-
-  # --- Contact/People Sheet Events ---
-
-  def handle_event("open_contacts_sheet", _, socket) do
-    {:noreply,
-     socket
-     |> assign(:show_contact_sheet, true)
-     |> assign(:show_user_menu, false)
-     |> assign(:show_profile_sheet, false)
-     |> assign(:contact_mode, :list_contacts)
-     |> assign(:contact_sheet_search, "")
-     |> assign(:contact_search_results, [])}
-  end
 
   def handle_event("open_contact_search", params, socket) do
     mode = params["mode"] || "list_contacts"
@@ -1624,20 +1489,6 @@ defmodule FriendsWeb.HomeLive do
      |> assign(:contact_search_results, results)}
   end
 
-  def handle_event("group_search", %{"value" => query}, socket) do
-    query = String.downcase(query)
-    groups = socket.assigns.user_private_rooms
-    
-    results = Enum.filter(groups, fn group ->
-      name = group.name || group.code || ""
-      String.contains?(String.downcase(name), query)
-    end)
-
-    {:noreply, 
-     socket 
-     |> assign(:group_search_query, query)
-     |> assign(:group_search_results, results)}
-  end
 
   # --- Welcome Graph Events ---
 
@@ -1663,26 +1514,7 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_profile_sheet, false)}
   end
 
-  def handle_event("toggle_members_panel", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_group_sheet, !socket.assigns[:show_group_sheet])
-     |> assign(:group_search, "")}
-  end
 
-  def handle_event("open_invite_sheet", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_group_sheet, true)
-     |> assign(:group_search, "")}
-  end
-
-  def handle_event("close_group_sheet", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_group_sheet, false)
-     |> assign(:group_search, "")}
-  end
 
   def handle_event("invite_friend_to_room", %{"friend_id" => friend_id}, socket) do
     RoomEvents.invite_to_room(socket, friend_id)
@@ -1904,9 +1736,12 @@ defmodule FriendsWeb.HomeLive do
   end
 
   # Handle new user joining (for live graph updates)
-  def handle_info({:new_user_joined, user_data}, socket) do
-    # Push to graph when feed is empty (graph shows as empty state)
-    if socket.assigns[:feed_item_count] == 0 do
+  def handle_info({:welcome_new_user, user_data}, socket) do
+    # Push to graph when welcome graph or fullscreen graph is showing
+    # welcome_graph_data is set when feed is empty (empty state graph)
+    # fullscreen_graph_data is set when user opens fullscreen network view
+    if socket.assigns[:welcome_graph_data] != nil or 
+       socket.assigns[:fullscreen_graph_data] != nil do
       {:noreply,
        push_event(socket, "welcome_new_user", %{
          id: user_data.id,
@@ -1917,6 +1752,8 @@ defmodule FriendsWeb.HomeLive do
       {:noreply, socket}
     end
   end
+
+
 
   # Handle friendship events (when a friend is accepted or removed)
   def handle_info({:friend_accepted, friendship}, socket) do

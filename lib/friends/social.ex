@@ -444,8 +444,8 @@ defmodule Friends.Social do
   defp broadcast_new_user(user) do
     Phoenix.PubSub.broadcast(
       Friends.PubSub,
-      "friends:new_users",
-      {:new_user_joined, %{
+      "friends:global",
+      {:welcome_new_user, %{
         id: user.id,
         username: user.username,
         display_name: user.display_name || user.username,

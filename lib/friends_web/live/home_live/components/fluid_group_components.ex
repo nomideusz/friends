@@ -71,17 +71,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
                 </div>
               </form>
 
-              <%!-- Search --%>
-              <input
-                type="text"
-                name="group_search"
-                value={@search_query}
-                placeholder="Search groups..."
-                phx-keyup="group_search"
-                phx-debounce="200"
-                autocomplete="off"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
-              />
+              <%!-- Search - only show when there are many groups --%>
+              <% multi_member_groups_count = Enum.count(@groups, fn g -> g.room_type != "dm" end) %>
+              <%= if multi_member_groups_count > 5 do %>
+                <input
+                  type="text"
+                  name="group_search"
+                  value={@search_query}
+                  placeholder="Search groups..."
+                  phx-keyup="group_search"
+                  phx-debounce="200"
+                  autocomplete="off"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                />
+              <% end %>
             </div>
 
             <%!-- Groups List (exclude DM rooms) --%>

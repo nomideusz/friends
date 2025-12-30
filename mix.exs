@@ -52,9 +52,17 @@ defmodule Friends.MixProject do
       # Caching for performance optimization
       {:cachex, "~> 3.6"},
       # NOTE: For thumbnail generation on Linux production, add:
-      {:image, "~> 0.54", only: :prod}
+      {:image, "~> 0.54", only: :prod},
       # This doesn't work on Windows due to libvips/vix not supporting Windows.
       # The ImageProcessor module gracefully falls back to using originals.
+      
+      # LiveView Native for iOS/Android
+      # NOTE: Commented out - requires Phoenix ~> 1.7.0 and LiveView ~> 1.0.2
+      # We have Phoenix 1.8.1 and LiveView 1.1.x
+      # Wait for LiveView Native 0.5+ for compatibility
+      # {:live_view_native, "~> 0.4.0-rc.1"},
+      # {:live_view_native_swiftui, "~> 0.4.0-rc.1"},
+      # {:live_view_native_stylesheet, "~> 0.4.0-rc.1"}
     ]
   end
 

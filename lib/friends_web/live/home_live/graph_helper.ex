@@ -383,8 +383,6 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
     friends = Social.list_friends(user_id)
 
     # Build node list: self first, then grouped by type
-    nodes = []
-    
     # Self node
     self_node = %{
       id: user.id,

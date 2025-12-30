@@ -14,6 +14,11 @@ defmodule FriendsWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
+  # API socket for SvelteKit/mobile clients
+  socket "/api/socket", FriendsWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
   plug Plug.Static,
     at: "/",
     from: :friends,

@@ -277,15 +277,6 @@ defmodule FriendsWeb.NetworkLive do
     {:noreply, assign(socket, :show_header_dropdown, false)}
   end
 
-  # User dropdown handlers
-  def handle_event("toggle_user_dropdown", _, socket) do
-    {:noreply, assign(socket, :show_user_dropdown, !socket.assigns.show_user_dropdown)}
-  end
-
-  def handle_event("close_user_dropdown", _, socket) do
-    {:noreply, assign(socket, :show_user_dropdown, false)}
-  end
-
   def handle_event("sign_out", _, socket) do
     {:noreply,
      socket

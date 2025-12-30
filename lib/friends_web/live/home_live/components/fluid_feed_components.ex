@@ -41,33 +41,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         show_user_menu={@show_user_menu}
       />
 
-      <%!-- Content Area - hide overflow when empty to remove scrollbar --%>
-      <div class={"flex-1 overflow-x-hidden pb-24 #{if @feed_item_count == 0, do: "overflow-hidden", else: "overflow-y-auto"}"}>
-        <%= if @feed_item_count == 0 do %>
-          <.fluid_feed_empty_state 
-            welcome_graph_data={@welcome_graph_data} 
-            current_user={@current_user}
-          />
-        <% else %>
-          <.fluid_feed_grid feed_items={@feed_items} current_user={@current_user} />
-        <% end %>
-
-        <%!-- Load More --%>
-        <%= unless @no_more_items do %>
-          <div class="flex justify-center py-8">
-            <button
-              type="button"
-              phx-click="load_more"
-              phx-disable-with="..."
-              class="w-10 h-10 rounded-full border border-white/20 text-white/40 hover:border-white/40 hover:text-white/70 transition-colors cursor-pointer flex items-center justify-center"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        <% end %>
+      <%!-- Network Graph - Main Content --%>
+      <div class="flex-1 overflow-hidden">
+        <.fluid_feed_empty_state 
+          welcome_graph_data={@welcome_graph_data} 
+          current_user={@current_user}
+        />
       </div>
+
 
       <%!-- Note: Content creation is now handled by toolbar's + button --%>
     </div>

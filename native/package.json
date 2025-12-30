@@ -1,0 +1,31 @@
+{
+  "name": "friends-native",
+  "version": "1.0.0",
+  "description": "Friends native app - wraps Phoenix LiveView in Capacitor",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'No build needed - using remote server'",
+    "cap:add:ios": "npx cap add ios",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android"
+  },
+  "keywords": [
+    "phoenix",
+    "capacitor",
+    "native"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

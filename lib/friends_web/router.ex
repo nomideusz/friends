@@ -13,6 +13,37 @@ defmodule FriendsWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_session
+    plug FriendsWeb.Plugs.Cors
+    plug FriendsWeb.Plugs.APIAuth
+  end
+
+  # Handle CORS preflight requests
+  scope "/api" do
+    options "/*path", FriendsWeb.API.CorsController, :preflight
+  end
+
+  # JSON API for SvelteKit frontend
+  scope "/api/v1", FriendsWeb.API do
+    pipe_through :api
+
+    # WebAuthn auth (no auth required for these)
+    post "/auth/register/challenge", WebAuthnController, :registration_challenge
+    post "/auth/register", WebAuthnController, :register
+    post "/auth/login/challenge", WebAuthnController, :authentication_challenge
+    post "/auth/login", WebAuthnController, :login
+    post "/auth/logout", WebAuthnController, :logout
+
+    get "/me", UserController, :me
+    get "/users/search", UserController, :search
+    get "/users/:id", UserController, :show
+    get "/friends", UserController, :friends
+
+    get "/rooms", RoomController, :index
+    get "/rooms/:id", RoomController, :show
+    get "/rooms/:id/messages", RoomController, :messages
+
+    get "/graph", GraphController, :index
   end
 
   scope "/", FriendsWeb do

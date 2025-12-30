@@ -1,0 +1,665 @@
+/* =========================================================================================
+   PROJECT AETHER: FLUID DESIGN FOR SVELTEKIT
+   Ported from Phoenix LiveView - "New Internet" aesthetic
+   Design: Deep Space, Layered Glass, Organic Springs
+   ========================================================================================= */
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap');
+
+/* =========================================================================================
+   CSS VARIABLES (Design Tokens)
+   ========================================================================================= */
+
+:root {
+  /* Typography */
+  --font-family-display: 'Outfit', system-ui, sans-serif;
+  --font-family-body: 'Inter', system-ui, sans-serif;
+  --font-family-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* FLUID DESIGN PALETTE */
+  --color-void: #000000;
+  /* Pure Black for perfect OLED depth */
+  --color-abyss: #080808;
+  /* Deep layered surfaces */
+  --color-matter: #121212;
+  /* Card backgrounds */
+  --color-glass: rgba(20, 20, 20, 0.7);
+  /* Standard glass background */
+
+  --color-photon: #FFFFFF;
+  /* Primary text */
+  --color-light: #F5F5F7;
+  /* Body text (iOS-style clean white) */
+  --color-dim: #8E8E93;
+  /* Secondary text (iOS-style) */
+
+  --color-energy: #007AFF;
+  /* Apple Blue (links, focus) */
+  --color-success: #22c55e;
+  /* Green */
+  --color-warning: #f59e0b;
+  /* Amber */
+  --color-error: #ef4444;
+  /* Red */
+
+  /* New Internet Colors */
+  --color-accent: #00d4ff;
+  --color-accent-pink: #ff6b9d;
+
+  /* FLUID TOKENS */
+  --radius-fluid: 2rem;
+  /* 32px - Organic large corners */
+  --radius-inner: 1.5rem;
+  /* 24px - Nested corners */
+  --radius-button: 1rem;
+  /* 16px - Buttons, inputs */
+  --blur-glass: 24px;
+  /* High quality blur */
+
+  /* SPRING EASING */
+  --ease-spring: cubic-bezier(0.3, 1.5, 0.6, 1);
+  /* Organic springy feel */
+  --ease-fluid: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Smooth transitions */
+}
+
+/* =========================================================================================
+   BASE LAYOUT
+   ========================================================================================= */
+
+html {
+  font-family: var(--font-family-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-void);
+  color: var(--color-light);
+  scroll-behavior: smooth;
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-light);
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-photon);
+  margin: 0;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
+
+p {
+  color: var(--color-light);
+  line-height: 1.6;
+}
+
+/* =========================================================================================
+   OPAL BACKGROUND (Animated Gradient)
+   ========================================================================================= */
+
+@keyframes opal-flow {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.3;
+  }
+
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.5;
+  }
+
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.3;
+  }
+}
+
+.opal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  background-size: 200% 200%;
+  animation: opal-flow 20s infinite ease-in-out;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* =========================================================================================
+   PRESENCE BREATHING (Online Friends)
+   ========================================================================================= */
+
+@keyframes presence-breathe {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0.7;
+  }
+
+  50% {
+    box-shadow: 0 0 8px 3px currentColor;
+    opacity: 1;
+  }
+}
+
+.avatar-online {
+  animation: presence-breathe 3s var(--ease-fluid) infinite;
+}
+
+.presence-glow {
+  box-shadow: 0 0 12px 3px currentColor;
+  transition: box-shadow 0.3s var(--ease-fluid);
+}
+
+.presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 6px 1px currentColor;
+}
+
+.presence-dot-online {
+  animation: presence-breathe 3s var(--ease-fluid) infinite;
+}
+
+/* =========================================================================================
+   WARMTH PULSE (Shared Attention)
+   ========================================================================================= */
+
+@keyframes warmth-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 20px 4px rgba(74, 222, 128, 0.3);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+.warmth-pulse {
+  animation: warmth-pulse 2s var(--ease-fluid) forwards;
+}
+
+/* =========================================================================================
+   FLUID GLASS COMPONENTS
+   ========================================================================================= */
+
+/* Aether Card: Depth and Soft Borders */
+.aether-card {
+  background-color: var(--color-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-fluid);
+  box-shadow:
+    0 10px 40px -10px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  transition: all 0.4s var(--ease-spring);
+}
+
+.aether-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 20px 50px -15px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+/* Fluid Glass */
+.fluid-glass {
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-fluid);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Glass Surface */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-surface:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* =========================================================================================
+   BUTTONS
+   ========================================================================================= */
+
+/* Aether Button: Fluid Interface */
+.btn-aether {
+  font-family: var(--font-family-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s var(--ease-spring);
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-aether:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.btn-aether:active {
+  transform: scale(0.98);
+}
+
+.btn-aether-primary {
+  background: var(--color-light);
+  color: var(--color-void);
+  border: 1px solid var(--color-light);
+}
+
+.btn-aether-primary:hover {
+  background: white;
+  color: var(--color-void);
+  box-shadow: 0 10px 30px -5px rgba(255, 255, 255, 0.3);
+}
+
+/* Spring Button */
+.spring-button {
+  transition: all 0.3s var(--ease-spring);
+}
+
+.spring-button:hover {
+  transform: scale(1.02);
+}
+
+.spring-button:active {
+  transform: scale(0.98);
+}
+
+/* =========================================================================================
+   INPUTS
+   ========================================================================================= */
+
+input,
+textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-photon);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1rem;
+  transition: all 0.3s var(--ease-fluid);
+  font-family: var(--font-family-body);
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:focus,
+textarea:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-energy);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-dim);
+}
+
+/* =========================================================================================
+   SURFACE OVERLAYS (Modals/Sheets)
+   ========================================================================================= */
+
+.surface-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  z-index: 200;
+  padding: 1rem;
+  pointer-events: none;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.surface-overlay.active {
+  pointer-events: auto;
+}
+
+.surface-island {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-abyss);
+}
+
+/* Mobile: Bottom Sheet */
+@media (max-width: 1023px) {
+  .surface-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .surface-island {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-fluid) var(--radius-fluid) 0 0;
+    animation: sheet-slide-up 0.5s var(--ease-spring);
+    max-height: 92vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Desktop: Centered Island */
+@media (min-width: 1024px) {
+  .surface-overlay {
+    align-items: center;
+  }
+
+  .surface-island {
+    width: 100%;
+    max-width: 480px;
+    border-radius: var(--radius-fluid);
+    animation: island-pop 0.5s var(--ease-spring);
+    max-height: 85vh;
+  }
+}
+
+@keyframes sheet-slide-up {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes island-pop {
+  0% {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Sheet Handle */
+.sheet-handle {
+  width: 100%;
+  padding: 1rem 0 0.5rem;
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sheet-handle>div {
+  width: 32px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+@media (min-width: 1024px) {
+  .sheet-handle {
+    display: none;
+  }
+}
+
+/* =========================================================================================
+   ANIMATIONS
+   ========================================================================================= */
+
+@keyframes wave {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-wave {
+  animation: wave 1.5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Exit Animations */
+.animate-sheet-exit {
+  animation: sheet-slide-down 0.3s var(--ease-fluid) forwards;
+}
+
+.animate-island-exit {
+  animation: island-shrink 0.25s var(--ease-fluid) forwards;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.2s var(--ease-fluid) forwards;
+}
+
+@keyframes sheet-slide-down {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes island-shrink {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.95) translateY(10px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* =========================================================================================
+   UTILITY CLASSES
+   ========================================================================================= */
+
+/* Text */
+.text-muted {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.text-muted-subtle {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.text-muted-dim {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Labels */
+.fluid-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Status Surfaces */
+.error-surface {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: rgba(248, 113, 113, 0.9);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1rem;
+}
+
+.success-surface {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: rgba(74, 222, 128, 0.9);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1rem;
+}
+
+.warning-surface {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: rgba(251, 191, 36, 0.9);
+  border-radius: var(--radius-button);
+  padding: 0.75rem 1rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-energy);
+  outline-offset: 2px;
+}
+
+/* Safe area handling for iOS */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Prevent text selection on interactive elements */
+button,
+a,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in content */
+p,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+article,
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
