@@ -18,6 +18,11 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
     {:noreply, update(socket, :chat_expanded, &(!&1))}
   end
 
+  def expand_chat(socket) do
+    {:noreply, assign(socket, :chat_expanded, true)}
+  end
+
+
   def toggle_chat_visibility(socket) do
     current = socket.assigns[:show_chat]
     # Default to true if nil, so toggling makes it false

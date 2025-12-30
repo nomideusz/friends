@@ -108,15 +108,15 @@ export const ProgressiveSignOutHook = {
         this.timer = null
         this.morphTimer = null
         this.pressing = false
-        this.duration = 3000
+        this.duration = 4000
 
         this.el.style.userSelect = 'none'
         this.el.style.webkitUserSelect = 'none'
         this.el.style.touchAction = 'manipulation'
 
         this.createProgressRing()
-        this.originalIcon = this.el.querySelector('svg')?.outerHTML
-        this.iconContainer = this.el.querySelector('div.w-7')
+        this.iconContainer = this.el.querySelector('.avatar-content')
+        this.originalContent = this.iconContainer ? this.iconContainer.innerHTML : null
 
         const startPress = (e) => {
             if (e.type === 'mousedown' && e.button !== 0) return
@@ -124,8 +124,11 @@ export const ProgressiveSignOutHook = {
 
             this.pressing = true
 
+            this.pressStartTime = Date.now()
+
             setTimeout(() => {
                 if (!this.pressing) return
+                // Make sure ring is visible and above background
                 this.progressSvg.style.opacity = '1'
                 this.progressRing.style.strokeDashoffset = '0'
                 if (navigator.vibrate) navigator.vibrate(10)
@@ -135,18 +138,20 @@ export const ProgressiveSignOutHook = {
                 if (!this.pressing) return
                 if (this.iconContainer) {
                     this.iconContainer.innerHTML = `
-                        <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
+                         <div class="w-full h-full flex items-center justify-center bg-red-500/20 text-red-500 rounded-full">
+                            <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </div>
                     `
                 }
                 if (navigator.vibrate) navigator.vibrate([30, 30, 30])
-            }, 1500)
+            }, 500)
 
             this.timer = setTimeout(() => {
                 if (this.pressing) {
                     if (navigator.vibrate) navigator.vibrate([50, 50, 100])
-                    this.pushEvent("sign_out", {})
+                    this.pushEvent("request_sign_out", {})
                     this.pressing = false
                     this.resetVisuals()
                 }
@@ -156,7 +161,12 @@ export const ProgressiveSignOutHook = {
         const endPress = (e) => {
             if (!this.pressing) return
 
+            const duration = Date.now() - this.pressStartTime
             this.pressing = false
+
+            if (duration < 500) {
+                this.pushEvent("open_settings_modal", {})
+            }
 
             if (this.timer) {
                 clearTimeout(this.timer)
@@ -184,40 +194,30 @@ export const ProgressiveSignOutHook = {
     },
 
     createProgressRing() {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-        svg.setAttribute('class', 'progressive-sign-out-ring')
-        svg.setAttribute('viewBox', '0 0 50 50')
-        svg.style.cssText = 'position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 10;'
+        // Select existing SVG from DOM
+        this.progressSvg = this.el.querySelector('svg.progressive-sign-out-ring')
+        this.progressRing = this.progressSvg.querySelector('circle')
 
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        circle.setAttribute('cx', '25')
-        circle.setAttribute('cy', '25')
-        circle.setAttribute('r', '22')
-        circle.setAttribute('fill', 'none')
-        circle.setAttribute('stroke', 'rgba(239, 68, 68, 0.8)')
-        circle.setAttribute('stroke-width', '3')
-        circle.setAttribute('stroke-linecap', 'round')
-        circle.setAttribute('stroke-dasharray', '138.23')
-        circle.setAttribute('stroke-dashoffset', '138.23')
-        circle.setAttribute('transform', 'rotate(-90 25 25)')
-        circle.style.transition = `stroke-dashoffset ${this.duration - 500}ms linear`
+        // Ensure transition matches duration
+        if (this.progressRing) {
+            this.progressRing.style.transitionDuration = `${this.duration - 500}ms`
+        }
 
-        svg.appendChild(circle)
-        this.el.style.position = 'relative'
-        this.el.appendChild(svg)
-        this.progressRing = circle
-        this.progressSvg = svg
+        this.originalContent = this.iconContainer ? this.iconContainer.innerHTML : null
     },
 
     resetVisuals() {
+        if (!this.progressSvg || !this.progressRing) return
+
         this.progressSvg.style.opacity = '0'
         this.progressRing.style.transition = 'none'
         this.progressRing.style.strokeDashoffset = '138.23'
-        this.progressRing.offsetHeight
+        // Force reflow
+        this.progressRing.getBoundingClientRect()
         this.progressRing.style.transition = `stroke-dashoffset ${this.duration - 500}ms linear`
 
-        if (this.iconContainer && this.originalIcon) {
-            this.iconContainer.innerHTML = this.originalIcon
+        if (this.iconContainer && this.originalContent) {
+            this.iconContainer.innerHTML = this.originalContent
         }
     },
 

@@ -82,23 +82,10 @@
 
   <%!-- Old feed_add_sheet removed - replaced by fluid_create_menu above --%>
 
-  <%!-- Room Chat Sheet (opens from Chat button on room toolbar) --%>
-  <%= if assigns[:room] do %>
-    <.chat_sheet
-      show={assigns[:show_chat]}
-      room={@room}
-      room_messages={assigns[:room_messages] || []}
-      current_user={@current_user}
-      new_chat_message={assigns[:new_chat_message] || ""}
-      typing_users={assigns[:typing_users] || %{}}
-    />
+  <%!-- Note: chat_sheet removed - chat is now inline in fluid_room via inline_chat_panel --%>
+  <%!-- Note: room_add_sheet removed - actions integrated into inline chat panel --%>
 
-    <%!-- Room Add Sheet (opens from + button on room toolbar) --%>
-    <.room_add_sheet
-      show={assigns[:show_add_menu] && assigns[:toolbar_context] == :room}
-      room={@room}
-      uploads={@uploads}
-    />
+  <%= if assigns[:room] do %>
 
     <%!-- Room Settings Sheet --%>
     <.room_settings_sheet
@@ -551,10 +538,36 @@
     <%= if @current_user do %>
       <%!-- Feed-first layout, graph available via drawer --%>
 
+    <%!-- Floating User Avatar (top-right, accessible everywhere) --%>
+    <button
+      id="global-user-avatar"
+      type="button"
+      phx-hook="ProgressiveSignOut"
+      class="fixed top-3 right-4 z-[100] w-10 h-10 rounded-full border border-white/20 hover:border-white/40 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse pointer-events-auto bg-neutral-800"
+      title={"@#{@current_user.username}"}
+    >
+      <div class="avatar-content w-full h-full relative pointer-events-none rounded-full overflow-hidden z-10">
+        <%= if @current_user.avatar_url do %>
+          <img src={@current_user.avatar_url} alt="" class="w-full h-full object-cover" />
+        <% else %>
+          <div class="w-full h-full flex items-center justify-center text-white/60 text-sm font-medium">
+            <%= String.first(@current_user.username) |> String.upcase() %>
+          </div>
+        <% end %>
+      </div>
+      
+      <%!-- Progress Ring (rendered here for reliability) --%>
+      <svg class="progressive-sign-out-ring absolute inset-[-5px] w-[calc(100%+10px)] h-[calc(100%+10px)] pointer-events-none opacity-0 transition-opacity duration-300 z-50" viewBox="0 0 50 50">
+        <circle cx="25" cy="25" r="22" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="138.23" transform="rotate(-90 25 25)" class="transition-[stroke-dashoffset] ease-linear" />
+      </svg>
+    </button>
+
   <%!-- === MAIN LAYOUT === --%>
   <div class="w-full text-white flex flex-row gap-4 relative z-10 pointer-events-none">
 
         <%!-- OLD LEFT SIDEBAR REMOVED: Was wrapped in `if false and ...` --%>
+
+
 
         <%!-- RIGHT: Main Content Area --%>
         <div class="flex-1 min-w-0 relative pb-32 pointer-events-auto">
@@ -628,15 +641,55 @@
     <%!-- End of main layout container --%>
     </div>
 
-    <%!-- Bottom Toolbar --%>
-    <.bottom_toolbar
-      context={assigns[:toolbar_context] || :feed}
+    <%!-- Bottom Toolbar (only show when NOT in a room - rooms have inline chat) --%>
+    <%= if assigns[:toolbar_context] != :room do %>
+      <.bottom_toolbar
+        context={assigns[:toolbar_context] || :feed}
+        current_user={@current_user}
+        room={@room}
+        show_chat={Map.get(assigns, :show_chat, true)}
+        unread_count={Map.get(assigns, :total_unread_count, 0)}
+        online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+        pending_request_count={length(assigns[:pending_requests] || [])}
+      />
+    <% end %>
+
+    <%!-- Settings & Profile Modals --%>
+    <.settings_modal
+      show={assigns[:show_settings_modal]}
+      active_tab={assigns[:settings_tab] || "profile"}
       current_user={@current_user}
-      room={@room}
-      show_chat={Map.get(assigns, :show_chat, true)}
-      unread_count={Map.get(assigns, :total_unread_count, 0)}
-      online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
-      pending_request_count={length(assigns[:pending_requests] || [])}
+      show_name_modal={assigns[:show_name_modal]}
+    />
+
+    <.devices_modal
+      show={assigns[:show_devices_modal]}
+      current_user={@current_user}
+      current_session_token={@current_session_token}
+      devices={assigns[:devices] || []}
+    />
+
+    <%= if @show_sign_out_modal do %>
+      <.fluid_modal_base id="sign-out-modal" on_cancel="cancel_sign_out">
+        <:title>Sign Out</:title>
+        <div class="p-4 text-center">
+            <p class="text-white/70 mb-6 font-medium">Are you sure you want to sign out?</p>
+            <div class="flex gap-3 justify-center">
+                <button type="button" phx-click="cancel_sign_out" class="w-24 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors border border-white/10 cursor-pointer">Cancel</button>
+                <button type="button" phx-click="sign_out" class="w-24 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-500 hover:text-red-400 border border-red-500/30 transition-colors cursor-pointer">Sign Out</button>
+            </div>
+        </div>
+      </.fluid_modal_base>
+    <% end %>
+    <.network_modal
+      show={assigns[:show_network_modal]}
+      tab={assigns[:network_tab] || "friends"}
+      current_user={@current_user}
+      friends={@friends}
+      pending_requests={assigns[:pending_requests] || []}
+      friend_search={assigns[:friend_search] || ""}
+      friend_search_results={assigns[:friend_search_results] || []}
+      trusted_friends={assigns[:trusted_friends] || []}
     />
 
     <% else %>

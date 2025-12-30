@@ -248,7 +248,9 @@ defmodule FriendsWeb.HomeLive do
     ChatEvents.toggle_chat_expanded(socket)
   end
 
-
+  def handle_event("expand_chat", _params, socket) do
+    ChatEvents.expand_chat(socket)
+  end
 
   def handle_event("close_add_menu", _params, socket) do
     {:noreply, assign(socket, :show_add_menu, false)}
@@ -804,7 +806,37 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, socket}
   end
 
-  # Update chat message input AND broadcast typing
+  # Update chat message input AND broadcast typing (from InlineChatInput hook - sends "message")
+  def handle_event("update_chat_message", %{"message" => text}, socket) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+
+    # Broadcast typing to other users
+    if room && current_user && String.length(text) > 0 do
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "room:#{room.id}:typing",
+        {:user_typing, %{
+          user_id: current_user.id,
+          username: current_user.username,
+          text: text
+        }}
+      )
+    end
+
+    # If text is empty, broadcast stop typing
+    if room && current_user && String.length(text) == 0 do
+      Phoenix.PubSub.broadcast(
+        Friends.PubSub,
+        "room:#{room.id}:typing",
+        {:user_stopped_typing, %{user_id: current_user.id}}
+      )
+    end
+
+    {:noreply, assign(socket, :new_chat_message, text)}
+  end
+
+  # Update chat message input AND broadcast typing (from ContentEditableInput hook - sends "value")
   def handle_event("update_chat_message", %{"value" => text}, socket) do
     room = socket.assigns[:room]
     current_user = socket.assigns[:current_user]
@@ -1557,6 +1589,14 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_profile_sheet, false)}
   end
 
+  def handle_event("request_sign_out", _params, socket) do
+    {:noreply, assign(socket, show_sign_out_modal: true)}
+  end
+
+  def handle_event("cancel_sign_out", _params, socket) do
+    {:noreply, assign(socket, show_sign_out_modal: false)}
+  end
+
 
 
   def handle_event("invite_friend_to_room", %{"friend_id" => friend_id}, socket) do
@@ -1630,6 +1670,42 @@ defmodule FriendsWeb.HomeLive do
         {:noreply, socket}
     end
   end
+
+  # --- Chat Events ---
+
+  def handle_event("update_chat_message", %{"message" => message}, socket) do
+    # Delegate to ChatEvents
+    ChatEvents.handle_typing(socket, message)
+  end
+
+  def handle_event("send_room_message", params, socket) do
+    ChatEvents.send_room_text_message(socket, params)
+  end
+
+  def handle_event("send_room_voice_note", params, socket) do
+    ChatEvents.send_room_voice_note(socket, params)
+  end
+
+  def handle_event("walkie_start", _params, socket) do
+    ChatEvents.send_walkie_start(socket)
+  end
+
+  def handle_event("walkie_stop", _params, socket) do
+    ChatEvents.send_walkie_stop(socket)
+  end
+
+  def handle_event("walkie_chunk", params, socket) do
+    ChatEvents.send_walkie_chunk(socket, params)
+  end
+
+  def handle_event("expand_chat", _params, socket) do
+    ChatEvents.expand_chat(socket)
+  end
+
+  def handle_event("toggle_chat_expanded", _params, socket) do
+    ChatEvents.toggle_chat_expanded(socket)
+  end
+
 
   # --- Progress Handler ---
 
@@ -1927,5 +2003,7 @@ defmodule FriendsWeb.HomeLive do
   def handle_info({:group_invite_received, invite_info}, socket) do
     PubSubHandlers.handle_group_invite_received(socket, invite_info)
   end
+
+
 
 end

@@ -58,6 +58,7 @@ defmodule FriendsWeb.Live.Hooks.UserAuth do
     end)
     # TODO: implement if needed
     |> assign_new(:recovery_requests, fn -> [] end)
+    |> assign_new(:current_session_token, fn -> nil end)
     |> assign_new(:user_private_rooms, fn ->
       if user, do: Social.list_user_rooms(user.id), else: []
     end)

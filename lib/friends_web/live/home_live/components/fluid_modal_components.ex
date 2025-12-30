@@ -252,4 +252,45 @@ defmodule FriendsWeb.HomeLive.Components.FluidModalComponents do
     <% end %>
     """
   end
+  # ============================================================================
+  # FLUID MODAL BASE
+  # Reusable base for general modals
+  # ============================================================================
+
+  attr :id, :string, required: true
+  attr :on_cancel, :string, required: true
+  slot :title
+  slot :inner_block, required: true
+
+  def fluid_modal_base(assigns) do
+    ~H"""
+      <div
+        id={@id}
+        class="fixed inset-0 z-[200]"
+      >
+        <%!-- Backdrop --%>
+        <div
+          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          phx-click={@on_cancel}
+        ></div>
+
+        <%!-- Modal --%>
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 z-10 animate-in zoom-in-95 duration-200 px-4">
+          <div class="mx-auto max-w-sm bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+            <%!-- Header --%>
+            <%= if @title != [] do %>
+              <div class="py-4 border-b border-white/5 text-center">
+                 <h3 class="text-white font-medium text-lg"><%= render_slot(@title) %></h3>
+              </div>
+            <% end %>
+
+            <%!-- Content --%>
+            <div class="">
+              <%= render_slot(@inner_block) %>
+            </div>
+          </div>
+        </div>
+      </div>
+    """
+  end
 end

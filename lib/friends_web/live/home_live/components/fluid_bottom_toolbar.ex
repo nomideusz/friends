@@ -29,18 +29,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
             <% :feed -> %>
               <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" badge={@unread_count} />
               <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
-              <.toolbar_avatar current_user={@current_user} event="open_settings_modal" online_count={@online_friend_count} pending_count={0} />
             <% :room -> %>
-              <.toolbar_button icon="plus" label="Create" event="open_create_menu" />
-              <.toolbar_button icon="chat" label="Chat" event="toggle_chat_visibility" active={@show_chat} />
-              
               <%= if @room.room_type != "dm" do %>
                 <.toolbar_button icon="people" label="Members" event="toggle_members_panel" />
               <% end %>
               
               <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
               <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
-              <.toolbar_avatar current_user={@current_user} event="open_settings_modal" online_count={@online_friend_count} pending_count={0} />
             <% :focused -> %>
               <.toolbar_button icon="back" label="Back" event="close_focused_view" />
               <.toolbar_button icon="heart" label="React" event="react_to_item" />
@@ -50,7 +45,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
               <%!-- Fallback to feed --%>
               <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
               <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
-              <.toolbar_avatar current_user={@current_user} event="toggle_user_menu" online_count={@online_friend_count} pending_count={0} />
           <% end %>
         </nav>
       </div>
@@ -94,50 +88,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
       ]}>
         {@label}
       </span>
-    </button>
-    """
-  end
-
-  # ============================================================================
-  # TOOLBAR AVATAR
-  # ============================================================================
-
-  attr :current_user, :map, required: true
-  attr :event, :string, required: true
-  attr :online_count, :integer, default: 0
-  attr :pending_count, :integer, default: 0
-
-  defp toolbar_avatar(assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click={@event}
-      class="relative flex flex-col items-center justify-center w-16 h-14 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
-    >
-      <div class="relative">
-        <div
-          class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-black border border-white/20 overflow-hidden"
-          style={"background-color: #{friend_color(@current_user)}"}
-        >
-          <%= if Map.get(@current_user, :avatar_url) do %>
-            <img src={@current_user.avatar_url} class="w-full h-full object-cover" alt="You" />
-          <% else %>
-            {String.first(@current_user.username) |> String.upcase()}
-          <% end %>
-        </div>
-        <%!-- Pending request badge - takes priority --%>
-        <%= if @pending_count > 0 do %>
-          <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-blue-500 text-white rounded-full px-1 animate-pulse">
-            <%= if @pending_count > 9, do: "9+", else: @pending_count %>
-          </span>
-        <% else %>
-          <%!-- Online friend indicator when no pending requests --%>
-          <%= if @online_count > 0 do %>
-            <span class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-neutral-900"></span>
-          <% end %>
-        <% end %>
-      </div>
-      <span class="text-[10px] mt-1 font-medium text-white/50 truncate max-w-[3rem]">@{@current_user.username}</span>
     </button>
     """
   end
