@@ -40,24 +40,19 @@ defmodule FriendsWeb.HomeLive.Components.FluidCreateMenu do
       >
         <%!-- Container matching nav bar styling --%>
         <div class="bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-          <%!-- Photo - uses label to directly trigger file input --%>
-          <form id="create-menu-upload-form" phx-change="validate" phx-submit="save" class="contents">
-            <label 
-              id="photo-upload-label"
-              phx-hook="PhotoUploadLabel"
-              class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer group"
-            >
-              <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/15 transition-colors">
-                <.create_icon name="camera" />
-              </div>
-              <span class="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
-                Photo
-              </span>
-              <%= if @has_upload do %>
-                <.live_file_input upload={@upload} class="sr-only" />
-              <% end %>
-            </label>
-          </form>
+          <%!-- Photo - triggers global upload --%>
+          <button
+            type="button"
+            phx-click="trigger_photo_upload"
+            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer group"
+          >
+            <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/15 transition-colors">
+              <.create_icon name="camera" />
+            </div>
+            <span class="text-sm font-medium text-white/90 group-hover:text-white transition-colors">
+              Photo
+            </span>
+          </button>
 
           <%!-- Voice - only show in feed context --%>
           <%= if @context != :room do %>

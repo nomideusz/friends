@@ -83,12 +83,6 @@ const FriendsAppHook = {
             }
         })
 
-        this.handleEvent("trigger_file_input", ({ selector }) => {
-            const input = document.querySelector(selector)
-            if (input) {
-                input.click()
-            }
-        })
 
         this.pendingThumbnail = null
         this.setupImageOptimization()
@@ -257,23 +251,27 @@ window.addEventListener("phx:sign_out", () => {
 })
 
 // Handle trigger_file_input event globally
+// Handle trigger_file_input event globally
 window.addEventListener("phx:trigger_file_input", (e) => {
     const selector = e.detail.selector
     if (selector) {
         const input = document.querySelector(selector)
         if (input) {
             // Add a one-time listener to close the menu after file selection
-            input.addEventListener('change', () => {
-                // Close the create menu after file is selected
+            const closeMenuHandler = () => {
                 if (window.liveSocket) {
                     const hook = document.querySelector('[phx-hook="FriendsApp"]')
+                    // Only close if menu is actually open (optional check, but good for robustness)
                     if (hook && hook._liveSocket) {
-                        // Push an event to close the menu
                         window.liveSocket.execJS(hook, '[["push",{"event":"close_create_menu"}]]')
                     }
                 }
-            }, { once: true })
-            input.click()
+            }
+
+            input.addEventListener('change', closeMenuHandler, { once: true })
+
+            // Small timeout to ensure DOM is ready and prevent potential race conditions with double-clicks
+            setTimeout(() => input.click(), 0)
         }
     }
 })

@@ -725,17 +725,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             <%= if @show_add_menu do %>
               <div class="absolute bottom-full left-0 mb-2 w-32 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                 <%!-- Photo option --%>
-                <div class="contents">
-                  <label class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors cursor-pointer border-b border-white/5">
-                    <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span class="text-sm text-white/90">Photo</span>
-                    <%= if @uploads && @uploads[:photo] do %>
-                      <.live_file_input upload={@uploads.photo} class="sr-only" form="fluid-upload-form-outer" />
-                    <% end %>
-                  </label>
-                </div>
+                <button
+                  type="button"
+                  phx-click="trigger_photo_upload"
+                  class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors cursor-pointer border-b border-white/5"
+                >
+                  <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span class="text-sm text-white/90">Photo</span>
+                </button>
 
                 <%!-- Note option --%>
                 <button

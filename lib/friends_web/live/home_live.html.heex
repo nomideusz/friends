@@ -1,4 +1,13 @@
 <div id="main-app-container" phx-hook="PinchZoomOut" class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white min-h-screen bg-black relative">
+  <%!-- Global Hidden Upload Form --%>
+  <form id="global-upload-form" phx-change="validate" phx-submit="save" class="hidden">
+    <%= if @uploads[:photo] do %>
+      <.live_file_input upload={@uploads.photo} class="sr-only" />
+    <% end %>
+    <%= if @uploads[:feed_photo] do %>
+      <.live_file_input upload={@uploads.feed_photo} class="sr-only" />
+    <% end %>
+  </form>
 
   <%!-- Graph Drawer --%>
   <.bottom_drawer

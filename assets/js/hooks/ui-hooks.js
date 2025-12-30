@@ -445,18 +445,6 @@ export const LongPressOrbHook = {
     }
 }
 
-export const PhotoUploadLabelHook = {
-    mounted() {
-        // Find the file input inside this label
-        const fileInput = this.el.querySelector('input[type="file"]')
-        if (fileInput) {
-            fileInput.addEventListener('change', () => {
-                // Close the create menu after file is selected
-                this.pushEvent("close_create_menu", {})
-            })
-        }
-    }
-}
 
 /**
  * PinchZoomOut - Detects 2-finger pinch-out (zoom-out) gesture
@@ -548,7 +536,6 @@ export default {
     CopyToClipboard: CopyToClipboardHook,
     AutoFocus: AutoFocusHook,
     LongPressOrb: LongPressOrbHook,
-    PhotoUploadLabel: PhotoUploadLabelHook,
     PinchZoomOut: PinchZoomOutHook,
     AutoDismiss: AutoDismissHook
 }

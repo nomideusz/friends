@@ -12,9 +12,9 @@ defmodule FriendsWeb.HomeLive.Events.PhotoEvents do
 
   # --- Upload Handlers ---
 
-  def validate(socket), do: {:noreply, socket}
+  def validate(socket), do: {:noreply, assign(socket, :uploading, true)}
   def save(socket), do: {:noreply, socket}
-  def validate_feed_photo(socket), do: {:noreply, socket}
+  def validate_feed_photo(socket), do: {:noreply, assign(socket, :uploading, true)}
   def save_feed_photo(socket), do: {:noreply, socket}
 
   def cancel_upload(socket, ref) do

@@ -911,9 +911,18 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_create_menu, false)}
   end
 
+  def handle_event("toggle_chat_visibility", _params, socket) do
+    {:noreply, update(socket, :show_chat, &(!&1))}
+  end
+
   def handle_event("trigger_photo_upload", _params, socket) do
-    # Trigger photo file selector - don't close menu yet (let file selection close it)
-    {:noreply, push_event(socket, "trigger_file_input", %{selector: "input[name='feed_photo']"})}
+    # Trigger photo file selector in the persistent global form AND close the menu immediately
+    selector = if socket.assigns[:room], do: "input[name='photo']", else: "input[name='feed_photo']"
+
+    {:noreply,
+     socket
+     |> assign(:show_create_menu, false)
+     |> push_event("trigger_file_input", %{selector: selector})}
   end
 
   # --- Omnibox Search Handlers ---
