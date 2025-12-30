@@ -165,43 +165,56 @@ defmodule FriendsWeb.HomeLive.Events.NoteEvents do
     user = socket.assigns.current_user
     Logger.debug("post_feed_note user: #{inspect(user && user.id)}")
 
-    cond do
-      user == nil or String.trim(content) == "" ->
-        Logger.debug("post_feed_note skipped - user nil or empty content")
-        {:noreply, socket}
-        
-      content_length > 500 ->
-        {:noreply, put_flash(socket, :error, "Note is too long (max 500 characters)")}
-
-      true ->
-        attrs = %{
-          content: content,
-          user_id: "user-#{user.id}",
-          user_color: socket.assigns.user_color,
-          user_name: user.display_name || user.username
-        }
-
-        Logger.debug("post_feed_note creating note with attrs: #{inspect(attrs)}")
-
-        case Social.create_public_note(attrs, user.id) do
-        {:ok, note} ->
-          Logger.info("post_feed_note SUCCESS - note created: #{inspect(note.id)}")
+    # If in a room context, redirect to save_note logic
+    if socket.assigns[:room] do
+      save_note(socket, content)
+    else
+      cond do
+        user == nil or String.trim(content) == "" ->
+          Logger.debug("post_feed_note skipped - user nil or empty content")
+          {:noreply, socket}
           
-          note_with_type =
-            note
-            |> Map.put(:type, :note)
-            |> Map.put(:unique_id, "note-#{note.id}")
+        content_length > 500 ->
+          {:noreply, put_flash(socket, :error, "Note is too long (max 500 characters)")}
 
-          {:noreply,
-           socket
-           |> assign(:show_note_modal, false)
-           |> assign(:note_input, "")
-           |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
-           |> stream_insert(:feed_items, note_with_type, at: 0)}
+        true ->
+          attrs = %{
+            content: content,
+            user_id: "user-#{user.id}",
+            user_color: socket.assigns.user_color,
+            user_name: user.display_name || user.username
+          }
 
-        {:error, reason} ->
-          Logger.error("post_feed_note FAILED: #{inspect(reason)}")
-          {:noreply, put_flash(socket, :error, "Failed to post note")}
+          Logger.debug("post_feed_note creating note with attrs: #{inspect(attrs)}")
+
+          case Social.create_public_note(attrs, user.id) do
+          {:ok, note} ->
+            Logger.info("post_feed_note SUCCESS - note created: #{inspect(note.id)}")
+            
+            note_with_type =
+              note
+              |> Map.put(:type, :note)
+              |> Map.put(:unique_id, "note-#{note.id}")
+
+            # Only insert into feed_items stream if it exists (we're on the feed page)
+            socket = socket
+              |> assign(:show_note_modal, false)
+              |> assign(:note_input, "")
+              |> assign(:feed_item_count, (socket.assigns[:feed_item_count] || 0) + 1)
+            
+            # Check if feed_items stream is configured
+            socket = if Map.has_key?(socket.assigns.streams, :feed_items) do
+              stream_insert(socket, :feed_items, note_with_type, at: 0)
+            else
+              socket
+            end
+
+            {:noreply, socket}
+
+          {:error, reason} ->
+            Logger.error("post_feed_note FAILED: #{inspect(reason)}")
+            {:noreply, put_flash(socket, :error, "Failed to post note")}
+        end
       end
     end
   end
