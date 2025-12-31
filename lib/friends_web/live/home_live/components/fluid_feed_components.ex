@@ -191,7 +191,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
           data-graph-data={Jason.encode!(@welcome_graph_data)}
           data-current-user-id={if @current_user, do: @current_user.id, else: nil}
           data-always-show="true"
-          data-hide-controls="true"
+          data-hide-controls="false"
         >
         </div>
       <% else %>
