@@ -1868,7 +1868,8 @@ defmodule FriendsWeb.HomeLive do
          id: user_data.id,
          username: user_data.username,
          display_name: user_data.display_name || user_data.username,
-         color: FriendsWeb.HomeLive.GraphHelper.user_color(user_data)
+         color: FriendsWeb.HomeLive.GraphHelper.user_color(user_data),
+         avatar_url: user_data.avatar_url
         })}
     else
       {:noreply, socket}

@@ -331,7 +331,12 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
         from u in Friends.Social.User,
           order_by: [desc: u.inserted_at],
           limit: 300,
-          select: %{id: u.id, username: u.username, display_name: u.display_name}
+          select: %{
+            id: u.id,
+            username: u.username,
+            display_name: u.display_name,
+            avatar_url: u.avatar_url
+          }
       )
 
     user_ids = Enum.map(users, & &1.id)
@@ -355,7 +360,8 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
           id: u.id,
           username: u.username,
           display_name: u.display_name || u.username,
-          color: user_color(u)
+          color: user_color(u),
+          avatar_url: u.avatar_url
         }
       end)
 

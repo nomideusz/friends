@@ -449,7 +449,8 @@ defmodule Friends.Social do
         id: user.id,
         username: user.username,
         display_name: user.display_name || user.username,
-        inserted_at: user.inserted_at
+        inserted_at: user.inserted_at,
+        avatar_url: user.avatar_url
       }}
     )
   end

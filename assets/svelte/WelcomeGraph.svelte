@@ -55,6 +55,7 @@
             id: id,
             username: userData.username,
             display_name: userData.display_name || userData.username,
+            avatar_url: userData.avatar_url,
             x: width / 2 + (Math.random() - 0.5) * 100,
             y: height / 2 + (Math.random() - 0.5) * 100,
         };
@@ -66,6 +67,7 @@
         simulation.nodes(nodesData);
         simulation.alpha(0.3).restart();
 
+        updatePatterns();
         updateNodes();
     }
 
@@ -93,6 +95,7 @@
         simulation.force("link").links(linksData);
         simulation.alpha(0.3).restart();
 
+        updatePatterns();
         updateNodes();
         updateLinks();
     }
@@ -261,6 +264,55 @@
             .remove();
     }
 
+    // Helper: update SVG patterns for avatars
+    function updatePatterns() {
+        if (!svg) return;
+        let defs = svg.select("defs");
+        if (defs.empty()) defs = svg.append("defs");
+
+        // Select patterns bound to nodes with avatars
+        const patterns = defs.selectAll("pattern").data(
+            nodesData.filter((d) => d.avatar_url),
+            (d) => d.id,
+        );
+
+        const enter = patterns
+            .enter()
+            .append("pattern")
+            .attr("id", (d) => `avatar-pattern-${d.id}`)
+            .attr("width", 1)
+            .attr("height", 1)
+            .attr("patternContentUnits", "objectBoundingBox");
+
+        // Add image to pattern
+        enter
+            .append("image")
+            .attr("href", (d) => d.avatar_url)
+            .attr("width", 1)
+            .attr("height", 1)
+            .attr("preserveAspectRatio", "xMidYMid slice");
+
+        patterns.exit().remove();
+    }
+
+    // Helper: Determine node fill
+    function getNodeFill(d, currentUserIdStr) {
+        if (d.avatar_url) return `url(#avatar-pattern-${d.id})`;
+        return d.id === currentUserIdStr ? "#60A5FA" : "#3B82F6";
+    }
+
+    // Helper: Determine node stroke
+    function getNodeStroke(d, currentUserIdStr) {
+        if (d.avatar_url) return "#ffffff"; // White border for photos
+        return d.id === currentUserIdStr ? "#FFFFFF" : "#93C5FD";
+    }
+
+    // Helper: Determine node fill opacity
+    function getNodeFillOpacity(d) {
+        if (d.avatar_url) return 1; // Solid for photos
+        return 0.3; // Glassy for colors
+    }
+
     function updateNodes() {
         const nodes = nodeGroup
             .selectAll("circle")
@@ -275,13 +327,10 @@
             .attr("r", 0)
             .attr("cx", (d) => d.x)
             .attr("cy", (d) => d.y)
-            .style("fill", (d) =>
-                d.id === currentUserIdStr ? "#60A5FA" : "#3B82F6",
-            )
-            .style("fill-opacity", 0.3)
-            .attr("stroke", (d) =>
-                d.id === currentUserIdStr ? "#FFFFFF" : "#93C5FD",
-            )
+            .attr("cy", (d) => d.y)
+            .style("fill", (d) => getNodeFill(d, currentUserIdStr))
+            .style("fill-opacity", (d) => getNodeFillOpacity(d))
+            .attr("stroke", (d) => getNodeStroke(d, currentUserIdStr))
             .attr("stroke-opacity", 0.6)
             .attr("stroke-width", 1.5)
             .call(
@@ -310,7 +359,7 @@
                     .transition()
                     .duration(200)
                     .attr("r", 10) // Subtle growth
-                    .style("fill-opacity", 0.4)
+                    .style("fill-opacity", d.avatar_url ? 1 : 0.4)
                     .attr("stroke-opacity", 0.8);
             })
             .on("mouseleave", function (event, d) {
@@ -320,7 +369,7 @@
                     .transition()
                     .duration(200)
                     .attr("r", 8) // Back to normal
-                    .style("fill-opacity", 0.3)
+                    .style("fill-opacity", d.avatar_url ? 1 : 0.3)
                     .attr("stroke-opacity", 0.6);
             })
             .on("click", handleNodeClick)
@@ -426,6 +475,9 @@
         nodeMap.clear();
         nodesData.forEach((n) => nodeMap.set(n.id, n));
 
+        // Create patterns for avatars
+        updatePatterns();
+
         // Simulation
         const linkDistance = isMobile ? 60 : 90;
         const chargeStrength = isMobile ? -60 : -100;
@@ -463,28 +515,31 @@
             .data(data.nodes)
             .join("circle")
             .attr("r", 8) // Uniform size
-            .style(
-                "fill",
-                (d) => (d.id === currentUserIdStr ? "#60A5FA" : "#3B82F6"), // Brighter blue for You, Standard blue for others
-            )
-            .style("fill-opacity", 0.3)
-            .attr(
-                "stroke",
-                (d) => (d.id === currentUserIdStr ? "#FFFFFF" : "#93C5FD"), // White for You, Light Blue for others
-            )
+            .style("fill", (d) => getNodeFill(d, currentUserIdStr))
+            .style("fill-opacity", (d) => getNodeFillOpacity(d))
+            .attr("stroke", (d) => getNodeStroke(d, currentUserIdStr))
             .attr("stroke-opacity", 0.6)
             .attr("stroke-width", 1.5)
-            .style("fill-opacity", 0.3)
             .style("cursor", "pointer")
             .on("mouseenter", function (event, d) {
                 if (d.id === currentUserIdStr) return;
                 showLabel(d);
-                d3.select(this).transition().duration(200).attr("r", 10); // Subtle growth
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 10)
+                    .style("fill-opacity", d.avatar_url ? 1 : 0.4)
+                    .attr("stroke-opacity", 0.8);
             })
             .on("mouseleave", function (event, d) {
                 if (d.id === currentUserIdStr) return;
                 hideLabel(d);
-                d3.select(this).transition().duration(200).attr("r", 8);
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr("r", 8)
+                    .style("fill-opacity", d.avatar_url ? 1 : 0.3)
+                    .attr("stroke-opacity", 0.6);
             })
             .call(
                 d3
