@@ -1,7 +1,8 @@
 defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
   @moduledoc """
   Unified bottom toolbar that adapts based on context.
-  Replaces corner orb navigation with a consistent spatial interaction model.
+  Feed context: inline search bar
+  Room context: room-specific action buttons
   """
   use FriendsWeb, :html
   import FriendsWeb.HomeLive.Helpers
@@ -19,34 +20,118 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
   attr :unread_count, :integer, default: 0
   attr :online_friend_count, :integer, default: 0
   attr :pending_request_count, :integer, default: 0
+  attr :search_query, :string, default: ""
+  attr :search_results, :map, default: %{people: [], groups: [], actions: []}
 
   def bottom_toolbar(assigns) do
     ~H"""
     <div class="fixed bottom-0 inset-x-0 z-[100] pointer-events-none pb-safe">
       <div class="flex justify-center px-4 pb-4">
-        <nav class="pointer-events-auto flex items-center gap-1 px-2 py-2 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
-          <%= case @context do %>
-            <% :feed -> %>
-              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" badge={@unread_count} />
-              <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
-            <% :room -> %>
-              <%= if @room.room_type != "dm" do %>
+        <%= case @context do %>
+          <% :feed -> %>
+            <%!-- Feed context: inline search bar --%>
+            <div class="pointer-events-auto w-full max-w-lg relative">
+              <%!-- Search Results Panel --%>
+              <%= if @search_query != "" do %>
+                <div class={[
+                  "absolute bottom-full mb-4 inset-x-0 max-h-[60vh] overflow-y-auto custom-scrollbar",
+                  "bg-neutral-900/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl",
+                  "animate-in fade-in slide-in-from-bottom-4 duration-300 ease-out p-4 space-y-6"
+                ]}>
+                  <%!-- Actions --%>
+                  <%= if length(@search_results.actions) > 0 do %>
+                    <.result_section title="Actions" icon="zap">
+                      <%= for action <- @search_results.actions do %>
+                        <.action_result action={action} />
+                      <% end %>
+                    </.result_section>
+                  <% end %>
+
+                  <%!-- People --%>
+                  <%= if length(@search_results.people) > 0 do %>
+                    <.result_section title="People" icon="user">
+                      <%= for person <- @search_results.people do %>
+                        <.person_result person={person} />
+                      <% end %>
+                    </.result_section>
+                  <% end %>
+
+                  <%!-- Groups --%>
+                  <%= if length(@search_results.groups) > 0 do %>
+                    <.result_section title="Groups" icon="users">
+                      <%= for group <- @search_results.groups do %>
+                        <.group_result group={group} />
+                      <% end %>
+                    </.result_section>
+                  <% end %>
+
+                  <%!-- Empty State --%>
+                  <%= if length(@search_results.people) == 0 and length(@search_results.groups) == 0 and length(@search_results.actions) == 0 do %>
+                    <div class="text-center py-8 text-white/30">
+                      <p class="text-sm">No results for "{@search_query}"</p>
+                      <p class="text-xs mt-1">Try @username, #group, or /command</p>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+
+              <form phx-change="toolbar_search" phx-submit="toolbar_search_submit" class="relative">
+                <div class="flex items-center gap-2 px-4 py-3 bg-neutral-900/40 backdrop-blur-xl rounded-2xl shadow-2xl">
+                  
+                  <%!-- Search input --%>
+                  <input
+                    type="text"
+                    name="query"
+                    value={@search_query}
+                    placeholder="Search people, groups..."
+                    phx-debounce="300"
+                    autocomplete="off"
+                    class="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/40 text-sm"
+                  />
+                  
+                  <%!-- Clear button --%>
+                  <%= if @search_query != "" do %>
+                    <button
+                      type="button"
+                      phx-click="clear_toolbar_search"
+                      class="text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  <% end %>
+                </div>
+              </form>
+            </div>
+          <% :room -> %>
+            <%!-- Room context: room-specific actions only --%>
+            <nav class="pointer-events-auto flex items-center gap-1 px-2 py-2 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
+              <%= if @room && @room.room_type != "dm" do %>
                 <.toolbar_button icon="people" label="Members" event="toggle_members_panel" />
               <% end %>
-              
-              <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
-              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
-            <% :focused -> %>
+              <.toolbar_button icon="plus" label="Add" event="toggle_add_menu" />
+            </nav>
+          <% :focused -> %>
+            <nav class="pointer-events-auto flex items-center gap-1 px-2 py-2 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
               <.toolbar_button icon="back" label="Back" event="close_focused_view" />
               <.toolbar_button icon="heart" label="React" event="react_to_item" />
               <.toolbar_button icon="reply" label="Reply" event="reply_to_item" />
               <.toolbar_button icon="more" label="More" event="show_item_actions" />
-            <% _ -> %>
-              <%!-- Fallback to feed --%>
-              <.toolbar_button icon="spaces" label="Groups" event="open_groups_sheet" />
-              <.toolbar_button icon="people" label="People" event="open_contacts_sheet" badge={@pending_request_count} />
-          <% end %>
-        </nav>
+            </nav>
+          <% _ -> %>
+            <%!-- Fallback: same as feed --%>
+            <div class="pointer-events-auto w-full max-w-lg">
+              <div class="flex items-center gap-2 px-4 py-3 bg-neutral-900/40 backdrop-blur-xl rounded-2xl shadow-2xl">
+                <input
+                  type="text"
+                  name="query"
+                  placeholder="Search people, groups..."
+                  class="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/40 text-sm"
+                />
+              </div>
+            </div>
+        <% end %>
       </div>
     </div>
     """
@@ -151,7 +236,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
   defp toolbar_icon(%{name: "graph"} = assigns) do
     ~H"""
     <svg class={icon_class(@active)} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <%!-- Constellation/network graph icon - 3 connected nodes --%>
       <circle cx="12" cy="5" r="2" stroke-width="1.5" />
       <circle cx="6" cy="17" r="2" stroke-width="1.5" />
       <circle cx="18" cy="17" r="2" stroke-width="1.5" />
@@ -193,11 +277,113 @@ defmodule FriendsWeb.HomeLive.Components.FluidBottomToolbar do
   end
 
   defp toolbar_icon(assigns) do
-    # Fallback icon
     ~H"""
     <svg class={icon_class(@active)} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
     </svg>
+    """
+  end
+
+  # = ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  # SEARCH RESULTS COMPONENTS
+  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  defp result_section(assigns) do
+    ~H"""
+    <div class="space-y-2">
+      <div class="flex items-center gap-2 px-2">
+        <span class="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">{@title}</span>
+        <div class="h-px flex-1 bg-white/5"></div>
+      </div>
+      <div class="grid gap-1">
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  defp action_result(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="omnibox_action"
+      phx-value-action={@action.event}
+      class="w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
+    >
+      <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5 text-amber-500/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-white/90 group-hover:text-white leading-tight">{@action.label}</div>
+        <div class="text-[10px] text-white/40 font-mono mt-0.5 tracking-tight group-hover:text-white/60 transition-colors">{@action.command}</div>
+      </div>
+      <svg class="w-4 h-4 text-white/10 group-hover:text-amber-500/40 transform group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+    """
+  end
+
+  defp person_result(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="omnibox_select_person"
+      phx-value-id={@person.id}
+      class="w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
+    >
+      <div
+        class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border border-white/10 overflow-hidden shrink-0"
+        style={"background-color: #{friend_color(@person)}"}
+      >
+        <%= if Map.get(@person, :avatar_url) do %>
+          <img src={@person.avatar_url} class="w-full h-full object-cover" alt={@person.username} />
+        <% else %>
+          {String.first(@person.username) |> String.upcase()}
+        <% end %>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-white/90 group-hover:text-white leading-tight truncate">
+          @{@person.username}
+        </div>
+        <%= if @person.display_name do %>
+          <div class="text-[10px] text-white/40 truncate mt-0.5 group-hover:text-white/60 transition-colors">{@person.display_name}</div>
+        <% end %>
+      </div>
+      <svg class="w-4 h-4 text-white/10 group-hover:text-blue-500/40 transform group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+    """
+  end
+
+  defp group_result(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="omnibox_select_group"
+      phx-value-code={@group.code}
+      class="w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white/5 transition-all text-left group"
+    >
+      <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5 text-blue-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-white/90 group-hover:text-white leading-tight truncate">
+          {@group.name || @group.code}
+        </div>
+        <div class="text-[10px] text-white/40 truncate mt-0.5 group-hover:text-white/60 transition-colors">
+          {length(Map.get(@group, :members, []))} members
+        </div>
+      </div>
+      <svg class="w-4 h-4 text-white/10 group-hover:text-purple-500/40 transform group-hover:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
     """
   end
 

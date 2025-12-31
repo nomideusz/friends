@@ -9,6 +9,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
   # ============================================================================
   # GROUPS SHEET
   # Bottom sheet for viewing all groups with inline creation
+  # Animates from avatar's corner position
   # ============================================================================
 
   attr :show, :boolean, default: false
@@ -18,11 +19,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
   attr :is_admin, :boolean, default: false
   attr :new_room_name, :string, default: ""
   attr :show_create_form, :boolean, default: false
+  attr :avatar_position, :string, default: "top-right"
 
   def groups_sheet(assigns) do
     # Check if current user is admin
     is_admin = Friends.Social.is_admin?(assigns.current_user)
-    assigns = assign(assigns, :is_admin, is_admin)
+    
+    # Determine sheet position and animation based on avatar position
+    {container_classes, content_classes, animation} = sheet_position_classes(assigns.avatar_position)
+    
+    assigns = assigns
+      |> assign(:is_admin, is_admin)
+      |> assign(:container_classes, container_classes)
+      |> assign(:content_classes, content_classes)
+      |> assign(:animation, animation)
 
     ~H"""
     <%= if @show do %>
@@ -33,11 +43,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
           phx-click="close_groups_sheet"
         ></div>
 
-        <%!-- Modal --%>
-        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
+        <%!-- Modal - positioned based on avatar corner --%>
+        <div class={"absolute z-10 flex pointer-events-none " <> @container_classes <> " " <> @animation}>
           <div
             id="groups-sheet-content"
-            class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col pointer-events-auto"
+            class={"bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-2xl max-h-[80vh] flex flex-col pointer-events-auto " <> @content_classes}
             phx-click-away="close_groups_sheet"
             phx-hook="SwipeableDrawer"
             data-close-event="close_groups_sheet"
@@ -115,6 +125,84 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
     """
   end
 
+  # ============================================================================
+  # GROUPS DRAWER CONTENT
+  # Content-only component for use inside TetheredDrawer
+  # ============================================================================
+
+  attr :groups, :list, default: []
+  attr :search_query, :string, default: ""
+  attr :current_user, :map, required: true
+  attr :new_room_name, :string, default: ""
+
+  def groups_drawer_content(assigns) do
+    is_admin = Friends.Social.is_admin?(assigns.current_user)
+    assigns = assign(assigns, :is_admin, is_admin)
+
+    ~H"""
+    <div class="flex flex-col h-full">
+      <%!-- Create Form --%>
+      <div class="px-4 py-3 border-b border-white/10">
+        <form phx-submit="create_group" class="flex gap-2">
+          <input
+            type="text"
+            name="name"
+            value={@new_room_name}
+            placeholder="New group name..."
+            class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+            autocomplete="off"
+          />
+          <button
+            type="submit"
+            class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+          >
+            Create
+          </button>
+        </form>
+      </div>
+
+      <%!-- Search (if many groups) --%>
+      <% multi_member_groups_count = Enum.count(@groups, fn g -> g.room_type != "dm" end) %>
+      <%= if multi_member_groups_count > 5 do %>
+        <div class="px-4 py-2 border-b border-white/10">
+          <input
+            type="text"
+            name="group_search"
+            value={@search_query}
+            placeholder="Search groups..."
+            phx-keyup="group_search"
+            phx-debounce="200"
+            autocomplete="off"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+          />
+        </div>
+      <% end %>
+
+      <%!-- Groups List --%>
+      <div class="flex-1 overflow-y-auto px-4 py-3">
+        <% multi_member_groups = Enum.filter(@groups, fn g -> g.room_type != "dm" end) %>
+        <%= if multi_member_groups == [] do %>
+          <div class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
+              <svg class="w-6 h-6 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <p class="text-white/40 text-sm">No groups yet</p>
+            <p class="text-white/30 text-xs">Create your first group above</p>
+          </div>
+        <% else %>
+          <div class="space-y-2">
+            <%= for group <- multi_member_groups do %>
+              <.group_row group={group} is_admin={@is_admin} />
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    """
+  end
+
 
   # ============================================================================
   # GROUP ROW
@@ -178,5 +266,46 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
       <% end %>
     </div>
     """
+  end
+
+  # ============================================================================
+  # SHEET POSITION HELPER
+  # Returns {container_classes, content_classes, animation} based on avatar position
+  # ============================================================================
+
+  defp sheet_position_classes(position) do
+    case position do
+      "top-left" ->
+        {
+          "top-16 left-4",
+          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
+          "animate-in fade-in zoom-in-95 slide-in-from-top-2 slide-in-from-left-2 duration-300"
+        }
+      "top-right" ->
+        {
+          "top-16 right-4",
+          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
+          "animate-in fade-in zoom-in-95 slide-in-from-top-2 slide-in-from-right-2 duration-300"
+        }
+      "bottom-left" ->
+        {
+          "bottom-24 left-4",
+          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
+          "animate-in fade-in zoom-in-95 slide-in-from-bottom-2 slide-in-from-left-2 duration-300"
+        }
+      "bottom-right" ->
+        {
+          "bottom-24 right-4",
+          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
+          "animate-in fade-in zoom-in-95 slide-in-from-bottom-2 slide-in-from-right-2 duration-300"
+        }
+      _ ->
+        # Default: top-right
+        {
+          "top-16 right-4",
+          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
+          "animate-in fade-in zoom-in-95 slide-in-from-top-2 slide-in-from-right-2 duration-300"
+        }
+    end
   end
 end

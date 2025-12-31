@@ -6,6 +6,9 @@
     <meta name="csrf-token" content={get_csrf_token()} />
     <.live_title default="New Internet">{assigns[:page_title]}</.live_title>
     
+    <%!-- Analytics --%>
+    <script defer src="https://umami.zaur.app/script.js" data-website-id="b6cdb2ea-1100-4825-a49b-568bb1f43198"></script>
+    
     <%!-- PWA Meta Tags --%>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#030303" />

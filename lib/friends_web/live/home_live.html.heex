@@ -59,13 +59,6 @@
   </.bottom_drawer>
 
 
-  <%!-- Omnibox Search --%>
-  <.omnibox
-    show={assigns[:show_omnibox] || false}
-    query={assigns[:omnibox_query] || ""}
-    results={assigns[:omnibox_results] || %{people: [], groups: [], actions: []}}
-    current_user={@current_user}
-  />
 
   <%!-- Fluid Create Menu (radial menu from + button) --%>
   <.fluid_create_menu
@@ -114,48 +107,67 @@
   
   <%!-- Old invite_modal removed - using fluid contact_search_sheet instead --%>
 
-  <%!-- People Sheet --%>
-  <.contact_search_sheet
+  <%!-- People Drawer (Tethered) --%>
+  <.tethered_drawer
+    id="people-drawer"
     show={@show_contact_sheet}
-    mode={@contact_mode}
-    contacts={@friends}
-    search_query={@contact_sheet_search}
-    search_results={@contact_search_results}
-    trusted_friend_ids={@trusted_friend_ids}
-    trusted_friends={@trusted_friends}
-    incoming_trust_requests={@incoming_trust_requests}
-    outgoing_requests={assigns[:outgoing_friend_requests] || []}
-    outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
-    pending_friend_requests={@pending_requests}
-    room={@room}
-    room_members={@room_members || []}
-    current_user={@current_user}
-    online_friend_ids={@online_friend_ids}
+    avatar_position={@current_user.avatar_position || "top-right"}
+    close_event="close_contact_search"
+    title="People"
+  >
+    <.people_drawer_content
+      mode={@contact_mode}
+      contacts={@friends}
+      search_query={@contact_sheet_search}
+      search_results={@contact_search_results}
+      trusted_friend_ids={@trusted_friend_ids}
+      trusted_friends={@trusted_friends}
+      incoming_trust_requests={@incoming_trust_requests}
+      outgoing_requests={assigns[:outgoing_friend_requests] || []}
+      outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
+      pending_friend_requests={@pending_requests}
+      room={@room}
+      room_members={@room_members || []}
+      current_user={@current_user}
+      online_friend_ids={@online_friend_ids}
+    />
+  </.tethered_drawer>
 
-  />
-
-  <%!-- Groups Sheet --%>
-  <.groups_sheet
+  <%!-- Groups Drawer (Tethered) --%>
+  <.tethered_drawer
+    id="groups-drawer"
     show={assigns[:show_groups_sheet] || false}
-    groups={if assigns[:group_search_query] && assigns[:group_search_query] != "", do: assigns[:group_search_results] || [], else: @user_private_rooms || []}
-    search_query={assigns[:group_search_query] || ""}
-    current_user={@current_user}
-    new_room_name={assigns[:new_room_name] || ""}
-    show_create_form={assigns[:show_group_create_form] || false}
-  />
+    avatar_position={@current_user.avatar_position || "top-right"}
+    close_event="close_groups_sheet"
+    title="Groups"
+  >
+    <.groups_drawer_content
+      groups={if assigns[:group_search_query] && assigns[:group_search_query] != "", do: assigns[:group_search_results] || [], else: @user_private_rooms || []}
+      search_query={assigns[:group_search_query] || ""}
+      current_user={@current_user}
+      new_room_name={assigns[:new_room_name] || ""}
+    />
+  </.tethered_drawer>
 
-  <%!-- Profile Sheet --%>
-  <.profile_sheet
+  <%!-- Settings Drawer (Tethered) --%>
+  <.tethered_drawer
+    id="settings-drawer"
     show={assigns[:show_profile_sheet] || false}
-    current_user={@current_user}
-    devices={assigns[:devices] || []}
-    uploads={assigns[:uploads]}
-    trusted_friends={assigns[:trusted_friends] || []}
-    trusted_friend_ids={assigns[:trusted_friend_ids] || []}
-    online_friend_ids={assigns[:online_friend_ids]}
-    incoming_trust_requests={assigns[:incoming_trust_requests] || []}
-    outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
-  />
+    avatar_position={@current_user.avatar_position || "top-right"}
+    close_event="close_profile_sheet"
+    title="Settings"
+  >
+    <.settings_drawer_content
+      current_user={@current_user}
+      devices={assigns[:devices] || []}
+      uploads={assigns[:uploads]}
+      trusted_friends={assigns[:trusted_friends] || []}
+      trusted_friend_ids={assigns[:trusted_friend_ids] || []}
+      online_friend_ids={assigns[:online_friend_ids]}
+      incoming_trust_requests={assigns[:incoming_trust_requests] || []}
+      outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
+    />
+  </.tethered_drawer>
 
   <%!-- Global User Menu --%>
   <%= if assigns[:show_user_menu] do %>
@@ -538,29 +550,15 @@
     <%= if @current_user do %>
       <%!-- Feed-first layout, graph available via drawer --%>
 
-    <%!-- Floating User Avatar (top-right, accessible everywhere) --%>
-    <button
-      id="global-user-avatar"
-      type="button"
-      phx-hook="ProgressiveSignOut"
-      class="fixed top-3 right-4 z-[100] w-10 h-10 rounded-full border border-white/20 hover:border-white/40 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse pointer-events-auto bg-neutral-800"
-      title={"@#{@current_user.username}"}
-    >
-      <div class="avatar-content w-full h-full relative pointer-events-none rounded-full overflow-hidden z-10">
-        <%= if @current_user.avatar_url do %>
-          <img src={@current_user.avatar_url} alt="" class="w-full h-full object-cover" />
-        <% else %>
-          <div class="w-full h-full flex items-center justify-center text-white/60 text-sm font-medium">
-            <%= String.first(@current_user.username) |> String.upcase() %>
-          </div>
-        <% end %>
-      </div>
-      
-      <%!-- Progress Ring (rendered here for reliability) --%>
-      <svg class="progressive-sign-out-ring absolute inset-[-5px] w-[calc(100%+10px)] h-[calc(100%+10px)] pointer-events-none opacity-0 transition-opacity duration-300 z-50" viewBox="0 0 50 50">
-        <circle cx="25" cy="25" r="22" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="138.23" transform="rotate(-90 25 25)" class="transition-[stroke-dashoffset] ease-linear" />
-      </svg>
-    </button>
+    <%!-- Avatar Hub (Groups, People, Graph, Settings) --%>
+    <.avatar_hub
+      current_user={@current_user}
+      show_menu={assigns[:show_avatar_menu] || false}
+      pending_request_count={length(assigns[:pending_requests] || [])}
+      unread_count={Map.get(assigns, :total_unread_count, 0)}
+      online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+      position={@current_user.avatar_position || "top-right"}
+    />
 
   <%!-- === MAIN LAYOUT === --%>
   <div class="w-full text-white flex flex-row gap-4 relative z-10 pointer-events-none">
@@ -651,6 +649,8 @@
         unread_count={Map.get(assigns, :total_unread_count, 0)}
         online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
         pending_request_count={length(assigns[:pending_requests] || [])}
+        search_query={assigns[:toolbar_search_query] || ""}
+        search_results={assigns[:toolbar_search_results] || %{people: [], groups: [], actions: []}}
       />
     <% end %>
 

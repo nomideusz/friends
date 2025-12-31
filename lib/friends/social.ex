@@ -497,6 +497,21 @@ defmodule Friends.Social do
   end
 
   @doc """
+  Update user's avatar corner position preference.
+  Valid positions: "top-left", "top-right", "bottom-left", "bottom-right"
+  """
+  def update_avatar_position(user_id, position) do
+    user = get_user(user_id)
+    if user do
+      user
+      |> User.changeset(%{avatar_position: position})
+      |> Repo.update()
+    else
+      {:error, :user_not_found}
+    end
+  end
+
+  @doc """
   Admin: delete a user and all their content.
   This deletes: photos, notes, room memberships, friendships, devices, etc.
   """

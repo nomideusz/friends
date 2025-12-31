@@ -26,11 +26,14 @@ defmodule Friends.Social.User do
     # Profile
     field :avatar_url, :string
     field :user_color, :string
+    # UI Preferences
+    field :avatar_position, :string, default: "top-right"
 
     timestamps()
   end
 
   @username_regex ~r/^[a-z0-9_]{3,20}$/
+  @valid_positions ["top-left", "top-right", "bottom-left", "bottom-right"]
 
   def changeset(user, attrs) do
     user
@@ -43,13 +46,15 @@ defmodule Friends.Social.User do
       :invite_code,
       :recovery_requested_at,
       :avatar_url,
-      :user_color
+      :user_color,
+      :avatar_position
     ])
     |> validate_required([:username])
     |> validate_format(:username, @username_regex,
       message: "must be 3-20 lowercase letters, numbers, or underscores"
     )
     |> validate_length(:display_name, max: 50)
+    |> validate_inclusion(:avatar_position, @valid_positions)
     |> unique_constraint(:username)
   end
 

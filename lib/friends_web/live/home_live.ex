@@ -16,6 +16,8 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidCreateMenu
   import FriendsWeb.HomeLive.Components.FluidOmnibox
   import FriendsWeb.HomeLive.Components.FluidUploadIndicator
+  import FriendsWeb.HomeLive.Components.FluidAvatarHub
+  import FriendsWeb.HomeLive.Components.TetheredDrawer
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -79,7 +81,51 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("show_my_constellation", _params, socket) do
-    {:noreply, assign(socket, :show_graph_drawer, true)}
+    {:noreply,
+     socket
+     |> assign(:show_avatar_menu, false)
+     |> assign(:show_graph_drawer, true)}
+  end
+
+  # --- Avatar Hub Events ---
+
+  def handle_event("toggle_avatar_menu", _params, socket) do
+    {:noreply, assign(socket, :show_avatar_menu, !socket.assigns[:show_avatar_menu])}
+  end
+
+  def handle_event("close_avatar_menu", _params, socket) do
+    {:noreply, assign(socket, :show_avatar_menu, false)}
+  end
+
+  def handle_event("open_profile_sheet", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_avatar_menu, false)
+     |> assign(:show_profile_sheet, true)}
+  end
+
+  def handle_event("close_profile_sheet", _params, socket) do
+    {:noreply, assign(socket, :show_profile_sheet, false)}
+  end
+
+  def handle_event("request_sign_out", _params, socket) do
+    # data-confirm handles the browser confirmation
+    # Redirect to logout endpoint
+    {:noreply, redirect(socket, to: "/auth/logout")}
+  end
+
+  def handle_event("set_avatar_position", %{"position" => position}, socket) do
+    user = socket.assigns.current_user
+    
+    case Social.update_avatar_position(user.id, position) do
+      {:ok, updated_user} ->
+        {:noreply,
+         socket
+         |> assign(:current_user, updated_user)
+         |> assign(:show_avatar_menu, false)}
+      {:error, _} ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("node_clicked", %{"user_id" => user_id_str}, socket) do
@@ -625,14 +671,10 @@ defmodule FriendsWeb.HomeLive do
       socket.assigns[:show_create_menu] ->
         {:noreply, assign(socket, :show_create_menu, false)}
 
-      socket.assigns[:show_omnibox] ->
-        {:noreply, assign(socket, :show_omnibox, false)}
-
       true ->
         {:noreply, socket}
     end
   end
-
 
   def handle_event("handle_keydown", %{"key" => key}, socket)
       when key in ["ArrowLeft", "ArrowRight"] do
@@ -957,27 +999,30 @@ defmodule FriendsWeb.HomeLive do
      |> push_event("trigger_file_input", %{selector: selector})}
   end
 
-  # --- Omnibox Search Handlers ---
+  # --- Toolbar Search Handlers ---
 
-  def handle_event("open_omnibox", _params, socket) do
-    {:noreply, 
-     socket
-     |> assign(:show_omnibox, true)
-     |> assign(:omnibox_query, "")
-     |> assign(:omnibox_results, %{people: [], groups: [], actions: []})}
-  end
-
-  def handle_event("close_omnibox", _params, socket) do
-    {:noreply, assign(socket, :show_omnibox, false)}
-  end
-
-  def handle_event("omnibox_search", %{"value" => query}, socket) do
-    results = perform_omnibox_search(socket, query)
+  def handle_event("toolbar_search", %{"query" => query}, socket) do
+    results = perform_search(socket, query)
+    
     {:noreply,
      socket
-     |> assign(:omnibox_query, query)
-     |> assign(:omnibox_results, results)}
+     |> assign(:toolbar_search_query, query)
+     |> assign(:toolbar_search_results, results)}
   end
+
+  def handle_event("toolbar_search_submit", %{"query" => query}, socket) do
+    # On submit, could open first result or do something specific
+    # For now, just keep the search behavior
+    {:noreply, socket}
+  end
+
+  def handle_event("clear_toolbar_search", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:toolbar_search_query, "")
+     |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})}
+  end
+
 
   def handle_event("omnibox_select_person", %{"id" => id_str}, socket) do
     # Open DM with this person
@@ -988,7 +1033,8 @@ defmodule FriendsWeb.HomeLive do
             {:ok, room} ->
               {:noreply,
                socket
-               |> assign(:show_omnibox, false)
+               |> assign(:toolbar_search_query, "")
+               |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})
                |> push_navigate(to: ~p"/r/#{room.code}")}
             {:error, _} ->
               {:noreply, put_flash(socket, :error, "Could not open chat")}
@@ -1004,13 +1050,17 @@ defmodule FriendsWeb.HomeLive do
   def handle_event("omnibox_select_group", %{"code" => code}, socket) do
     {:noreply,
      socket
-     |> assign(:show_omnibox, false)
+     |> assign(:toolbar_search_query, "")
+     |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})
      |> push_navigate(to: ~p"/r/#{code}")}
   end
 
   def handle_event("omnibox_action", %{"action" => action}, socket) do
-    socket = assign(socket, :show_omnibox, false)
-    
+    socket = 
+      socket
+      |> assign(:toolbar_search_query, "")
+      |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})
+
     case action do
       "open_create_group_modal" ->
         {:noreply, assign(socket, :create_group_modal, true)}
@@ -1031,49 +1081,14 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  defp perform_omnibox_search(socket, query) do
-    query = String.trim(query)
-    
-    cond do
-      query == "" ->
-        %{people: [], groups: [], actions: []}
-        
-      String.starts_with?(query, "@") ->
-        # People search
-        username_query = String.trim_leading(query, "@")
-        people = if username_query != "", do: Social.search_users(username_query, limit: 5), else: []
-        %{people: people, groups: [], actions: []}
-        
-      String.starts_with?(query, "#") ->
-        # Group search  
-        group_query = String.trim_leading(query, "#")
-        groups = if group_query != "" and socket.assigns.current_user do
-          Social.search_user_groups(socket.assigns.current_user.id, group_query, limit: 5)
-        else
-          []
-        end
-        %{people: [], groups: groups, actions: []}
-        
-      String.starts_with?(query, "/") ->
-        # Actions handled in template
-        %{people: [], groups: [], actions: []}
-        
-      true ->
-        # General search - search both people and groups
-        people = Social.search_users(query, limit: 3)
-        groups = if socket.assigns.current_user do
-          Social.search_user_groups(socket.assigns.current_user.id, query, limit: 3)
-        else
-          []
-        end
-        %{people: people, groups: groups, actions: []}
-    end
-  end
 
   # --- Groups Sheet Events ---
 
   def handle_event("open_groups_sheet", _params, socket) do
-    {:noreply, assign(socket, :show_groups_sheet, true)}
+    {:noreply,
+     socket
+     |> assign(:show_avatar_menu, false)
+     |> assign(:show_groups_sheet, true)}
   end
 
   def handle_event("close_groups_sheet", _params, socket) do
@@ -1581,18 +1596,6 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_user_menu, !Map.get(socket.assigns, :show_user_menu, false))}
   end
 
-  def handle_event("open_profile_sheet", _params, socket) do
-    {:noreply, assign(socket, :show_profile_sheet, true)}
-  end
-
-  def handle_event("close_profile_sheet", _params, socket) do
-    {:noreply, assign(socket, :show_profile_sheet, false)}
-  end
-
-  def handle_event("request_sign_out", _params, socket) do
-    {:noreply, assign(socket, show_sign_out_modal: true)}
-  end
-
   def handle_event("cancel_sign_out", _params, socket) do
     {:noreply, assign(socket, show_sign_out_modal: false)}
   end
@@ -1671,40 +1674,7 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  # --- Chat Events ---
 
-  def handle_event("update_chat_message", %{"message" => message}, socket) do
-    # Delegate to ChatEvents
-    ChatEvents.handle_typing(socket, message)
-  end
-
-  def handle_event("send_room_message", params, socket) do
-    ChatEvents.send_room_text_message(socket, params)
-  end
-
-  def handle_event("send_room_voice_note", params, socket) do
-    ChatEvents.send_room_voice_note(socket, params)
-  end
-
-  def handle_event("walkie_start", _params, socket) do
-    ChatEvents.send_walkie_start(socket)
-  end
-
-  def handle_event("walkie_stop", _params, socket) do
-    ChatEvents.send_walkie_stop(socket)
-  end
-
-  def handle_event("walkie_chunk", params, socket) do
-    ChatEvents.send_walkie_chunk(socket, params)
-  end
-
-  def handle_event("expand_chat", _params, socket) do
-    ChatEvents.expand_chat(socket)
-  end
-
-  def handle_event("toggle_chat_expanded", _params, socket) do
-    ChatEvents.toggle_chat_expanded(socket)
-  end
 
 
   # --- Progress Handler ---
@@ -2006,4 +1976,65 @@ defmodule FriendsWeb.HomeLive do
 
 
 
+
+  # --- Search Helpers ---
+
+  defp perform_search(socket, query) do
+    query = String.trim(query)
+    
+    cond do
+      query == "" ->
+        %{people: [], groups: [], actions: []}
+        
+      String.starts_with?(query, "@") ->
+        # People search
+        username_query = String.trim_leading(query, "@")
+        people = if username_query != "", do: Social.search_users(username_query, limit: 5), else: []
+        %{people: people, groups: [], actions: []}
+        
+      String.starts_with?(query, "#") ->
+        # Group search  
+        group_query = String.trim_leading(query, "#")
+        groups = if group_query != "" and socket.assigns.current_user do
+          Social.search_user_groups(socket.assigns.current_user.id, group_query, limit: 5)
+        else
+          []
+        end
+        %{people: [], groups: groups, actions: []}
+        
+      String.starts_with?(query, "/") ->
+        # Quick commands logic
+        %{people: [], groups: [], actions: build_toolbar_actions(query)}
+        
+      true ->
+        # General search - search both people and groups
+        people = Social.search_users(query, limit: 5)
+        groups = if socket.assigns.current_user do
+          Social.search_user_groups(socket.assigns.current_user.id, query, limit: 5)
+        else
+          []
+        end
+        %{people: people, groups: groups, actions: []}
+    end
+  end
+
+  defp build_toolbar_actions(query) do
+    cmd = String.trim_leading(query, "/") |> String.downcase()
+    
+    actions = [
+      %{id: "new_group", label: "Create Group", command: "/new group", event: "open_create_group_modal", icon: "zap"},
+      %{id: "invite", label: "Invite Friend", command: "/invite", event: "open_contacts_sheet", icon: "zap"},
+      %{id: "settings", label: "Settings", command: "/settings", event: "open_profile_sheet", icon: "zap"},
+      %{id: "graph", label: "Network Graph", command: "/graph", event: "show_fullscreen_graph", icon: "zap"}
+    ]
+
+    if cmd == "" do
+      actions
+    else
+      Enum.filter(actions, fn a -> 
+        String.contains?(String.downcase(a.label), cmd) || 
+        String.contains?(String.downcase(a.command), cmd)
+      end)
+    end
+  end
 end

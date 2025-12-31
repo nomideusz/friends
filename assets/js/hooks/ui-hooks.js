@@ -103,127 +103,254 @@ export const NavOrbLongPressHook = {
     }
 }
 
-export const ProgressiveSignOutHook = {
+/**
+ * DraggableAvatar - Allows user to drag their avatar to any of 4 corners
+ * On drop, snaps to nearest corner and saves preference to database
+ */
+export const DraggableAvatarHook = {
     mounted() {
-        this.timer = null
-        this.morphTimer = null
-        this.pressing = false
-        this.duration = 4000
+        this.isDragging = false
+        this.startX = 0
+        this.startY = 0
+        this.currentX = 0
+        this.currentY = 0
+        this.originalPosition = this.el.dataset.position || 'top-right'
 
-        this.el.style.userSelect = 'none'
-        this.el.style.webkitUserSelect = 'none'
-        this.el.style.touchAction = 'manipulation'
+        // Create a clone for dragging visual
+        this.ghost = null
 
-        this.createProgressRing()
-        this.iconContainer = this.el.querySelector('.avatar-content')
-        this.originalContent = this.iconContainer ? this.iconContainer.innerHTML : null
+        // Get the container (the avatar-hub-container div)
+        this.container = this.el.closest('#avatar-hub-container') || this.el.parentElement
 
-        const startPress = (e) => {
-            if (e.type === 'mousedown' && e.button !== 0) return
-            e.preventDefault()
+        const startDrag = (e) => {
+            // Only start drag on long press (300ms)
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY
 
-            this.pressing = true
+            this.longPressTimer = setTimeout(() => {
+                this.isDragging = true
+                this.startX = clientX
+                this.startY = clientY
 
-            this.pressStartTime = Date.now()
+                // Visual feedback - add dragging class
+                this.el.classList.add('scale-125', 'opacity-80', 'z-[200]')
+                if (navigator.vibrate) navigator.vibrate(20)
 
-            setTimeout(() => {
-                if (!this.pressing) return
-                // Make sure ring is visible and above background
-                this.progressSvg.style.opacity = '1'
-                this.progressRing.style.strokeDashoffset = '0'
-                if (navigator.vibrate) navigator.vibrate(10)
-            }, 500)
-
-            this.morphTimer = setTimeout(() => {
-                if (!this.pressing) return
-                if (this.iconContainer) {
-                    this.iconContainer.innerHTML = `
-                         <div class="w-full h-full flex items-center justify-center bg-red-500/20 text-red-500 rounded-full">
-                            <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                        </div>
-                    `
-                }
-                if (navigator.vibrate) navigator.vibrate([30, 30, 30])
-            }, 500)
-
-            this.timer = setTimeout(() => {
-                if (this.pressing) {
-                    if (navigator.vibrate) navigator.vibrate([50, 50, 100])
-                    this.pushEvent("request_sign_out", {})
-                    this.pressing = false
-                    this.resetVisuals()
-                }
-            }, this.duration)
+                // Show corner targets
+                this.showCornerTargets()
+            }, 300)
         }
 
-        const endPress = (e) => {
-            if (!this.pressing) return
+        const onMove = (e) => {
+            if (!this.isDragging) return
 
-            const duration = Date.now() - this.pressStartTime
-            this.pressing = false
+            e.preventDefault()
 
-            if (duration < 500) {
-                this.pushEvent("toggle_user_menu", {})
-            }
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY
 
-            if (this.timer) {
-                clearTimeout(this.timer)
-                this.timer = null
-            }
-            if (this.morphTimer) {
-                clearTimeout(this.morphTimer)
-                this.morphTimer = null
-            }
+            this.currentX = clientX
+            this.currentY = clientY
 
-            this.resetVisuals()
+            // Move the container with the avatar
+            const deltaX = clientX - this.startX
+            const deltaY = clientY - this.startY
+
+            this.container.style.transition = 'none'
+            this.container.style.transform = `translate(${deltaX}px, ${deltaY}px)`
+
+            // Highlight nearest corner
+            this.highlightNearestCorner(clientX, clientY)
         }
 
-        this.el.addEventListener('mousedown', startPress)
-        this.el.addEventListener('touchstart', startPress, { passive: false })
-        this.el.addEventListener('mouseup', endPress)
-        this.el.addEventListener('mouseleave', endPress)
-        this.el.addEventListener('touchend', endPress)
-        this.el.addEventListener('touchcancel', endPress)
+        const endDrag = (e) => {
+            // Clear long press timer
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer)
+                this.longPressTimer = null
+            }
 
-        this.el.addEventListener('click', (e) => {
-            e.preventDefault()
-            e.stopPropagation()
+            if (!this.isDragging) return
+
+            this.isDragging = false
+
+            // Remove dragging visual
+            this.el.classList.remove('scale-125', 'opacity-80', 'z-[200]')
+
+            // Determine which corner to snap to
+            const corner = this.getNearestCorner(this.currentX, this.currentY)
+
+            // Animate to corner position
+            this.container.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            this.container.style.transform = ''
+
+            // Hide corner targets
+            this.hideCornerTargets()
+
+            // If corner changed, save to DB
+            if (corner !== this.originalPosition) {
+                if (navigator.vibrate) navigator.vibrate([20, 50, 20])
+                this.pushEvent('set_avatar_position', { position: corner })
+                this.originalPosition = corner
+            }
+        }
+
+        // Touch events
+        this.el.addEventListener('touchstart', startDrag, { passive: true })
+        document.addEventListener('touchmove', onMove, { passive: false })
+        document.addEventListener('touchend', endDrag)
+        document.addEventListener('touchcancel', endDrag)
+
+        // Mouse events
+        this.el.addEventListener('mousedown', startDrag)
+        document.addEventListener('mousemove', onMove)
+        document.addEventListener('mouseup', endDrag)
+
+        this._startDrag = startDrag
+        this._onMove = onMove
+        this._endDrag = endDrag
+    },
+
+    getNearestCorner(x, y) {
+        const w = window.innerWidth
+        const h = window.innerHeight
+
+        const isLeft = x < w / 2
+        const isTop = y < h / 2
+
+        if (isTop && isLeft) return 'top-left'
+        if (isTop && !isLeft) return 'top-right'
+        if (!isTop && isLeft) return 'bottom-left'
+        return 'bottom-right'
+    },
+
+    showCornerTargets() {
+        // Create overlay with corner targets
+        this.overlay = document.createElement('div')
+        this.overlay.className = 'fixed inset-0 z-[150] pointer-events-none'
+        this.overlay.innerHTML = `
+            <div class="absolute top-4 left-4 w-12 h-12 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 corner-target" data-corner="top-left">↖</div>
+            <div class="absolute top-4 right-4 w-12 h-12 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 corner-target" data-corner="top-right">↗</div>
+            <div class="absolute bottom-20 left-4 w-12 h-12 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 corner-target" data-corner="bottom-left">↙</div>
+            <div class="absolute bottom-20 right-4 w-12 h-12 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 corner-target" data-corner="bottom-right">↘</div>
+        `
+        document.body.appendChild(this.overlay)
+    },
+
+    hideCornerTargets() {
+        if (this.overlay) {
+            this.overlay.remove()
+            this.overlay = null
+        }
+    },
+
+    highlightNearestCorner(x, y) {
+        if (!this.overlay) return
+
+        const nearest = this.getNearestCorner(x, y)
+
+        this.overlay.querySelectorAll('.corner-target').forEach(el => {
+            if (el.dataset.corner === nearest) {
+                el.classList.remove('border-white/30', 'text-white/40')
+                el.classList.add('border-white', 'text-white', 'bg-white/20', 'scale-110')
+            } else {
+                el.classList.add('border-white/30', 'text-white/40')
+                el.classList.remove('border-white', 'text-white', 'bg-white/20', 'scale-110')
+            }
         })
     },
 
-    createProgressRing() {
-        // Select existing SVG from DOM
-        this.progressSvg = this.el.querySelector('svg.progressive-sign-out-ring')
-        this.progressRing = this.progressSvg.querySelector('circle')
+    destroyed() {
+        if (this.longPressTimer) clearTimeout(this.longPressTimer)
+        this.hideCornerTargets()
 
-        // Ensure transition matches duration
-        if (this.progressRing) {
-            this.progressRing.style.transitionDuration = `${this.duration - 500}ms`
-        }
+        document.removeEventListener('touchmove', this._onMove)
+        document.removeEventListener('touchend', this._endDrag)
+        document.removeEventListener('touchcancel', this._endDrag)
+        document.removeEventListener('mousemove', this._onMove)
+        document.removeEventListener('mouseup', this._endDrag)
+    }
+}
 
-        this.originalContent = this.iconContainer ? this.iconContainer.innerHTML : null
+/**
+ * TetheredLineHook
+ * Draws and animates an SVG line from the avatar to the drawer
+ */
+export const TetheredLineHook = {
+    mounted() {
+        this.avatarPosition = this.el.dataset.avatarPosition || 'top-right'
+        this.drawerId = this.el.dataset.drawerId
+
+        // Wait for drawer to render
+        requestAnimationFrame(() => {
+            this.updateLine()
+        })
+
+        // Update on resize
+        this._onResize = () => this.updateLine()
+        window.addEventListener('resize', this._onResize)
+
+        // Animate line appearance
+        this.animateLine()
     },
 
-    resetVisuals() {
-        if (!this.progressSvg || !this.progressRing) return
+    updated() {
+        this.avatarPosition = this.el.dataset.avatarPosition || 'top-right'
+        this.updateLine()
+    },
 
-        this.progressSvg.style.opacity = '0'
-        this.progressRing.style.transition = 'none'
-        this.progressRing.style.strokeDashoffset = '138.23'
-        // Force reflow
-        this.progressRing.getBoundingClientRect()
-        this.progressRing.style.transition = `stroke-dashoffset ${this.duration - 500}ms linear`
+    updateLine() {
+        const line = this.el.querySelector('.tether-line')
+        if (!line) return
 
-        if (this.iconContainer && this.originalContent) {
-            this.iconContainer.innerHTML = this.originalContent
+        const avatar = document.getElementById('avatar-hub-trigger')
+        const drawer = document.getElementById(this.drawerId)
+
+        if (!avatar || !drawer) return
+
+        const avatarRect = avatar.getBoundingClientRect()
+        const drawerRect = drawer.getBoundingClientRect()
+
+        // Avatar center point
+        const avatarCenterX = avatarRect.left + avatarRect.width / 2
+        const avatarCenterY = avatarRect.top + avatarRect.height / 2
+
+        // Drawer connection point (edge closest to avatar)
+        let drawerX, drawerY
+
+        if (this.avatarPosition.includes('left')) {
+            // Drawer is on left, connect to right edge of drawer
+            drawerX = drawerRect.right
+            drawerY = Math.min(Math.max(avatarCenterY, drawerRect.top + 50), drawerRect.bottom - 50)
+        } else {
+            // Drawer is on right, connect to left edge of drawer
+            drawerX = drawerRect.left
+            drawerY = Math.min(Math.max(avatarCenterY, drawerRect.top + 50), drawerRect.bottom - 50)
         }
+
+        line.setAttribute('x1', avatarCenterX)
+        line.setAttribute('y1', avatarCenterY)
+        line.setAttribute('x2', drawerX)
+        line.setAttribute('y2', drawerY)
+    },
+
+    animateLine() {
+        const line = this.el.querySelector('.tether-line')
+        if (!line) return
+
+        // Animate stroke-dashoffset for a "drawing" effect
+        const length = 500 // approximate max length
+        line.style.strokeDasharray = length
+        line.style.strokeDashoffset = length
+        line.style.transition = 'stroke-dashoffset 0.4s ease-out'
+
+        requestAnimationFrame(() => {
+            line.style.strokeDashoffset = '0'
+        })
     },
 
     destroyed() {
-        if (this.timer) clearTimeout(this.timer)
-        if (this.morphTimer) clearTimeout(this.morphTimer)
+        window.removeEventListener('resize', this._onResize)
     }
 }
 
@@ -529,7 +656,8 @@ export const AutoDismissHook = {
 export default {
     HomeOrb: HomeOrbHook,
     NavOrbLongPress: NavOrbLongPressHook,
-    ProgressiveSignOut: ProgressiveSignOutHook,
+    DraggableAvatar: DraggableAvatarHook,
+    TetheredLine: TetheredLineHook,
     SwipeableDrawer: SwipeableDrawerHook,
     LockScroll: LockScrollHook,
     PhotoGrid: PhotoGridHook,

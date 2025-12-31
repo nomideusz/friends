@@ -42,6 +42,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
     
     {:noreply,
      socket
+     |> assign(:show_avatar_menu, false)
      |> assign(:show_contact_sheet, true)
      |> assign(:contact_mode, mode_atom)
      |> assign(:contact_sheet_search, "")
