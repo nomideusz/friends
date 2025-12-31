@@ -122,6 +122,22 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, redirect(socket, to: "/auth/logout")}
   end
 
+  def handle_event("admin_cleanup_test_users", _params, socket) do
+    current_user = socket.assigns.current_user
+    
+    # Only allow rietarius to do this
+    if current_user && current_user.username == "rietarius" do
+      case Friends.Release.cleanup_test_users() do
+        {:ok, count} ->
+          {:noreply, put_flash(socket, :info, "Deleted #{count} test users!")}
+        _ ->
+          {:noreply, put_flash(socket, :error, "Cleanup failed")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "Admin only")}
+    end
+  end
+
   def handle_event("set_avatar_position", %{"position" => position}, socket) do
     user = socket.assigns.current_user
     
