@@ -13,9 +13,10 @@ defmodule FriendsWeb.HomeLive.Events.SettingsEvents do
   def open_devices_modal(socket) do
     # Refresh devices list just in case
     devices = Social.list_user_devices(socket.assigns.current_user.id)
-    
+
     {:noreply,
      socket
+     |> assign(:show_profile_sheet, false)  # Close settings drawer
      |> assign(:show_devices_modal, true)
      |> assign(:devices, devices)}
   end
@@ -76,6 +77,7 @@ defmodule FriendsWeb.HomeLive.Events.SettingsEvents do
   def open_name_modal(socket) do
     {:noreply,
      socket
+     |> assign(:show_profile_sheet, false)  # Close settings drawer
      |> assign(:show_name_modal, true)
      |> assign(:name_input, socket.assigns.user_name || "")}
   end

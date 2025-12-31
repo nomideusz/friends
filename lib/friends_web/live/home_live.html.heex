@@ -196,7 +196,7 @@
     current_device_id={assigns[:current_device_id]}
   />
 
-  <%!-- Device Pairing Modal --%>
+  <%!-- Device Pairing Modal (Fluid Design) --%>
   <%= if assigns[:show_pairing_modal] && assigns[:pairing_token] do %>
     <div
       id="pairing-modal"
@@ -210,52 +210,73 @@
         phx-click="close_pairing_modal"
       ></div>
 
-      <%!-- Modal Content --%>
+      <%!-- Modal Content - Bottom Sheet Style --%>
       <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
         <div
-          class="w-full max-w-md bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl p-6 pointer-events-auto"
+          class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl pointer-events-auto"
           phx-click-away="close_pairing_modal"
+          phx-hook="SwipeableDrawer"
+          data-close-event="close_pairing_modal"
         >
           <%!-- Handle --%>
-          <div class="flex justify-center mb-4" phx-click="close_pairing_modal">
-            <div class="w-10 h-1 rounded-full bg-white/20 cursor-pointer"></div>
+          <div class="py-3 flex justify-center cursor-pointer" phx-click="close_pairing_modal">
+            <div class="w-10 h-1 rounded-full bg-white/20"></div>
           </div>
 
           <%!-- Header --%>
-          <div class="text-center mb-6">
-            <h2 class="text-xl font-bold text-white mb-2">Add New Device</h2>
-            <p class="text-white/50 text-sm">Scan the QR code or enter the code on your new device</p>
-          </div>
-
-          <%!-- QR Code --%>
-          <div class="flex justify-center mb-6">
-            <div
-              id="pairing-qr"
-              phx-hook="QRDisplay"
-              data-qr={assigns[:pairing_url]}
-              class="bg-white p-4 rounded-2xl"
-            >
-              <canvas width="200" height="200"></canvas>
+          <div class="px-6 pb-4 border-b border-white/10">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-white">Link a Device</h2>
+                <p class="text-xs text-white/40">Scan QR or enter code on new device</p>
+              </div>
             </div>
           </div>
 
-          <%!-- Token Display --%>
-          <div class="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 text-center">
-            <div class="text-[10px] text-white/40 uppercase tracking-widest mb-2">Pairing Code</div>
-            <div class="text-3xl font-mono font-bold text-white tracking-[0.2em]">
-              <%= @pairing_token %>
+          <%!-- Content --%>
+          <div class="px-6 py-6">
+            <%!-- QR Code --%>
+            <div class="flex justify-center mb-6">
+              <div
+                id="pairing-qr"
+                phx-hook="QRDisplay"
+                data-qr={assigns[:pairing_url]}
+                class="bg-white p-4 rounded-2xl shadow-lg"
+              >
+                <canvas width="180" height="180"></canvas>
+              </div>
             </div>
-          </div>
 
-          <%!-- Instructions --%>
-          <div class="text-center text-white/40 text-xs mb-4">
-            <p>On your new device, go to:</p>
-            <p class="text-blue-400 font-mono mt-1"><%= Friends.WebAuthn.origin() %>/pair</p>
-          </div>
+            <%!-- Token Display --%>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
+              <div class="text-[10px] text-white/40 uppercase tracking-widest mb-2 text-center">Pairing Code</div>
+              <div class="text-2xl font-mono font-bold text-white tracking-[0.15em] text-center">
+                <%= @pairing_token %>
+              </div>
+            </div>
 
-          <%!-- Expiry Timer --%>
-          <div class="text-center text-white/30 text-xs">
-            Code expires in 5 minutes
+            <%!-- Instructions --%>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="text-xs text-white/70">
+                <p>On your new device, visit:</p>
+                <p class="text-blue-400 font-mono font-medium mt-0.5"><%= Friends.WebAuthn.origin() %>/pair</p>
+              </div>
+            </div>
+
+            <%!-- Expiry --%>
+            <div class="text-center text-white/30 text-xs mt-4">
+              Code expires in 5 minutes
+            </div>
           </div>
         </div>
       </div>

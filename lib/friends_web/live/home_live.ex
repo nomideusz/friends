@@ -535,6 +535,7 @@ defmodule FriendsWeb.HomeLive do
 
             {:noreply,
              socket
+             |> assign(:show_profile_sheet, false)  # Close settings drawer
              |> assign(:show_pairing_modal, true)
              |> assign(:pairing_token, pairing.token)
              |> assign(:pairing_url, pairing_url)
