@@ -33,7 +33,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
       |> assign(:menu_anim, "slide-in-from-top-4")
     
     ~H"""
-    <div id="avatar-hub-container" class={"#{@position_classes} z-[100]"}>
+    <div id="avatar-hub-container" class={@position_classes <> " z-[100]"}>
       <%!-- Backdrop when menu is open --%>
       <%= if @show_menu do %>
         <div
@@ -124,13 +124,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
         type="button"
         phx-click="toggle_avatar_menu"
         class={[
-          "w-10 h-10 rounded-full border transition-all cursor-pointer shadow-lg",
+          "relative w-10 h-10 rounded-full border transition-all cursor-pointer shadow-lg",
           "bg-neutral-800 overflow-hidden",
           @show_menu && "border-white/40 ring-2 ring-white/20 scale-110",
           not @show_menu && "border-white/20 hover:border-white/40 hover:scale-105"
         ]}
         title={"@#{@current_user.username}"}
       >
+        <%!-- Ambient glow for pending items (New Internet style) --%>
+        <% total_badges = @pending_request_count + @unread_count %>
+        <%= if total_badges > 0 do %>
+          <span class="absolute inset-0 rounded-full bg-gradient-to-br from-amber-400/40 via-orange-500/30 to-rose-500/40 animate-pulse blur-sm"></span>
+          <span class="absolute inset-0 rounded-full ring-2 ring-amber-400/50 animate-pulse"></span>
+        <% end %>
+        
         <div class="w-full h-full relative">
           <%= if @current_user.avatar_url do %>
             <img src={@current_user.avatar_url} alt="" class="w-full h-full object-cover" />
@@ -143,14 +150,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
             </div>
           <% end %>
         </div>
-        
-        <%!-- Combined badge indicator --%>
-        <% total_badges = @pending_request_count + @unread_count %>
-        <%= if total_badges > 0 do %>
-          <span class="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-red-500 text-white rounded-full px-1 border-2 border-neutral-900">
-            <%= if total_badges > 99, do: "99+", else: total_badges %>
-          </span>
-        <% end %>
       </button>
     </div>
     """
@@ -236,7 +235,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
         "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer group",
         @hover_bg
       ]}
-      style={"animation-delay: #{@delay}ms;"}
+      style={"animation-delay: " <> @delay <> "ms;"}
     >
       <div class={"w-8 h-8 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 " <> @icon_bg <> " " <> @icon_text}>
         <.hub_icon name={@icon} />
@@ -250,9 +249,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
       </div>
       
       <%= if @badge > 0 do %>
-        <span class="min-w-[20px] h-[20px] flex items-center justify-center text-[10px] font-bold bg-white text-black rounded-full px-1 shadow-lg group-hover:scale-110 transition-transform">
-          <%= if @badge > 99, do: "99+", else: @badge %>
-        </span>
+        <%!-- Subtle colored dot instead of number (New Internet style) --%>
+        <% dot_class = "w-2.5 h-2.5 rounded-full shadow-lg animate-pulse " <> badge_color(@color) %>
+        <span class={dot_class}></span>
       <% end %>
     </button>
     """
@@ -307,4 +306,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
     </svg>
     """
   end
+
+  # Badge color mapping for menu item dots
+  defp badge_color("purple"), do: "bg-purple-400"
+  defp badge_color("blue"), do: "bg-blue-400"
+  defp badge_color("emerald"), do: "bg-emerald-400"
+  defp badge_color(_), do: "bg-white/70"
 end
