@@ -60,6 +60,9 @@ defmodule FriendsWeb.Router do
       live "/auth", CountdownLive, :index
     end
 
+    # Browser logout (GET for redirects from LiveView)
+    get "/auth/logout", SessionController, :logout
+
     # Secret auth routes for testing (hidden from public)
     live_session :secret_auth, layout: {FriendsWeb.Layouts, :auth} do
       live "/secret-auth", AuthLive, :index

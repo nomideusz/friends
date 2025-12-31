@@ -1823,10 +1823,7 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_connection_accepted(socket, by_user_id)
   end
 
-  # Handle when a connection is removed (live update)
-  def handle_info({:friend_removed, friendship}, socket) do
-    PubSubHandlers.handle_friend_removed(socket, friendship)
-  end
+  # Note: {:friend_removed, ...} is handled below with graph updates
 
   # Handle when someone sends you a trust/recovery request (live update)
   def handle_info({:trust_request_received, from_user_id}, socket) do
@@ -1866,7 +1863,7 @@ defmodule FriendsWeb.HomeLive do
   def handle_info({:user_removed, user_id}, socket) do
     if socket.assigns[:welcome_graph_data] != nil or 
        socket.assigns[:fullscreen_graph_data] != nil do
-      {:noreply, push_event(socket, "welcome_user_removed", %{user_id: user_id})}
+      {:noreply, push_event(socket, "welcome_user_deleted", %{user_id: user_id})}
     else
       {:noreply, socket}
     end
@@ -1890,8 +1887,8 @@ defmodule FriendsWeb.HomeLive do
         |> assign(:friends, friends)
         |> assign(:pending_requests, pending_requests)
         
-      # If feed is empty or fullscreen graph is shown, push live update for new connection
-      socket = if socket.assigns[:feed_item_count] == 0 or socket.assigns[:show_fullscreen_graph] do
+      # Push live update when graph is visible (welcome graph or fullscreen graph)
+      socket = if socket.assigns[:welcome_graph_data] != nil or socket.assigns[:show_fullscreen_graph] do
         socket
         |> push_event("welcome_new_connection", %{
           from_id: friendship.user_id,
@@ -1909,14 +1906,22 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_info({:friend_removed, friendship}, socket) do
-    # Refresh the graph data when a friendship is removed
+    # Refresh friend lists and graph data when a friendship is removed
     if socket.assigns.current_user do
+      # Update friends/requests lists (from PubSubHandlers logic)
+      friends = Social.list_friends(socket.assigns.current_user.id)
+      pending = Social.list_friend_requests(socket.assigns.current_user.id)
+      outgoing = Social.list_sent_friend_requests(socket.assigns.current_user.id)
       graph_data = FriendsWeb.HomeLive.GraphHelper.build_graph_data(socket.assigns.current_user)
 
-      socket = assign(socket, :graph_data, graph_data)
+      socket = socket
+        |> assign(:friends, friends)
+        |> assign(:pending_requests, pending)
+        |> assign(:outgoing_friend_requests, outgoing)
+        |> assign(:graph_data, graph_data)
       
-      # If feed is empty or fullscreen graph is shown, push live update for removed connection
-      socket = if socket.assigns[:feed_item_count] == 0 or socket.assigns[:show_fullscreen_graph] do
+      # Push live update when graph is visible (welcome graph or fullscreen graph)
+      socket = if socket.assigns[:welcome_graph_data] != nil or socket.assigns[:show_fullscreen_graph] do
         socket
         |> push_event("welcome_connection_removed", %{
           from_id: friendship.user_id,
