@@ -13,19 +13,15 @@ defmodule FriendsWeb.HomeLive.Components.TetheredDrawer do
 
   attr :id, :string, required: true
   attr :show, :boolean, default: false
-  attr :avatar_position, :string, default: "top-right"
   attr :close_event, :string, required: true
   attr :title, :string, default: nil
   slot :inner_block, required: true
 
   def tethered_drawer(assigns) do
-    # Determine drawer positioning based on avatar position
-    {drawer_side, drawer_classes, tether_classes} = drawer_positioning(assigns.avatar_position)
-    
+    # Fixed to right side (matching avatar in top-right)
     assigns = assigns
-      |> assign(:drawer_side, drawer_side)
-      |> assign(:drawer_classes, drawer_classes)
-      |> assign(:tether_classes, tether_classes)
+      |> assign(:drawer_side, :right)
+      |> assign(:drawer_classes, "right-0 top-0 bottom-0 max-w-[85vw] border-l rounded-l-2xl drawer-spring-in-right")
 
     ~H"""
     <%= if @show do %>
@@ -47,7 +43,7 @@ defmodule FriendsWeb.HomeLive.Components.TetheredDrawer do
           class="absolute inset-0 z-[301] pointer-events-none overflow-visible"
           phx-hook="TetheredLine"
           id={"#{@id}-tether"}
-          data-avatar-position={@avatar_position}
+          data-avatar-position="top-right"
           data-drawer-id={"#{@id}-content"}
         >
           <defs>
@@ -77,19 +73,23 @@ defmodule FriendsWeb.HomeLive.Components.TetheredDrawer do
         <%!-- Drawer Panel --%>
         <div
           id={"#{@id}-content"}
+          phx-hook="ResizableDrawer"
+          data-side={@drawer_side}
           class={[
-            "fixed z-[302] flex flex-col",
-            "bg-neutral-900/95 backdrop-blur-xl",
-            "border-white/10 shadow-2xl",
-            "transition-transform duration-300 ease-out",
+            "fixed z-[302] flex flex-col drawer-resizable",
+            "bg-black/70 backdrop-blur-2xl saturate-150",
+            "border-white/10 shadow-[0_0_60px_-15px_rgba(0,0,0,0.8)]",
             @drawer_classes
           ]}
           phx-click-away={@close_event}
         >
+          <%!-- Resize Handle --%>
+          <div class={"drawer-resize-handle " <> if @drawer_side == :right, do: "drawer-resize-handle-left", else: "drawer-resize-handle-right"}></div>
+          
           <%!-- Drawer Header --%>
-          <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-white/10">
             <%= if @title do %>
-              <h2 class="text-lg font-semibold text-white"><%= @title %></h2>
+              <h2 class="text-lg font-bold text-white tracking-tight"><%= @title %></h2>
             <% else %>
               <div></div>
             <% end %>
@@ -97,7 +97,7 @@ defmodule FriendsWeb.HomeLive.Components.TetheredDrawer do
             <button
               type="button"
               phx-click={@close_event}
-              class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
+              class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all cursor-pointer"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -113,46 +113,5 @@ defmodule FriendsWeb.HomeLive.Components.TetheredDrawer do
       </div>
     <% end %>
     """
-  end
-
-  # ============================================================================
-  # POSITIONING HELPER
-  # Determines drawer side and classes based on avatar position
-  # ============================================================================
-
-  defp drawer_positioning(avatar_position) do
-    case avatar_position do
-      "top-left" ->
-        {
-          :left,
-          "left-0 top-0 bottom-0 w-80 max-w-[85vw] border-r rounded-r-2xl animate-in slide-in-from-left duration-300",
-          "left"
-        }
-      "bottom-left" ->
-        {
-          :left,
-          "left-0 top-0 bottom-0 w-80 max-w-[85vw] border-r rounded-r-2xl animate-in slide-in-from-left duration-300",
-          "left"
-        }
-      "top-right" ->
-        {
-          :right,
-          "right-0 top-0 bottom-0 w-80 max-w-[85vw] border-l rounded-l-2xl animate-in slide-in-from-right duration-300",
-          "right"
-        }
-      "bottom-right" ->
-        {
-          :right,
-          "right-0 top-0 bottom-0 w-80 max-w-[85vw] border-l rounded-l-2xl animate-in slide-in-from-right duration-300",
-          "right"
-        }
-      _ ->
-        # Default: right side
-        {
-          :right,
-          "right-0 top-0 bottom-0 w-80 max-w-[85vw] border-l rounded-l-2xl animate-in slide-in-from-right duration-300",
-          "right"
-        }
-    end
   end
 end

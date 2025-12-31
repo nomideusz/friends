@@ -412,6 +412,100 @@ export const SwipeableDrawerHook = {
     }
 }
 
+/**
+ * ResizableDrawerHook - Allows dragging drawer edge to resize width
+ * Persists width preference in localStorage
+ */
+export const ResizableDrawerHook = {
+    mounted() {
+        this.side = this.el.dataset.side || 'right'
+        this.isResizing = false
+        this.startX = 0
+        this.startWidth = 0
+
+        // Restore saved width
+        const savedWidth = localStorage.getItem('drawer-width')
+        if (savedWidth) {
+            this.el.style.setProperty('--drawer-width', savedWidth)
+        }
+
+        // Find the resize handle
+        const handle = this.el.querySelector('.drawer-resize-handle')
+        if (!handle) return
+
+        const startResize = (e) => {
+            e.preventDefault()
+            this.isResizing = true
+            this.startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+            this.startWidth = this.el.offsetWidth
+
+            document.body.style.cursor = 'ew-resize'
+            document.body.style.userSelect = 'none'
+        }
+
+        const onResize = (e) => {
+            if (!this.isResizing) return
+
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+            const deltaX = clientX - this.startX
+
+            // Calculate new width based on drawer side
+            let newWidth
+            if (this.side === 'right') {
+                newWidth = this.startWidth - deltaX
+            } else {
+                newWidth = this.startWidth + deltaX
+            }
+
+            // Clamp between min and max
+            newWidth = Math.max(320, Math.min(800, newWidth))
+
+            this.el.style.setProperty('--drawer-width', `${newWidth}px`)
+        }
+
+        const endResize = () => {
+            if (!this.isResizing) return
+            this.isResizing = false
+
+            document.body.style.cursor = ''
+            document.body.style.userSelect = ''
+
+            // Save width preference
+            const currentWidth = getComputedStyle(this.el).getPropertyValue('--drawer-width')
+            if (currentWidth) {
+                localStorage.setItem('drawer-width', currentWidth.trim())
+            }
+        }
+
+        // Mouse events
+        handle.addEventListener('mousedown', startResize)
+        document.addEventListener('mousemove', onResize)
+        document.addEventListener('mouseup', endResize)
+
+        // Touch events
+        handle.addEventListener('touchstart', startResize, { passive: false })
+        document.addEventListener('touchmove', onResize, { passive: true })
+        document.addEventListener('touchend', endResize)
+
+        // Store references for cleanup
+        this._startResize = startResize
+        this._onResize = onResize
+        this._endResize = endResize
+        this._handle = handle
+    },
+
+    destroyed() {
+        if (this._handle) {
+            this._handle.removeEventListener('mousedown', this._startResize)
+            this._handle.removeEventListener('touchstart', this._startResize)
+        }
+        document.removeEventListener('mousemove', this._onResize)
+        document.removeEventListener('mouseup', this._endResize)
+        document.removeEventListener('touchmove', this._onResize)
+        document.removeEventListener('touchend', this._endResize)
+    }
+}
+
 export const LockScrollHook = {
     mounted() {
         document.body.style.overflow = 'hidden'
@@ -659,6 +753,7 @@ export default {
     DraggableAvatar: DraggableAvatarHook,
     TetheredLine: TetheredLineHook,
     SwipeableDrawer: SwipeableDrawerHook,
+    ResizableDrawer: ResizableDrawerHook,
     LockScroll: LockScrollHook,
     PhotoGrid: PhotoGridHook,
     CopyToClipboard: CopyToClipboardHook,

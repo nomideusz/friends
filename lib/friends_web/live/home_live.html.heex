@@ -111,7 +111,7 @@
   <.tethered_drawer
     id="people-drawer"
     show={@show_contact_sheet}
-    avatar_position={@current_user.avatar_position || "top-right"}
+
     close_event="close_contact_search"
     title="People"
   >
@@ -137,7 +137,7 @@
   <.tethered_drawer
     id="groups-drawer"
     show={assigns[:show_groups_sheet] || false}
-    avatar_position={@current_user.avatar_position || "top-right"}
+
     close_event="close_groups_sheet"
     title="Groups"
   >
@@ -153,7 +153,7 @@
   <.tethered_drawer
     id="settings-drawer"
     show={assigns[:show_profile_sheet] || false}
-    avatar_position={@current_user.avatar_position || "top-right"}
+
     close_event="close_profile_sheet"
     title="Settings"
   >
@@ -557,7 +557,7 @@
       pending_request_count={length(assigns[:pending_requests] || [])}
       unread_count={Map.get(assigns, :total_unread_count, 0)}
       online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
-      position={@current_user.avatar_position || "top-right"}
+
     />
 
   <%!-- === MAIN LAYOUT === --%>

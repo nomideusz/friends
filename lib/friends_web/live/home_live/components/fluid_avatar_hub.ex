@@ -23,39 +23,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
   attr :pending_request_count, :integer, default: 0
   attr :unread_count, :integer, default: 0
   attr :online_friend_count, :integer, default: 0
-  attr :position, :string, default: "top-right"
 
   def avatar_hub(assigns) do
-    # Determine positioning classes based on position
-    position_classes = case assigns.position do
-      "top-left" -> "fixed top-3 left-4"
-      "top-right" -> "fixed top-3 right-4"
-      "bottom-left" -> "fixed bottom-20 left-4"
-      "bottom-right" -> "fixed bottom-20 right-4"
-      _ -> "fixed top-3 right-4"
-    end
-    
-    # Determine menu position and transform origin based on avatar position
-    {menu_classes, menu_origin, tether_svg_classes} = case assigns.position do
-      "top-left" -> {"absolute top-14 left-0", "origin-top-left", "top-[40px] left-[20px]"}
-      "top-right" -> {"absolute top-14 right-0", "origin-top-right", "top-[40px] right-[20px]"}
-      "bottom-left" -> {"absolute bottom-14 left-0", "origin-bottom-left", "bottom-[40px] left-[20px]"}
-      "bottom-right" -> {"absolute bottom-14 right-0", "origin-bottom-right", "bottom-[40px] right-[20px]"}
-      _ -> {"absolute top-14 right-0", "origin-top-right", "top-[40px] right-[20px]"}
-    end
-    
-    # Animation direction based on position
-    menu_anim = case assigns.position do
-      p when p in ["top-left", "top-right"] -> "slide-in-from-top-4"
-      _ -> "slide-in-from-bottom-4"
-    end
-    
+    # Fixed position: top-right
     assigns = assigns
-      |> assign(:position_classes, position_classes)
-      |> assign(:menu_classes, menu_classes)
-      |> assign(:menu_origin, menu_origin)
-      |> assign(:tether_svg_classes, tether_svg_classes)
-      |> assign(:menu_anim, menu_anim)
+      |> assign(:position_classes, "fixed top-3 right-4")
+      |> assign(:menu_classes, "absolute top-14 right-0")
+      |> assign(:menu_origin, "origin-top-right")
+      |> assign(:menu_anim, "slide-in-from-top-4")
     
     ~H"""
     <div id="avatar-hub-container" class={"#{@position_classes} z-[100]"}>
@@ -67,51 +42,16 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
         ></div>
       <% end %>
 
-      <%!-- Menu with Tether Line --%>
+      <%!-- Menu --%>
       <%= if @show_menu do %>
-        <%!-- Organic Tether SVG --%>
-        <svg class={"absolute w-10 h-10 pointer-events-none z-0 " <> @tether_svg_classes} viewBox="0 0 40 40">
-          <defs>
-            <linearGradient id="tether-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="white" stop-opacity="0.8" />
-              <stop offset="100%" stop-color="white" stop-opacity="0.2" />
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          <path 
-            d={if String.contains?(@position, "bottom"), do: "M 20 40 L 20 0", else: "M 20 0 L 20 40"} 
-            stroke="url(#tether-grad)" 
-            stroke-width="3" 
-            filter="url(#glow)"
-            class="animate-pulse"
-          />
-          <circle 
-            cx="20" 
-            cy={if String.contains?(@position, "bottom"), do: "40", else: "0"} 
-            r="4" 
-            fill="white" 
-            class="animate-ping opacity-30" 
-          />
-          <circle 
-            cx="20" 
-            cy={if String.contains?(@position, "bottom"), do: "40", else: "0"} 
-            r="2" 
-            fill="white" 
-            class="opacity-80 shadow-lg" 
-          />
-        </svg>
-        
         <div class={@menu_classes <> " z-10"}>
-          <%!-- Menu container with enhanced glass effect --%>
+          <%!-- Menu container with enhanced glassmorphism --%>
           <div class={[
-            "p-1.5 min-w-[220px] rounded-[2rem] bg-neutral-900/80 backdrop-blur-2xl border border-white/10 shadow-2xl",
-            "animate-in fade-in zoom-in-90 duration-300 ease-out",
+            "p-2 min-w-[240px] rounded-[2rem]",
+            "bg-black/60 backdrop-blur-2xl saturate-150",
+            "border border-white/15",
+            "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)]",
+            "animate-in fade-in zoom-in-95 duration-300 ease-out",
             @menu_origin,
             @menu_anim
           ]}>
@@ -178,20 +118,18 @@ defmodule FriendsWeb.HomeLive.Components.FluidAvatarHub do
         </div>
       <% end %>
 
-      <%!-- Avatar Button - Long press to drag to corners --%>
+      <%!-- Avatar Button --%>
       <button
         id="avatar-hub-trigger"
         type="button"
         phx-click="toggle_avatar_menu"
-        phx-hook="DraggableAvatar"
-        data-position={@position}
         class={[
           "w-10 h-10 rounded-full border transition-all cursor-pointer shadow-lg",
           "bg-neutral-800 overflow-hidden",
           @show_menu && "border-white/40 ring-2 ring-white/20 scale-110",
           not @show_menu && "border-white/20 hover:border-white/40 hover:scale-105"
         ]}
-        title={"@#{@current_user.username} - Hold to move"}
+        title={"@#{@current_user.username}"}
       >
         <div class="w-full h-full relative">
           <%= if @current_user.avatar_url do %>

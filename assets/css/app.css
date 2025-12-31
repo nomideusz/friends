@@ -114,6 +114,7 @@
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
@@ -123,6 +124,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -549,6 +551,121 @@ img.loaded {
   .sheet-handle {
     display: none;
   }
+}
+
+/* =========================================================================================
+   DRAWER SPRING ANIMATIONS
+   Organic, bouncy drawer slide-in/out with spring easing
+   ========================================================================================= */
+
+@keyframes drawer-spring-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-spring-in-left {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-spring-out-right {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes drawer-spring-out-left {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+.drawer-spring-in-right {
+  animation: drawer-spring-in-right 0.35s var(--ease-fluid) forwards;
+}
+
+.drawer-spring-in-left {
+  animation: drawer-spring-in-left 0.35s var(--ease-fluid) forwards;
+}
+
+.drawer-spring-out-right {
+  animation: drawer-spring-out-right 0.3s var(--ease-fluid) forwards;
+}
+
+.drawer-spring-out-left {
+  animation: drawer-spring-out-left 0.3s var(--ease-fluid) forwards;
+}
+
+/* Resizable drawer */
+.drawer-resizable {
+  --drawer-width: 400px;
+  width: var(--drawer-width);
+  min-width: 320px;
+  max-width: min(800px, 85vw);
+  transition: width 0.15s var(--ease-fluid);
+}
+
+/* Larger default on desktop */
+@media (min-width: 1280px) {
+  .drawer-resizable {
+    --drawer-width: 480px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .drawer-resizable {
+    --drawer-width: 520px;
+  }
+}
+
+.drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.drawer-resize-handle:hover,
+.drawer-resize-handle:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.drawer-resize-handle-left {
+  left: 0;
+}
+
+.drawer-resize-handle-right {
+  right: 0;
 }
 
 /* =========================================================================================
