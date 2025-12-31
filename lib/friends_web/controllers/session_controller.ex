@@ -6,7 +6,9 @@ defmodule FriendsWeb.SessionController do
 
   def logout(conn, _params) do
     conn
-    |> configure_session(drop: true)
-    |> redirect(to: "/auth")
+    |> delete_session(:user_id)
+    |> clear_session()
+    |> configure_session(drop: true, renew: true)
+    |> redirect(to: "/secret-auth")
   end
 end
