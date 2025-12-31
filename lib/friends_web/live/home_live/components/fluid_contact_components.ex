@@ -360,6 +360,24 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
           <% end %>
           
           <%!-- Your People --%>
+          <%= if Enum.any?(outgoing) do %>
+            <div class="mb-4">
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Pending Connections</span>
+              </div>
+              <div class="space-y-1">
+                <%= for req <- outgoing do %>
+                  <% user = if Map.has_key?(req, :friend_user), do: req.friend_user, else: req %>
+                  <.pending_connection_row user={user} />
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+          
+          <%!-- Your People --%>
           <div class="flex items-center gap-2 mb-2">
             <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
