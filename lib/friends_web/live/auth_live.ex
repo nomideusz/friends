@@ -348,8 +348,29 @@ defmodule FriendsWeb.AuthLive do
                     Continue
                   </button>
                 <% else %>
-                  <div class="w-full p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-center text-sm">
-                    Passkeys require Chrome, Safari, or Edge with biometrics enabled.
+                  <div class="w-full p-4 bg-amber-900/20 border border-amber-500/30 rounded-xl text-amber-300 text-center text-sm space-y-3">
+                    <p class="font-medium">This browser doesn't support passkeys</p>
+                    <p class="text-amber-400/80 text-xs">
+                      In-app browsers (Instagram, TikTok, etc.) don't support passkeys.
+                    </p>
+                    <div class="pt-2 border-t border-amber-500/20 space-y-2">
+                      <p class="text-xs text-amber-400/70">Try one of these options:</p>
+                      <a
+                        href="/"
+                        class="block w-full py-2 px-3 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-200 text-xs transition-colors"
+                        onclick="window.open(window.location.href, '_system'); return false;"
+                      >
+                        Open in Safari / Chrome / Edge
+                      </a>
+                      <%= if @mode == :login do %>
+                        <a
+                          href="/pair"
+                          class="block w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 text-xs transition-colors"
+                        >
+                          Link from another device
+                        </a>
+                      <% end %>
+                    </div>
                   </div>
                 <% end %>
               <% else %>
