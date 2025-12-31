@@ -81,6 +81,14 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("show_my_constellation", _params, socket) do
+    # Lazy-load graph data if not already loaded
+    socket = if is_nil(socket.assigns[:graph_data]) do
+      graph_data = Friends.GraphCache.get_graph_data(socket.assigns.current_user)
+      assign(socket, :graph_data, graph_data)
+    else
+      socket
+    end
+
     {:noreply,
      socket
      |> assign(:show_avatar_menu, false)
@@ -527,6 +535,7 @@ defmodule FriendsWeb.HomeLive do
 
             {:noreply,
              socket
+             |> assign(:show_profile_sheet, false)  # Close settings drawer
              |> assign(:show_pairing_modal, true)
              |> assign(:pairing_token, pairing.token)
              |> assign(:pairing_url, pairing_url)
