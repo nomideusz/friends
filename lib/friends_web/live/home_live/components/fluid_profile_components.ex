@@ -403,7 +403,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
             <%!-- Footer - Sign Out --%>
             <div class="px-4 py-4 border-t border-white/5 bg-black/40 backdrop-blur-md">
               <button
-                phx-click="sign_out"
+                phx-click="request_sign_out"
+                data-confirm="Sign out of your account?"
                 class="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 hover:text-red-300 transition-all font-medium"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
