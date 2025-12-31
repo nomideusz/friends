@@ -11,27 +11,24 @@ defmodule FriendsWeb.AuthLive do
   alias Friends.Social
 
   @impl true
-  def mount(_params, session, socket) do
-    # If already logged in, redirect to home
-    if session["user_id"] do
-      {:ok, socket |> redirect(to: "/")}
-    else
-      {:ok,
-       socket
-       |> assign(:page_title, "New Internet")
-       |> assign(:username, "")
-       |> assign(:display_name, "")
-       |> assign(:invite_code, "")
-       |> assign(:step, :enter_username)
-       |> assign(:mode, nil)  # :login or :register
-       |> assign(:user, nil)
-       |> assign(:webauthn_available, false)
-       |> assign(:webauthn_challenge, nil)
-       |> assign(:error, nil)
-       |> assign(:checking_username, false)
-       |> assign(:pending_room_code, nil)
-       |> assign(:referrer, nil)}
-    end
+  def mount(_params, _session, socket) do
+    # Don't redirect logged-in users - they might be here to switch accounts
+    # or this is where logout redirects to
+    {:ok,
+     socket
+     |> assign(:page_title, "New Internet")
+     |> assign(:username, "")
+     |> assign(:display_name, "")
+     |> assign(:invite_code, "")
+     |> assign(:step, :enter_username)
+     |> assign(:mode, nil)  # :login or :register
+     |> assign(:user, nil)
+     |> assign(:webauthn_available, false)
+     |> assign(:webauthn_challenge, nil)
+     |> assign(:error, nil)
+     |> assign(:checking_username, false)
+     |> assign(:pending_room_code, nil)
+     |> assign(:referrer, nil)}
   end
 
   @impl true
