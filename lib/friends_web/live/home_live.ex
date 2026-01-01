@@ -231,12 +231,30 @@ defmodule FriendsWeb.HomeLive do
           # Read file
           {:ok, binary} = File.read(path)
 
-          # Upload to S3
-          filename = "avatars/#{socket.assigns.current_user.id}-#{System.system_time(:second)}#{Path.extname(entry.client_name)}"
-          case Friends.Storage.upload_file(binary, filename, entry.client_type) do
-            {:ok, url} ->
-              # Update user avatar
-              case Social.update_user_avatar(socket.assigns.current_user.id, url) do
+          timestamp = System.system_time(:second)
+          user_id = socket.assigns.current_user.id
+          ext = Path.extname(entry.client_name)
+          
+          # Generate thumbnail (100px for graphs/lists)
+          thumb_result = Friends.ImageProcessor.generate_thumbnail_only(binary, entry.client_type)
+          
+          # Upload original
+          original_filename = "avatars/#{user_id}-#{timestamp}#{ext}"
+          case Friends.Storage.upload_file(binary, original_filename, entry.client_type) do
+            {:ok, original_url} ->
+              # Upload thumbnail if generated
+              thumb_url = case thumb_result do
+                {:ok, thumb_binary, thumb_type} ->
+                  thumb_filename = "avatars/#{user_id}-#{timestamp}_thumb.jpg"
+                  case Friends.Storage.upload_file(thumb_binary, thumb_filename, thumb_type) do
+                    {:ok, url} -> url
+                    {:error, _} -> nil
+                  end
+                _ -> nil
+              end
+              
+              # Update user with both URLs
+              case Social.update_user_avatar(user_id, original_url, thumb_url) do
                 {:ok, updated_user} ->
                   {:ok, updated_user}
                 {:error, _} ->
@@ -1177,7 +1195,7 @@ defmodule FriendsWeb.HomeLive do
       Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
     end
 
-    graph_data = FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data()
+    graph_data = Friends.GraphCache.get_welcome_graph_data()
     {:noreply,
      socket
      |> assign(:show_fullscreen_graph, true)
@@ -1609,6 +1627,10 @@ defmodule FriendsWeb.HomeLive do
 
   # Skip welcome graph view and show regular feed
   def handle_event("skip_welcome_graph", _params, socket) do
+    # Unsubscribe from graph updates when graph is dismissed
+    Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:global")
+    Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:new_users")
+    
     {:noreply,
      socket
      |> assign(:show_welcome_graph, false)

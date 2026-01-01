@@ -325,17 +325,18 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
   Fetches a sample of recent users and their mutual connections.
   """
   def build_welcome_graph_data do
-    # Get sample of active users
+    # Get sample of active users (reduced from 300 to 100 for performance)
     users =
       Repo.all(
         from u in Friends.Social.User,
           order_by: [desc: u.inserted_at],
-          limit: 300,
+          limit: 100,
           select: %{
             id: u.id,
             username: u.username,
             display_name: u.display_name,
-            avatar_url: u.avatar_url
+            avatar_url: u.avatar_url,
+            avatar_url_thumb: u.avatar_url_thumb
           }
       )
 
@@ -356,12 +357,14 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
 
     nodes =
       Enum.map(users, fn u ->
+        # Use thumbnail for graph display, fall back to original
+        avatar = u.avatar_url_thumb || u.avatar_url
         %{
           id: u.id,
           username: u.username,
           display_name: u.display_name || u.username,
           color: user_color(u),
-          avatar_url: u.avatar_url
+          avatar_url: avatar
         }
       end)
 

@@ -35,6 +35,11 @@
     let linkGroup;
     let nodeMap = new Map();
 
+    // Throttling for live updates (performance optimization)
+    let pendingUpdates = { nodes: [], links: [], removals: [] };
+    let updateTimeout = null;
+    const UPDATE_THROTTLE_MS = 500; // Batch updates every 500ms
+
     // Context menu state
     let showContextMenu = false;
     let contextMenuX = 0;
@@ -44,31 +49,86 @@
 
     // === Exported functions for live updates from LiveView ===
 
-    // Add a new user node to the graph with animation
+    // Process batched updates (called after throttle delay)
+    function processPendingUpdates() {
+        if (!simulation || !nodeGroup) return;
+
+        let needsUpdate = false;
+
+        // Process pending node additions
+        for (const userData of pendingUpdates.nodes) {
+            const id = String(userData.id);
+            if (nodeMap.has(id)) continue;
+
+            const newNode = {
+                id: id,
+                username: userData.username,
+                display_name: userData.display_name || userData.username,
+                avatar_url: userData.avatar_url,
+                x: width / 2 + (Math.random() - 0.5) * 100,
+                y: height / 2 + (Math.random() - 0.5) * 100,
+            };
+            nodesData.push(newNode);
+            nodeMap.set(id, newNode);
+            needsUpdate = true;
+        }
+
+        // Process pending link additions
+        for (const link of pendingUpdates.links) {
+            const sourceNode = nodeMap.get(String(link.fromId));
+            const targetNode = nodeMap.get(String(link.toId));
+            if (sourceNode && targetNode) {
+                const exists = linksData.some(
+                    (l) =>
+                        (String(l.source.id || l.source) ===
+                            String(link.fromId) &&
+                            String(l.target.id || l.target) ===
+                                String(link.toId)) ||
+                        (String(l.source.id || l.source) ===
+                            String(link.toId) &&
+                            String(l.target.id || l.target) ===
+                                String(link.fromId)),
+                );
+                if (!exists) {
+                    linksData.push({ source: sourceNode, target: targetNode });
+                    needsUpdate = true;
+                }
+            }
+        }
+
+        // Clear pending updates
+        pendingUpdates = { nodes: [], links: [], removals: [] };
+
+        if (needsUpdate) {
+            simulation.nodes(nodesData);
+            simulation.force("link").links(linksData);
+            // Use low alpha for gentle update, avoiding jarring movements
+            simulation.alpha(0.15).restart();
+            updatePatterns();
+            updateNodes();
+            updateLinks();
+        }
+    }
+
+    // Schedule batched update
+    function scheduleUpdate() {
+        if (updateTimeout) return; // Already scheduled
+        updateTimeout = setTimeout(() => {
+            updateTimeout = null;
+            processPendingUpdates();
+        }, UPDATE_THROTTLE_MS);
+    }
+
+    // Add a new user node to the graph with animation (throttled)
     export function addNode(userData) {
         if (!simulation || !nodeGroup) return;
 
         const id = String(userData.id);
         if (nodeMap.has(id)) return; // Already exists
 
-        const newNode = {
-            id: id,
-            username: userData.username,
-            display_name: userData.display_name || userData.username,
-            avatar_url: userData.avatar_url,
-            x: width / 2 + (Math.random() - 0.5) * 100,
-            y: height / 2 + (Math.random() - 0.5) * 100,
-        };
-
-        nodesData.push(newNode);
-        nodeMap.set(id, newNode);
-
-        // Update simulation
-        simulation.nodes(nodesData);
-        simulation.alpha(0.3).restart();
-
-        updatePatterns();
-        updateNodes();
+        // Queue for batched processing
+        pendingUpdates.nodes.push(userData);
+        scheduleUpdate();
     }
 
     // Remove a user node from the graph with animation
@@ -100,35 +160,13 @@
         updateLinks();
     }
 
-    // Add a connection between two nodes with animation
+    // Add a connection between two nodes with animation (throttled)
     export function addLink(fromId, toId) {
         if (!simulation || !linkGroup) return;
 
-        const sourceId = String(fromId);
-        const targetId = String(toId);
-
-        const sourceNode = nodeMap.get(sourceId);
-        const targetNode = nodeMap.get(targetId);
-
-        if (!sourceNode || !targetNode) return;
-
-        // Check if link already exists
-        const exists = linksData.some(
-            (l) =>
-                (String(l.source.id || l.source) === sourceId &&
-                    String(l.target.id || l.target) === targetId) ||
-                (String(l.source.id || l.source) === targetId &&
-                    String(l.target.id || l.target) === sourceId),
-        );
-        if (exists) return;
-
-        linksData.push({ source: sourceNode, target: targetNode });
-
-        // Update simulation
-        simulation.force("link").links(linksData);
-        simulation.alpha(0.3).restart();
-
-        updateLinks();
+        // Queue for batched processing
+        pendingUpdates.links.push({ fromId, toId });
+        scheduleUpdate();
     }
 
     // Remove a connection between two nodes with animation
@@ -707,6 +745,7 @@
     onDestroy(() => {
         if (simulation) simulation.stop();
         if (animationFrame) cancelAnimationFrame(animationFrame);
+        if (updateTimeout) clearTimeout(updateTimeout);
     });
 </script>
 

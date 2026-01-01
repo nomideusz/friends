@@ -25,6 +25,7 @@ defmodule Friends.Social.User do
 
     # Profile
     field :avatar_url, :string
+    field :avatar_url_thumb, :string  # Small thumbnail (100px) for graphs/lists
     field :user_color, :string
     # UI Preferences
     field :avatar_position, :string, default: "top-right"
@@ -46,6 +47,7 @@ defmodule Friends.Social.User do
       :invite_code,
       :recovery_requested_at,
       :avatar_url,
+      :avatar_url_thumb,
       :user_color,
       :avatar_position
     ])

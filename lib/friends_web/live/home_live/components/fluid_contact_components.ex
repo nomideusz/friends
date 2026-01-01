@@ -466,13 +466,13 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Name with shield --%>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-white truncate">@{@user.username}</span>
-          <%= if @online do %>
-            <span class="text-[10px] text-green-400/70">Here now</span>
-          <% end %>
-          <.shield_icon class="w-3.5 h-3.5 text-green-400" />
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm text-white break-all">@{@user.username}</span>
+          <.shield_icon class="w-3.5 h-3.5 text-green-400 shrink-0" />
         </div>
+        <%= if @online do %>
+          <span class="text-[10px] text-green-400/70">Here now</span>
+        <% end %>
       </div>
 
       <%!-- Remove button with confirmation --%>
@@ -508,10 +508,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-white truncate">@{@user.username}</span>
-          <span class="text-[10px] text-white/40">pending</span>
-        </div>
+        <span class="text-sm text-white break-all">@{@user.username}</span>
+        <span class="block text-[10px] text-white/40">pending</span>
       </div>
 
       <%!-- Cancel button --%>
@@ -546,10 +544,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-white truncate">@{@user.username}</span>
-          <span class="text-[10px] text-yellow-400/70">wants you as recovery</span>
-        </div>
+        <span class="text-sm text-white break-all">@{@user.username}</span>
+        <span class="block text-[10px] text-yellow-400/70">wants you as recovery</span>
       </div>
 
       <%!-- Accept/Decline --%>
@@ -593,10 +589,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-white truncate">@{@user.username}</span>
-          <span class="text-[10px] text-purple-400/70">awaiting response</span>
-        </div>
+        <span class="text-sm text-white break-all">@{@user.username}</span>
+        <span class="block text-[10px] text-purple-400/70">awaiting response</span>
       </div>
 
       <%!-- Cancel button --%>
@@ -631,10 +625,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-white truncate">@{@user.username}</span>
-          <span class="text-[10px] text-blue-400/70">wants to connect</span>
-        </div>
+        <span class="text-sm text-white break-all">@{@user.username}</span>
+        <span class="block text-[10px] text-blue-400/70">wants to connect</span>
       </div>
 
       <%!-- Accept/Decline --%>
@@ -703,22 +695,22 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
           <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
         </div>
 
-        <%!-- Name --%>
+        <%!-- Name and status stacked for better mobile layout --%>
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-white truncate">@{@user.username}</span>
-            <%= if @online do %>
-              <span class="text-[10px] text-green-400/70">Here now</span>
-            <% end %>
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm text-white break-all">@{@user.username}</span>
             <%= if @is_recovery && @status == :connected do %>
-              <.shield_icon class="w-3.5 h-3.5 text-green-400" />
+              <.shield_icon class="w-3.5 h-3.5 text-green-400 shrink-0" />
             <% end %>
           </div>
+          <%= if @online do %>
+            <span class="text-[10px] text-green-400/70">Here now</span>
+          <% end %>
         </div>
       </div>
 
-      <%!-- Actions --%>
-      <div class="flex items-center gap-2">
+      <%!-- Actions - more compact on mobile --%>
+      <div class="flex items-center gap-1 shrink-0">
           <%= case @status do %>
             <% :self -> %>
               <span class="text-xs text-white/30">You</span>
@@ -748,7 +740,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
               <button
                 phx-click="remove_contact"
                 phx-value-user_id={@user.id}
-                class="text-xs text-red-400/60 hover:text-red-400 transition-colors cursor-pointer"
+                class="text-xs text-red-400/60 hover:text-red-400 transition-colors cursor-pointer px-1"
               >
                 Remove
               </button>
@@ -775,7 +767,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
               type="button"
               phx-click="admin_delete_user"
               phx-value-user_id={@user.id}
-              data-confirm="DELETE user @#{@user.username} and ALL their content? This cannot be undone!"
+              data-confirm={"DELETE user @#{@user.username} and ALL their content? This cannot be undone!"}
               class="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
               title="Delete user (admin)"
             >

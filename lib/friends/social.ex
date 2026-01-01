@@ -442,6 +442,9 @@ defmodule Friends.Social do
   end
 
   defp broadcast_new_user(user) do
+    # Invalidate welcome graph cache so new user appears
+    Friends.GraphCache.invalidate_welcome()
+    
     Phoenix.PubSub.broadcast(
       Friends.PubSub,
       "friends:global",
@@ -450,7 +453,8 @@ defmodule Friends.Social do
         username: user.username,
         display_name: user.display_name || user.username,
         inserted_at: user.inserted_at,
-        avatar_url: user.avatar_url
+        # Use thumbnail for graph display if available
+        avatar_url: user.avatar_url_thumb || user.avatar_url
       }}
     )
   end
@@ -486,11 +490,14 @@ defmodule Friends.Social do
 
   def get_user(_), do: nil
 
-  def update_user_avatar(user_id, avatar_url) do
+  def update_user_avatar(user_id, avatar_url, thumb_url \\ nil) do
     user = get_user(user_id)
     if user do
+      attrs = %{avatar_url: avatar_url}
+      attrs = if thumb_url, do: Map.put(attrs, :avatar_url_thumb, thumb_url), else: attrs
+      
       user
-      |> User.changeset(%{avatar_url: avatar_url})
+      |> User.changeset(attrs)
       |> Repo.update()
     else
       {:error, :user_not_found}

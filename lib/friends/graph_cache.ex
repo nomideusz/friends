@@ -1,11 +1,14 @@
 defmodule Friends.GraphCache do
   @moduledoc """
   Caches graph data to avoid expensive queries on every graph view.
-  Graph data is cached for 10 minutes per user.
+  - User-specific graph data is cached for 10 minutes per user.
+  - Global welcome graph is cached for 5 minutes (shared by all users).
   """
 
   @cache_name :graph_cache
   @ttl :timer.minutes(10)
+  @welcome_ttl :timer.minutes(5)
+  @welcome_cache_key "graph:welcome:global"
 
   @doc """
   Fetches graph data for a user, using cache when available.
@@ -53,5 +56,37 @@ defmodule Friends.GraphCache do
   """
   def clear_all do
     Cachex.clear(@cache_name)
+  end
+
+  # --- Welcome Graph Caching ---
+
+  @doc """
+  Fetches the global welcome graph data, using cache when available.
+  This is shared by all users viewing the welcome/network graph.
+  """
+  def get_welcome_graph_data do
+    case Cachex.get(@cache_name, @welcome_cache_key) do
+      {:ok, nil} ->
+        # Not in cache, build it
+        graph_data = FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data()
+        Cachex.put(@cache_name, @welcome_cache_key, graph_data, ttl: @welcome_ttl)
+        graph_data
+
+      {:ok, graph_data} ->
+        # Cache hit
+        graph_data
+
+      {:error, _reason} ->
+        # Cache error, build without caching
+        FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data()
+    end
+  end
+
+  @doc """
+  Invalidates the global welcome graph cache.
+  Call this when new users register or global friendships change.
+  """
+  def invalidate_welcome do
+    Cachex.del(@cache_name, @welcome_cache_key)
   end
 end

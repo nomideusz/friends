@@ -50,9 +50,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         Presence.subscribe_global()
         # Track this user as online globally
         Presence.track_global(self(), session_user.id, session_user_color, session_user_name)
-        # Subscribe to global updates for live network graph
-        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:global")
-        Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
+        # Note: friends:global subscription is now lazy - only when graph is visible
+        # This reduces PubSub load with many concurrent users
       end
 
       # Load initial public feed items and contacts
@@ -132,7 +131,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Graph data is lazy-loaded when graph drawer opens (performance optimization)
         |> assign(:graph_data, nil)
         # Welcome graph data for empty feed state
-        |> assign(:welcome_graph_data, GraphHelper.build_welcome_graph_data())
+        |> assign(:welcome_graph_data, Friends.GraphCache.get_welcome_graph_data())
         # New user = no friends yet (for showing opt-out checkbox)
         |> assign(:is_new_user, length(friends) == 0)
         |> assign(:show_nav_drawer, false)
