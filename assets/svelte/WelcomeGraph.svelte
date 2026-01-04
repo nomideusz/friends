@@ -25,6 +25,7 @@
     let simulation;
     let width = 800;
     let height = 600;
+    let isMobile = false;
     let animationFrame;
 
     // Live update state
@@ -406,22 +407,18 @@
                     }),
             )
             .on("mouseenter", function (event, d) {
-                if (d.id === currentUserIdStr) return;
+                if (isMobile || d.id === currentUserIdStr) return;
                 showLabel(d);
                 d3.select(this)
-                    .transition()
-                    .duration(200)
-                    .attr("r", 10) // Subtle growth
+                    .attr("r", 10)
                     .style("fill-opacity", d.avatar_url ? 1 : 0.4)
                     .attr("stroke-opacity", 0.8);
             })
             .on("mouseleave", function (event, d) {
-                if (d.id === currentUserIdStr) return;
+                if (isMobile || d.id === currentUserIdStr) return;
                 hideLabel(d);
                 d3.select(this)
-                    .transition()
-                    .duration(200)
-                    .attr("r", 8) // Back to normal
+                    .attr("r", 8)
                     .style("fill-opacity", d.avatar_url ? 1 : 0.3)
                     .attr("stroke-opacity", 0.6);
             })
@@ -503,7 +500,7 @@
             });
         svg.call(zoom);
 
-        const isMobile = width < 600;
+        isMobile = width < 600;
 
         if (hideControls) {
             zoom.filter((event) => event.type !== "wheel");
@@ -694,6 +691,9 @@
         }
     }
 
+    // ResizeObserver for robust responsiveness (like FriendGraph)
+    let resizeObserver;
+
     onMount(() => {
         initGraph();
 
@@ -716,21 +716,26 @@
             });
         }
 
-        // Handle resize
-        const handleResize = () => {
-            initGraph();
-        };
-        window.addEventListener("resize", handleResize);
-
-        return () => {
-            window.removeEventListener("resize", handleResize);
-        };
+        // Handle resize with ResizeObserver + threshold (performance optimization)
+        if (container) {
+            resizeObserver = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    const newWidth = entry.contentRect.width;
+                    // Only reinitialize if size changed significantly (50px threshold)
+                    if (Math.abs(newWidth - width) > 50) {
+                        initGraph();
+                    }
+                }
+            });
+            resizeObserver.observe(container);
+        }
     });
 
     onDestroy(() => {
         if (simulation) simulation.stop();
         if (animationFrame) cancelAnimationFrame(animationFrame);
         if (updateTimeout) clearTimeout(updateTimeout);
+        if (resizeObserver) resizeObserver.disconnect();
     });
 </script>
 
