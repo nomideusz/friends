@@ -268,6 +268,7 @@
     }
 
     // Helper: show label on hover (module level for access from updateNodes)
+    // Helper: show label on hover (module level for access from updateNodes)
     function showLabel(d) {
         if (!labelGroup) return;
         const label = labelGroup.select(`text[data-node-id="${d.id}"]`);
@@ -288,6 +289,9 @@
                 .transition()
                 .duration(200)
                 .style("opacity", 1);
+
+            // Update cached selection so the new label moves with the node
+            labelSelection = labelGroup.selectAll("text");
         }
     }
 
@@ -299,7 +303,11 @@
             .transition()
             .duration(200)
             .style("opacity", 0)
-            .remove();
+            .remove()
+            .on("end", () => {
+                // Update cached selection after removal
+                labelSelection = labelGroup.selectAll("text");
+            });
     }
 
     // Helper: update SVG patterns for avatars
@@ -351,6 +359,11 @@
         return 0.3; // Glassy for colors
     }
 
+    // Cached selections for performance
+    let nodeSelection;
+    let linkSelection;
+    let labelSelection;
+
     function updateNodes() {
         const nodes = nodeGroup
             .selectAll("circle")
@@ -359,18 +372,20 @@
         const currentUserIdStr = currentUserId ? String(currentUserId) : null;
 
         // Enter new nodes with animation
-        nodes
+        const enter = nodes
             .enter()
             .append("circle")
             .attr("r", 0)
             .attr("cx", (d) => d.x)
-            .attr("cy", (d) => d.y)
             .attr("cy", (d) => d.y)
             .style("fill", (d) => getNodeFill(d, currentUserIdStr))
             .style("fill-opacity", (d) => getNodeFillOpacity(d))
             .attr("stroke", (d) => getNodeStroke(d, currentUserIdStr))
             .attr("stroke-opacity", 0.6)
             .attr("stroke-width", 1.5)
+            .style("cursor", "pointer");
+
+        enter
             .call(
                 d3
                     .drag()
@@ -411,12 +426,14 @@
                     .attr("stroke-opacity", 0.6);
             })
             .on("click", handleNodeClick)
-            .style("cursor", "pointer")
             .transition()
             .duration(500)
             .attr("r", 8); // Uniform size
 
         nodes.exit().transition().duration(300).attr("r", 0).remove();
+
+        // Update cached selection
+        nodeSelection = nodeGroup.selectAll("circle");
     }
 
     function updateLinks() {
@@ -445,6 +462,9 @@
             .duration(300)
             .attr("stroke-opacity", 0)
             .remove();
+
+        // Update cached selection
+        linkSelection = linkGroup.selectAll("line");
     }
 
     function initGraph() {
@@ -536,8 +556,8 @@
             .force("y", d3.forceY(height / 2).strength(0.05))
             .force("collide", d3.forceCollide().radius(collideRadius));
 
-        // Draw edges - Subtle white/gray
-        const links = linkGroup
+        // Initialize cached selections
+        linkSelection = linkGroup
             .selectAll("line")
             .data(data.links)
             .join("line")
@@ -545,60 +565,10 @@
             .attr("stroke-opacity", 0.15)
             .attr("stroke-width", 0.5);
 
-        // Draw nodes - Glassy Blue Theme
         const currentUserIdStr = currentUserId ? String(currentUserId) : null;
 
-        const nodes = nodeGroup
-            .selectAll("circle")
-            .data(data.nodes)
-            .join("circle")
-            .attr("r", 8) // Uniform size
-            .style("fill", (d) => getNodeFill(d, currentUserIdStr))
-            .style("fill-opacity", (d) => getNodeFillOpacity(d))
-            .attr("stroke", (d) => getNodeStroke(d, currentUserIdStr))
-            .attr("stroke-opacity", 0.6)
-            .attr("stroke-width", 1.5)
-            .style("cursor", "pointer")
-            .on("mouseenter", function (event, d) {
-                if (d.id === currentUserIdStr) return;
-                showLabel(d);
-                d3.select(this)
-                    .transition()
-                    .duration(200)
-                    .attr("r", 10)
-                    .style("fill-opacity", d.avatar_url ? 1 : 0.4)
-                    .attr("stroke-opacity", 0.8);
-            })
-            .on("mouseleave", function (event, d) {
-                if (d.id === currentUserIdStr) return;
-                hideLabel(d);
-                d3.select(this)
-                    .transition()
-                    .duration(200)
-                    .attr("r", 8)
-                    .style("fill-opacity", d.avatar_url ? 1 : 0.3)
-                    .attr("stroke-opacity", 0.6);
-            })
-            .call(
-                d3
-                    .drag()
-                    .on("start", (event, d) => {
-                        if (!event.active)
-                            simulation.alphaTarget(0.3).restart();
-                        d.fx = d.x;
-                        d.fy = d.y;
-                    })
-                    .on("drag", (event, d) => {
-                        d.fx = event.x;
-                        d.fy = event.y;
-                    })
-                    .on("end", (event, d) => {
-                        if (!event.active) simulation.alphaTarget(0);
-                        d.fx = null;
-                        d.fy = null;
-                    }),
-            )
-            .on("click", handleNodeClick);
+        // Initialize nodes via updateNodes to attach behaviors and cache selection
+        updateNodes();
 
         // Add current user's label
         if (currentUserIdStr) {
@@ -628,35 +598,50 @@
             }
         }
 
-        // showLabel and hideLabel are now at module level
+        // Initial cache of label selection
+        labelSelection = labelGroup.selectAll("text");
 
-        // Tick handler
+        // Tick handler - Optimized to use cached selections
         simulation.on("tick", () => {
-            linkGroup
-                .selectAll("line")
-                .attr("x1", (d) => d.source.x)
-                .attr("y1", (d) => d.source.y)
-                .attr("x2", (d) => d.target.x)
-                .attr("y2", (d) => d.target.y);
+            if (linkSelection) {
+                linkSelection
+                    .attr("x1", (d) => d.source.x)
+                    .attr("y1", (d) => d.source.y)
+                    .attr("x2", (d) => d.target.x)
+                    .attr("y2", (d) => d.target.y);
+            }
 
-            nodeGroup
-                .selectAll("circle")
-                .attr("cx", (d) => d.x)
-                .attr("cy", (d) => d.y);
+            if (nodeSelection) {
+                nodeSelection.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+            }
 
-            labelGroup
-                .selectAll("text")
-                .attr("x", function () {
-                    const nodeId = d3.select(this).attr("data-node-id");
-                    const node = nodesData.find((n) => n.id === nodeId);
-                    return node ? node.x : 0;
-                })
-                .attr("y", function () {
-                    const nodeId = d3.select(this).attr("data-node-id");
-                    const node = nodesData.find((n) => n.id === nodeId);
-                    const offset = -15; // Consistent offset above
-                    return node ? node.y + offset : 0;
-                });
+            if (labelSelection) {
+                labelSelection
+                    .attr("x", function (d) {
+                        // For data-bound labels created by updateNodes/showLabel
+                        if (d && d.x !== undefined) return d.x;
+
+                        // For manually created labels (like current user label)
+                        const nodeId = this.getAttribute("data-node-id");
+                        if (nodeId) {
+                            const node = nodeMap.get(nodeId);
+                            return node ? node.x : 0;
+                        }
+                        return 0;
+                    })
+                    .attr("y", function (d) {
+                        // For data-bound labels
+                        if (d && d.y !== undefined) return d.y - 15;
+
+                        // For manually created labels
+                        const nodeId = this.getAttribute("data-node-id");
+                        if (nodeId) {
+                            const node = nodeMap.get(nodeId);
+                            return node ? node.y - 15 : 0;
+                        }
+                        return 0;
+                    });
+            }
         });
     }
 
