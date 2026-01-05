@@ -11,7 +11,8 @@ config :friends, Friends.Repo,
   pool_size: 20
 
 config :friends, FriendsWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4001],
+  # Bind to all interfaces so Android emulator can connect via 10.0.2.2
+  http: [ip: {0, 0, 0, 0}, port: 4001],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,

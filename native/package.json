@@ -23,7 +23,8 @@
     "@capacitor/android": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
-    "@capacitor/ios": "^8.0.0"
+    "@capacitor/ios": "^8.0.0",
+    "capacitor-webauthn": "^0.0.12"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

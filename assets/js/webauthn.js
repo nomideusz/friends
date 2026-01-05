@@ -3,15 +3,52 @@
  *
  * Provides optional hardware-backed authentication using WebAuthn/FIDO2.
  * This allows users to use fingerprint, Face ID, hardware keys, etc.
+ * 
+ * Supports both:
+ * - Browser WebAuthn API (Chrome, Safari, etc.)
+ * - Native Capacitor passkeys (Android/iOS apps via capacitor-webauthn plugin)
  */
 
+// Access Capacitor plugin through the global Capacitor.Plugins registry
+// The capacitor-webauthn plugin registers as 'Webauthn'
+function getNativePasskey() {
+    try {
+        if (typeof window !== 'undefined' &&
+            window.Capacitor &&
+            window.Capacitor.Plugins &&
+            window.Capacitor.Plugins.Webauthn) {
+            console.log('Native Webauthn plugin available via Capacitor.Plugins');
+            return window.Capacitor.Plugins.Webauthn;
+        }
+    } catch (e) {
+        console.log('Native Webauthn plugin not available:', e);
+    }
+    return null;
+}
+
 /**
- * Check if WebAuthn is supported in this browser
+ * Check if running in a Capacitor native app
+ * @returns {boolean}
+ */
+export function isCapacitor() {
+    return typeof window !== 'undefined' &&
+        window.Capacitor !== undefined &&
+        window.Capacitor.isNativePlatform();
+}
+
+/**
+ * Check if WebAuthn is supported in this browser/environment
  * @returns {boolean}
  */
 export function isWebAuthnSupported() {
+    // In Capacitor native app, we use the native passkey plugin
+    if (isCapacitor()) {
+        return true; // Native plugin handles passkeys
+    }
+
+    // In browser, check for WebAuthn API
     return window.PublicKeyCredential !== undefined &&
-           navigator.credentials !== undefined
+        navigator.credentials !== undefined
 }
 
 /**
@@ -43,12 +80,88 @@ function bufferToBase64url(buffer) {
 }
 
 /**
- * Register a new WebAuthn credential
+ * Convert a string to base64url encoding
+ */
+function stringToBase64url(str) {
+    return btoa(unescape(encodeURIComponent(str)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '')
+}
+
+/**
+ * Register a new WebAuthn credential (native or browser)
  * @param {Object} options - Challenge options from server
  * @returns {Promise<Object>} - Credential response
  */
 export async function registerCredential(options) {
-    if (!isWebAuthnSupported()) {
+    // Use native passkey plugin in Capacitor
+    const nativePlugin = getNativePasskey();
+    if (isCapacitor() && nativePlugin) {
+        return await registerCredentialNative(options, nativePlugin);
+    }
+
+    // Fall back to browser WebAuthn
+    return await registerCredentialBrowser(options);
+}
+
+/**
+ * Register credential using native Capacitor plugin
+ */
+async function registerCredentialNative(options, plugin) {
+    try {
+        console.log('Using native passkey registration');
+        console.log('Options received:', JSON.stringify(options, null, 2));
+
+        // The native plugin expects user.id as base64url encoded string
+        // Always encode it since the server sends plain string (like "0")
+        const userId = stringToBase64url(String(options.user.id));
+
+        // The native plugin expects options in a specific format
+        const nativeOptions = {
+            challenge: options.challenge,
+            rp: options.rp,
+            user: {
+                id: userId,
+                name: options.user.name,
+                displayName: options.user.displayName || options.user.name
+            },
+            pubKeyCredParams: options.pubKeyCredParams,
+            timeout: options.timeout || 60000,
+            authenticatorSelection: options.authenticatorSelection || {
+                authenticatorAttachment: 'platform',
+                userVerification: 'required',
+                residentKey: 'required',
+                requireResidentKey: true
+            },
+            attestation: options.attestation || 'none'
+        };
+
+        console.log('Native options:', JSON.stringify(nativeOptions, null, 2));
+        const result = await plugin.startRegistration(nativeOptions);
+
+        // Format response to match what the server expects
+        return {
+            id: result.id,
+            rawId: result.rawId,
+            type: 'public-key',
+            transports: result.response?.transports || ['internal'],
+            response: {
+                clientDataJSON: result.response.clientDataJSON,
+                attestationObject: result.response.attestationObject
+            }
+        };
+    } catch (error) {
+        console.error('Native passkey registration error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Register credential using browser WebAuthn API
+ */
+async function registerCredentialBrowser(options) {
+    if (!window.PublicKeyCredential) {
         throw new Error('WebAuthn is not supported in this browser')
     }
 
@@ -73,9 +186,8 @@ export async function registerCredential(options) {
         }
 
         // Get transports from credential response (critical for iOS Safari Face ID)
-        // This tells the browser what type of authenticator was used
-        const transports = credential.response.getTransports 
-            ? credential.response.getTransports() 
+        const transports = credential.response.getTransports
+            ? credential.response.getTransports()
             : []
 
         // Convert response to JSON-serializable format
@@ -96,12 +208,65 @@ export async function registerCredential(options) {
 }
 
 /**
- * Authenticate with a WebAuthn credential
+ * Authenticate with a WebAuthn credential (native or browser)
  * @param {Object} options - Challenge options from server
  * @returns {Promise<Object>} - Authentication response
  */
 export async function authenticateWithCredential(options) {
-    if (!isWebAuthnSupported()) {
+    // Use native passkey plugin in Capacitor
+    const nativePlugin = getNativePasskey();
+    if (isCapacitor() && nativePlugin) {
+        return await authenticateCredentialNative(options, nativePlugin);
+    }
+
+    // Fall back to browser WebAuthn
+    return await authenticateCredentialBrowser(options);
+}
+
+/**
+ * Authenticate using native Capacitor plugin
+ */
+async function authenticateCredentialNative(options, plugin) {
+    try {
+        console.log('Using native passkey authentication');
+
+        const nativeOptions = {
+            challenge: options.challenge,
+            rpId: options.rpId,
+            timeout: options.timeout || 60000,
+            userVerification: options.userVerification || 'required',
+            allowCredentials: options.allowCredentials?.map(cred => ({
+                id: cred.id,
+                type: 'public-key',
+                transports: cred.transports || ['internal']
+            }))
+        };
+
+        const result = await plugin.startAuthentication(nativeOptions);
+
+        // Format response to match what the server expects
+        return {
+            id: result.id,
+            rawId: result.rawId,
+            type: 'public-key',
+            response: {
+                clientDataJSON: result.response.clientDataJSON,
+                authenticatorData: result.response.authenticatorData,
+                signature: result.response.signature,
+                userHandle: result.response.userHandle || null
+            }
+        };
+    } catch (error) {
+        console.error('Native passkey authentication error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Authenticate using browser WebAuthn API
+ */
+async function authenticateCredentialBrowser(options) {
+    if (!window.PublicKeyCredential) {
         throw new Error('WebAuthn is not supported in this browser')
     }
 
@@ -149,7 +314,12 @@ export async function authenticateWithCredential(options) {
  * @returns {Promise<boolean>}
  */
 export async function isPlatformAuthenticatorAvailable() {
-    if (!isWebAuthnSupported()) {
+    // In Capacitor, native passkeys are always available on modern devices
+    if (isCapacitor()) {
+        return true;
+    }
+
+    if (!window.PublicKeyCredential) {
         return false
     }
 

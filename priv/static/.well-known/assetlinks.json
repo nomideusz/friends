@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.friends.app",
+      "sha256_cert_fingerprints": [
+        "A0:5C:54:92:57:75:02:49:4F:D7:F2:07:05:D7:E2:CB:19:14:B4:82:E1:0E:90:63:87:0C:83:B0:04:B7:86:6E"
+      ]
+    }
+  }
+]

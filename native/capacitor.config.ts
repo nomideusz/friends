@@ -5,10 +5,9 @@ const config: CapacitorConfig = {
     appName: 'Friends',
     webDir: 'www',
     server: {
-        // Point to your Phoenix server
-        // For development, use your local IP (not localhost!)
-        url: 'http://192.168.1.100:4001', // Change to your Phoenix server URL
-        cleartext: true, // Allow HTTP in development
+        // Use production server for passkey RP ID validation
+        url: 'https://newinternet.online',
+        // cleartext: false by default for HTTPS
     },
     // iOS specific settings
     ios: {
