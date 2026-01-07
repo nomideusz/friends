@@ -410,8 +410,8 @@
         ctx.fillStyle = COLORS.label;
         const label = d.username || d.display_name || "User";
 
-        // Slightly offset if dragging to avoid finger occlusion
-        const offsetY = d === draggedSubject ? -35 : -25;
+        // Consistent offset above the node
+        const offsetY = -25;
         ctx.fillText(label, d.x, d.y + offsetY);
     }
 
@@ -468,11 +468,8 @@
     }
 
     function dragStarted(event) {
-        // Pin the node at its current position
-        event.subject.fx = event.subject.x;
-        event.subject.fy = event.subject.y;
-        // NOTE: Don't set isDragging or draggedSubject yet
-        // We'll set them on first actual movement to allow clicks through
+        // NOTE: Don't pin or set flags here - wait for actual movement
+        // This allows clicks to go through without affecting node position
 
         // Stop propagation to prevent zoom behavior from catching this
         if (event.sourceEvent) {
@@ -481,10 +478,13 @@
     }
 
     function dragged(event) {
-        // Now we're actually dragging - set flags
+        // Now we're actually dragging - set flags and pin node
         if (!isDragging) {
             isDragging = true;
             draggedSubject = event.subject;
+            // Pin the node
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
             // Use lower alpha to reduce "dancing" of other nodes
             simulation.alphaTarget(0.1).restart();
         }
@@ -506,13 +506,14 @@
     }
 
     function dragEnded(event) {
-        simulation.alphaTarget(0);
-        event.subject.fx = null;
-        event.subject.fy = null;
-        draggedSubject = null;
-
-        // Brief delay to prevent immediate click from firing on the node after drag
+        // Only do cleanup if we were actually dragging
         if (isDragging) {
+            simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+            draggedSubject = null;
+
+            // Brief delay to prevent immediate click from firing after drag
             setTimeout(() => {
                 isDragging = false;
             }, 50);
