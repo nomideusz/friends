@@ -324,10 +324,14 @@
         // Draw Nodes
         nodesData.forEach((d) => drawNode(d));
 
-        // Draw Labels (only on hover or for current user)
+        // Draw Labels (only on hover, drag, or for current user)
         const currentIdStr = String(currentUserId);
         nodesData.forEach((d) => {
-            if (String(d.id) === currentIdStr || d === hoverSubject) {
+            if (
+                String(d.id) === currentIdStr ||
+                d === hoverSubject ||
+                d === draggedSubject
+            ) {
                 drawLabel(d);
             }
         });
@@ -405,12 +409,13 @@
         ctx.font = "600 11px Inter, sans-serif";
         ctx.fillStyle = COLORS.label;
         const label = d.username || d.display_name || "User";
-        ctx.fillText(label, d.x, d.y - 25);
+
+        // Slightly offset if dragging to avoid finger occlusion
+        const offsetY = d === draggedSubject ? -35 : -25;
+        ctx.fillText(label, d.x, d.y + offsetY);
     }
 
     // --- Interaction Handlers ---
-
-    let isDragging = false;
 
     // Helper to find subject for interaction (sharing logic between drag and zoom filter)
     function findInteractionSubject(event) {
@@ -428,8 +433,9 @@
         let subject = null;
         // Adaptive hit radius (screen pixels)
         // Fingers are less precise; use a larger hit area on touch devices
-        // Using a very generous 100px for the zoom-blocking filter specifically on mobile
-        const hitRadius = hasTouch || isMobile ? 100 : 40;
+        // We use a very generous 120px for the zoom-blocking filter specifically on mobile
+        // to ensure dragging takes precedence over panning when near a node.
+        const hitRadius = hasTouch || isMobile ? 120 : 45;
         const r = hitRadius / t.k;
         let minDist2 = r * r;
 
@@ -464,10 +470,9 @@
     }
 
     function dragged(event) {
-        const transform = d3.zoomTransform(canvas);
-        const [mx, my] = d3.pointer(event.sourceEvent || event, canvas);
-        event.subject.fx = transform.invertX(mx);
-        event.subject.fy = transform.invertY(my);
+        const t = d3.zoomTransform(canvas);
+        event.subject.fx = t.invertX(event.x);
+        event.subject.fy = t.invertY(event.y);
     }
 
     function dragEnded(event) {
@@ -824,6 +829,8 @@
             bind:this={canvas}
             class="block w-full h-full cursor-grab active:cursor-grabbing"
             style="touch-action: none;"
+            data-is-dragging={isDragging}
+            data-has-subject={!!draggedSubject}
         ></canvas>
     </div>
 
