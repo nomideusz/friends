@@ -7,8 +7,6 @@
     export let graphData = null;
     export let live = null;
     export let onSkip = null;
-    // Whether to hide controls and fixed positioning (for background usage)
-    export let hideControls = false;
     // Current user ID for highlighting
     export let currentUserId = null;
 
@@ -535,6 +533,7 @@
             }
         }
 
+        debugLastSubject = found;
         if (found !== hoverSubject) {
             hoverSubject = found;
             canvas.style.cursor = found ? "pointer" : "default";
