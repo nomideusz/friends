@@ -14,7 +14,8 @@
     "phoenix_html": "file:../deps/phoenix_html",
     "phoenix_live_view": "file:../deps/phoenix_live_view",
     "qrcode": "^1.5.4",
-    "svelte": "^5.45.6"
+    "svelte": "^5.45.6",
+    "webcola": "^3.4.0"
   },
   "devDependencies": {
     "esbuild": "^0.27.1",

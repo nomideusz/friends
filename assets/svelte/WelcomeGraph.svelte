@@ -1,6 +1,7 @@
 <script>
     import { onMount, onDestroy } from "svelte";
     import * as d3 from "d3";
+    import * as cola from "webcola";
 
     // Props from Phoenix LiveView
     export let graphData = null;
@@ -101,10 +102,11 @@
         pendingUpdates = { nodes: [], links: [], removals: [] };
 
         if (needsUpdate) {
+            // Cola.js API for updating - different from D3 force
             simulation.nodes(nodesData);
-            simulation.force("link").links(linksData);
-            // Use low alpha for gentle update, avoiding jarring movements
-            simulation.alpha(0.15).restart();
+            simulation.links(linksData);
+            // Restart with minimal iterations for smooth update
+            simulation.start(10, 10, 10);
             updatePatterns();
             updateNodes();
             updateLinks();
@@ -151,10 +153,10 @@
         nodesData.splice(nodeIndex, 1);
         nodeMap.delete(id);
 
-        // Update simulation
+        // Update simulation - Cola.js API
         simulation.nodes(nodesData);
-        simulation.force("link").links(linksData);
-        simulation.alpha(0.3).restart();
+        simulation.links(linksData);
+        simulation.start(15, 10, 10);
 
         updatePatterns();
         updateNodes();
@@ -186,9 +188,9 @@
             );
         });
 
-        // Update simulation
-        simulation.force("link").links(linksData);
-        simulation.alpha(0.1).restart();
+        // Update simulation - Cola.js API
+        simulation.links(linksData);
+        simulation.start(10, 5, 5);
 
         updateLinks();
     }
@@ -533,32 +535,43 @@
         // Create patterns for avatars
         updatePatterns();
 
-        // Simulation - mobile optimizations for faster settling
-        const linkDistance = isMobile ? 60 : 90;
-        const chargeStrength = isMobile ? -60 : -100;
-        const collideRadius = isMobile ? 15 : 20;
-        const alphaDecay = isMobile ? 0.05 : 0.0228; // Default is ~0.0228, faster on mobile
+        // Cola.js simulation - stable constraint-based layout
+        // Much smoother than D3 force, especially for dynamic updates
+        const linkDistance = isMobile ? 50 : 80;
+        const nodeRadius = isMobile ? 12 : 15;
 
-        simulation = d3
-            .forceSimulation(nodesData)
-            .alphaDecay(alphaDecay)
-            .force(
-                "link",
-                d3
-                    .forceLink(linksData)
-                    .id((d) => d.id)
-                    .distance(linkDistance),
-            )
-            .force("charge", d3.forceManyBody().strength(chargeStrength))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("x", d3.forceX(width / 2).strength(0.05))
-            .force("y", d3.forceY(height / 2).strength(0.05))
-            .force("collide", d3.forceCollide().radius(collideRadius));
+        // Convert links to use node indices (Cola.js requirement)
+        const nodeIndexMap = new Map();
+        nodesData.forEach((n, i) => nodeIndexMap.set(n.id, i));
 
-        // Initialize cached selections
+        const colaLinks = linksData
+            .map((l) => ({
+                source:
+                    typeof l.source === "object"
+                        ? nodeIndexMap.get(l.source.id)
+                        : nodeIndexMap.get(l.source),
+                target:
+                    typeof l.target === "object"
+                        ? nodeIndexMap.get(l.target.id)
+                        : nodeIndexMap.get(l.target),
+                length: linkDistance,
+            }))
+            .filter((l) => l.source !== undefined && l.target !== undefined);
+
+        simulation = cola
+            .d3adaptor(d3)
+            .size([width, height])
+            .nodes(nodesData)
+            .links(colaLinks)
+            .avoidOverlaps(true) // Built-in overlap prevention
+            .symmetricDiffLinkLengths(linkDistance)
+            .handleDisconnected(true) // Handle disconnected components
+            .start(30, 20, 20); // unconstrained, user constraint, all constraint iterations
+
+        // Initialize cached selections - use colaLinks since they have resolved node refs
         linkSelection = linkGroup
             .selectAll("line")
-            .data(data.links)
+            .data(colaLinks)
             .join("line")
             .attr("stroke", "#ffffff")
             .attr("stroke-opacity", 0.15)
@@ -616,10 +629,34 @@
 
             if (linkSelection) {
                 linkSelection
-                    .attr("x1", (d) => d.source.x)
-                    .attr("y1", (d) => d.source.y)
-                    .attr("x2", (d) => d.target.x)
-                    .attr("y2", (d) => d.target.y);
+                    .attr("x1", (d) => {
+                        const src =
+                            typeof d.source === "number"
+                                ? nodesData[d.source]
+                                : d.source;
+                        return src ? src.x : 0;
+                    })
+                    .attr("y1", (d) => {
+                        const src =
+                            typeof d.source === "number"
+                                ? nodesData[d.source]
+                                : d.source;
+                        return src ? src.y : 0;
+                    })
+                    .attr("x2", (d) => {
+                        const tgt =
+                            typeof d.target === "number"
+                                ? nodesData[d.target]
+                                : d.target;
+                        return tgt ? tgt.x : 0;
+                    })
+                    .attr("y2", (d) => {
+                        const tgt =
+                            typeof d.target === "number"
+                                ? nodesData[d.target]
+                                : d.target;
+                        return tgt ? tgt.y : 0;
+                    });
             }
 
             if (nodeSelection) {
