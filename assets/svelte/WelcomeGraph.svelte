@@ -533,13 +533,15 @@
         // Create patterns for avatars
         updatePatterns();
 
-        // Simulation
+        // Simulation - mobile optimizations for faster settling
         const linkDistance = isMobile ? 60 : 90;
         const chargeStrength = isMobile ? -60 : -100;
-        const collideRadius = 20;
+        const collideRadius = isMobile ? 15 : 20;
+        const alphaDecay = isMobile ? 0.05 : 0.0228; // Default is ~0.0228, faster on mobile
 
         simulation = d3
             .forceSimulation(nodesData)
+            .alphaDecay(alphaDecay)
             .force(
                 "link",
                 d3
@@ -598,8 +600,20 @@
         // Initial cache of label selection
         labelSelection = labelGroup.selectAll("text");
 
-        // Tick handler - Optimized to use cached selections
+        // Tick counter for mobile frame skipping
+        let tickCount = 0;
+        const MOBILE_TICK_SKIP = 2; // Skip every 2 of 3 ticks on mobile for performance
+
+        // Tick handler - Optimized to use cached selections + mobile frame skipping
         simulation.on("tick", () => {
+            // On mobile, skip frames to reduce CPU load
+            if (isMobile) {
+                tickCount++;
+                if (tickCount % (MOBILE_TICK_SKIP + 1) !== 0) {
+                    return; // Skip this frame on mobile
+                }
+            }
+
             if (linkSelection) {
                 linkSelection
                     .attr("x1", (d) => d.source.x)

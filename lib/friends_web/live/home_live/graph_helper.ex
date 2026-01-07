@@ -325,12 +325,12 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
   Fetches a sample of recent users and their mutual connections.
   """
   def build_welcome_graph_data do
-    # Get sample of active users (reduced from 300 to 100 for performance)
+    # Get sample of active users (limited for performance - especially on mobile)
     users =
       Repo.all(
         from u in Friends.Social.User,
           order_by: [desc: u.inserted_at],
-          limit: 100,
+          limit: 300,
           select: %{
             id: u.id,
             username: u.username,
@@ -373,6 +373,33 @@ defmodule FriendsWeb.HomeLive.GraphHelper do
       edges: edges
     }
   end
+
+  @doc """
+  Ensures the current user is included in the welcome graph data.
+  If the user is not already in the nodes list, adds them.
+  """
+  def ensure_user_in_welcome_graph(nil, graph_data), do: graph_data
+  def ensure_user_in_welcome_graph(_user, nil), do: nil
+  def ensure_user_in_welcome_graph(user, graph_data) do
+    user_ids = MapSet.new(Enum.map(graph_data.nodes, & &1.id))
+    
+    if MapSet.member?(user_ids, user.id) do
+      graph_data
+    else
+      # Add the current user to the nodes
+      avatar = user.avatar_url_thumb || user.avatar_url
+      current_user_node = %{
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name || user.username,
+        color: user_color(user),
+        avatar_url: avatar
+      }
+      
+      %{graph_data | nodes: [current_user_node | graph_data.nodes]}
+    end
+  end
+
   @doc """
   Builds chord diagram data for a user's personal network.
   Returns nodes (user + connections) and a connection matrix for D3 chord layout.

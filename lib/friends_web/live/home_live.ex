@@ -1115,10 +1115,15 @@ defmodule FriendsWeb.HomeLive do
       "open_profile_sheet" ->
         {:noreply, assign(socket, :show_profile_sheet, true)}
       "show_fullscreen_graph" ->
+        graph_data = Friends.GraphCache.get_welcome_graph_data()
+        graph_data = FriendsWeb.HomeLive.GraphHelper.ensure_user_in_welcome_graph(
+          socket.assigns.current_user, 
+          graph_data
+        )
         {:noreply, 
          socket
          |> assign(:show_fullscreen_graph, true)
-         |> assign(:fullscreen_graph_data, FriendsWeb.HomeLive.GraphHelper.build_welcome_graph_data())}
+         |> assign(:fullscreen_graph_data, graph_data)}
       _ ->
         {:noreply, socket}
     end
@@ -1196,6 +1201,10 @@ defmodule FriendsWeb.HomeLive do
     end
 
     graph_data = Friends.GraphCache.get_welcome_graph_data()
+    graph_data = FriendsWeb.HomeLive.GraphHelper.ensure_user_in_welcome_graph(
+      socket.assigns.current_user, 
+      graph_data
+    )
     {:noreply,
      socket
      |> assign(:show_fullscreen_graph, true)
