@@ -62,6 +62,7 @@
 
     let isMobile = false;
     let hasTouch = false;
+    let isDragging = false; // Declared here!
     if (typeof window !== "undefined") {
         hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     }
@@ -427,8 +428,8 @@
         let subject = null;
         // Adaptive hit radius (screen pixels)
         // Fingers are less precise; use a larger hit area on touch devices
-        // Using a very generous 80px for the zoom-blocking filter specifically
-        const hitRadius = hasTouch || isMobile ? 80 : 40;
+        // Using a very generous 100px for the zoom-blocking filter specifically on mobile
+        const hitRadius = hasTouch || isMobile ? 100 : 40;
         const r = hitRadius / t.k;
         let minDist2 = r * r;
 
@@ -448,10 +449,12 @@
 
     function dragStarted(event) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
+        isDragging = true;
 
         // Stop the event from reaching the zoom behavior
         if (event.sourceEvent) {
-            event.sourceEvent.preventDefault();
+            if (event.sourceEvent.cancelable)
+                event.sourceEvent.preventDefault();
             event.sourceEvent.stopPropagation();
         }
 
@@ -472,6 +475,11 @@
         event.subject.fx = null;
         event.subject.fy = null;
         draggedSubject = null;
+
+        // Use a tiny timeout to reset isDragging so it doesn't trigger a click immediately
+        setTimeout(() => {
+            isDragging = false;
+        }, 50);
     }
 
     function handleCanvasMouseMove(event) {
@@ -600,29 +608,29 @@
             .zoom()
             .scaleExtent([0.1, 4])
             .filter((event) => {
+                // If we are already dragging, block zoom
+                if (isDragging) return false;
+
                 // Ignore zoom gestures if they start on or near a node
-                // This prevents panning when dragging a node on mobile/touch
                 const filteredTypes = [
                     "mousedown",
                     "touchstart",
-                    "touchmove",
                     "pointerdown",
                 ];
 
                 if (filteredTypes.includes(event.type)) {
-                    // On multi-touch (pinch), always allow zoom
+                    // On multi-touch (pinch), ALWAYS allow zoom
                     if (event.touches && event.touches.length > 1) return true;
 
                     const subject = findInteractionSubject(event);
                     if (subject) {
-                        // If we're on a node, return false to block zoom so drag can win
-                        return false;
+                        return false; // Block zoom
                     }
                 }
 
-                // Allow zoom otherwise (background clicks, pinch)
-                // d3 default: !event.ctrlKey || event.type === 'wheel'
-                return !event.button; // Standard left click or touch start
+                return (
+                    (!event.ctrlKey || event.type === "wheel") && !event.button
+                );
             })
             .on("zoom", (event) => {
                 transform = event.transform;
