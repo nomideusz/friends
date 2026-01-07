@@ -330,64 +330,6 @@
             }
         });
 
-        // Debug Cursor
-        if (debugCursor) {
-            // Draw Crosshair
-            ctx.beginPath();
-            ctx.strokeStyle = "red";
-            ctx.lineWidth = 2 / transform.k;
-            const size = 10 / transform.k;
-            ctx.moveTo(debugCursor.x - size, debugCursor.y);
-            ctx.lineTo(debugCursor.x + size, debugCursor.y);
-            ctx.moveTo(debugCursor.x, debugCursor.y - size);
-            ctx.lineTo(debugCursor.x, debugCursor.y + size);
-            ctx.stroke();
-
-            // Draw Hit Radius
-            ctx.beginPath();
-            ctx.strokeStyle = "yellow";
-            ctx.globalAlpha = 0.5;
-            ctx.lineWidth = 1 / transform.k;
-            ctx.arc(
-                debugCursor.x,
-                debugCursor.y,
-                debugCursor.r,
-                0,
-                2 * Math.PI,
-            );
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-        }
-
-        ctx.restore();
-
-        // HUD Overlay (Screen Space)
-        ctx.save();
-        ctx.font = "16px monospace";
-        ctx.fillStyle = "red";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        ctx.fillText(`Nodes: ${nodesData.length}`, 10, 10);
-        ctx.fillText(`Zoom: ${transform.k.toFixed(2)}`, 10, 30);
-        if (debugCursor) {
-            ctx.fillText(
-                `Mouse World: ${debugCursor.x.toFixed(0)}, ${debugCursor.y.toFixed(0)}`,
-                10,
-                50,
-            );
-        }
-        ctx.fillText(
-            `Subject: ${debugLastSubject ? debugLastSubject.id : "None"}`,
-            10,
-            70,
-        );
-        if (debugLastSubject) {
-            ctx.fillText(
-                `Dist: ${debugHitDist.toFixed(1)} (Limit: ${(45 / transform.k).toFixed(1)})`,
-                10,
-                90,
-            );
-        }
         ctx.restore();
     }
 
@@ -438,9 +380,6 @@
     // --- Interaction Handlers ---
 
     let isDragging = false;
-    let debugCursor = null;
-    let debugLastSubject = null;
-    let debugHitDist = 0;
 
     function dragSubject(event) {
         // Find closest node within radius
@@ -456,11 +395,7 @@
         const r = 45 / transform.k;
         let minDist2 = r * r;
 
-        // Update debug cursor
-        debugCursor = { x: mx, y: my, r: 45 / transform.k };
-
         // Iterate backwards (top nodes first)
-        let foundDist2 = Infinity;
         for (let i = nodesData.length - 1; i >= 0; i--) {
             const n = nodesData[i];
             const dx = mx - n.x;
@@ -469,12 +404,8 @@
             if (dist2 < minDist2) {
                 minDist2 = dist2;
                 subject = n;
-                foundDist2 = dist2;
             }
         }
-
-        debugLastSubject = subject;
-        debugHitDist = Math.sqrt(foundDist2);
 
         return subject;
     }
@@ -520,7 +451,6 @@
         let found = null;
         // Adaptive radius for hover too
         const r = 45 / t.k;
-        debugCursor = { x: worldX, y: worldY, r: r };
         const r2 = r * r;
 
         for (let i = nodesData.length - 1; i >= 0; i--) {
@@ -533,7 +463,6 @@
             }
         }
 
-        debugLastSubject = found;
         if (found !== hoverSubject) {
             hoverSubject = found;
             canvas.style.cursor = found ? "pointer" : "default";
