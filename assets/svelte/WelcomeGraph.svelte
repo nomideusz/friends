@@ -581,23 +581,17 @@
             }
         });
 
-        // D3 Force Simulation setup
+        // D3 Force Simulation setup - matching standard D3 example
+        // Nodes are positioned around origin (0,0), canvas transform centers them
         simulation = d3
             .forceSimulation(nodesData)
             .force(
                 "link",
-                d3
-                    .forceLink(linksData)
-                    .id((d) => d.id)
-                    .distance(isMobile ? 60 : 100),
+                d3.forceLink(linksData).id((d) => d.id),
             )
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("x", d3.forceX(width / 2).strength(0.1))
-            .force("y", d3.forceY(height / 2).strength(0.1))
-            .force(
-                "collide",
-                d3.forceCollide().radius((d) => 35),
-            )
+            .force("charge", d3.forceManyBody())
+            .force("x", d3.forceX())
+            .force("y", d3.forceY())
             .on("tick", ticked);
 
         // Zoom behavior
@@ -896,14 +890,15 @@
         const links = [];
         const nodeMap = new Map();
 
-        // Process nodes - smaller scatter on mobile
-        const scatterRange = width < 600 ? 150 : 300;
+        // Process nodes - scatter around origin (0,0)
+        // The viewBox/transform will center them in the canvas
+        const scatterRange = isMobile ? 50 : 100;
         data.nodes.forEach((node) => {
             const n = {
                 ...node,
                 id: String(node.id),
-                x: width / 2 + (Math.random() - 0.5) * scatterRange,
-                y: height / 2 + (Math.random() - 0.5) * scatterRange,
+                x: (Math.random() - 0.5) * scatterRange,
+                y: (Math.random() - 0.5) * scatterRange,
                 width: 32,
                 height: 32,
             };
