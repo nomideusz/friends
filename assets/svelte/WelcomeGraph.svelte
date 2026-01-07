@@ -454,7 +454,8 @@
         isDragging = true;
 
         const t = d3.zoomTransform(canvas);
-        const [px, py] = d3.pointer(event.sourceEvent || event, canvas);
+        const sourceEvent = event.sourceEvent || event;
+        const [px, py] = d3.pointer(sourceEvent, canvas);
 
         // Calculate world coordinates of the pointer
         const mx = t.invertX(px);
@@ -476,11 +477,14 @@
     }
 
     function dragged(event) {
+        // Use sourceEvent for robust coordinate extraction
+        const sourceEvent = event.sourceEvent || event;
+        const [px, py] = d3.pointer(sourceEvent, canvas);
         const t = d3.zoomTransform(canvas);
 
-        // Use event.x/y (CSS pixels) and apply offset in world space
-        event.subject.fx = t.invertX(event.x) + dragOffsetX;
-        event.subject.fy = t.invertY(event.y) + dragOffsetY;
+        // Apply world-space offset to inverted world pointer position
+        event.subject.fx = t.invertX(px) + dragOffsetX;
+        event.subject.fy = t.invertY(py) + dragOffsetY;
     }
 
     function dragEnded(event) {
