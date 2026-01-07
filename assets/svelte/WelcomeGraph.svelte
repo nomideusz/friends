@@ -388,10 +388,38 @@
             .attr("stroke-width", 1.5)
             .style("cursor", "pointer");
 
+        // Manual D3 drag handler for Cola.js (D3 v6+ compatible)
+        const drag = d3
+            .drag()
+            .on("start", (event, d) => {
+                d.fixed = true; // Fix position
+                d.x = event.x;
+                d.y = event.y;
+                d.px = event.x;
+                d.py = event.y;
+                // Try to resume or restart
+                if (simulation.resume) simulation.resume();
+                else simulation.start();
+            })
+            .on("drag", (event, d) => {
+                d.x = event.x;
+                d.y = event.y;
+                d.px = event.x;
+                d.py = event.y;
+                if (simulation.resume) simulation.resume();
+                else simulation.start();
+            })
+            .on("end", (event, d) => {
+                // Keep fixed if user clicked? Or release?
+                // User example implies click fixes. Drag usually ends with release.
+                // Let's keep it fixed if it was a drag, to match "click" behavior of example.
+                // d.fixed = false;
+            });
+
         enter
-            .call(simulation.drag)
+            .call(drag)
             .on("click", (event, d) => {
-                d.fixed = true; // Fix node on click as in example
+                d.fixed = true;
                 handleNodeClick(event, d);
             })
             .on("mouseenter", function (event, d) {
@@ -543,14 +571,15 @@
             }))
             .filter((l) => l.source !== undefined && l.target !== undefined);
 
-        // Cola.js simulation - match their unconstrained example exactly
+        // Cola.js simulation
         simulation = cola
             .d3adaptor(d3)
             .size([width, height])
             .nodes(nodesData)
             .links(colaLinks)
-            .symmetricDiffLinkLengths(5) // This spreads nodes apart
-            .start(30); // Single number like their example
+            .symmetricDiffLinkLengths(6)
+            .avoidOverlaps(true) // Prevent stacking (needed since we removed handleDisconnected)
+            .start(30);
 
         // Initialize cached selections - use colaLinks since they have resolved node refs
         linkSelection = linkGroup
