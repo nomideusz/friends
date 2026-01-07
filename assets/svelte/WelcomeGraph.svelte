@@ -415,14 +415,17 @@
         const t = d3.zoomTransform(canvas);
         // Use d3.pointer to get coordinates from native event relative to canvas
         const sourceEvent = event.sourceEvent || event;
+
+        // Robust coordinate extraction for touch/mouse
         const [screenX, screenY] = d3.pointer(sourceEvent, canvas);
         const mx = t.invertX(screenX);
         const my = t.invertY(screenY);
 
         let subject = null;
-        // Adaptive radius: maintain constant screen hit area (45px on desktop, 60px on mobile)
-        const baseRadius = isMobile ? 55 : 40;
-        const r = baseRadius / t.k;
+        // Adaptive hit radius (screen pixels)
+        // Mobile needs a significantly larger hit area for fingers (60px+)
+        const hitRadius = isMobile ? 65 : 40;
+        const r = hitRadius / t.k;
         let minDist2 = r * r;
 
         // Iterate backwards (top nodes first)
@@ -585,10 +588,15 @@
             .scaleExtent([0.1, 4])
             .filter((event) => {
                 // Ignore zoom gestures if they start on a node
-                // This prevents panning when dragging a node on mobile
-                if (event.type === "mousedown" || event.type === "touchstart") {
+                // This prevents panning when dragging a node on mobile/touch
+                const filteredTypes = [
+                    "mousedown",
+                    "touchstart",
+                    "pointerdown",
+                ];
+                if (filteredTypes.includes(event.type)) {
                     const subject = findInteractionSubject(event);
-                    return !subject;
+                    return !subject; // If subject found, return false to block zoom
                 }
                 return true;
             })
