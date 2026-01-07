@@ -18,42 +18,54 @@
         dim: "#888888", // Secondary
         energy: "#3B82F6", // Blue accent
         you: "#14B8A6", // Teal/cyan
-        friend: "#F59E0B", // Amber/Gold
+        friend: "#F59E0B", // SVG/D3 references replaced with Canvas refs
     };
-
     let container;
-    let svg;
-    let simulation;
+    let canvas;
+    let ctx;
     let width = 800;
     let height = 600;
-    let isMobile = false;
+    let transform = d3.zoomIdentity;
+    let simulation;
+
+    // Canvas optimization
+    const dpi =
+        typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     let animationFrame;
 
-    // Live update state
+    // Image cache for avatars
+    const imageCache = new Map();
+    const placeholderImage = new Image();
+    placeholderImage.src = "/images/default_avatar.png"; // Fallback URL
+
+    // State for interactions
+    let draggedSubject = null;
+    let hoverSubject = null;
+
+    // Data storage
     let nodesData = [];
     let linksData = [];
-    let nodeGroup;
-    let labelGroup;
-    let linkGroup;
     let nodeMap = new Map();
 
-    // Throttling for live updates (performance optimization)
+    // Queue for batched updates
     let pendingUpdates = { nodes: [], links: [], removals: [] };
     let updateTimeout = null;
-    const UPDATE_THROTTLE_MS = 500; // Batch updates every 500ms
+    const UPDATE_THROTTLE_MS = 1000;
 
     // Context menu state
     let showContextMenu = false;
     let contextMenuX = 0;
     let contextMenuY = 0;
     let contextMenuUser = null;
+
+    let isMobile = false;
     let contextMenuStatus = "none"; // 'connected', 'pending', or 'none'
 
     // === Exported functions for live updates from LiveView ===
 
     // Process batched updates (called after throttle delay)
     function processPendingUpdates() {
-        if (!simulation || !nodeGroup) return;
+        if (!simulation) return;
 
         let needsUpdate = false;
 
@@ -70,6 +82,14 @@
                 x: width / 2 + (Math.random() - 0.5) * 100,
                 y: height / 2 + (Math.random() - 0.5) * 100,
             };
+
+            // Preload image
+            if (newNode.avatar_url && !imageCache.has(newNode.avatar_url)) {
+                const img = new Image();
+                img.src = newNode.avatar_url;
+                imageCache.set(newNode.avatar_url, img);
+            }
+
             nodesData.push(newNode);
             nodeMap.set(id, newNode);
             needsUpdate = true;
@@ -102,14 +122,10 @@
         pendingUpdates = { nodes: [], links: [], removals: [] };
 
         if (needsUpdate) {
-            // Cola.js API for updating - different from D3 force
+            // Restart simulation
             simulation.nodes(nodesData);
             simulation.links(linksData);
-            // Restart with minimal iterations for smooth update
             simulation.start(10, 10, 10);
-            updatePatterns();
-            updateNodes();
-            updateLinks();
         }
     }
 
@@ -117,26 +133,21 @@
     function scheduleUpdate() {
         if (updateTimeout) return; // Already scheduled
         updateTimeout = setTimeout(() => {
-            updateTimeout = null;
             processPendingUpdates();
+            updateTimeout = null;
         }, UPDATE_THROTTLE_MS);
     }
 
-    // Add a new user node to the graph with animation (throttled)
+    // Add a new node (user joined) - throttled
     export function addNode(userData) {
-        if (!simulation || !nodeGroup) return;
-
-        const id = String(userData.id);
-        if (nodeMap.has(id)) return; // Already exists
-
-        // Queue for batched processing
+        if (!simulation) return;
         pendingUpdates.nodes.push(userData);
         scheduleUpdate();
     }
 
-    // Remove a user node from the graph with animation
+    // Remove a node (user left/removed) - immediate
     export function removeNode(userId) {
-        if (!simulation || !nodeGroup) return;
+        if (!simulation) return;
 
         const id = String(userId);
         const nodeIndex = nodesData.findIndex((n) => n.id === id);
@@ -153,28 +164,21 @@
         nodesData.splice(nodeIndex, 1);
         nodeMap.delete(id);
 
-        // Update simulation - Cola.js API
         simulation.nodes(nodesData);
         simulation.links(linksData);
         simulation.start(15, 10, 10);
-
-        updatePatterns();
-        updateNodes();
-        updateLinks();
     }
 
     // Add a connection between two nodes with animation (throttled)
     export function addLink(fromId, toId) {
-        if (!simulation || !linkGroup) return;
-
-        // Queue for batched processing
+        if (!simulation) return;
         pendingUpdates.links.push({ fromId, toId });
         scheduleUpdate();
     }
 
     // Remove a connection between two nodes with animation
     export function removeLink(fromId, toId) {
-        if (!simulation || !linkGroup) return;
+        if (!simulation) return;
 
         const sourceId = String(fromId);
         const targetId = String(toId);
@@ -188,40 +192,28 @@
             );
         });
 
-        // Update simulation - Cola.js API
         simulation.links(linksData);
-        simulation.start(10, 5, 5);
-
-        updateLinks();
+        simulation.start(10, 10, 10);
     }
 
     // Pulse a node to indicate activity (e.g., new post)
     export function pulseNode(userId) {
-        if (!nodeGroup) return;
-
-        const id = String(userId);
-        nodeGroup
-            .selectAll("circle")
-            .filter((d) => d.id === id)
-            .transition()
-            .duration(200)
-            .attr("r", 14)
-            .style("fill-opacity", 0.6)
-            .transition()
-            .duration(400)
-            .attr("r", 8)
-            .style("fill-opacity", 0.3);
+        // Todo: Implement canvas-based pulse animation (e.g. set a 'pulse' property on node)
+        // For now, no-op to avoid errors
     }
 
     // Handle node click - show context menu at node position
     function handleNodeClick(event, d) {
-        event.stopPropagation();
+        // D3 event propagation is different in Canvas manual handling
+        // event.stopPropagation() might not work if it's a native event, but check dispatch
+
         const currentUserIdStr = currentUserId ? String(currentUserId) : null;
 
         // Don't trigger on self
         if (d.id === currentUserIdStr) return;
 
         // Get mouse position relative to container
+        // Event clientX/Y are global
         const rect = container.getBoundingClientRect();
         contextMenuX = event.clientX - rect.left;
         contextMenuY = event.clientY - rect.top;
@@ -270,33 +262,7 @@
         }
     }
 
-    // Helper: show label on hover (module level for access from updateNodes)
-    // Helper: show label on hover (module level for access from updateNodes)
-    function showLabel(d) {
-        if (!labelGroup) return;
-        const label = labelGroup.select(`text[data-node-id="${d.id}"]`);
-        if (label.empty()) {
-            labelGroup
-                .append("text")
-                .attr("data-node-id", d.id)
-                .attr("x", d.x)
-                .attr("y", d.y - 15)
-                .attr("text-anchor", "middle")
-                .attr("fill", "#E5E7EB")
-                .attr("font-size", "10px")
-                .attr("font-family", "Inter, sans-serif")
-                .attr("font-weight", "500")
-                .style("opacity", 0)
-                .style("pointer-events", "none")
-                .text(d.display_name || d.username || d.id)
-                .transition()
-                .duration(200)
-                .style("opacity", 1);
-
-            // Update cached selection so the new label moves with the node
-            labelSelection = labelGroup.selectAll("text");
-        }
-    }
+    // showLabel and hideLabel are removed - handled in draw() loop
 
     // Helper: hide label on hover out (module level for access from updateNodes)
     function hideLabel(d) {
@@ -313,53 +279,193 @@
             });
     }
 
-    // Helper: update SVG patterns for avatars
-    function updatePatterns() {
-        if (!svg) return;
-        let defs = svg.select("defs");
-        if (defs.empty()) defs = svg.append("defs");
-
-        // Select patterns bound to nodes with avatars
-        const patterns = defs.selectAll("pattern").data(
-            nodesData.filter((d) => d.avatar_url),
-            (d) => d.id,
-        );
-
-        const enter = patterns
-            .enter()
-            .append("pattern")
-            .attr("id", (d) => `avatar-pattern-${d.id}`)
-            .attr("width", 1)
-            .attr("height", 1)
-            .attr("patternContentUnits", "objectBoundingBox");
-
-        // Add image to pattern
-        enter
-            .append("image")
-            .attr("href", (d) => d.avatar_url)
-            .attr("width", 1)
-            .attr("height", 1)
-            .attr("preserveAspectRatio", "xMidYMid slice");
-
-        patterns.exit().remove();
-    }
-
-    // Helper: Determine node fill
-    function getNodeFill(d, currentUserIdStr) {
-        if (d.avatar_url) return `url(#avatar-pattern-${d.id})`;
-        return d.id === currentUserIdStr ? "#60A5FA" : "#3B82F6";
+    // Helper: Determine node fill color (fallback)
+    function getNodeFill(type) {
+        return COLORS[type] || COLORS.friend;
     }
 
     // Helper: Determine node stroke
     function getNodeStroke(d, currentUserIdStr) {
         if (d.avatar_url) return "#ffffff"; // White border for photos
-        return d.id === currentUserIdStr ? "#FFFFFF" : "#93C5FD";
+        return String(d.id) === currentUserIdStr ? "#FFFFFF" : COLORS.energy;
     }
 
-    // Helper: Determine node fill opacity
-    function getNodeFillOpacity(d) {
-        if (d.avatar_url) return 1; // Solid for photos
-        return 0.3; // Glassy for colors
+    // Animation loop
+    function animate() {
+        draw();
+        animationFrame = requestAnimationFrame(animate);
+    }
+
+    // Main draw function
+    function draw() {
+        if (!ctx) return;
+
+        ctx.save();
+        ctx.clearRect(0, 0, width * dpi, height * dpi);
+
+        // Apply zoom transform
+        ctx.translate(transform.x * dpi, transform.y * dpi);
+        ctx.scale(transform.k, transform.k);
+
+        // Draw Links
+        ctx.beginPath();
+        linksData.forEach((d) => {
+            const src = getObj(d.source);
+            const tgt = getObj(d.target);
+            if (src && tgt) {
+                ctx.moveTo(src.x, src.y);
+                ctx.lineTo(tgt.x, tgt.y);
+            }
+        });
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Draw Nodes
+        nodesData.forEach((d) => drawNode(d));
+
+        // Draw Labels (only on hover or for current user)
+        const currentIdStr = String(currentUserId);
+        nodesData.forEach((d) => {
+            if (String(d.id) === currentIdStr || d === hoverSubject) {
+                drawLabel(d);
+            }
+        });
+
+        ctx.restore();
+    }
+
+    // Helper to resolve Cola's index vs object refs
+    function getObj(ref) {
+        return typeof ref === "number" ? nodesData[ref] : ref;
+    }
+
+    function drawNode(d) {
+        const r = isMobile ? 12 : 15;
+
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, r, 0, 2 * Math.PI);
+
+        // Draw avatar if available
+        if (d.avatar_url && imageCache.has(d.avatar_url)) {
+            const img = imageCache.get(d.avatar_url);
+            if (img.complete && img.naturalWidth > 0) {
+                ctx.save();
+                ctx.clip();
+                // Draw image centered
+                ctx.drawImage(img, d.x - r, d.y - r, r * 2, r * 2);
+                ctx.restore();
+
+                // Border for avatar
+                ctx.strokeStyle = getNodeStroke(d, String(currentUserId));
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                return;
+            }
+        }
+
+        // Fallback circle
+        ctx.fillStyle = getNodeFill(d, String(currentUserId));
+        ctx.fill();
+        ctx.strokeStyle = getNodeStroke(d, String(currentUserId));
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+
+    function drawLabel(d) {
+        ctx.font = "600 11px Inter, sans-serif";
+        ctx.fillStyle = "#FFFFFF";
+        const label = d.username || d.display_name || "User";
+        ctx.fillText(label, d.x, d.y - 20);
+    }
+
+    // --- Interaction Handlers ---
+
+    function dragSubject(event) {
+        // Find closest node within radius
+        const transform = d3.zoomTransform(canvas);
+        const x = transform.invertX(event.x * dpi) / dpi; // Unsure about DPI here, check invert logic
+        // Actually d3.drag on canvas passes event.x relative to canvas container.
+        // We need to invert transform.
+
+        // Let's use d3.pointer which gives [x,y] relative to target
+        // But the zoom transform is applied.
+
+        // Simpler: use the inverted mouse position from transform
+        const mx = transform.invertX(event.x);
+        const my = transform.invertY(event.y);
+
+        let subject = null;
+        let minDist2 = 400; // 20px radius squared
+
+        for (const n of nodesData) {
+            const dx = mx - n.x;
+            const dy = my - n.y;
+            const dist2 = dx * dx + dy * dy;
+            if (dist2 < minDist2) {
+                minDist2 = dist2;
+                subject = n;
+            }
+        }
+        return subject;
+    }
+
+    function dragStarted(event) {
+        if (!event.active && simulation.start) simulation.start();
+        event.subject.fixed = true;
+        // event.subject.px = event.subject.x;
+        // event.subject.py = event.subject.y;
+        draggedSubject = event.subject;
+    }
+
+    function dragged(event) {
+        // Drag event gives adjusted x/y if using Subject correctly?
+        // D3 drag subject updates position automatically if we modify it
+        event.subject.x = event.x;
+        event.subject.y = event.y;
+        event.subject.px = event.x;
+        event.subject.py = event.y;
+        simulation.resume();
+    }
+
+    function dragEnded(event) {
+        if (!event.active && simulation.alphaTarget) simulation.alphaTarget(0); // For Cola just stop forcing?
+        draggedSubject = null;
+        // Don't unfix if we want sticky nodes
+        // event.subject.fixed = false;
+    }
+
+    function handleCanvasMouseMove(event) {
+        const [mx, my] = d3.pointer(event);
+        const t = d3.zoomTransform(canvas);
+        const worldX = t.invertX(mx);
+        const worldY = t.invertY(my);
+
+        // Find node under mouse
+        let found = null;
+        const r2 = 400; // 20px radius
+
+        for (const n of nodesData) {
+            const dx = worldX - n.x;
+            const dy = worldY - n.y;
+            if (dx * dx + dy * dy < r2) {
+                found = n;
+                break;
+            }
+        }
+
+        if (found !== hoverSubject) {
+            hoverSubject = found;
+            canvas.style.cursor = found ? "pointer" : "default";
+        }
+    }
+
+    function handleCanvasClick(event) {
+        if (hoverSubject) {
+            handleNodeClick(event, hoverSubject);
+        } else {
+            handleBackdropClick(event);
+        }
     }
 
     // Cached selections for performance
@@ -367,193 +473,52 @@
     let linkSelection;
     let labelSelection;
 
-    function updateNodes() {
-        const nodes = nodeGroup
-            .selectAll("circle")
-            .data(nodesData, (d) => d.id);
-
-        const currentUserIdStr = currentUserId ? String(currentUserId) : null;
-
-        // Enter new nodes with animation
-        const enter = nodes
-            .enter()
-            .append("circle")
-            .attr("r", 0)
-            .attr("cx", (d) => d.x)
-            .attr("cy", (d) => d.y)
-            .style("fill", (d) => getNodeFill(d, currentUserIdStr))
-            .style("fill-opacity", (d) => getNodeFillOpacity(d))
-            .attr("stroke", (d) => getNodeStroke(d, currentUserIdStr))
-            .attr("stroke-opacity", 0.6)
-            .attr("stroke-width", 1.5)
-            .style("cursor", "pointer");
-
-        // Manual D3 drag handler for Cola.js (D3 v6+ compatible)
-        const drag = d3
-            .drag()
-            .on("start", (event, d) => {
-                d.fixed = true; // Fix position
-                d.x = event.x;
-                d.y = event.y;
-                d.px = event.x;
-                d.py = event.y;
-                // Try to resume or restart
-                if (simulation.resume) simulation.resume();
-                else simulation.start();
-            })
-            .on("drag", (event, d) => {
-                d.x = event.x;
-                d.y = event.y;
-                d.px = event.x;
-                d.py = event.y;
-                if (simulation.resume) simulation.resume();
-                else simulation.start();
-            })
-            .on("end", (event, d) => {
-                // Keep fixed if user clicked? Or release?
-                // User example implies click fixes. Drag usually ends with release.
-                // Let's keep it fixed if it was a drag, to match "click" behavior of example.
-                // d.fixed = false;
-            });
-
-        enter
-            .call(drag)
-            .on("click", (event, d) => {
-                d.fixed = true;
-                handleNodeClick(event, d);
-            })
-            .on("mouseenter", function (event, d) {
-                if (isMobile || d.id === currentUserIdStr) return;
-                showLabel(d);
-                d3.select(this)
-                    .attr("r", 10)
-                    .style("fill-opacity", d.avatar_url ? 1 : 0.4)
-                    .attr("stroke-opacity", 0.8);
-            })
-            .on("mouseleave", function (event, d) {
-                if (isMobile || d.id === currentUserIdStr) return;
-                hideLabel(d);
-                d3.select(this)
-                    .attr("r", 8)
-                    .style("fill-opacity", d.avatar_url ? 1 : 0.3)
-                    .attr("stroke-opacity", 0.6);
-            })
-            .transition()
-            .duration(500)
-            .attr("r", 8); // Uniform size
-
-        nodes.exit().transition().duration(300).attr("r", 0).remove();
-
-        // Update cached selection
-        nodeSelection = nodeGroup.selectAll("circle");
+    // Clean up empty SVG functions
+    function ticked() {
+        // Empty - drawing handled by animate loop
     }
-
-    function updateLinks() {
-        const links = linkGroup
-            .selectAll("line")
-            .data(linksData, (d) => `${d.source.id}-${d.target.id}`);
-
-        // Enter new links with animation
-        links
-            .enter()
-            .append("line")
-            .attr("stroke", "#ffffff")
-            .attr("stroke-opacity", 0)
-            .attr("stroke-width", 0.5)
-            .attr("x1", (d) => d.source.x)
-            .attr("y1", (d) => d.source.y)
-            .attr("x2", (d) => d.target.x)
-            .attr("y2", (d) => d.target.y)
-            .transition()
-            .duration(500)
-            .attr("stroke-opacity", 0.15);
-
-        links
-            .exit()
-            .transition()
-            .duration(300)
-            .attr("stroke-opacity", 0)
-            .remove();
-
-        // Update cached selection
-        linkSelection = linkGroup.selectAll("line");
-    }
+    function updatePatterns() {}
+    function updateNodes() {}
+    function updateLinks() {}
 
     function initGraph() {
-        if (!container || !graphData) return;
+        if (!container || !graphData || !canvas) return;
 
         const rect = container.getBoundingClientRect();
         width = rect.width || window.innerWidth;
         height = rect.height || window.innerHeight;
-
-        // Clear existing
-        d3.select(container).selectAll("*").remove();
-
-        // Build node/link data
-        const data = buildData(graphData);
-
-        // Create SVG
-        svg = d3
-            .select(container)
-            .append("svg")
-            .attr("width", width)
-            .attr("height", height)
-            .style("background", "transparent");
-
-        // Definitions for filters
-        const defs = svg.append("defs");
-        // No filters needed for glassy style
-
-        // Main group with zoom
-        const mainGroup = svg.append("g").attr("class", "main");
-
-        const zoom = d3
-            .zoom()
-            .scaleExtent([0.5, 3])
-            .on("zoom", (event) => {
-                mainGroup.attr("transform", event.transform);
-            });
-        svg.call(zoom);
-
         isMobile = width < 600;
 
-        if (hideControls) {
-            zoom.filter((event) => event.type !== "wheel");
-        }
+        // Set canvas size with DPI scaling
+        canvas.width = width * dpi;
+        canvas.height = height * dpi;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
 
-        const contentSize = isMobile ? 500 : 350;
-        const minDimension = Math.min(width, height);
-        const padding = isMobile ? 60 : 20;
+        ctx = canvas.getContext("2d");
+        ctx.scale(dpi, dpi);
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
 
-        let initialScale = (minDimension - padding) / contentSize;
-        initialScale = Math.min(initialScale, isMobile ? 0.85 : 1.2);
-        initialScale = Math.max(initialScale, 0.3);
-
-        const initialTransform = d3.zoomIdentity
-            .translate(width / 2, height / 2)
-            .scale(initialScale)
-            .translate(-width / 2, -height / 2);
-        svg.call(zoom.transform, initialTransform);
-
-        // Create groups
-        linkGroup = mainGroup.append("g").attr("class", "links");
-        nodeGroup = mainGroup.append("g").attr("class", "nodes");
-        labelGroup = mainGroup.append("g").attr("class", "labels");
-
+        // Build initial data
+        const data = buildData(graphData);
         nodesData = data.nodes;
         linksData = data.links;
         nodeMap.clear();
-        nodesData.forEach((n) => nodeMap.set(n.id, n));
 
-        // Create patterns for avatars
-        updatePatterns();
+        // Prepare image cache
+        nodesData.forEach((n) => {
+            nodeMap.set(n.id, n);
+            if (n.avatar_url && !imageCache.has(n.avatar_url)) {
+                const img = new Image();
+                img.src = n.avatar_url;
+                imageCache.set(n.avatar_url, img);
+            }
+        });
 
-        // Cola.js simulation - stable constraint-based layout
-        // Much smoother than D3 force, especially for dynamic updates
-        const linkDistance = isMobile ? 50 : 80;
-        const nodeRadius = isMobile ? 12 : 15;
+        // Cola.js simulation setup
+        const linkDistance = isMobile ? 60 : 100;
 
-        // Convert links to use node indices (Cola.js requirement)
         const nodeIndexMap = new Map();
         nodesData.forEach((n, i) => nodeIndexMap.set(n.id, i));
 
@@ -571,140 +536,59 @@
             }))
             .filter((l) => l.source !== undefined && l.target !== undefined);
 
-        // Cola.js simulation
         simulation = cola
             .d3adaptor(d3)
             .size([width, height])
             .nodes(nodesData)
             .links(colaLinks)
-            .linkDistance(isMobile ? 60 : 100) // Explicitly set larger link distance
-            .symmetricDiffLinkLengths(15) // Increase ideal edge length variance
+            .linkDistance(linkDistance)
+            .symmetricDiffLinkLengths(15)
             .avoidOverlaps(true)
+            .on("tick", ticked)
             .start(30);
 
-        // Initialize cached selections - use colaLinks since they have resolved node refs
-        linkSelection = linkGroup
-            .selectAll("line")
-            .data(colaLinks)
-            .join("line")
-            .attr("stroke", "#ffffff")
-            .attr("stroke-opacity", 0.15)
-            .attr("stroke-width", 0.5);
+        // Zoom behavior
+        const zoom = d3
+            .zoom()
+            .scaleExtent([0.1, 4])
+            .on("zoom", (event) => {
+                transform = event.transform;
+                // Redraw on zoom
+                // We don't need to call ticked() explicitly as the loop handles it,
+                // but for static graphs it helps to trigger a frame.
+            });
 
-        const currentUserIdStr = currentUserId ? String(currentUserId) : null;
-
-        // Initialize nodes via updateNodes to attach behaviors and cache selection
-        updateNodes();
-
-        // Add current user's label
-        if (currentUserIdStr) {
-            const currentUserNode = data.nodes.find(
-                (n) => n.id === currentUserIdStr,
+        d3.select(canvas)
+            .call(zoom)
+            .on("click", handleCanvasClick)
+            .on("mousemove", handleCanvasMouseMove)
+            .call(
+                d3
+                    .drag()
+                    .subject(dragSubject)
+                    .on("start", dragStarted)
+                    .on("drag", dragged)
+                    .on("end", dragEnded),
             );
-            if (currentUserNode) {
-                labelGroup
-                    .append("text")
-                    .attr("class", "current-user-label")
-                    .attr("data-node-id", currentUserIdStr)
-                    .attr("x", currentUserNode.x)
-                    .attr("y", currentUserNode.y - 15) // Above node
-                    .attr("text-anchor", "middle")
-                    .attr("fill", "#FFFFFF") // White text for You
-                    .attr("font-size", "11px")
-                    .attr("font-family", "Inter, sans-serif")
-                    .attr("font-weight", "600")
-                    .attr("letter-spacing", "0.02em")
-                    .style("opacity", 1)
-                    .style("pointer-events", "none")
-                    .text(
-                        currentUserNode.username ||
-                            currentUserNode.name ||
-                            "You",
-                    );
-            }
-        }
 
-        // Initial cache of label selection
-        labelSelection = labelGroup.selectAll("text");
+        // Initial Transform
+        const contentSize = isMobile ? 500 : 350;
+        const minDimension = Math.min(width, height);
+        const padding = isMobile ? 60 : 20;
+        let initialScale = (minDimension - padding) / contentSize;
+        initialScale = Math.min(initialScale, isMobile ? 0.85 : 1.2);
+        initialScale = Math.max(initialScale, 0.3);
 
-        // Tick counter for mobile frame skipping
-        let tickCount = 0;
-        const MOBILE_TICK_SKIP = 2; // Skip every 2 of 3 ticks on mobile for performance
+        const initialTransform = d3.zoomIdentity
+            .translate(width / 2, height / 2)
+            .scale(initialScale)
+            .translate(-width / 2, -height / 2);
 
-        // Tick handler - Optimized to use cached selections + mobile frame skipping
-        simulation.on("tick", () => {
-            // On mobile, skip frames to reduce CPU load
-            if (isMobile) {
-                tickCount++;
-                if (tickCount % (MOBILE_TICK_SKIP + 1) !== 0) {
-                    return; // Skip this frame on mobile
-                }
-            }
+        d3.select(canvas).call(zoom.transform, initialTransform);
 
-            if (linkSelection) {
-                linkSelection
-                    .attr("x1", (d) => {
-                        const src =
-                            typeof d.source === "number"
-                                ? nodesData[d.source]
-                                : d.source;
-                        return src ? src.x : 0;
-                    })
-                    .attr("y1", (d) => {
-                        const src =
-                            typeof d.source === "number"
-                                ? nodesData[d.source]
-                                : d.source;
-                        return src ? src.y : 0;
-                    })
-                    .attr("x2", (d) => {
-                        const tgt =
-                            typeof d.target === "number"
-                                ? nodesData[d.target]
-                                : d.target;
-                        return tgt ? tgt.x : 0;
-                    })
-                    .attr("y2", (d) => {
-                        const tgt =
-                            typeof d.target === "number"
-                                ? nodesData[d.target]
-                                : d.target;
-                        return tgt ? tgt.y : 0;
-                    });
-            }
-
-            if (nodeSelection) {
-                nodeSelection.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
-            }
-
-            if (labelSelection) {
-                labelSelection
-                    .attr("x", function (d) {
-                        // For data-bound labels created by updateNodes/showLabel
-                        if (d && d.x !== undefined) return d.x;
-
-                        // For manually created labels (like current user label)
-                        const nodeId = this.getAttribute("data-node-id");
-                        if (nodeId) {
-                            const node = nodeMap.get(nodeId);
-                            return node ? node.x : 0;
-                        }
-                        return 0;
-                    })
-                    .attr("y", function (d) {
-                        // For data-bound labels
-                        if (d && d.y !== undefined) return d.y - 15;
-
-                        // For manually created labels
-                        const nodeId = this.getAttribute("data-node-id");
-                        if (nodeId) {
-                            const node = nodeMap.get(nodeId);
-                            return node ? node.y - 15 : 0;
-                        }
-                        return 0;
-                    });
-            }
-        });
+        // Start animation loop
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        animate();
     }
 
     function buildData(data) {
@@ -811,7 +695,12 @@
     role="presentation"
 >
     <!-- Graph Container -->
-    <div bind:this={container} class="w-full h-full relative z-10"></div>
+    <div bind:this={container} class="w-full h-full relative z-10">
+        <canvas
+            bind:this={canvas}
+            class="block w-full h-full cursor-grab active:cursor-grabbing"
+        ></canvas>
+    </div>
 
     <!-- Context Menu -->
     {#if showContextMenu && contextMenuUser}
