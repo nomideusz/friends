@@ -332,6 +332,35 @@
             }
         });
 
+        // Debug Cursor
+        if (debugCursor) {
+            // Draw Crosshair
+            ctx.beginPath();
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 2 / transform.k;
+            const size = 10 / transform.k;
+            ctx.moveTo(debugCursor.x - size, debugCursor.y);
+            ctx.lineTo(debugCursor.x + size, debugCursor.y);
+            ctx.moveTo(debugCursor.x, debugCursor.y - size);
+            ctx.lineTo(debugCursor.x, debugCursor.y + size);
+            ctx.stroke();
+
+            // Draw Hit Radius
+            ctx.beginPath();
+            ctx.strokeStyle = "yellow";
+            ctx.globalAlpha = 0.5;
+            ctx.lineWidth = 1 / transform.k;
+            ctx.arc(
+                debugCursor.x,
+                debugCursor.y,
+                debugCursor.r,
+                0,
+                2 * Math.PI,
+            );
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+
         ctx.restore();
     }
 
@@ -382,6 +411,7 @@
     // --- Interaction Handlers ---
 
     let isDragging = false;
+    let debugCursor = null;
 
     function dragSubject(event) {
         // Find closest node within radius
@@ -396,6 +426,9 @@
         // Adaptive radius: maintain constant screen hit area (45px) regardless of zoom
         const r = 45 / transform.k;
         let minDist2 = r * r;
+
+        // Update debug cursor
+        debugCursor = { x: mx, y: my, r: 45 / transform.k };
 
         // Iterate backwards (top nodes first)
         for (let i = nodesData.length - 1; i >= 0; i--) {
@@ -452,6 +485,7 @@
         let found = null;
         // Adaptive radius for hover too
         const r = 45 / t.k;
+        debugCursor = { x: worldX, y: worldY, r: r };
         const r2 = r * r;
 
         for (let i = nodesData.length - 1; i >= 0; i--) {
