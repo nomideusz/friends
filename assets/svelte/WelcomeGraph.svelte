@@ -424,8 +424,28 @@
         const t = d3.zoomTransform(canvas);
         const sourceEvent = event.sourceEvent || event;
 
-        // Get coordinates relative to canvas (CSS pixels)
-        const [px, py] = d3.pointer(sourceEvent, canvas);
+        // Get coordinates relative to canvas
+        // Handle touch events specially - d3.pointer doesn't work well with TouchEvent
+        let px, py;
+        if (sourceEvent.touches && sourceEvent.touches.length > 0) {
+            // Touch event - use first touch
+            const touch = sourceEvent.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            px = touch.clientX - rect.left;
+            py = touch.clientY - rect.top;
+        } else if (
+            sourceEvent.changedTouches &&
+            sourceEvent.changedTouches.length > 0
+        ) {
+            // Touch end event - use changedTouches
+            const touch = sourceEvent.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            px = touch.clientX - rect.left;
+            py = touch.clientY - rect.top;
+        } else {
+            // Mouse event - use d3.pointer
+            [px, py] = d3.pointer(sourceEvent, canvas);
+        }
 
         // Invert transform to get world coordinates
         const mx = t.invertX(px);
