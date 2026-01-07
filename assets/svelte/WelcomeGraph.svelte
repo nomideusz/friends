@@ -613,39 +613,77 @@
                 transform = event.transform;
             });
 
+        // Track touch state for distinguishing tap from drag
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchedNode = null;
+
         const drag = d3
             .drag()
-            .container(canvas) // Set container for proper coordinate handling
+            .container(canvas)
+            .filter((event) => {
+                // Only allow drag if we have a subject (node under pointer)
+                const subject = findInteractionSubject(event);
+                return !!subject;
+            })
             .subject((event) => findInteractionSubject(event))
-            .touchable(() => true) // Enable touch support
+            .touchable(() => true)
             .on("start", dragStarted)
             .on("drag", dragged)
             .on("end", dragEnded);
 
         const canvasSelection = d3.select(canvas);
 
-        // IMPORTANT: Order matters! Attach zoom first, then drag
-        // Drag attached LAST takes priority for touch events
+        // Attach zoom first, then drag - drag takes priority when over a node
         canvasSelection
             .call(zoomBehavior)
             .call(drag)
             .on("click", handleCanvasClick)
             .on("mousemove", handleCanvasMouseMove);
 
-        // Add explicit touchstart handler to claim touch events over nodes
-        // This runs BEFORE D3 zoom/drag and can preventDefault to block zoom
+        // Touch handling for tap-to-click (context menu) on mobile
         canvas.addEventListener(
             "touchstart",
             (event) => {
                 if (event.touches.length === 1) {
-                    const subject = findInteractionSubject(event);
-                    if (subject) {
-                        // We're touching a node - prevent zoom from taking over
-                        event.stopPropagation();
-                    }
+                    const touch = event.touches[0];
+                    touchStartTime = Date.now();
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    touchedNode = findInteractionSubject(event);
                 }
             },
             { passive: true },
+        );
+
+        canvas.addEventListener(
+            "touchend",
+            (event) => {
+                // Check if this was a tap (short duration, minimal movement)
+                const elapsed = Date.now() - touchStartTime;
+                const TAP_THRESHOLD_MS = 300;
+                const TAP_DISTANCE_PX = 15;
+
+                if (elapsed < TAP_THRESHOLD_MS && touchedNode && !isDragging) {
+                    const touch = event.changedTouches[0];
+                    const dx = Math.abs(touch.clientX - touchStartX);
+                    const dy = Math.abs(touch.clientY - touchStartY);
+
+                    if (dx < TAP_DISTANCE_PX && dy < TAP_DISTANCE_PX) {
+                        // This is a tap on a node - trigger context menu
+                        handleNodeClick(
+                            { clientX: touch.clientX, clientY: touch.clientY },
+                            touchedNode,
+                        );
+                        event.preventDefault();
+                    }
+                }
+
+                touchedNode = null;
+                touchStartTime = 0;
+            },
+            { passive: false },
         );
 
         // Prevent scrolling/panning when dragging a node
