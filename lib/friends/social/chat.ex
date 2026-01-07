@@ -274,12 +274,13 @@ defmodule Friends.Social.Chat do
     |> Enum.reverse()
   end
 
-  def mark_conversation_read(conversation_id, user_id) do
+  def mark_conversation_read(conversation_id, user_id, timestamp \\ nil) do
+    timestamp = timestamp || DateTime.utc_now()
     Repo.update_all(
       from(p in ConversationParticipant,
         where: p.conversation_id == ^conversation_id and p.user_id == ^user_id
       ),
-      set: [last_read_at: DateTime.utc_now()]
+      set: [last_read_at: timestamp]
     )
   end
 

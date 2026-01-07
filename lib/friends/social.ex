@@ -287,8 +287,13 @@ defmodule Friends.Social do
   Mark a conversation as read. Also marks any corresponding DM room as read.
   """
   def mark_conversation_read(conversation_id, user_id) do
-    # Mark conversation itself read
-    Chat.mark_conversation_read(conversation_id, user_id)
+    user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
+    conversation_id = if is_binary(conversation_id), do: String.to_integer(conversation_id), else: conversation_id
+
+    # Mark conversation itself read using a slight future timestamp to clear all "now" messages
+    # Chat context handles the DB call
+    now_plus_buffer = DateTime.add(DateTime.utc_now(), 1, :second)
+    Chat.mark_conversation_read(conversation_id, user_id, now_plus_buffer)
 
     # If it's a direct conversation, also mark the DM room as read
     case Chat.get_conversation(conversation_id) do
@@ -300,7 +305,7 @@ defmodule Friends.Social do
           # Find DM room
           case Rooms.get_dm_room(user_id, other_participant.user_id) do
             nil -> :ok
-            room -> Rooms.mark_room_read(room.id, user_id)
+            room -> Rooms.mark_room_read(room.id, user_id, now_plus_buffer)
           end
         end
       _ -> :ok
@@ -310,16 +315,24 @@ defmodule Friends.Social do
   defdelegate is_participant?(conversation_id, user_id), to: Chat
   defdelegate add_participant(conversation_id, user_id, added_by_id), to: Chat
   
-  # This one needs logic or delegate to Chat if implemented there.
-  # I implemented `get_total_unread_count` in Chat.
-  defdelegate get_total_unread_count(user_id), to: Chat
+  @doc """
+  Get the total unread count across all rooms and conversations.
+  """
+  def get_total_unread_count(user_id) do
+    # Sum both systems
+    Chat.get_total_unread_count(user_id) + Rooms.get_total_unread_count(user_id)
+  end
   
   @doc """
   Mark a room as read. Also marks any linked direct conversation as read for DMs.
   """
   def mark_room_read(room_id, user_id) do
-    # Mark the room itself as read
-    res = Rooms.mark_room_read(room_id, user_id)
+    user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
+    room_id = if is_binary(room_id), do: String.to_integer(room_id), else: room_id
+
+    # Mark the room itself as read using a slight future timestamp buffer
+    now_plus_buffer = DateTime.add(DateTime.utc_now(), 1, :second)
+    res = Rooms.mark_room_read(room_id, user_id, now_plus_buffer)
 
     # If it's a DM room, also find and mark the corresponding conversation as read
     room = Rooms.get_room(room_id)
@@ -331,7 +344,7 @@ defmodule Friends.Social do
       if other_member do
         # Mark conversation read if it exists
         case Chat.get_or_create_direct_conversation(user_id, other_member.user_id) do
-          {:ok, conv} -> Chat.mark_conversation_read(conv.id, user_id)
+          {:ok, conv} -> Chat.mark_conversation_read(conv.id, user_id, now_plus_buffer)
           _ -> :ok
         end
       end

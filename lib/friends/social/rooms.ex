@@ -269,13 +269,14 @@ defmodule Friends.Social.Rooms do
     end
   end
 
-  def mark_room_read(room_id, user_id) do
+  def mark_room_read(room_id, user_id, timestamp \\ nil) do
     case get_room_member(room_id, user_id) do
       nil -> 
         {:error, :not_found}
       member ->
+        timestamp = timestamp || DateTime.utc_now()
         member
-        |> RoomMember.changeset(%{last_read_at: DateTime.utc_now()})
+        |> RoomMember.changeset(%{last_read_at: timestamp})
         |> Repo.update()
     end
   end
@@ -295,6 +296,40 @@ defmodule Friends.Social.Rooms do
         limit: 1,
         preload: [:sender, :room]
     )
+  end
+
+  def get_total_unread_count(user_id) do
+    # Fetch all room memberships for user
+    member_rooms =
+      Repo.all(
+        from rm in RoomMember,
+          where: rm.user_id == ^user_id,
+          select: {rm.room_id, rm.last_read_at}
+      )
+
+    # Sum unreads across all those rooms
+    Enum.reduce(member_rooms, 0, fn {room_id, last_read}, acc ->
+      count =
+        case last_read do
+          nil ->
+            Repo.aggregate(
+              from(m in Friends.Social.Message,
+                where: m.room_id == ^room_id and m.sender_id != ^user_id
+              ),
+              :count
+            )
+
+          dt ->
+            Repo.aggregate(
+              from(m in Friends.Social.Message,
+                where: m.room_id == ^room_id and m.sender_id != ^user_id and m.inserted_at > ^dt
+              ),
+              :count
+            )
+        end
+
+      acc + (count || 0)
+    end)
   end
 
   def get_room_members(room_id) do
