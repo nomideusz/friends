@@ -1,7 +1,6 @@
 <script>
     import { onMount, onDestroy } from "svelte";
     import * as d3 from "d3";
-    import * as cola from "webcola";
 
     // Props from Phoenix LiveView
     export let graphData = null;
@@ -10,13 +9,16 @@
     // Current user ID for highlighting
     export let currentUserId = null;
 
-    // Aether palette (subtle)
+    // Titanium / iOS 18 inspired palette
     const COLORS = {
-        light: "#EAE6DD", // Primary text
-        dim: "#888888", // Secondary
-        energy: "#3B82F6", // Blue accent
-        you: "#14B8A6", // Teal/cyan
-        friend: "#F59E0B", // SVG/D3 references replaced with Canvas refs
+        white: "#F5F5F7",
+        dim: "rgba(235, 235, 245, 0.3)", // Glassy white/gray
+        energy: "#0A84FF", // System Blue
+        you: "#30D158", // System Green
+        friend: "#5E5CE6", // System Indigo
+        aura: "rgba(10, 132, 255, 0.05)", // Extremely subtle
+        link: "rgba(120, 120, 128, 0.2)", // Static, subtle gray
+        label: "rgba(255, 255, 255, 0.85)",
     };
     let container;
     let canvas;
@@ -24,7 +26,9 @@
     let width = 800;
     let height = 600;
     let transform = d3.zoomIdentity;
+
     let simulation;
+    let zoomBehavior;
 
     // Canvas optimization
     const dpi =
@@ -77,8 +81,11 @@
                 username: userData.username,
                 display_name: userData.display_name || userData.username,
                 avatar_url: userData.avatar_url,
+                avatar_url: userData.avatar_url,
                 x: width / 2 + (Math.random() - 0.5) * 100,
                 y: height / 2 + (Math.random() - 0.5) * 100,
+                width: 32, // For overlap avoidance
+                height: 32,
             };
 
             // Preload image
@@ -122,8 +129,8 @@
         if (needsUpdate) {
             // Restart simulation
             simulation.nodes(nodesData);
-            simulation.links(linksData);
-            simulation.start(10, 10, 10);
+            simulation.force("link").links(linksData);
+            simulation.alpha(1).restart();
         }
     }
 
@@ -163,8 +170,8 @@
         nodeMap.delete(id);
 
         simulation.nodes(nodesData);
-        simulation.links(linksData);
-        simulation.start(15, 10, 10);
+        simulation.force("link").links(linksData);
+        simulation.alpha(1).restart();
     }
 
     // Add a connection between two nodes with animation (throttled)
@@ -190,8 +197,8 @@
             );
         });
 
-        simulation.links(linksData);
-        simulation.start(10, 10, 10);
+        simulation.force("link").links(linksData);
+        simulation.alpha(1).restart();
     }
 
     // Pulse a node to indicate activity (e.g., new post)
@@ -277,16 +284,7 @@
             });
     }
 
-    // Helper: Determine node fill color (fallback)
-    function getNodeFill(type) {
-        return COLORS[type] || COLORS.friend;
-    }
-
-    // Helper: Determine node stroke
-    function getNodeStroke(d, currentUserIdStr) {
-        if (d.avatar_url) return "#ffffff"; // White border for photos
-        return String(d.id) === currentUserIdStr ? "#FFFFFF" : COLORS.energy;
-    }
+    // Context menu state
 
     // Animation loop
     function animate() {
@@ -315,8 +313,8 @@
                 ctx.lineTo(tgt.x, tgt.y);
             }
         });
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = COLORS.link;
+        ctx.lineWidth = 0.5; // hairline
         ctx.stroke();
 
         // Draw Nodes
@@ -339,7 +337,28 @@
     }
 
     function drawNode(d) {
-        const r = isMobile ? 12 : 15;
+        // Slightly smaller, more refined nodes
+        const r = isMobile ? 11 : 14;
+        const currentIdStr = String(currentUserId);
+        const isSelf = String(d.id) === currentIdStr;
+
+        // Subtle Aura for active/self only, or very minimal for others
+        if (isSelf) {
+            const auraGradient = ctx.createRadialGradient(
+                d.x,
+                d.y,
+                r * 0.8,
+                d.x,
+                d.y,
+                r * 2.0,
+            );
+            auraGradient.addColorStop(0, COLORS.aura);
+            auraGradient.addColorStop(1, "transparent");
+            ctx.fillStyle = auraGradient;
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, r * 2.0, 0, 2 * Math.PI);
+            ctx.fill();
+        }
 
         ctx.beginPath();
         ctx.arc(d.x, d.y, r, 0, 2 * Math.PI);
@@ -355,47 +374,55 @@
                 ctx.restore();
 
                 // Border for avatar
-                ctx.strokeStyle = getNodeStroke(d, String(currentUserId));
+                ctx.strokeStyle = "#FFFFFF";
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
                 return;
             }
         }
 
-        // Fallback circle
-        ctx.fillStyle = getNodeFill(d, String(currentUserId));
+        // Flat, transparent design
+        const baseColor = isSelf ? COLORS.you : COLORS.friend;
+        const colorWithOpacity = d3.color(baseColor);
+        colorWithOpacity.opacity = 0.6; // 60% opacity
+
+        ctx.fillStyle = colorWithOpacity.toString();
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, r, 0, 2 * Math.PI);
         ctx.fill();
-        ctx.strokeStyle = getNodeStroke(d, String(currentUserId));
-        ctx.lineWidth = 1.5;
+
+        // Thicker, solid border
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 2.5;
         ctx.stroke();
     }
 
     function drawLabel(d) {
         ctx.font = "600 11px Inter, sans-serif";
-        ctx.fillStyle = "#FFFFFF";
+        ctx.fillStyle = COLORS.label;
         const label = d.username || d.display_name || "User";
-        ctx.fillText(label, d.x, d.y - 20);
+        ctx.fillText(label, d.x, d.y - 25);
     }
 
     // --- Interaction Handlers ---
 
     let isDragging = false;
 
-    function dragSubject(event) {
-        // Find closest node within radius
-        const transform = d3.zoomTransform(canvas);
+    // Helper to find subject for interaction (sharing logic between drag and zoom filter)
+    function findInteractionSubject(event) {
+        if (!canvas) return null;
 
+        const t = d3.zoomTransform(canvas);
         // Use d3.pointer to get coordinates from native event relative to canvas
-        // Important: check sourceEvent for TouchEvents compatibility
         const sourceEvent = event.sourceEvent || event;
         const [screenX, screenY] = d3.pointer(sourceEvent, canvas);
-        const mx = transform.invertX(screenX);
-        const my = transform.invertY(screenY);
+        const mx = t.invertX(screenX);
+        const my = t.invertY(screenY);
 
         let subject = null;
         // Adaptive radius: maintain constant screen hit area (45px on desktop, 60px on mobile)
-        const baseRadius = isMobile ? 60 : 45;
-        const r = baseRadius / transform.k;
+        const baseRadius = isMobile ? 55 : 40;
+        const r = baseRadius / t.k;
         let minDist2 = r * r;
 
         // Iterate backwards (top nodes first)
@@ -409,44 +436,28 @@
                 subject = n;
             }
         }
-
         return subject;
     }
 
     function dragStarted(event) {
-        isDragging = false;
-        // Use resume() to gently wake up simulation without full reset/re-layout iterations
-        if (!event.active && simulation.resume) {
-            simulation.resume();
-        } else if (!event.active && simulation.start) {
-            // If only start is available, use 0 iterations to avoid jump
-            simulation.start(0, 0, 0);
-        }
-
-        event.subject.fixed = true; // Lock node while dragging
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
         draggedSubject = event.subject;
     }
 
     function dragged(event) {
-        isDragging = true;
         const transform = d3.zoomTransform(canvas);
         const [mx, my] = d3.pointer(event.sourceEvent || event, canvas);
-        event.subject.x = transform.invertX(mx);
-        event.subject.y = transform.invertY(my);
-        event.subject.px = event.subject.x;
-        event.subject.py = event.subject.y;
-
-        if (simulation.resume) simulation.resume();
+        event.subject.fx = transform.invertX(mx);
+        event.subject.fy = transform.invertY(my);
     }
 
     function dragEnded(event) {
-        if (!event.active && simulation.alphaTarget) simulation.alphaTarget(0);
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
         draggedSubject = null;
-
-        // Unfix node so it settles back into physics (unless you want pinning)
-        if (event.subject) {
-            event.subject.fixed = false;
-        }
     }
 
     function handleCanvasMouseMove(event) {
@@ -480,13 +491,21 @@
     }
 
     function handleCanvasClick(event) {
+        // Stop bubbling to prevent parent's handleBackdropClick from firing
+        // which would close the menu we are trying to open/interact with.
+        event.stopPropagation();
+
         if (isDragging) {
             isDragging = false; // Reset flag but don't handle click
             return;
         }
 
-        if (hoverSubject) {
-            handleNodeClick(event, hoverSubject);
+        // Explicit hit test on click - more reliable than relying on hover state
+        // passing 'event' directly to finding logic
+        const subject = findInteractionSubject(event);
+
+        if (subject) {
+            handleNodeClick(event, subject);
         } else {
             handleBackdropClick(event);
         }
@@ -540,82 +559,118 @@
             }
         });
 
-        // Cola.js simulation setup
-        const linkDistance = isMobile ? 60 : 100;
-
-        const nodeIndexMap = new Map();
-        nodesData.forEach((n, i) => nodeIndexMap.set(n.id, i));
-
-        const colaLinks = linksData
-            .map((l) => ({
-                source:
-                    typeof l.source === "object"
-                        ? nodeIndexMap.get(l.source.id)
-                        : nodeIndexMap.get(l.source),
-                target:
-                    typeof l.target === "object"
-                        ? nodeIndexMap.get(l.target.id)
-                        : nodeIndexMap.get(l.target),
-                length: linkDistance,
-            }))
-            .filter((l) => l.source !== undefined && l.target !== undefined);
-
-        linksData = colaLinks; // Critical: Update global reference for drawing
-
-        simulation = cola
-            .d3adaptor(d3)
-            .size([width, height])
-            .nodes(nodesData)
-            .links(colaLinks)
-            .linkDistance(linkDistance)
-            .symmetricDiffLinkLengths(15)
-            .handleDisconnected(false) // Allow disconnected nodes to scatter naturally
-            .avoidOverlaps(true)
-            .on("tick", ticked)
-            .start(30);
+        // D3 Force Simulation setup
+        simulation = d3
+            .forceSimulation(nodesData)
+            .force(
+                "link",
+                d3
+                    .forceLink(linksData)
+                    .id((d) => d.id)
+                    .distance(isMobile ? 60 : 100),
+            )
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("x", d3.forceX(width / 2).strength(0.07))
+            .force("y", d3.forceY(height / 2).strength(0.07))
+            .force(
+                "collide",
+                d3.forceCollide().radius((d) => 35),
+            )
+            .on("tick", ticked);
 
         // Zoom behavior
-        const zoom = d3
+        zoomBehavior = d3
             .zoom()
             .scaleExtent([0.1, 4])
+            .filter((event) => {
+                // Ignore zoom gestures if they start on a node
+                // This prevents panning when dragging a node on mobile
+                if (event.type === "mousedown" || event.type === "touchstart") {
+                    const subject = findInteractionSubject(event);
+                    return !subject;
+                }
+                return true;
+            })
             .on("zoom", (event) => {
                 transform = event.transform;
-                // Redraw on zoom
-                // We don't need to call ticked() explicitly as the loop handles it,
-                // but for static graphs it helps to trigger a frame.
             });
 
         const drag = d3
             .drag()
-            .subject(dragSubject)
+            .subject((event) => findInteractionSubject(event))
             .on("start", dragStarted)
             .on("drag", dragged)
             .on("end", dragEnded);
 
         d3.select(canvas)
             .call(drag)
-            .call(zoom)
+            .call(zoomBehavior)
             .on("click", handleCanvasClick)
             .on("mousemove", handleCanvasMouseMove);
 
-        // Initial Transform
-        const contentSize = isMobile ? 500 : 350;
-        const minDimension = Math.min(width, height);
-        const padding = isMobile ? 60 : 20;
-        let initialScale = (minDimension - padding) / contentSize;
-        initialScale = Math.min(initialScale, isMobile ? 0.85 : 1.2);
-        initialScale = Math.max(initialScale, 0.3);
+        // Pre-warm the simulation to stabilize layout
+        // Run about 300 ticks synchronously
+        simulation.stop();
+        for (let i = 0; i < 300; ++i) simulation.tick();
+        ticked(); // Run one tick handler just in case
 
-        const initialTransform = d3.zoomIdentity
-            .translate(width / 2, height / 2)
-            .scale(initialScale)
-            .translate(-width / 2, -height / 2);
-
-        d3.select(canvas).call(zoom.transform, initialTransform);
+        // Initial Zoom to Fit
+        zoomToFit();
 
         // Start animation loop
         if (animationFrame) cancelAnimationFrame(animationFrame);
         animate();
+    }
+
+    function zoomToFit() {
+        if (!nodesData.length || !canvas) return;
+
+        // Calculate bounding box
+        let minX = Infinity,
+            maxX = -Infinity,
+            minY = Infinity,
+            maxY = -Infinity;
+
+        nodesData.forEach((d) => {
+            if (d.x < minX) minX = d.x;
+            if (d.x > maxX) maxX = d.x;
+            if (d.y < minY) minY = d.y;
+            if (d.y > maxY) maxY = d.y;
+        });
+
+        // Add some padding to the bounding box
+        const padding = 50;
+        const width = canvas.offsetWidth;
+        const height = canvas.offsetHeight;
+
+        // Calculate the width and height of the graph
+        const graphWidth = maxX - minX + padding * 2;
+        const graphHeight = maxY - minY + padding * 2;
+
+        // Calculate the scale to fit the graph into the canvas
+        const scaleX = width / graphWidth;
+        const scaleY = height / graphHeight;
+        let scale = Math.min(scaleX, scaleY);
+
+        // Clamp scale to reasonable limits
+        scale = Math.min(Math.max(scale, 0.1), 2.0);
+
+        // Calculate translation to center the graph
+        const midX = (minX + maxX) / 2;
+        const midY = (minY + maxY) / 2;
+
+        // Create the new transform
+        const newTransform = d3.zoomIdentity
+            .translate(width / 2, height / 2)
+            .scale(scale)
+            .translate(-midX, -midY);
+
+        // Apply transform with transition
+        d3.select(canvas)
+            .transition()
+            .duration(750)
+            .call(zoomBehavior.transform, newTransform);
     }
 
     function buildData(data) {
@@ -633,6 +688,8 @@
                 id: String(node.id),
                 x: width / 2 + (Math.random() - 0.5) * scatterRange,
                 y: height / 2 + (Math.random() - 0.5) * scatterRange,
+                width: 32,
+                height: 32,
             };
             nodes.push(n);
             nodeMap.set(n.id, n);
@@ -775,87 +832,110 @@
 </div>
 
 <style>
+    /* Apple Fluid Style Context Menu */
     .context-menu {
         position: absolute;
         z-index: 100;
-        min-width: 160px;
+        min-width: 200px;
         transform: translate(-50%, 10px);
+        transform-origin: top center;
 
-        /* Fluid Glass Design */
-        background: rgba(10, 10, 10, 0.85);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
+        /* High-quality Glassmorphism */
+        background: rgba(35, 35, 40, 0.75);
+        backdrop-filter: blur(25px) saturate(180%);
+        -webkit-backdrop-filter: blur(25px) saturate(180%);
         border: 1px solid rgba(255, 255, 255, 0.12);
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 1rem;
         box-shadow:
-            0 10px 40px -10px rgba(0, 0, 0, 0.6),
-            0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+            0 12px 32px rgba(0, 0, 0, 0.4),
+            0 4px 8px rgba(0, 0, 0, 0.2),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 
-        /* Spring animation */
-        animation: menu-pop 0.25s cubic-bezier(0.3, 1.5, 0.6, 1);
-        overflow: hidden;
+        border-radius: 14px;
+        padding: 6px;
+
+        /* Typography */
+        font-family:
+            "SF Pro Text",
+            "Inter",
+            -apple-system,
+            BlinkMacSystemFont,
+            system-ui,
+            sans-serif;
+        color: rgba(255, 255, 255, 0.95);
+
+        /* Animation */
+        animation: menu-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    @keyframes menu-pop {
+    @keyframes menu-enter {
         0% {
-            transform: translate(-50%, 10px) scale(0.9);
             opacity: 0;
+            transform: translate(-50%, 0px) scale(0.92);
         }
         100% {
-            transform: translate(-50%, 10px) scale(1);
             opacity: 1;
+            transform: translate(-50%, 10px) scale(1);
         }
     }
 
     .menu-header {
-        padding: 0.75rem 1rem 0.5rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 6px 10px 8px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 4px;
+        margin-left: 4px;
+        margin-right: 4px;
     }
 
     .menu-username {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.7);
-        letter-spacing: 0.01em;
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.6);
+        letter-spacing: -0.01em;
     }
 
     .menu-actions {
-        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
     .menu-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        width: 100%;
-        padding: 0.65rem 0.75rem;
+        appearance: none;
         border: none;
         background: transparent;
-        color: #f5f5f7;
-        font-size: 0.9rem;
-        font-weight: 500;
+        width: 100%;
         text-align: left;
-        border-radius: 0.6rem;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 400;
+        color: inherit;
         cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.15s ease-out;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .menu-item:hover {
+    .menu-item:not([disabled]):hover {
         background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.02);
     }
 
-    .menu-item:active {
-        transform: scale(0.98);
+    .menu-item:not([disabled]):active {
         background: rgba(255, 255, 255, 0.15);
+        transform: scale(0.98);
+    }
+
+    .menu-item span {
+        position: relative;
     }
 
     .menu-item-pending {
-        color: rgba(255, 255, 255, 0.4);
+        opacity: 0.5;
         cursor: default;
-    }
-
-    .menu-item-pending:hover {
-        background: transparent;
+        font-style: italic;
     }
 </style>
