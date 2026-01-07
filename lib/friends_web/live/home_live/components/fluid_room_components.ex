@@ -1295,7 +1295,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                     Invite
                   </div>
                   <div class="space-y-1">
-                    <%= for friend <- Enum.take(@filtered_friends, 5) do %>
+                    <%= for friend <- @filtered_friends do %>
                       <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/5">
                         <div 
                           class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white border border-white/20"
