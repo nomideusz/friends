@@ -38,7 +38,7 @@
     // Image cache for avatars
     const imageCache = new Map();
     const placeholderImage = new Image();
-    placeholderImage.src = "/images/default_avatar.png"; // Fallback URL
+    placeholderImage.src = "/images/icon-192.png"; // Use existing icon as fallback
 
     // State for interactions
     let draggedSubject = null;
@@ -61,6 +61,10 @@
     let contextMenuUser = null;
 
     let isMobile = false;
+    let hasTouch = false;
+    if (typeof window !== "undefined") {
+        hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    }
     let contextMenuStatus = "none"; // 'connected', 'pending', or 'none'
 
     // === Exported functions for live updates from LiveView ===
@@ -80,7 +84,6 @@
                 id: id,
                 username: userData.username,
                 display_name: userData.display_name || userData.username,
-                avatar_url: userData.avatar_url,
                 avatar_url: userData.avatar_url,
                 x: width / 2 + (Math.random() - 0.5) * 100,
                 y: height / 2 + (Math.random() - 0.5) * 100,
@@ -416,15 +419,15 @@
         // Use d3.pointer to get coordinates from native event relative to canvas
         const sourceEvent = event.sourceEvent || event;
 
-        // Robust coordinate extraction for touch/mouse
+        // Robust coordinate extraction handling touch/mouse
         const [screenX, screenY] = d3.pointer(sourceEvent, canvas);
         const mx = t.invertX(screenX);
         const my = t.invertY(screenY);
 
         let subject = null;
         // Adaptive hit radius (screen pixels)
-        // Mobile needs a significantly larger hit area for fingers (60px+)
-        const hitRadius = isMobile ? 65 : 40;
+        // Fingers are less precise; use a larger hit area on touch devices
+        const hitRadius = hasTouch || isMobile ? 75 : 40;
         const r = hitRadius / t.k;
         let minDist2 = r * r;
 
@@ -541,16 +544,18 @@
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
 
-        ctx = canvas.getContext("2d");
-        ctx.scale(dpi, dpi);
-        ctx.textBaseline = "middle";
-        ctx.textAlign = "center";
-
         // Build initial data
         const data = buildData(graphData);
         nodesData = data.nodes;
         linksData = data.links;
         nodeMap.clear();
+
+        ctx = canvas.getContext("2d");
+        // Crucial: Reset transform before scaling to avoid cumulative drift
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpi, dpi);
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
 
         // Prepare image cache
         nodesData.forEach((n) => {
@@ -595,6 +600,9 @@
                     "pointerdown",
                 ];
                 if (filteredTypes.includes(event.type)) {
+                    // On touch, only suppress zoom if it's a single finger (drag start)
+                    if (event.touches && event.touches.length > 1) return true;
+
                     const subject = findInteractionSubject(event);
                     return !subject; // If subject found, return false to block zoom
                 }
