@@ -362,6 +362,35 @@
         }
 
         ctx.restore();
+
+        // HUD Overlay (Screen Space)
+        ctx.save();
+        ctx.font = "16px monospace";
+        ctx.fillStyle = "red";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(`Nodes: ${nodesData.length}`, 10, 10);
+        ctx.fillText(`Zoom: ${transform.k.toFixed(2)}`, 10, 30);
+        if (debugCursor) {
+            ctx.fillText(
+                `Mouse World: ${debugCursor.x.toFixed(0)}, ${debugCursor.y.toFixed(0)}`,
+                10,
+                50,
+            );
+        }
+        ctx.fillText(
+            `Subject: ${debugLastSubject ? debugLastSubject.id : "None"}`,
+            10,
+            70,
+        );
+        if (debugLastSubject) {
+            ctx.fillText(
+                `Dist: ${debugHitDist.toFixed(1)} (Limit: ${(45 / transform.k).toFixed(1)})`,
+                10,
+                90,
+            );
+        }
+        ctx.restore();
     }
 
     // Helper to resolve Cola's index vs object refs
@@ -412,6 +441,8 @@
 
     let isDragging = false;
     let debugCursor = null;
+    let debugLastSubject = null;
+    let debugHitDist = 0;
 
     function dragSubject(event) {
         // Find closest node within radius
@@ -431,6 +462,7 @@
         debugCursor = { x: mx, y: my, r: 45 / transform.k };
 
         // Iterate backwards (top nodes first)
+        let foundDist2 = Infinity;
         for (let i = nodesData.length - 1; i >= 0; i--) {
             const n = nodesData[i];
             const dx = mx - n.x;
@@ -439,8 +471,13 @@
             if (dist2 < minDist2) {
                 minDist2 = dist2;
                 subject = n;
+                foundDist2 = dist2;
             }
         }
+
+        debugLastSubject = subject;
+        debugHitDist = Math.sqrt(foundDist2);
+
         return subject;
     }
 
