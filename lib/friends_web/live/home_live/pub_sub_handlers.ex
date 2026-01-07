@@ -367,17 +367,19 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   Handle when someone accepts your connection request.
   Refreshes the friends list and outgoing requests.
   """
-  def handle_connection_accepted(socket, _by_user_id) do
+  def handle_connection_accepted(socket, by_user_id) do
     current_user = socket.assigns[:current_user]
     if current_user do
       friends = Social.list_friends(current_user.id)
       pending = Social.list_friend_requests(current_user.id)
       outgoing = Social.list_sent_friend_requests(current_user.id)
+      
       {:noreply,
        socket
        |> assign(:friends, friends)
        |> assign(:pending_requests, pending)
-       |> assign(:outgoing_friend_requests, outgoing)}
+       |> assign(:outgoing_friend_requests, outgoing)
+       |> push_event("welcome_new_connection", %{from_id: current_user.id, to_id: by_user_id})}
     else
       {:noreply, socket}
     end
@@ -505,7 +507,17 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
         true -> ""
       end
 
-      {:noreply, put_flash(socket, :info, "New message from #{username} #{context_name}")}
+      # Create notification object
+      notification = %{
+        id: "msg-#{message.id}",
+        sender_username: username,
+        room_id: data[:room_id] || message.room_id,
+        room_name: data[:room_name] || "Chat",
+        text: message.encrypted_content, # In a real app we'd decrypt this or show generic text
+        timestamp: DateTime.utc_now()
+      }
+
+      {:noreply, assign(socket, :persistent_notification, notification)}
     else
       {:noreply, socket}
     end

@@ -625,6 +625,30 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_settings_modal, !socket.assigns.show_settings_modal)}
   end
 
+  def handle_event("dismiss_notification", _params, socket) do
+    {:noreply, assign(socket, :persistent_notification, nil)}
+  end
+
+  def handle_event("view_notification", _params, socket) do
+    notification = socket.assigns[:persistent_notification]
+    
+    if notification do
+      socket = assign(socket, :persistent_notification, nil)
+      
+      # Determine navigation target based on notification type/data
+      # Assuming room_id is present for chat messages
+      if notification.room_id do
+         # Use push_navigate or patch depending on if we are in a room or not
+         # But safer to push_navigate to ensure clean switch
+         {:noreply, push_navigate(socket, to: ~p"/r/#{notification.room_name}")}
+      else
+         {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("sign_out", _params, socket) do
     SettingsEvents.sign_out(socket)
   end

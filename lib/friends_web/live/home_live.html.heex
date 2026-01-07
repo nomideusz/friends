@@ -141,6 +141,11 @@
     uploads={assigns[:uploads]}
   />
 
+  <%!-- Persistent Notification Pill --%>
+  <%= if assigns[:persistent_notification] do %>
+    <.notification_pill notification={@persistent_notification} />
+  <% end %>
+
   <%!-- Leftover settings modal logic removed --%>
 
 
