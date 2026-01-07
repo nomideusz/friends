@@ -427,8 +427,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
   def handle_params(%{"room" => room_code} = params, _uri, socket) do
     current_room_code = socket.assigns[:room] && socket.assigns.room.code
     
-    # Check for actions (e.g. auto open invite modal)
+    # Check for actions
     show_invite = params["action"] == "invite"
+    expand_chat = params["action"] == "chat"
 
     if current_room_code != room_code do
       old_room = socket.assigns[:room]
@@ -498,7 +499,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
        |> assign(:no_more_items, if(can_access, do: length(items) < @initial_batch, else: true))
        |> assign(:viewers, viewers)
        |> assign(:room_access_denied, not can_access)
-       |> assign(:show_chat_panel, room.is_private)
+       |> assign(:show_chat_panel, room.is_private or expand_chat)
+       |> assign(:chat_expanded, expand_chat)
        |> assign(
          :room_messages,
          if(room.is_private and can_access, do: Social.list_room_messages(room.id, 50), else: [])
@@ -509,7 +511,6 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
        |> assign(:public_rooms, public_rooms)
        |> assign(:feed_mode, "room")
        |> assign(:recording_voice, false)
-       |> assign(:show_chat_panel, room.is_private)
        |> assign(:current_route, "/r/#{room.code}")
        |> assign(
          :room_members,
@@ -518,9 +519,15 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
        |> assign(:show_invite_modal, show_invite)
        |> stream(:items, items, reset: true, dom_id: &"item-#{&1.unique_id}")}
     else
-      # Update invite modal even if room didn't change (e.g. navigating to same room with ?action=invite)
+      # Update params even if room didn't change
       show_invite = params["action"] == "invite"
-      {:noreply, assign(socket, :show_invite_modal, show_invite)}
+      expand_chat = params["action"] == "chat"
+      
+      {:noreply, 
+       socket 
+       |> assign(:show_invite_modal, show_invite)
+       |> assign(:chat_expanded, expand_chat)
+       |> assign(:show_chat_panel, if(expand_chat, do: true, else: socket.assigns.show_chat_panel))}
     end
   end
 

@@ -507,17 +507,33 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
         true -> ""
       end
 
+      # Determine safe text to display (encrypted content is raw binary, can't be JSON encoded)
+      display_text = case message.content_type do
+        "text" -> "Sent a message"
+        "voice" -> "Sent a voice message"
+        "image" -> "Sent a photo"
+        _ -> "Sent a message"
+      end
+
+      # Get secure room code for navigation
+      room_id = data[:room_id] || message.room_id
+      room = Social.get_room!(room_id)
+      
       # Create notification object
       notification = %{
         id: "msg-#{message.id}",
         sender_username: username,
-        room_id: data[:room_id] || message.room_id,
-        room_name: data[:room_name] || "Chat",
-        text: message.encrypted_content, # In a real app we'd decrypt this or show generic text
+        room_id: room_id,
+        room_code: room.code,   # Critical for safe navigation
+        room_name: room.name,
+        text: display_text,
         timestamp: DateTime.utc_now()
       }
 
-      {:noreply, assign(socket, :persistent_notification, notification)}
+      {:noreply, 
+       socket
+       |> assign(:persistent_notification, notification)
+       |> put_flash(:info, "#{username}: #{display_text}")}
     else
       {:noreply, socket}
     end

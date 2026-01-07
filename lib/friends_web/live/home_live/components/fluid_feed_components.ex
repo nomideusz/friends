@@ -70,17 +70,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
     ~H"""
     <div class="sticky top-0 z-50 flex items-center justify-center pt-2 pb-1">
       <%!-- Minimal Search Indicator - tap to open omnibox --%>
-      <button
-        type="button"
-        phx-click="open_omnibox"
-        class="flex flex-col items-center gap-0.5 text-white/20 hover:text-white/40 transition-colors cursor-pointer group"
-        title="Search"
-      >
-        <div class="w-8 h-0.5 rounded-full bg-current"></div>
-        <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+
     </div>
     """
   end

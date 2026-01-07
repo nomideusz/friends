@@ -12,6 +12,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
   use FriendsWeb, :html
   import FriendsWeb.HomeLive.Helpers
 
+  attr :notification, :map, default: nil
   attr :current_user, :map, required: true
   attr :pending_request_count, :integer, default: 0
   attr :unread_count, :integer, default: 0
@@ -24,7 +25,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
       class="fixed top-0 left-0 right-0 z-[100] px-4 py-3 pointer-events-none flex items-start justify-between"
     >
       <%!-- LEFT: Avatar (Settings) --%>
-      <div class="pointer-events-auto">
+      <div class="pointer-events-auto relative z-20">
         <button
           phx-click="toggle_settings_modal"
           class="group relative"
@@ -50,8 +51,15 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
         </button>
       </div>
 
+      <%!-- CENTER: Notification Pill (Integrated) --%>
+      <%= if @notification do %>
+        <div class="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-3 z-10 w-full max-w-md flex justify-center">
+            <.notification_pill notification={@notification} />
+        </div>
+      <% end %>
+
       <%!-- RIGHT: Action Circles --%>
-      <div class="pointer-events-auto flex items-center gap-3">
+      <div class="pointer-events-auto flex items-center gap-3 relative z-20">
         
         <%!-- People Circle --%>
         <.nav_circle_button 
@@ -130,57 +138,53 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
     </svg>
     """
   end
+
   attr :notification, :map, required: true
   
   def notification_pill(assigns) do
-    # Only render if notification exists
-    if assigns.notification do
-      ~H"""
-      <div 
-        class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top duration-500 fade-in ease-out"
-        role="alert"
+    ~H"""
+    <div 
+      class="animate-in slide-in-from-top fade-in duration-300"
+      role="alert"
+    >
+      <button
+        phx-click="view_notification"
+        class="group relative flex items-center gap-3 pl-3 pr-4 py-2 bg-neutral-950/90 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:bg-neutral-900 transition-all cursor-pointer overflow-hidden max-w-[90vw] sm:max-w-md"
       >
-        <button
-          phx-click="view_notification"
-          class="group relative flex items-center gap-3 pl-3 pr-4 py-2 bg-neutral-950/90 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:bg-neutral-900 transition-all cursor-pointer overflow-hidden max-w-[90vw] sm:max-w-md"
+        <%!-- Glow effect --%>
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+        
+        <%!-- Icon / Avatar --%>
+        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 relative z-10">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        </div>
+        
+        <%!-- Text Content --%>
+        <div class="flex flex-col items-start min-w-0 relative z-10">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-white">{@notification.sender_username}</span>
+            <span class="text-[10px] text-white/40">in {@notification.room_name}</span>
+          </div>
+          <p class="text-xs text-white/80 truncate w-full text-left max-w-[200px]">
+            {@notification.text}
+          </p>
+        </div>
+        
+        <%!-- Close Button --%>
+        <div 
+          role="button"
+          phx-click="dismiss_notification"
+          phx-click-stop
+          class="ml-2 p-1 rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors relative z-10"
         >
-          <%!-- Glow effect --%>
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity"></div>
-          
-          <%!-- Icon / Avatar --%>
-          <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 relative z-10">
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-          </div>
-          
-          <%!-- Text Content --%>
-          <div class="flex flex-col items-start min-w-0 relative z-10">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-white">{@notification.sender_username}</span>
-              <span class="text-[10px] text-white/40">in {@notification.room_name}</span>
-            </div>
-            <p class="text-xs text-white/80 truncate w-full text-left max-w-[200px]">
-              {@notification.text}
-            </p>
-          </div>
-          
-          <%!-- Close Button --%>
-          <div 
-            role="button"
-            phx-click="dismiss_notification"
-            phx-click-stop
-            class="ml-2 p-1 rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors relative z-10"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-        </button>
-      </div>
-      """
-    else
-      ~H""
-    end
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+      </button>
+    </div>
+    """
   end
 end

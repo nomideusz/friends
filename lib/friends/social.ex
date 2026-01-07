@@ -77,6 +77,7 @@ defmodule Friends.Social do
   defdelegate get_or_create_lobby(), to: Rooms, as: :get_or_create_public_square
   defdelegate get_room_by_code(code), to: Rooms
   defdelegate get_room(id), to: Rooms
+  defdelegate get_room!(id), to: Rooms
   defdelegate create_room(attrs), to: Rooms
   defdelegate generate_room_code(), to: Rooms
   defdelegate create_private_room(attrs, owner_id), to: Rooms

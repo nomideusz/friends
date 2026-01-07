@@ -141,11 +141,6 @@
     uploads={assigns[:uploads]}
   />
 
-  <%!-- Persistent Notification Pill --%>
-  <%= if assigns[:persistent_notification] do %>
-    <.notification_pill notification={@persistent_notification} />
-  <% end %>
-
   <%!-- Leftover settings modal logic removed --%>
 
 
@@ -540,6 +535,7 @@
         pending_request_count={length(assigns[:pending_requests] || [])}
         unread_count={Map.get(assigns, :total_unread_count, 0)}
         online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+        notification={assigns[:persistent_notification]}
       />
     <% end %>
 

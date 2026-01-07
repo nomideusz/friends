@@ -635,12 +635,10 @@ defmodule FriendsWeb.HomeLive do
     if notification do
       socket = assign(socket, :persistent_notification, nil)
       
-      # Determine navigation target based on notification type/data
-      # Assuming room_id is present for chat messages
-      if notification.room_id do
-         # Use push_navigate or patch depending on if we are in a room or not
-         # But safer to push_navigate to ensure clean switch
-         {:noreply, push_navigate(socket, to: ~p"/r/#{notification.room_name}")}
+      if notification.room_code do
+         # Use push_navigate to room
+         # We add a query param ?action=chat to signal we want chat open/expanded
+         {:noreply, push_navigate(socket, to: ~p"/r/#{notification.room_code}?action=chat")}
       else
          {:noreply, socket}
       end
