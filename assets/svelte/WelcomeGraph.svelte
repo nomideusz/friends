@@ -388,25 +388,12 @@
             .attr("stroke-width", 1.5)
             .style("cursor", "pointer");
 
-        // Custom drag handler for Cola.js
-        const drag = d3
-            .drag()
-            .on("start", (event, d) => {
-                d.fixed = true; // Cola uses 'fixed' instead of fx/fy
-            })
-            .on("drag", (event, d) => {
-                d.x = event.x;
-                d.y = event.y;
-                d.px = event.x; // Cola uses px/py for previous position
-                d.py = event.y;
-                simulation.resume(); // Restart simulation
-            })
-            .on("end", (event, d) => {
-                d.fixed = false;
-            });
-
         enter
-            .call(drag)
+            .call(simulation.drag)
+            .on("click", (event, d) => {
+                d.fixed = true; // Fix node on click as in example
+                handleNodeClick(event, d);
+            })
             .on("mouseenter", function (event, d) {
                 if (isMobile || d.id === currentUserIdStr) return;
                 showLabel(d);
@@ -423,7 +410,6 @@
                     .style("fill-opacity", d.avatar_url ? 1 : 0.3)
                     .attr("stroke-opacity", 0.6);
             })
-            .on("click", handleNodeClick)
             .transition()
             .duration(500)
             .attr("r", 8); // Uniform size
@@ -557,16 +543,14 @@
             }))
             .filter((l) => l.source !== undefined && l.target !== undefined);
 
-        // Cola.js simulation - simplified setup like TMDB example
+        // Cola.js simulation - match their unconstrained example exactly
         simulation = cola
             .d3adaptor(d3)
-            .linkDistance(linkDistance)
             .size([width, height])
             .nodes(nodesData)
             .links(colaLinks)
-            .avoidOverlaps(true) // Prevent nodes from stacking
-            .handleDisconnected(true) // Spread disconnected components
-            .start(); // Simple start
+            .symmetricDiffLinkLengths(5) // This spreads nodes apart
+            .start(30); // Single number like their example
 
         // Initialize cached selections - use colaLinks since they have resolved node refs
         linkSelection = linkGroup
