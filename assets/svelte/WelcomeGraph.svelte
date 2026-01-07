@@ -381,24 +381,20 @@
 
     // --- Interaction Handlers ---
 
+    let isDragging = false;
+
     function dragSubject(event) {
         // Find closest node within radius
         const transform = d3.zoomTransform(canvas);
-        const x = transform.invertX(event.x * dpi) / dpi; // Unsure about DPI here, check invert logic
-        // Actually d3.drag on canvas passes event.x relative to canvas container.
-        // We need to invert transform.
-
-        // Let's use d3.pointer which gives [x,y] relative to target
-        // But the zoom transform is applied.
-
-        // Simpler: use the inverted mouse position from transform
         const mx = transform.invertX(event.x);
         const my = transform.invertY(event.y);
 
         let subject = null;
-        let minDist2 = 400; // 20px radius squared
+        let minDist2 = 900; // 30px radius squared for easier grabbing on mobile
 
-        for (const n of nodesData) {
+        // Iterate backwards (top nodes first)
+        for (let i = nodesData.length - 1; i >= 0; i--) {
+            const n = nodesData[i];
             const dx = mx - n.x;
             const dy = my - n.y;
             const dist2 = dx * dx + dy * dy;
@@ -411,41 +407,48 @@
     }
 
     function dragStarted(event) {
+        isDragging = false;
         if (!event.active && simulation.start) simulation.start();
         event.subject.fixed = true;
-        // event.subject.px = event.subject.x;
-        // event.subject.py = event.subject.y;
         draggedSubject = event.subject;
     }
 
     function dragged(event) {
-        // Drag event gives adjusted x/y if using Subject correctly?
-        // D3 drag subject updates position automatically if we modify it
-        event.subject.x = event.x;
-        event.subject.y = event.y;
-        event.subject.px = event.x;
-        event.subject.py = event.y;
-        simulation.resume();
+        isDragging = true;
+        const transform = d3.zoomTransform(canvas);
+        // Correctly invert coordinates to world space
+        // Use sourceEvent to get raw mouse position, avoiding D3's relative offset confusion
+        const [mx, my] = d3.pointer(event.sourceEvent, canvas);
+        event.subject.x = transform.invertX(mx);
+        event.subject.y = transform.invertY(my);
+        event.subject.px = event.subject.x;
+        event.subject.py = event.subject.y;
+
+        // Use resume() for smoother drag if available
+        if (simulation.resume) simulation.resume();
+        else simulation.start();
     }
 
     function dragEnded(event) {
-        if (!event.active && simulation.alphaTarget) simulation.alphaTarget(0); // For Cola just stop forcing?
+        if (!event.active && simulation.alphaTarget) simulation.alphaTarget(0);
         draggedSubject = null;
-        // Don't unfix if we want sticky nodes
+        // Keep fixed if desired
         // event.subject.fixed = false;
     }
 
     function handleCanvasMouseMove(event) {
+        if (isDragging) return; // Ignore hover during drag
+
         const [mx, my] = d3.pointer(event);
         const t = d3.zoomTransform(canvas);
         const worldX = t.invertX(mx);
         const worldY = t.invertY(my);
 
-        // Find node under mouse
         let found = null;
-        const r2 = 400; // 20px radius
+        const r2 = 900; // Match drag radius
 
-        for (const n of nodesData) {
+        for (let i = nodesData.length - 1; i >= 0; i--) {
+            const n = nodesData[i];
             const dx = worldX - n.x;
             const dy = worldY - n.y;
             if (dx * dx + dy * dy < r2) {
@@ -461,6 +464,11 @@
     }
 
     function handleCanvasClick(event) {
+        if (isDragging) {
+            isDragging = false; // Reset flag but don't handle click
+            return;
+        }
+
         if (hoverSubject) {
             handleNodeClick(event, hoverSubject);
         } else {
