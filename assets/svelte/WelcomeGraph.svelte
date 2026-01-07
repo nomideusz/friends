@@ -42,8 +42,6 @@
 
     // State for interactions
     let draggedSubject = null;
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
     let hoverSubject = null;
 
     // Data storage
@@ -453,19 +451,7 @@
         if (!event.active) simulation.alphaTarget(0.3).restart();
         isDragging = true;
 
-        const t = d3.zoomTransform(canvas);
-        const sourceEvent = event.sourceEvent || event;
-        const [px, py] = d3.pointer(sourceEvent, canvas);
-
-        // Calculate world coordinates of the pointer
-        const mx = t.invertX(px);
-        const my = t.invertY(py);
-
-        // Store offset from node center in world coordinates
-        dragOffsetX = event.subject.x - mx;
-        dragOffsetY = event.subject.y - my;
-
-        // Pin the node
+        // Pin the node at its current position
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
         draggedSubject = event.subject;
@@ -477,14 +463,15 @@
     }
 
     function dragged(event) {
-        // Use sourceEvent for robust coordinate extraction
+        // Use D3's built-in event.x/y which are already in the correct coordinate space
+        // when using the subject and container properly
         const sourceEvent = event.sourceEvent || event;
         const [px, py] = d3.pointer(sourceEvent, canvas);
         const t = d3.zoomTransform(canvas);
 
-        // Apply world-space offset to inverted world pointer position
-        event.subject.fx = t.invertX(px) + dragOffsetX;
-        event.subject.fy = t.invertY(py) + dragOffsetY;
+        // Convert screen coordinates to world coordinates
+        event.subject.fx = t.invertX(px);
+        event.subject.fy = t.invertY(py);
     }
 
     function dragEnded(event) {
@@ -628,16 +615,49 @@
 
         const drag = d3
             .drag()
+            .container(canvas) // Set container for proper coordinate handling
             .subject((event) => findInteractionSubject(event))
+            .touchable(() => true) // Enable touch support
             .on("start", dragStarted)
             .on("drag", dragged)
             .on("end", dragEnded);
 
-        d3.select(canvas)
-            .call(drag)
+        const canvasSelection = d3.select(canvas);
+
+        // IMPORTANT: Order matters! Attach zoom first, then drag
+        // Drag attached LAST takes priority for touch events
+        canvasSelection
             .call(zoomBehavior)
+            .call(drag)
             .on("click", handleCanvasClick)
             .on("mousemove", handleCanvasMouseMove);
+
+        // Add explicit touchstart handler to claim touch events over nodes
+        // This runs BEFORE D3 zoom/drag and can preventDefault to block zoom
+        canvas.addEventListener(
+            "touchstart",
+            (event) => {
+                if (event.touches.length === 1) {
+                    const subject = findInteractionSubject(event);
+                    if (subject) {
+                        // We're touching a node - prevent zoom from taking over
+                        event.stopPropagation();
+                    }
+                }
+            },
+            { passive: true },
+        );
+
+        // Prevent scrolling/panning when dragging a node
+        canvas.addEventListener(
+            "touchmove",
+            (event) => {
+                if (isDragging) {
+                    event.preventDefault();
+                }
+            },
+            { passive: false },
+        );
 
         // Pre-warm the simulation to stabilize layout
         // Run about 300 ticks synchronously
