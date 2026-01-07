@@ -42,6 +42,8 @@
 
     // State for interactions
     let draggedSubject = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
     let hoverSubject = null;
 
     // Data storage
@@ -301,7 +303,7 @@
         if (!ctx) return;
 
         ctx.save();
-        ctx.clearRect(0, 0, width * dpi, height * dpi);
+        ctx.clearRect(0, 0, width, height);
 
         // Apply zoom transform
         ctx.translate(transform.x, transform.y);
@@ -451,6 +453,17 @@
         if (!event.active) simulation.alphaTarget(0.3).restart();
         isDragging = true;
 
+        const t = d3.zoomTransform(canvas);
+        const [px, py] = d3.pointer(event.sourceEvent || event, canvas);
+
+        // Calculate world coordinates of the pointer
+        const mx = t.invertX(px);
+        const my = t.invertY(py);
+
+        // Store offset from node center in world coordinates
+        dragOffsetX = event.subject.x - mx;
+        dragOffsetY = event.subject.y - my;
+
         // Pin the node
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
@@ -464,10 +477,10 @@
 
     function dragged(event) {
         const t = d3.zoomTransform(canvas);
-        // event.x and event.y in a drag event on the canvas are in container coordinates
-        // We invert them to get the world coordinates for the node's fixed position
-        event.subject.fx = t.invertX(event.x);
-        event.subject.fy = t.invertY(event.y);
+
+        // Use event.x/y (CSS pixels) and apply offset in world space
+        event.subject.fx = t.invertX(event.x) + dragOffsetX;
+        event.subject.fy = t.invertY(event.y) + dragOffsetY;
     }
 
     function dragEnded(event) {
