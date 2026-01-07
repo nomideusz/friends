@@ -386,7 +386,9 @@
         const transform = d3.zoomTransform(canvas);
 
         // Use d3.pointer to get coordinates from native event relative to canvas
-        const [screenX, screenY] = d3.pointer(event, canvas);
+        // Important: check sourceEvent for TouchEvents compatibility
+        const sourceEvent = event.sourceEvent || event;
+        const [screenX, screenY] = d3.pointer(sourceEvent, canvas);
         const mx = transform.invertX(screenX);
         const my = transform.invertY(screenY);
 
@@ -724,6 +726,7 @@
         <canvas
             bind:this={canvas}
             class="block w-full h-full cursor-grab active:cursor-grabbing"
+            style="touch-action: none;"
         ></canvas>
     </div>
 
