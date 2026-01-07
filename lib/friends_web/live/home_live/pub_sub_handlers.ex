@@ -524,6 +524,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
         id: "msg-#{message.id}",
         sender_username: username,
         room_id: room_id,
+        conversation_id: data[:conversation_id] || message.conversation_id,
         room_code: room.code,   # Critical for safe navigation
         room_name: room.name,
         text: display_text,

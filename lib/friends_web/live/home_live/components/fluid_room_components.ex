@@ -1149,6 +1149,24 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         end)
       end
     
+    # Sort: Owner > Admin > Others, then by username
+    filtered_members = 
+      filtered_members
+      |> Enum.sort_by(fn m -> 
+        is_owner = m.user_id == assigns.room.owner_id
+        
+        role_priority = case m.role do
+          "admin" -> 1
+          "member" -> 2
+          _ -> 3
+        end
+        
+        # Priority: 0=Owner, 1=Admin, 2=Member, 3=Other
+        sort_rank = if is_owner, do: 0, else: role_priority
+        
+        {sort_rank, String.downcase(m.user.username)}
+      end)
+    
     # Filter friends (non-members) by search
     non_member_friends = Enum.reject(assigns.friends, fn f -> 
       MapSet.member?(member_ids, f.user.id)

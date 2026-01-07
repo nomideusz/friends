@@ -19,7 +19,8 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
   end
 
   def expand_chat(socket) do
-    {:noreply, assign(socket, :chat_expanded, true)}
+    socket = assign(socket, :chat_expanded, true)
+    {:noreply, check_and_mark_read(socket)}
   end
 
 
@@ -27,7 +28,40 @@ defmodule FriendsWeb.HomeLive.Events.ChatEvents do
     current = socket.assigns[:show_chat]
     # Default to true if nil, so toggling makes it false
     new_value = if is_nil(current), do: false, else: !current
-    {:noreply, assign(socket, :show_chat, new_value)}
+    
+    socket = assign(socket, :show_chat, new_value)
+    
+    if new_value do
+      {:noreply, check_and_mark_read(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp check_and_mark_read(socket) do
+    room = socket.assigns[:room]
+    current_user = socket.assigns[:current_user]
+    
+    if room && current_user do
+      # 1. Mark DB as read
+      Friends.Social.mark_room_read(room.id, current_user.id)
+      
+      # 2. Clear persistent notification if it matches this room
+      notification = socket.assigns[:persistent_notification]
+      
+      matches_room = notification && (
+        notification.room_code == room.code || 
+        (Map.has_key?(notification, :room_id) && notification.room_id == room.id)
+      )
+
+      if matches_room do
+         assign(socket, :persistent_notification, nil)
+      else
+         socket
+      end
+    else
+      socket
+    end
   end
 
   # ============================================================================

@@ -334,7 +334,47 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
             </div>
           <% end %>
         <% else %>
-          <%!-- 1. YOUR PEOPLE (Contacts) - ACTIVE FIRST --%>
+          <%!-- 1. INCOMING REQUESTS (Friend & Trust) --%>
+          <% friend_requests = @pending_friend_requests || [] %>
+          <% trust_requests = @incoming_trust_requests || [] %>
+          
+          <%= if Enum.any?(friend_requests) || Enum.any?(trust_requests) do %>
+            <div class="mb-6 space-y-3">
+              <%= if Enum.any?(friend_requests) do %>
+                <div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Incoming Requests</span>
+                  </div>
+                  <div class="space-y-1">
+                    <%= for fr <- friend_requests do %>
+                      <% user = if Map.has_key?(fr, :user), do: fr.user, else: fr %>
+                      <.friend_request_row user={user} />
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+              
+              <%= if Enum.any?(trust_requests) do %>
+                <div>
+                   <div class="flex items-center gap-2 mb-2">
+                    <.shield_icon class="w-3.5 h-3.5 text-yellow-500" />
+                    <span class="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider">Recovery Requests</span>
+                  </div>
+                  <div class="space-y-1">
+                    <%= for tr <- trust_requests do %>
+                      <% user = if Map.has_key?(tr, :user), do: tr.user, else: tr %>
+                      <.trust_request_row user={user} />
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <%!-- 2. YOUR PEOPLE (Contacts) - ACTIVE FIRST --%>
           <% 
             sorted_contacts = Enum.sort_by(contacts, fn c ->
               user = if Map.has_key?(c, :user), do: c.user, else: c
@@ -377,46 +417,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
               </div>
             <% end %>
           </div>
-
-          <%!-- 2. INCOMING REQUESTS (Friend & Trust) --%>
-          <% friend_requests = @pending_friend_requests || [] %>
-          <% trust_requests = @incoming_trust_requests || [] %>
-          
-          <%= if Enum.any?(friend_requests) || Enum.any?(trust_requests) do %>
-            <div class="mb-6 space-y-3">
-              <%= if Enum.any?(friend_requests) do %>
-                <div>
-                  <div class="flex items-center gap-2 mb-2">
-                    <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    <span class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Incoming Requests</span>
-                  </div>
-                  <div class="space-y-1">
-                    <%= for fr <- friend_requests do %>
-                      <% user = if Map.has_key?(fr, :user), do: fr.user, else: fr %>
-                      <.friend_request_row user={user} />
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-              
-              <%= if Enum.any?(trust_requests) do %>
-                <div>
-                   <div class="flex items-center gap-2 mb-2">
-                    <.shield_icon class="w-3.5 h-3.5 text-yellow-500" />
-                    <span class="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider">Recovery Requests</span>
-                  </div>
-                  <div class="space-y-1">
-                    <%= for tr <- trust_requests do %>
-                      <% user = if Map.has_key?(tr, :user), do: tr.user, else: tr %>
-                      <.trust_request_row user={user} />
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
           
           <%!-- 3. OUTGOING PENDING (Sent Requests) --%>
           <%= if Enum.any?(outgoing) do %>

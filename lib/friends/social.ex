@@ -283,7 +283,29 @@ defmodule Friends.Social do
   defdelegate get_unread_count(conversation_id, user_id), to: Chat
   defdelegate send_message(conversation_id, sender_id, encrypted_content, content_type, metadata \\ %{}, nonce, reply_to_id \\ nil), to: Chat
   defdelegate list_messages(conversation_id, limit \\ 50, offset \\ 0), to: Chat
-  defdelegate mark_conversation_read(conversation_id, user_id), to: Chat
+  @doc """
+  Mark a conversation as read. Also marks any corresponding DM room as read.
+  """
+  def mark_conversation_read(conversation_id, user_id) do
+    # Mark conversation itself read
+    Chat.mark_conversation_read(conversation_id, user_id)
+
+    # If it's a direct conversation, also mark the DM room as read
+    case Chat.get_conversation(conversation_id) do
+      %{type: "direct"} = conv ->
+        # Find other participant
+        other_participant = Enum.find(conv.participants, &(&1.user_id != user_id))
+        
+        if other_participant do
+          # Find DM room
+          case Rooms.get_dm_room(user_id, other_participant.user_id) do
+            nil -> :ok
+            room -> Rooms.mark_room_read(room.id, user_id)
+          end
+        end
+      _ -> :ok
+    end
+  end
   defdelegate get_conversation(conversation_id), to: Chat
   defdelegate is_participant?(conversation_id, user_id), to: Chat
   defdelegate add_participant(conversation_id, user_id, added_by_id), to: Chat
@@ -292,8 +314,31 @@ defmodule Friends.Social do
   # I implemented `get_total_unread_count` in Chat.
   defdelegate get_total_unread_count(user_id), to: Chat
   
-  # Delegate directly to Rooms for marking read
-  defdelegate mark_room_read(room_id, user_id), to: Rooms
+  @doc """
+  Mark a room as read. Also marks any linked direct conversation as read for DMs.
+  """
+  def mark_room_read(room_id, user_id) do
+    # Mark the room itself as read
+    res = Rooms.mark_room_read(room_id, user_id)
+
+    # If it's a DM room, also find and mark the corresponding conversation as read
+    room = Rooms.get_room(room_id)
+    if room && room.room_type == "dm" do
+      # Get members to find the other person
+      members = Rooms.list_room_members(room_id)
+      other_member = Enum.find(members, &(&1.user_id != user_id))
+      
+      if other_member do
+        # Mark conversation read if it exists
+        case Chat.get_or_create_direct_conversation(user_id, other_member.user_id) do
+          {:ok, conv} -> Chat.mark_conversation_read(conv.id, user_id)
+          _ -> :ok
+        end
+      end
+    end
+    
+    res
+  end
 
   @doc """
   Get the single latest unread message from either Conversations OR Rooms.
