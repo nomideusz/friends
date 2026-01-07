@@ -558,15 +558,15 @@
             .filter((l) => l.source !== undefined && l.target !== undefined);
 
         // Cola.js simulation - simplified setup like TMDB example
-        // Simple config without expensive algorithms
         simulation = cola
             .d3adaptor(d3)
             .linkDistance(linkDistance)
             .size([width, height])
             .nodes(nodesData)
             .links(colaLinks)
-            .handleDisconnected(true)
-            .start(); // Simple start, no iteration counts
+            .avoidOverlaps(true) // Prevent nodes from stacking
+            .handleDisconnected(true) // Spread disconnected components
+            .start(); // Simple start
 
         // Initialize cached selections - use colaLinks since they have resolved node refs
         linkSelection = linkGroup
