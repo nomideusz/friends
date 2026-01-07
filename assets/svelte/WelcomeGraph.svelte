@@ -389,25 +389,7 @@
             .style("cursor", "pointer");
 
         enter
-            .call(
-                d3
-                    .drag()
-                    .on("start", (event, d) => {
-                        if (!event.active)
-                            simulation.alphaTarget(0.3).restart();
-                        d.fx = d.x;
-                        d.fy = d.y;
-                    })
-                    .on("drag", (event, d) => {
-                        d.fx = event.x;
-                        d.fy = event.y;
-                    })
-                    .on("end", (event, d) => {
-                        if (!event.active) simulation.alphaTarget(0);
-                        d.fx = null;
-                        d.fy = null;
-                    }),
-            )
+            .call(simulation.drag) // Use Cola.js drag behavior
             .on("mouseenter", function (event, d) {
                 if (isMobile || d.id === currentUserIdStr) return;
                 showLabel(d);
@@ -564,7 +546,7 @@
             .nodes(nodesData)
             .links(colaLinks)
             .avoidOverlaps(true) // Built-in overlap prevention
-            .symmetricDiffLinkLengths(linkDistance)
+            .jaccardLinkLengths(linkDistance, 0.7) // Spread disconnected nodes
             .handleDisconnected(true) // Handle disconnected components
             .start(30, 20, 20); // unconstrained, user constraint, all constraint iterations
 
