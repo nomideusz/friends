@@ -468,14 +468,11 @@
     }
 
     function dragStarted(event) {
-        // Use lower alpha to reduce "dancing" of other nodes
-        if (!event.active) simulation.alphaTarget(0.1).restart();
-        isDragging = true;
-
         // Pin the node at its current position
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
-        draggedSubject = event.subject;
+        // NOTE: Don't set isDragging or draggedSubject yet
+        // We'll set them on first actual movement to allow clicks through
 
         // Stop propagation to prevent zoom behavior from catching this
         if (event.sourceEvent) {
@@ -484,27 +481,42 @@
     }
 
     function dragged(event) {
-        // Use D3's built-in event.x/y which are already in the correct coordinate space
-        // when using the subject and container properly
+        // Now we're actually dragging - set flags
+        if (!isDragging) {
+            isDragging = true;
+            draggedSubject = event.subject;
+            // Use lower alpha to reduce "dancing" of other nodes
+            simulation.alphaTarget(0.1).restart();
+        }
+
+        // Update position using D3's event coordinates
         const sourceEvent = event.sourceEvent || event;
         const [px, py] = d3.pointer(sourceEvent, canvas);
         const t = d3.zoomTransform(canvas);
 
-        // Convert screen coordinates to world coordinates
-        event.subject.fx = t.invertX(px);
-        event.subject.fy = t.invertY(py);
+        // Set both x/y and fx/fy for immediate visual update
+        const worldX = t.invertX(px);
+        const worldY = t.invertY(py);
+        if (isFinite(worldX) && isFinite(worldY)) {
+            event.subject.x = worldX;
+            event.subject.y = worldY;
+            event.subject.fx = worldX;
+            event.subject.fy = worldY;
+        }
     }
 
     function dragEnded(event) {
-        if (!event.active) simulation.alphaTarget(0);
+        simulation.alphaTarget(0);
         event.subject.fx = null;
         event.subject.fy = null;
         draggedSubject = null;
 
-        // Brief delay to prevent immediate click from firing on the node
-        setTimeout(() => {
-            isDragging = false;
-        }, 50);
+        // Brief delay to prevent immediate click from firing on the node after drag
+        if (isDragging) {
+            setTimeout(() => {
+                isDragging = false;
+            }, 50);
+        }
     }
 
     function handleCanvasMouseMove(event) {
@@ -708,10 +720,11 @@
 
                 if (touchedNode) {
                     // We're touching a node - prepare for potential drag
-                    // Pin the node
+                    // Pin the node at its current position
                     touchedNode.fx = touchedNode.x;
                     touchedNode.fy = touchedNode.y;
-                    draggedSubject = touchedNode;
+                    // NOTE: Don't set draggedSubject yet - only when actually dragging
+                    // This prevents the label from jumping on tap
 
                     // Prevent zoom from taking this event
                     event.preventDefault();
@@ -733,6 +746,7 @@
                 if (!isTouchDragging && (dx > 10 || dy > 10)) {
                     isTouchDragging = true;
                     isDragging = true;
+                    draggedSubject = touchedNode; // NOW set draggedSubject
                     // Gently reheat simulation (lower alpha for less dancing)
                     simulation.alphaTarget(0.1).restart();
                 }
