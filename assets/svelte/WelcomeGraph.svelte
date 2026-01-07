@@ -749,9 +749,14 @@
                     const py = touch.clientY - rect.top;
                     const t = d3.zoomTransform(canvas);
 
-                    // Update node position
-                    touchedNode.fx = t.invertX(px);
-                    touchedNode.fy = t.invertY(py);
+                    // Update node position - set BOTH x/y and fx/fy
+                    // fx/fy pins the node, x/y is the actual drawn position
+                    const worldX = t.invertX(px);
+                    const worldY = t.invertY(py);
+                    touchedNode.x = worldX;
+                    touchedNode.y = worldY;
+                    touchedNode.fx = worldX;
+                    touchedNode.fy = worldY;
 
                     event.preventDefault();
                 }
