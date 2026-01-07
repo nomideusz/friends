@@ -737,7 +737,7 @@
                     simulation.alphaTarget(0.1).restart();
                 }
 
-                if (isTouchDragging) {
+                if (isTouchDragging && touchedNode) {
                     // Get canvas-relative coordinates
                     const rect = canvas.getBoundingClientRect();
                     const px = touch.clientX - rect.left;
@@ -748,10 +748,14 @@
                     // fx/fy pins the node, x/y is the actual drawn position
                     const worldX = t.invertX(px);
                     const worldY = t.invertY(py);
-                    touchedNode.x = worldX;
-                    touchedNode.y = worldY;
-                    touchedNode.fx = worldX;
-                    touchedNode.fy = worldY;
+
+                    // Only update if coordinates are valid
+                    if (isFinite(worldX) && isFinite(worldY)) {
+                        touchedNode.x = worldX;
+                        touchedNode.y = worldY;
+                        touchedNode.fx = worldX;
+                        touchedNode.fy = worldY;
+                    }
 
                     event.preventDefault();
                 }
