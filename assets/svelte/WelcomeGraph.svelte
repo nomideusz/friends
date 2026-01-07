@@ -304,7 +304,7 @@
         ctx.clearRect(0, 0, width * dpi, height * dpi);
 
         // Apply zoom transform
-        ctx.translate(transform.x * dpi, transform.y * dpi);
+        ctx.translate(transform.x, transform.y);
         ctx.scale(transform.k, transform.k);
 
         // Draw Links
