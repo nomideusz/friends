@@ -412,32 +412,38 @@
 
     function dragStarted(event) {
         isDragging = false;
-        if (!event.active && simulation.start) simulation.start();
-        event.subject.fixed = true;
+        // Use resume() to gently wake up simulation without full reset/re-layout iterations
+        if (!event.active && simulation.resume) {
+            simulation.resume();
+        } else if (!event.active && simulation.start) {
+            // If only start is available, use 0 iterations to avoid jump
+            simulation.start(0, 0, 0);
+        }
+
+        event.subject.fixed = true; // Lock node while dragging
         draggedSubject = event.subject;
     }
 
     function dragged(event) {
         isDragging = true;
         const transform = d3.zoomTransform(canvas);
-        // Correctly invert coordinates to world space
-        // Use sourceEvent to get raw mouse position, avoiding D3's relative offset confusion
-        const [mx, my] = d3.pointer(event.sourceEvent, canvas);
+        const [mx, my] = d3.pointer(event.sourceEvent || event, canvas);
         event.subject.x = transform.invertX(mx);
         event.subject.y = transform.invertY(my);
         event.subject.px = event.subject.x;
         event.subject.py = event.subject.y;
 
-        // Use resume() for smoother drag if available
         if (simulation.resume) simulation.resume();
-        else simulation.start();
     }
 
     function dragEnded(event) {
         if (!event.active && simulation.alphaTarget) simulation.alphaTarget(0);
         draggedSubject = null;
-        // Keep fixed if desired
-        // event.subject.fixed = false;
+
+        // Unfix node so it settles back into physics (unless you want pinning)
+        if (event.subject) {
+            event.subject.fixed = false;
+        }
     }
 
     function handleCanvasMouseMove(event) {
