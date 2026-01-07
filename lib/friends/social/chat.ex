@@ -137,6 +137,20 @@ defmodule Friends.Social.Chat do
         )
     end
   end
+
+  def get_latest_unread_message(user_id) do
+    Repo.one(
+      from m in Message,
+        join: p in ConversationParticipant,
+        on: m.conversation_id == p.conversation_id,
+        where: p.user_id == ^user_id,
+        where: m.sender_id != ^user_id,
+        where: is_nil(p.last_read_at) or m.inserted_at > p.last_read_at,
+        order_by: [desc: m.inserted_at],
+        limit: 1,
+        preload: [:sender, :conversation]
+    )
+  end
   
   def get_total_unread_count(user_id) do
     # Efficiently sum unread counts across all conversations

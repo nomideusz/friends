@@ -269,6 +269,34 @@ defmodule Friends.Social.Rooms do
     end
   end
 
+  def mark_room_read(room_id, user_id) do
+    case get_room_member(room_id, user_id) do
+      nil -> 
+        {:error, :not_found}
+      member ->
+        member
+        |> RoomMember.changeset(%{last_read_at: DateTime.utc_now()})
+        |> Repo.update()
+    end
+  end
+
+  # Fetch the latest unread message for a user across all their ROOMS
+  def get_latest_unread_message(user_id) do
+    alias Friends.Social.Message
+    
+    Repo.one(
+      from m in Message,
+        join: rm in RoomMember,
+        on: m.room_id == rm.room_id,
+        where: rm.user_id == ^user_id,
+        where: m.sender_id != ^user_id,
+        where: is_nil(rm.last_read_at) or m.inserted_at > rm.last_read_at,
+        order_by: [desc: m.inserted_at],
+        limit: 1,
+        preload: [:sender, :room]
+    )
+  end
+
   def get_room_members(room_id) do
     Repo.all(
       from m in RoomMember,

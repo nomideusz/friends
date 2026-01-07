@@ -53,7 +53,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
 
       <%!-- CENTER: Notification Pill (Integrated) --%>
       <%= if @notification do %>
-        <div class="pointer-events-auto absolute left-1/2 -translate-x-1/2 top-3 z-10 w-full max-w-md flex justify-center">
+        <div class="pointer-events-auto absolute z-10 top-3 flex justify-center left-[3.75rem] right-[7.5rem] sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-full sm:max-w-md">
             <.notification_pill notification={@notification} />
         </div>
       <% end %>
@@ -144,32 +144,34 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
   def notification_pill(assigns) do
     ~H"""
     <div 
-      class="animate-in slide-in-from-top fade-in duration-300"
+      class="w-full sm:w-auto animate-in slide-in-from-top fade-in duration-300"
       role="alert"
     >
       <button
         phx-click="view_notification"
-        class="group relative flex items-center gap-3 pl-3 pr-4 py-2 bg-neutral-950/90 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:bg-neutral-900 transition-all cursor-pointer overflow-hidden max-w-[90vw] sm:max-w-md"
+        class="group relative flex items-center gap-3 pl-2 pr-3 h-10 w-full sm:w-auto bg-neutral-950/90 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:bg-neutral-900 transition-all cursor-pointer overflow-hidden sm:max-w-md"
       >
         <%!-- Glow effect --%>
         <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity"></div>
         
         <%!-- Icon / Avatar --%>
-        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 relative z-10">
-          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 relative z-10">
+          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
         </div>
         
-        <%!-- Text Content --%>
-        <div class="flex flex-col items-start min-w-0 relative z-10">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-bold text-white">{@notification.sender_username}</span>
-            <span class="text-[10px] text-white/40">in {@notification.room_name}</span>
-          </div>
-          <p class="text-xs text-white/80 truncate w-full text-left max-w-[200px]">
-            {@notification.text}
-          </p>
+        <%!-- Text Content (Single Line) --%>
+        <div class="flex items-center gap-2 min-w-0 relative z-10 text-xs">
+          <span class="font-bold text-white whitespace-nowrap">{@notification.sender_username}</span>
+          <span class="text-white/40 whitespace-nowrap hidden sm:inline">in {@notification.room_name}</span>
+          
+          <span class="text-white/30 whitespace-nowrap">
+            <%= format_time(@notification.timestamp) %>
+          </span>
+
+          <span class="text-white/60 mx-0.5 hidden sm:inline">•</span>
+          <span class="text-white/80 truncate">{@notification.text}</span>
         </div>
         
         <%!-- Close Button --%>
@@ -177,9 +179,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
           role="button"
           phx-click="dismiss_notification"
           phx-click-stop
-          class="ml-2 p-1 rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors relative z-10"
+          class="ml-1 p-1 rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors relative z-10"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>

@@ -14,6 +14,9 @@ defmodule Friends.Social.RoomMember do
     # owner, admin, member
     field :role, :string, default: "member"
 
+    # Unread tracking
+    field :last_read_at, :utc_datetime
+
     timestamps()
   end
 

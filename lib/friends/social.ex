@@ -291,6 +291,29 @@ defmodule Friends.Social do
   # This one needs logic or delegate to Chat if implemented there.
   # I implemented `get_total_unread_count` in Chat.
   defdelegate get_total_unread_count(user_id), to: Chat
+  
+  # Delegate directly to Rooms for marking read
+  defdelegate mark_room_read(room_id, user_id), to: Rooms
+
+  @doc """
+  Get the single latest unread message from either Conversations OR Rooms.
+  """
+  def get_latest_unread_message(user_id) do
+    chat_msg = Chat.get_latest_unread_message(user_id)
+    room_msg = Rooms.get_latest_unread_message(user_id)
+
+    case {chat_msg, room_msg} do
+      {nil, nil} -> nil
+      {msg, nil} -> msg
+      {nil, msg} -> msg
+      {c_msg, r_msg} ->
+        if DateTime.compare(c_msg.inserted_at, r_msg.inserted_at) == :gt do
+          c_msg
+        else
+          r_msg
+        end
+    end
+  end
 
   # --- Devices (Identity) ---
 

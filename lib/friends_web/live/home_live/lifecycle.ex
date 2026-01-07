@@ -81,10 +81,66 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       friend_user_ids = Enum.map(friends, & &1.user.id)
       online_friend_ids = if connected?(socket), do: Presence.filter_online(friend_user_ids), else: []
 
+      # Fetch persistent notification (latest unread message)
+      persistent_notification =
+        case Social.get_latest_unread_message(session_user.id) do
+          nil -> nil
+          message ->
+            # Determine room code for navigation
+            room_code =
+              cond do
+                Ecto.assoc_loaded?(message.conversation) && message.conversation && message.conversation.type == "direct" ->
+                  # It's a DM, find the room code based on sender (partner)
+                  case Social.get_or_create_dm_room(session_user.id, message.sender_id) do
+                    {:ok, room} -> room.code
+                    _ -> nil
+                  end
+                  
+                # Fallback specifically for room-based messages using legacy fields
+                message.room_id -> 
+                   case Social.get_room(message.room_id) do
+                     nil -> nil
+                     room -> room.code
+                   end
+
+                true ->
+                   nil
+              end
+
+            if room_code do
+               display_text = case message.content_type do
+                 "text" -> "Sent a message"
+                 "voice" -> "Sent a voice message"
+                 "image" -> "Sent a photo"
+                 _ -> "Sent one new message"
+               end
+
+               room_name = 
+                 cond do
+                   Ecto.assoc_loaded?(message.conversation) && message.conversation -> message.conversation.name
+                   Ecto.assoc_loaded?(message.room) && message.room -> message.room.name
+                   true -> "Chat"
+                 end
+
+               %{
+                id: "msg-#{message.id}",
+                sender_username: "@#{message.sender.username}",
+                room_code: room_code,
+                room_name: room_name,
+                text: display_text,
+                timestamp: message.inserted_at,
+                count: 1 # We could fetch total count if needed
+              }
+            else
+              nil
+            end
+        end
+
       socket =
         socket
         |> assign(:session_id, session_id)
         |> assign(:room, nil)
+        |> assign(:persistent_notification, persistent_notification)
         |> assign(:page_title, "New Internet")
         |> assign(:current_user, session_user)
         |> assign(:user_id, session_user_id)
@@ -459,6 +515,11 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         if room.is_private do
           Social.subscribe_to_room_chat(room.id)
         end
+        
+        # Mark room as read
+        if socket.assigns.user_id do
+           Social.mark_room_read(room.id, socket.assigns.user_id)
+        end
 
         if socket.assigns.user_id do
           Presence.track_user(
@@ -517,7 +578,13 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
          if(room.is_private and can_access, do: Social.list_room_members(room.id), else: [])
        )
        |> assign(:show_invite_modal, show_invite)
-       |> stream(:items, items, reset: true, dom_id: &"item-#{&1.unique_id}")}
+       |> stream(:items, items, reset: true, dom_id: &"item-#{&1.unique_id}")
+       # Clear persistent notification if we just entered that room
+       |> assign(:persistent_notification, 
+          if(socket.assigns[:persistent_notification] && socket.assigns.persistent_notification.room_code == room_code, 
+             do: nil, 
+             else: socket.assigns[:persistent_notification])
+       )}
     else
       # Update params even if room didn't change
       show_invite = params["action"] == "invite"
