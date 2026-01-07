@@ -393,7 +393,9 @@
         const my = transform.invertY(screenY);
 
         let subject = null;
-        let minDist2 = 2025; // 45px radius squared (easier grabbing)
+        // Adaptive radius: maintain constant screen hit area (45px) regardless of zoom
+        const r = 45 / transform.k;
+        let minDist2 = r * r;
 
         // Iterate backwards (top nodes first)
         for (let i = nodesData.length - 1; i >= 0; i--) {
@@ -448,7 +450,9 @@
         const worldY = t.invertY(my);
 
         let found = null;
-        const r2 = 900; // Match drag radius
+        // Adaptive radius for hover too
+        const r = 45 / t.k;
+        const r2 = r * r;
 
         for (let i = nodesData.length - 1; i >= 0; i--) {
             const n = nodesData[i];
