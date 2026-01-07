@@ -448,7 +448,8 @@
     }
 
     function dragStarted(event) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
+        // Use lower alpha to reduce "dancing" of other nodes
+        if (!event.active) simulation.alphaTarget(0.1).restart();
         isDragging = true;
 
         // Pin the node at its current position
@@ -613,59 +614,143 @@
                 transform = event.transform;
             });
 
-        // Track touch state for distinguishing tap from drag
+        // Track touch state for manual touch handling
         let touchStartTime = 0;
         let touchStartX = 0;
         let touchStartY = 0;
         let touchedNode = null;
+        let isTouchDragging = false;
 
+        // D3 drag for MOUSE only (desktop)
         const drag = d3
             .drag()
             .container(canvas)
             .filter((event) => {
-                // Only allow drag if we have a subject (node under pointer)
+                // Only mouse events, not touch
+                if (
+                    event.sourceEvent &&
+                    event.sourceEvent.type.startsWith("touch")
+                ) {
+                    return false;
+                }
                 const subject = findInteractionSubject(event);
                 return !!subject;
             })
             .subject((event) => findInteractionSubject(event))
-            .touchable(() => true)
             .on("start", dragStarted)
             .on("drag", dragged)
             .on("end", dragEnded);
 
         const canvasSelection = d3.select(canvas);
 
-        // Attach zoom first, then drag - drag takes priority when over a node
+        // Zoom filter: block zoom for single-touch on nodes
+        zoomBehavior.filter((event) => {
+            const sourceEvent = event.sourceEvent || event;
+
+            // Always block if currently dragging
+            if (isDragging || isTouchDragging) return false;
+
+            // Allow pinch-to-zoom (multi-touch)
+            if (sourceEvent.touches && sourceEvent.touches.length > 1)
+                return true;
+
+            // For single touch, block if over a node
+            if (sourceEvent.touches && sourceEvent.touches.length === 1) {
+                const subject = findInteractionSubject(event);
+                if (subject) return false;
+            }
+
+            // For mouse/pointer, check if over a node
+            const filteredTypes = ["mousedown", "touchstart", "pointerdown"];
+            if (filteredTypes.includes(event.type)) {
+                const subject = findInteractionSubject(event);
+                if (subject) return false;
+            }
+
+            // Default D3 filter logic
+            return (!event.ctrlKey || event.type === "wheel") && !event.button;
+        });
+
         canvasSelection
             .call(zoomBehavior)
             .call(drag)
             .on("click", handleCanvasClick)
             .on("mousemove", handleCanvasMouseMove);
 
-        // Touch handling for tap-to-click (context menu) on mobile
+        // === FULLY MANUAL TOUCH HANDLING ===
+        // This bypasses D3 entirely for touch events
+
         canvas.addEventListener(
             "touchstart",
             (event) => {
-                if (event.touches.length === 1) {
-                    const touch = event.touches[0];
-                    touchStartTime = Date.now();
-                    touchStartX = touch.clientX;
-                    touchStartY = touch.clientY;
-                    touchedNode = findInteractionSubject(event);
+                if (event.touches.length !== 1) return; // Only single touch
+
+                const touch = event.touches[0];
+                touchStartTime = Date.now();
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchedNode = findInteractionSubject(event);
+
+                if (touchedNode) {
+                    // We're touching a node - prepare for potential drag
+                    // Pin the node
+                    touchedNode.fx = touchedNode.x;
+                    touchedNode.fy = touchedNode.y;
+                    draggedSubject = touchedNode;
+
+                    // Prevent zoom from taking this event
+                    event.preventDefault();
                 }
             },
-            { passive: true },
+            { passive: false },
+        );
+
+        canvas.addEventListener(
+            "touchmove",
+            (event) => {
+                if (!touchedNode || event.touches.length !== 1) return;
+
+                const touch = event.touches[0];
+                const dx = Math.abs(touch.clientX - touchStartX);
+                const dy = Math.abs(touch.clientY - touchStartY);
+
+                // Start dragging after moving more than 10px
+                if (!isTouchDragging && (dx > 10 || dy > 10)) {
+                    isTouchDragging = true;
+                    isDragging = true;
+                    // Gently reheat simulation (lower alpha for less dancing)
+                    simulation.alphaTarget(0.1).restart();
+                }
+
+                if (isTouchDragging) {
+                    // Get canvas-relative coordinates
+                    const rect = canvas.getBoundingClientRect();
+                    const px = touch.clientX - rect.left;
+                    const py = touch.clientY - rect.top;
+                    const t = d3.zoomTransform(canvas);
+
+                    // Update node position
+                    touchedNode.fx = t.invertX(px);
+                    touchedNode.fy = t.invertY(py);
+
+                    event.preventDefault();
+                }
+            },
+            { passive: false },
         );
 
         canvas.addEventListener(
             "touchend",
             (event) => {
-                // Check if this was a tap (short duration, minimal movement)
                 const elapsed = Date.now() - touchStartTime;
-                const TAP_THRESHOLD_MS = 300;
-                const TAP_DISTANCE_PX = 15;
+                const TAP_THRESHOLD_MS = 250;
+                const TAP_DISTANCE_PX = 10;
 
-                if (elapsed < TAP_THRESHOLD_MS && touchedNode && !isDragging) {
+                if (
+                    touchedNode &&
+                    !isTouchDragging &&
+                    elapsed < TAP_THRESHOLD_MS
+                ) {
                     const touch = event.changedTouches[0];
                     const dx = Math.abs(touch.clientX - touchStartX);
                     const dy = Math.abs(touch.clientY - touchStartY);
@@ -676,25 +761,43 @@
                             { clientX: touch.clientX, clientY: touch.clientY },
                             touchedNode,
                         );
-                        event.preventDefault();
                     }
                 }
 
+                // Clean up
+                if (touchedNode) {
+                    touchedNode.fx = null;
+                    touchedNode.fy = null;
+                }
+                simulation.alphaTarget(0);
+
                 touchedNode = null;
+                draggedSubject = null;
                 touchStartTime = 0;
+
+                setTimeout(() => {
+                    isDragging = false;
+                    isTouchDragging = false;
+                }, 50);
             },
-            { passive: false },
+            { passive: true },
         );
 
-        // Prevent scrolling/panning when dragging a node
         canvas.addEventListener(
-            "touchmove",
-            (event) => {
-                if (isDragging) {
-                    event.preventDefault();
+            "touchcancel",
+            () => {
+                // Clean up on cancel
+                if (touchedNode) {
+                    touchedNode.fx = null;
+                    touchedNode.fy = null;
                 }
+                simulation.alphaTarget(0);
+                touchedNode = null;
+                draggedSubject = null;
+                isDragging = false;
+                isTouchDragging = false;
             },
-            { passive: false },
+            { passive: true },
         );
 
         // Pre-warm the simulation to stabilize layout
