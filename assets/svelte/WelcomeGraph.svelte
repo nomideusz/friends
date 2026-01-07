@@ -577,8 +577,9 @@
             .size([width, height])
             .nodes(nodesData)
             .links(colaLinks)
-            .symmetricDiffLinkLengths(6)
-            .avoidOverlaps(true) // Prevent stacking (needed since we removed handleDisconnected)
+            .linkDistance(isMobile ? 60 : 100) // Explicitly set larger link distance
+            .symmetricDiffLinkLengths(15) // Increase ideal edge length variance
+            .avoidOverlaps(true)
             .start(30);
 
         // Initialize cached selections - use colaLinks since they have resolved node refs
