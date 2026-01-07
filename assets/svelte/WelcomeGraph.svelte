@@ -589,7 +589,8 @@
                 "link",
                 d3.forceLink(linksData).id((d) => d.id),
             )
-            .force("charge", d3.forceManyBody())
+            .force("charge", d3.forceManyBody().strength(-150))
+            .force("collide", d3.forceCollide().radius(20))
             .force("x", d3.forceX())
             .force("y", d3.forceY())
             .on("tick", ticked);
