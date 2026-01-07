@@ -746,24 +746,26 @@
                 if (!isTouchDragging && (dx > 10 || dy > 10)) {
                     isTouchDragging = true;
                     isDragging = true;
-                    draggedSubject = touchedNode; // NOW set draggedSubject
-                    // Gently reheat simulation (lower alpha for less dancing)
+                    draggedSubject = touchedNode;
+                    // Gently reheat simulation
                     simulation.alphaTarget(0.1).restart();
                 }
 
-                if (isTouchDragging && touchedNode) {
-                    // Get canvas-relative coordinates
+                // Update position every touchmove (not just when isTouchDragging)
+                // This ensures the node follows the finger from the start
+                if (touchedNode) {
                     const rect = canvas.getBoundingClientRect();
                     const px = touch.clientX - rect.left;
                     const py = touch.clientY - rect.top;
+
+                    // Get transform from canvas
                     const t = d3.zoomTransform(canvas);
 
-                    // Update node position - set BOTH x/y and fx/fy
-                    // fx/fy pins the node, x/y is the actual drawn position
+                    // Convert screen to world coordinates
                     const worldX = t.invertX(px);
                     const worldY = t.invertY(py);
 
-                    // Only update if coordinates are valid
+                    // Update node position
                     if (isFinite(worldX) && isFinite(worldY)) {
                         touchedNode.x = worldX;
                         touchedNode.y = worldY;
@@ -771,6 +773,7 @@
                         touchedNode.fy = worldY;
                     }
 
+                    // Prevent scrolling/panning
                     event.preventDefault();
                 }
             },
