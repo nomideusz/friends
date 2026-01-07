@@ -107,86 +107,41 @@
   
   <%!-- Old invite_modal removed - using fluid contact_search_sheet instead --%>
 
-  <%!-- People Drawer (Tethered) --%>
-  <.tethered_drawer
-    id="people-drawer"
-    show={@show_contact_sheet}
-
-    close_event="close_contact_search"
-    title="People"
-  >
-    <.people_drawer_content
-      mode={@contact_mode}
-      contacts={@friends}
-      search_query={@contact_sheet_search}
-      search_results={@contact_search_results}
-      trusted_friend_ids={@trusted_friend_ids}
-      trusted_friends={@trusted_friends}
-      incoming_trust_requests={@incoming_trust_requests}
-      outgoing_requests={assigns[:outgoing_friend_requests] || []}
-      outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
-      pending_friend_requests={@pending_requests}
-      room={@room}
-      room_members={@room_members || []}
-      current_user={@current_user}
-      online_friend_ids={@online_friend_ids}
-    />
-  </.tethered_drawer>
-
-  <%!-- Groups Drawer (Tethered) --%>
-  <.tethered_drawer
-    id="groups-drawer"
-    show={assigns[:show_groups_sheet] || false}
-
-    close_event="close_groups_sheet"
-    title="Groups"
-  >
-    <.groups_drawer_content
-      groups={if assigns[:group_search_query] && assigns[:group_search_query] != "", do: assigns[:group_search_results] || [], else: @user_private_rooms || []}
-      search_query={assigns[:group_search_query] || ""}
-      current_user={@current_user}
-      new_room_name={assigns[:new_room_name] || ""}
-    />
-  </.tethered_drawer>
-
-  <%!-- Settings Drawer (Tethered) --%>
-  <.tethered_drawer
-    id="settings-drawer"
-    show={assigns[:show_profile_sheet] || false}
-
-    close_event="close_profile_sheet"
-    title="Settings"
-  >
-    <.settings_drawer_content
-      current_user={@current_user}
-      devices={assigns[:devices] || []}
-      uploads={assigns[:uploads]}
-      trusted_friends={assigns[:trusted_friends] || []}
-      trusted_friend_ids={assigns[:trusted_friend_ids] || []}
-      online_friend_ids={assigns[:online_friend_ids]}
-      incoming_trust_requests={assigns[:incoming_trust_requests] || []}
-      outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
-    />
-  </.tethered_drawer>
-
-  <%!-- Global User Menu --%>
-  <%= if assigns[:show_user_menu] do %>
-    <.user_menu_panel 
-      current_user={@current_user}
-      user_private_rooms={@user_private_rooms}
-      friends={@friends}
-      online_friend_ids={assigns[:online_friend_ids]}
-      pending_requests={assigns[:pending_requests] || []}
-    />
-  <% end %>
-
-  <.settings_modal
-    show={assigns[:show_settings_modal]}
+  <%!-- New Revolut-Style Navigation --%>
+  <.fluid_people_modal 
+    show={@show_people_modal}
+    contact_mode={@contact_mode}
+    contacts={@friends}
+    search_query={@contact_sheet_search}
+    search_results={@contact_search_results}
+    trusted_friend_ids={@trusted_friend_ids}
+    trusted_friends={@trusted_friends}
+    incoming_trust_requests={@incoming_trust_requests}
+    outgoing_requests={assigns[:outgoing_friend_requests] || []}
+    outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
+    pending_friend_requests={@pending_requests}
+    room={@room}
+    room_members={@room_members || []}
     current_user={@current_user}
-    user_name={assigns[:user_name]}
-    devices={assigns[:devices] || []}
-    pending_requests={@pending_requests || []}
+    online_friend_ids={@online_friend_ids}
   />
+  
+  <.fluid_groups_modal
+    show={@show_groups_modal}
+    groups={if assigns[:group_search_query] && assigns[:group_search_query] != "", do: assigns[:group_search_results] || [], else: @user_private_rooms || []}
+    search_query={assigns[:group_search_query] || ""}
+    current_user={@current_user}
+    new_room_name={assigns[:new_room_name] || ""}
+  />
+  
+  <.fluid_settings_modal
+    show={@show_settings_modal}
+    current_user={@current_user}
+    devices={assigns[:devices] || []}
+    uploads={assigns[:uploads]}
+  />
+
+  <%!-- Leftover settings modal logic removed --%>
 
 
 
@@ -573,14 +528,15 @@
       <%!-- Feed-first layout, graph available via drawer --%>
 
     <%!-- Avatar Hub (Groups, People, Graph, Settings) --%>
-    <.avatar_hub
-      current_user={@current_user}
-      show_menu={assigns[:show_avatar_menu] || false}
-      pending_request_count={length(assigns[:pending_requests] || [])}
-      unread_count={Map.get(assigns, :total_unread_count, 0)}
-      online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
-
-    />
+    <%= if @live_action == :index do %>
+      <%!-- REVOLUT-STYLE NAV BAR --%>
+      <.fluid_nav_bar 
+        current_user={@current_user} 
+        pending_request_count={length(assigns[:pending_requests] || [])}
+        unread_count={Map.get(assigns, :total_unread_count, 0)}
+        online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+      />
+    <% end %>
 
   <%!-- === MAIN LAYOUT === --%>
   <div class="w-full text-white flex flex-row gap-4 relative z-10 pointer-events-none">
@@ -677,12 +633,7 @@
     <% end %>
 
     <%!-- Settings & Profile Modals --%>
-    <.settings_modal
-      show={assigns[:show_settings_modal]}
-      active_tab={assigns[:settings_tab] || "profile"}
-      current_user={@current_user}
-      show_name_modal={assigns[:show_name_modal]}
-    />
+    <%!-- Settings Modal (Already included above as full screen modal) --%>
 
     <.devices_modal
       show={assigns[:show_devices_modal]}

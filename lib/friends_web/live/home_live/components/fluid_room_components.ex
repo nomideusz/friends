@@ -58,7 +58,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       />
 
       <%!-- Content Area (scrollable, adjusts for chat) --%>
-      <div class={"flex-1 overflow-y-auto overflow-x-hidden transition-all duration-300 #{if @chat_expanded, do: "pb-[50vh]", else: "pb-48"}"}>
+      <div class={"flex-1 overflow-y-auto overflow-x-hidden pt-20 transition-all duration-300 #{if @chat_expanded, do: "pb-[50vh]", else: "pb-48"}"}>
         <%= if @item_count == 0 do %>
           <.fluid_empty_state />
         <% else %>
@@ -392,74 +392,92 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       |> assign(:sorted_members, sorted_members)
 
     ~H"""
-    <div class="sticky top-0 z-50 pl-4 pr-16 py-3 flex items-center justify-between bg-gradient-to-b from-black via-black/90 to-transparent">
+    <div class="absolute top-0 inset-x-0 z-50 pl-4 pr-4 py-3 flex items-center justify-between bg-neutral-900/80 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
       <%!-- Back + Room Name --%>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 min-w-0">
         <.link
           navigate="/"
-          class="w-8 h-8 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          class="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition-colors shrink-0"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
           </svg>
         </.link>
 
-        <%!-- Room name (C: clickable to open members) --%>
+        <%!-- Room info (C: clickable to open members) --%>
         <button
           phx-click="toggle_members_panel"
-          class="text-sm font-bold text-white truncate max-w-[140px] hover:text-white/80 transition-colors cursor-pointer"
+          class="flex flex-col items-start truncate hover:opacity-80 transition-opacity cursor-pointer text-left min-w-0"
         >
-          {@room.name || @room.code}
+          <div class="flex items-center gap-2 w-full">
+            <span class="text-base font-bold text-white truncate leading-tight">
+              {@room.name || @room.code}
+            </span>
+            <%!-- Lock icon for private room --%>
+            <svg class="w-3 h-3 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <span class="text-[10px] font-medium text-white/40 truncate">
+            {length(@room_members)} members • {MapSet.size(@online_ids)} online
+          </span>
         </button>
       </div>
 
       <%!-- Inline Presence Avatars --%>
-      <div class="flex items-center gap-1 relative">
-        <%!-- Show up to 5 members --%>
-        <%= for member <- Enum.take(@sorted_members, 5) do %>
-          <% is_online = MapSet.member?(@online_ids, member.user_id) %>
-          <div class="relative">
-            <button
-              phx-click="open_member_menu"
-              phx-value-member_id={member.user_id}
-              class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white border border-white/20 transition-all cursor-pointer 
-                #{if is_online, do: "shadow-[0_0_15px_rgba(16,185,129,0.4)] animate-pulse opacity-100", else: "opacity-60"}"}
-              style={"background-color: #{member_color(member)};"}
-              title={"@#{member.user.username}#{if is_online, do: " (online)", else: ""}"}
+      <div class="flex items-center gap-2 pl-2 shrink-0">
+        <div class="flex items-center -space-x-2">
+          <%!-- Show up to 4 members --%>
+          <%= for member <- Enum.take(@sorted_members, 4) do %>
+            <% is_online = MapSet.member?(@online_ids, member.user_id) %>
+            <div class="relative group z-0 hover:z-10 transition-all">
+              <button
+                phx-click="open_member_menu"
+                phx-value-member_id={member.user_id}
+                class={"relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2 ring-neutral-900 transition-transform hover:scale-105 cursor-pointer 
+                  #{if is_online, do: "shadow-[0_0_10px_rgba(16,185,129,0.3)]", else: "opacity-90"}"}
+                style={"background-color: #{member_color(member)};"}
+                title={"@#{member.user.username}#{if is_online, do: " (online)", else: ""}"}
+              >
+                {String.first(member.user.username) |> String.upcase()}
+                
+                <%!-- Online indicator dot --%>
+                <%= if is_online do %>
+                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-neutral-900"></span>
+                <% end %>
+              </button>
+
+              <%!-- Context Menu (if this member is selected) --%>
+              <%= if @context_menu_member_id == member.user_id do %>
+                <.member_context_menu 
+                  member={member} 
+                  room={@room} 
+                  current_user={@current_user}
+                  is_online={is_online}
+                />
+              <% end %>
+            </div>
+          <% end %>
+
+          <%!-- +N overflow --%>
+          <%= if length(@room_members) > 4 do %>
+            <div 
+              class="w-8 h-8 rounded-full bg-neutral-800 ring-2 ring-neutral-900 flex items-center justify-center text-[10px] font-bold text-white/50 cursor-pointer hover:bg-neutral-700 transition-colors z-0"
+              phx-click="toggle_members_panel"
             >
-              {String.first(member.user.username) |> String.upcase()}
-            </button>
+              +{length(@room_members) - 4}
+            </div>
+          <% end %>
+        </div>
 
-            <%!-- Context Menu (if this member is selected) --%>
-            <%= if @context_menu_member_id == member.user_id do %>
-              <.member_context_menu 
-                member={member} 
-                room={@room} 
-                current_user={@current_user}
-                is_online={is_online}
-              />
-            <% end %>
-          </div>
-        <% end %>
-
-        <%!-- +N overflow / Invite button --%>
-        <%= if length(@room_members) > 5 do %>
-          <button
-            phx-click="toggle_members_panel"
-            class="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-sm font-medium text-white/70 hover:bg-white/20 transition-all cursor-pointer"
-          >
-            +{length(@room_members) - 5}
-          </button>
-        <% end %>
-
-        <%!-- Members / Settings Button --%>
+        <%!-- Settings/Menu Button --%>
         <button
           phx-click="toggle_members_panel"
-          class="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/60 hover:bg-white/20 hover:text-white transition-all cursor-pointer"
+          class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
           title="Members & Settings"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
           </svg>
         </button>
       </div>

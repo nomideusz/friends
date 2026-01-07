@@ -165,6 +165,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:contact_mode, :list_contacts)
         |> assign(:contact_sheet_search, "")
         |> assign(:contact_search_results, [])
+        |> assign(:show_people_modal, false)
+        |> assign(:show_groups_modal, false)
         |> assign(:room_members, [])
         # Typing users (for rooms, init empty for dashboard)
         |> assign(:typing_users, %{})
@@ -359,6 +361,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:contact_mode, :list_contacts)
         |> assign(:contact_sheet_search, "")
         |> assign(:contact_search_results, [])
+        |> assign(:show_people_modal, false)
+        |> assign(:show_groups_modal, false)
         |> assign(:trusted_friend_ids, [])
         |> assign(:incoming_trust_requests, [])
         |> assign(

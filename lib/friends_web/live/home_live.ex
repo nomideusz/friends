@@ -16,8 +16,10 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidCreateMenu
   import FriendsWeb.HomeLive.Components.FluidOmnibox
   import FriendsWeb.HomeLive.Components.FluidUploadIndicator
-  import FriendsWeb.HomeLive.Components.FluidAvatarHub
-  import FriendsWeb.HomeLive.Components.TetheredDrawer
+  import FriendsWeb.HomeLive.Components.FluidNavBar
+  import FriendsWeb.HomeLive.Components.FluidSettingsModal
+  import FriendsWeb.HomeLive.Components.FluidPeopleModal
+  import FriendsWeb.HomeLive.Components.FluidGroupsModal
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
   alias FriendsWeb.HomeLive.Events.RoomEvents
@@ -600,6 +602,29 @@ defmodule FriendsWeb.HomeLive do
     NetworkEvents.switch_network_tab(socket, tab)
   end
 
+  # --- New Revolut-Style Navigation Events ---
+
+  def handle_event("toggle_people_modal", _params, socket) do
+    {:noreply, assign(socket, :show_people_modal, !socket.assigns.show_people_modal)}
+  end
+
+  def handle_event("close_people_modal", _params, socket) do
+    {:noreply, assign(socket, :show_people_modal, false)}
+  end
+
+  def handle_event("toggle_groups_modal", _params, socket) do
+    {:noreply, assign(socket, :show_groups_modal, !socket.assigns.show_groups_modal)}
+  end
+
+  def handle_event("close_groups_modal", _params, socket) do
+    {:noreply, assign(socket, :show_groups_modal, false)}
+  end
+
+  def handle_event("toggle_settings_modal", _params, socket) do
+    # Reusing existing close logic but adding toggle convenience
+    {:noreply, assign(socket, :show_settings_modal, !socket.assigns.show_settings_modal)}
+  end
+
   def handle_event("sign_out", _params, socket) do
     SettingsEvents.sign_out(socket)
   end
@@ -713,6 +738,12 @@ defmodule FriendsWeb.HomeLive do
 
       socket.assigns[:show_create_menu] ->
         {:noreply, assign(socket, :show_create_menu, false)}
+
+      socket.assigns[:show_people_modal] ->
+        {:noreply, assign(socket, :show_people_modal, false)}
+
+      socket.assigns[:show_groups_modal] ->
+        {:noreply, assign(socket, :show_groups_modal, false)}
 
       true ->
         {:noreply, socket}
