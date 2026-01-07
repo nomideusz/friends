@@ -836,7 +836,7 @@
     .context-menu {
         position: absolute;
         z-index: 100;
-        min-width: 200px;
+        min-width: 150px;
         transform: translate(-50%, 10px);
         transform-origin: top center;
 
@@ -880,7 +880,7 @@
 
     .menu-header {
         padding: 6px 10px 8px;
-        text-align: center;
+        text-align: left;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         margin-bottom: 4px;
         margin-left: 4px;
@@ -916,7 +916,7 @@
         transition: all 0.15s ease-out;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
     }
 
     .menu-item:not([disabled]):hover {
