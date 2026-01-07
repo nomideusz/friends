@@ -391,8 +391,9 @@
         const my = transform.invertY(screenY);
 
         let subject = null;
-        // Adaptive radius: maintain constant screen hit area (45px) regardless of zoom
-        const r = 45 / transform.k;
+        // Adaptive radius: maintain constant screen hit area (45px on desktop, 60px on mobile)
+        const baseRadius = isMobile ? 60 : 45;
+        const r = baseRadius / transform.k;
         let minDist2 = r * r;
 
         // Iterate backwards (top nodes first)
@@ -456,7 +457,8 @@
 
         let found = null;
         // Adaptive radius for hover too
-        const r = 45 / t.k;
+        const baseRadius = isMobile ? 60 : 45;
+        const r = baseRadius / t.k;
         const r2 = r * r;
 
         for (let i = nodesData.length - 1; i >= 0; i--) {
@@ -565,6 +567,7 @@
             .links(colaLinks)
             .linkDistance(linkDistance)
             .symmetricDiffLinkLengths(15)
+            .handleDisconnected(false) // Allow disconnected nodes to scatter naturally
             .avoidOverlaps(true)
             .on("tick", ticked)
             .start(30);
