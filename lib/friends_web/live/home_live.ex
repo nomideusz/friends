@@ -626,6 +626,15 @@ defmodule FriendsWeb.HomeLive do
   end
 
   def handle_event("dismiss_notification", _params, socket) do
+    # When user manually dismisses, we should clear it persistently
+    # by marking that room as read, otherwise it reappears on refresh.
+    if notification = socket.assigns[:persistent_notification] do
+      if socket.assigns.current_user do
+        if notification[:room_id], do: Social.mark_room_read(notification.room_id, socket.assigns.current_user.id)
+        if notification[:conversation_id], do: Social.mark_conversation_read(notification.conversation_id, socket.assigns.current_user.id)
+      end
+    end
+    
     {:noreply, assign(socket, :persistent_notification, nil)}
   end
 
@@ -633,6 +642,13 @@ defmodule FriendsWeb.HomeLive do
     notification = socket.assigns[:persistent_notification]
     
     if notification do
+      # When viewing, we also mark as read logic handles this in handle_params
+      # but we can do it optimistically here too
+      if socket.assigns.current_user do
+        if notification[:room_id], do: Social.mark_room_read(notification.room_id, socket.assigns.current_user.id)
+        if notification[:conversation_id], do: Social.mark_conversation_read(notification.conversation_id, socket.assigns.current_user.id)
+      end
+      
       socket = assign(socket, :persistent_notification, nil)
       
       if notification.room_code do
