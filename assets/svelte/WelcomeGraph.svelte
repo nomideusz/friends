@@ -419,58 +419,53 @@
 
     // Helper to find subject for interaction (sharing logic between drag and zoom filter)
     function findInteractionSubject(event) {
-        if (!canvas) return null;
+        if (!canvas || !nodesData.length) return null;
 
         const t = d3.zoomTransform(canvas);
-        // Use d3.pointer to get coordinates from native event relative to canvas
         const sourceEvent = event.sourceEvent || event;
 
-        // Robust coordinate extraction handling touch/mouse
-        const [screenX, screenY] = d3.pointer(sourceEvent, canvas);
-        const mx = t.invertX(screenX);
-        const my = t.invertY(screenY);
+        // Get coordinates relative to canvas (CSS pixels)
+        const [px, py] = d3.pointer(sourceEvent, canvas);
 
-        let subject = null;
+        // Invert transform to get world coordinates
+        const mx = t.invertX(px);
+        const my = t.invertY(py);
+
         // Adaptive hit radius (screen pixels)
         // Fingers are less precise; use a larger hit area on touch devices
-        // We use a very generous 120px for the zoom-blocking filter specifically on mobile
-        // to ensure dragging takes precedence over panning when near a node.
-        const hitRadius = hasTouch || isMobile ? 120 : 45;
-        const r = hitRadius / t.k;
-        let minDist2 = r * r;
+        // This radius is in screen pixels, then converted to world distance squared
+        const baseRadius = hasTouch || isMobile ? 120 : 40;
+        const worldRadius = baseRadius / t.k;
+        const maxDist2 = worldRadius * worldRadius;
 
-        // Iterate backwards (top nodes first)
-        for (let i = nodesData.length - 1; i >= 0; i--) {
-            const n = nodesData[i];
-            const dx = mx - n.x;
-            const dy = my - n.y;
+        // Use d3.least to find the closest node within range
+        return d3.least(nodesData, (d) => {
+            const dx = d.x - mx;
+            const dy = d.y - my;
             const dist2 = dx * dx + dy * dy;
-            if (dist2 < minDist2) {
-                minDist2 = dist2;
-                subject = n;
-            }
-        }
-        return subject;
+            return dist2 < maxDist2 ? dist2 : NaN;
+        });
     }
 
     function dragStarted(event) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         isDragging = true;
 
-        // Stop the event from reaching the zoom behavior
-        if (event.sourceEvent) {
-            if (event.sourceEvent.cancelable)
-                event.sourceEvent.preventDefault();
-            event.sourceEvent.stopPropagation();
-        }
-
+        // Pin the node
         event.subject.fx = event.subject.x;
         event.subject.fy = event.subject.y;
         draggedSubject = event.subject;
+
+        // Stop propagation to prevent zoom behavior from catching this
+        if (event.sourceEvent) {
+            event.sourceEvent.stopPropagation();
+        }
     }
 
     function dragged(event) {
         const t = d3.zoomTransform(canvas);
+        // event.x and event.y in a drag event on the canvas are in container coordinates
+        // We invert them to get the world coordinates for the node's fixed position
         event.subject.fx = t.invertX(event.x);
         event.subject.fy = t.invertY(event.y);
     }
@@ -481,56 +476,29 @@
         event.subject.fy = null;
         draggedSubject = null;
 
-        // Use a tiny timeout to reset isDragging so it doesn't trigger a click immediately
+        // Brief delay to prevent immediate click from firing on the node
         setTimeout(() => {
             isDragging = false;
         }, 50);
     }
 
     function handleCanvasMouseMove(event) {
-        if (isDragging) return; // Ignore hover during drag
+        if (isDragging) return;
 
-        const [mx, my] = d3.pointer(event);
-        const t = d3.zoomTransform(canvas);
-        const worldX = t.invertX(mx);
-        const worldY = t.invertY(my);
-
-        let found = null;
-        // Adaptive radius for hover too
-        const baseRadius = isMobile ? 60 : 45;
-        const r = baseRadius / t.k;
-        const r2 = r * r;
-
-        for (let i = nodesData.length - 1; i >= 0; i--) {
-            const n = nodesData[i];
-            const dx = worldX - n.x;
-            const dy = worldY - n.y;
-            if (dx * dx + dy * dy < r2) {
-                found = n;
-                break;
-            }
-        }
-
-        if (found !== hoverSubject) {
-            hoverSubject = found;
-            canvas.style.cursor = found ? "pointer" : "default";
+        const subject = findInteractionSubject(event);
+        if (subject !== hoverSubject) {
+            hoverSubject = subject;
+            canvas.style.cursor = subject ? "pointer" : "default";
         }
     }
 
     function handleCanvasClick(event) {
         // Stop bubbling to prevent parent's handleBackdropClick from firing
-        // which would close the menu we are trying to open/interact with.
         event.stopPropagation();
 
-        if (isDragging) {
-            isDragging = false; // Reset flag but don't handle click
-            return;
-        }
+        if (isDragging) return;
 
-        // Explicit hit test on click - more reliable than relying on hover state
-        // passing 'event' directly to finding logic
         const subject = findInteractionSubject(event);
-
         if (subject) {
             handleNodeClick(event, subject);
         } else {
@@ -613,26 +581,27 @@
             .zoom()
             .scaleExtent([0.1, 4])
             .filter((event) => {
+                const sourceEvent = event.sourceEvent || event;
+
                 // If we are already dragging, block zoom
                 if (isDragging) return false;
 
-                // Ignore zoom gestures if they start on or near a node
+                // Handle multi-touch: always allow zoom for pinches
+                if (sourceEvent.touches && sourceEvent.touches.length > 1)
+                    return true;
+
+                // For single touches or mouse downs, check if we are over a node
                 const filteredTypes = [
                     "mousedown",
                     "touchstart",
                     "pointerdown",
                 ];
-
                 if (filteredTypes.includes(event.type)) {
-                    // On multi-touch (pinch), ALWAYS allow zoom
-                    if (event.touches && event.touches.length > 1) return true;
-
                     const subject = findInteractionSubject(event);
-                    if (subject) {
-                        return false; // Block zoom
-                    }
+                    if (subject) return false; // Block zoom, let drag take it
                 }
 
+                // Default D3 filter logic for zoom
                 return (
                     (!event.ctrlKey || event.type === "wheel") && !event.button
                 );
