@@ -540,15 +540,16 @@
             }))
             .filter((l) => l.source !== undefined && l.target !== undefined);
 
+        // Cola.js simulation - simplified setup like TMDB example
+        // Simple config without expensive algorithms
         simulation = cola
             .d3adaptor(d3)
+            .linkDistance(linkDistance)
             .size([width, height])
             .nodes(nodesData)
             .links(colaLinks)
-            .avoidOverlaps(true) // Built-in overlap prevention
-            .jaccardLinkLengths(linkDistance, 0.7) // Spread disconnected nodes
-            .handleDisconnected(true) // Handle disconnected components
-            .start(30, 20, 20); // unconstrained, user constraint, all constraint iterations
+            .handleDisconnected(true)
+            .start(); // Simple start, no iteration counts
 
         // Initialize cached selections - use colaLinks since they have resolved node refs
         linkSelection = linkGroup
