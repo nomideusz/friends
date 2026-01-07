@@ -334,19 +334,63 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
             </div>
           <% end %>
         <% else %>
-          <%!-- Incoming Requests --%>
+          <%!-- 1. YOUR PEOPLE (Contacts) - ACTIVE FIRST --%>
+          <% 
+            sorted_contacts = Enum.sort_by(contacts, fn c ->
+              user = if Map.has_key?(c, :user), do: c.user, else: c
+              is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, user.id)
+              # Sort: Online (false) < Offline (true), then Alphabetical
+              {!is_online, String.downcase(user.username)}
+            end)
+          %>
+
+          <div class="mb-6">
+            <div class="flex items-center gap-2 mb-2">
+              <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Your People ({length(sorted_contacts)})</span>
+            </div>
+            <%= if Enum.any?(sorted_contacts) do %>
+              <div class="space-y-2">
+                <%= for contact <- sorted_contacts do %>
+                  <% user = if Map.has_key?(contact, :user), do: contact.user, else: contact %>
+                  <.person_row 
+                    user={user} 
+                    status={:connected}
+                    online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
+                    is_recovery={false}
+                    mode={@mode}
+                    member_ids={@member_ids}
+                    is_admin={@is_admin}
+                  />
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-center py-8 bg-white/5 rounded-xl border border-white/5">
+                <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-white/5 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <p class="text-white/40 text-sm">No contacts yet</p>
+              </div>
+            <% end %>
+          </div>
+
+          <%!-- 2. INCOMING REQUESTS (Friend & Trust) --%>
           <% friend_requests = @pending_friend_requests || [] %>
           <% trust_requests = @incoming_trust_requests || [] %>
           
           <%= if Enum.any?(friend_requests) || Enum.any?(trust_requests) do %>
-            <div class="mb-4 space-y-3">
+            <div class="mb-6 space-y-3">
               <%= if Enum.any?(friend_requests) do %>
                 <div>
                   <div class="flex items-center gap-2 mb-2">
                     <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
-                    <span class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Connection Requests</span>
+                    <span class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Incoming Requests</span>
                   </div>
                   <div class="space-y-1">
                     <%= for fr <- friend_requests do %>
@@ -356,17 +400,32 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 </div>
               <% end %>
+              
+              <%= if Enum.any?(trust_requests) do %>
+                <div>
+                   <div class="flex items-center gap-2 mb-2">
+                    <.shield_icon class="w-3.5 h-3.5 text-yellow-500" />
+                    <span class="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider">Recovery Requests</span>
+                  </div>
+                  <div class="space-y-1">
+                    <%= for tr <- trust_requests do %>
+                      <% user = if Map.has_key?(tr, :user), do: tr.user, else: tr %>
+                      <.trust_request_row user={user} />
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
             </div>
           <% end %>
           
-          <%!-- Your People --%>
+          <%!-- 3. OUTGOING PENDING (Sent Requests) --%>
           <%= if Enum.any?(outgoing) do %>
             <div class="mb-4">
               <div class="flex items-center gap-2 mb-2">
                 <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Pending Connections</span>
+                <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Pending Sent Requests</span>
               </div>
               <div class="space-y-1">
                 <%= for req <- outgoing do %>
@@ -374,39 +433,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   <.pending_connection_row user={user} />
                 <% end %>
               </div>
-            </div>
-          <% end %>
-          
-          <%!-- Your People --%>
-          <div class="flex items-center gap-2 mb-2">
-            <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Your People</span>
-          </div>
-          <%= if Enum.any?(contacts) do %>
-            <div class="space-y-2">
-              <%= for contact <- contacts do %>
-                <% user = if Map.has_key?(contact, :user), do: contact.user, else: contact %>
-                <.person_row 
-                  user={user} 
-                  status={:connected}
-                  online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
-                  is_recovery={false}
-                  mode={@mode}
-                  member_ids={@member_ids}
-                  is_admin={@is_admin}
-                />
-              <% end %>
-            </div>
-          <% else %>
-            <div class="text-center py-8">
-              <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-                <svg class="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <p class="text-white/30 text-sm">Search to find and add people</p>
             </div>
           <% end %>
         <% end %>
