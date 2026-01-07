@@ -705,7 +705,7 @@
             .on("mousemove", handleCanvasMouseMove);
 
         // === FULLY MANUAL TOUCH HANDLING ===
-        // This bypasses D3 entirely for touch events
+        // Use CAPTURE phase (true) to run before D3's zoom behavior
 
         canvas.addEventListener(
             "touchstart",
@@ -723,14 +723,13 @@
                     // Pin the node at its current position
                     touchedNode.fx = touchedNode.x;
                     touchedNode.fy = touchedNode.y;
-                    // NOTE: Don't set draggedSubject yet - only when actually dragging
-                    // This prevents the label from jumping on tap
 
                     // Prevent zoom from taking this event
                     event.preventDefault();
+                    event.stopPropagation();
                 }
             },
-            { passive: false },
+            { capture: true, passive: false },
         );
 
         canvas.addEventListener(
