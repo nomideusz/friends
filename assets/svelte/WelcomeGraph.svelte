@@ -621,6 +621,8 @@
             }))
             .filter((l) => l.source !== undefined && l.target !== undefined);
 
+        linksData = colaLinks; // Critical: Update global reference for drawing
+
         simulation = cola
             .d3adaptor(d3)
             .size([width, height])
