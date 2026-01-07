@@ -452,9 +452,8 @@
         const my = t.invertY(py);
 
         // Adaptive hit radius (screen pixels)
-        // Fingers are less precise; use a larger hit area on touch devices
-        // This radius is in screen pixels, then converted to world distance squared
-        const baseRadius = hasTouch || isMobile ? 120 : 40;
+        // Slightly larger for touch to account for finger imprecision
+        const baseRadius = hasTouch || isMobile ? 40 : 25;
         const worldRadius = baseRadius / t.k;
         const maxDist2 = worldRadius * worldRadius;
 
