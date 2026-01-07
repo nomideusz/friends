@@ -643,18 +643,18 @@
                 // but for static graphs it helps to trigger a frame.
             });
 
+        const drag = d3
+            .drag()
+            .subject(dragSubject)
+            .on("start", dragStarted)
+            .on("drag", dragged)
+            .on("end", dragEnded);
+
         d3.select(canvas)
+            .call(drag)
             .call(zoom)
             .on("click", handleCanvasClick)
-            .on("mousemove", handleCanvasMouseMove)
-            .call(
-                d3
-                    .drag()
-                    .subject(dragSubject)
-                    .on("start", dragStarted)
-                    .on("drag", dragged)
-                    .on("end", dragEnded),
-            );
+            .on("mousemove", handleCanvasMouseMove);
 
         // Initial Transform
         const contentSize = isMobile ? 500 : 350;
