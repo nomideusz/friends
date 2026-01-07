@@ -602,12 +602,12 @@
                 d3
                     .forceLink(linksData)
                     .id((d) => d.id)
-                    .distance(80),
+                    .distance(100),
             )
-            .force("charge", d3.forceManyBody().strength(-250))
+            .force("charge", d3.forceManyBody().strength(-200))
             .force("collide", d3.forceCollide().radius(25))
-            .force("x", d3.forceX().strength(0.05))
-            .force("y", d3.forceY().strength(0.05))
+            .force("x", d3.forceX().strength(0.15))
+            .force("y", d3.forceY().strength(0.15))
             .on("tick", ticked);
 
         // Zoom behavior
