@@ -388,8 +388,25 @@
             .attr("stroke-width", 1.5)
             .style("cursor", "pointer");
 
+        // Custom drag handler for Cola.js
+        const drag = d3
+            .drag()
+            .on("start", (event, d) => {
+                d.fixed = true; // Cola uses 'fixed' instead of fx/fy
+            })
+            .on("drag", (event, d) => {
+                d.x = event.x;
+                d.y = event.y;
+                d.px = event.x; // Cola uses px/py for previous position
+                d.py = event.y;
+                simulation.resume(); // Restart simulation
+            })
+            .on("end", (event, d) => {
+                d.fixed = false;
+            });
+
         enter
-            .call(simulation.drag) // Use Cola.js drag behavior
+            .call(drag)
             .on("mouseenter", function (event, d) {
                 if (isMobile || d.id === currentUserIdStr) return;
                 showLabel(d);
