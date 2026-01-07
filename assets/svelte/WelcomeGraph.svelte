@@ -386,11 +386,14 @@
     function dragSubject(event) {
         // Find closest node within radius
         const transform = d3.zoomTransform(canvas);
-        const mx = transform.invertX(event.x);
-        const my = transform.invertY(event.y);
+
+        // Use d3.pointer to get coordinates from native event relative to canvas
+        const [screenX, screenY] = d3.pointer(event, canvas);
+        const mx = transform.invertX(screenX);
+        const my = transform.invertY(screenY);
 
         let subject = null;
-        let minDist2 = 900; // 30px radius squared for easier grabbing on mobile
+        let minDist2 = 2025; // 45px radius squared (easier grabbing)
 
         // Iterate backwards (top nodes first)
         for (let i = nodesData.length - 1; i >= 0; i--) {
