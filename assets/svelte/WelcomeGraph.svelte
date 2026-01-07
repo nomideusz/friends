@@ -593,18 +593,21 @@
             }
         });
 
-        // D3 Force Simulation setup - matching standard D3 example
-        // Nodes are positioned around origin (0,0), canvas transform centers them
+        // D3 Force Simulation setup
+        // Tuned for: connected nodes spaced out, unconnected nodes pulled toward center
         simulation = d3
             .forceSimulation(nodesData)
             .force(
                 "link",
-                d3.forceLink(linksData).id((d) => d.id),
+                d3
+                    .forceLink(linksData)
+                    .id((d) => d.id)
+                    .distance(80),
             )
-            .force("charge", d3.forceManyBody().strength(-150))
-            .force("collide", d3.forceCollide().radius(20))
-            .force("x", d3.forceX())
-            .force("y", d3.forceY())
+            .force("charge", d3.forceManyBody().strength(-250))
+            .force("collide", d3.forceCollide().radius(25))
+            .force("x", d3.forceX().strength(0.05))
+            .force("y", d3.forceY().strength(0.05))
             .on("tick", ticked);
 
         // Zoom behavior
