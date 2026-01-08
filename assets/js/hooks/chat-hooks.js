@@ -909,8 +909,6 @@ export const InlineChatInputHook = {
 
             // Typing indicator + auto-expand chat on first input
             chatInput.addEventListener('input', () => {
-                this.pushEvent("update_chat_message", { message: chatInput.value })
-
                 // Auto-expand chat when user starts typing (if not already expanded)
                 if (chatInput.value.length === 1) {
                     // Check if chat panel is collapsed by checking the container height

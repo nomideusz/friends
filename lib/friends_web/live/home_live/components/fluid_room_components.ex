@@ -324,15 +324,19 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             </div>
             
             <%!-- Text Input --%>
-            <input
-              type="text"
-              name="message"
-              value={@new_chat_message}
-              placeholder="Message..."
-              autocomplete="off"
-              style="font-size: 16px;"
-              class="chat-input flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
-            />
+            <div id={"chat-input-ignore-#{@room.id}"} phx-update="ignore" class="flex-1">
+              <input
+                type="text"
+                name="message"
+                value={@new_chat_message}
+                phx-change="update_chat_message"
+                phx-debounce="300"
+                placeholder="Message..."
+                autocomplete="off"
+                style="font-size: 16px;"
+                class="chat-input w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/20 focus:outline-none"
+              />
+            </div>
             
             <%!-- Walkie-Talkie Button (hold to talk) --%>
             <%!-- Morphing Send / Walkie Button --%>
@@ -1047,17 +1051,20 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           </div>
 
           <%!-- Text input --%>
-          <input
-            type="text"
-            name="message"
-            value={@new_chat_message}
-            phx-keyup="update_chat_message"
-            placeholder="Message"
-            style="font-size: 16px;"
-            class="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none py-2"
-            id="unified-message-input"
-            autocomplete="off"
-          />
+          <div id={"unified-input-ignore-#{@room.id}"} phx-update="ignore" class="flex-1 py-2">
+            <input
+              type="text"
+              name="message"
+              value={@new_chat_message}
+              phx-change="update_chat_message"
+              phx-debounce="500"
+              placeholder="Message"
+              style="font-size: 16px;"
+              class="w-full bg-transparent text-white placeholder-white/40 focus:outline-none"
+              id="unified-message-input"
+              autocomplete="off"
+            />
+          </div>
 
           <%!-- Voice button (record message) --%>
           <button
