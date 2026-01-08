@@ -423,6 +423,120 @@ export const RoomChatEncryptionHook = {
                 }
             })
         }
+
+        // Walkie-talkie (hold to talk) - MediaRecorder implementation
+        const walkieBtn = walkieContainer?.querySelector('.walkie-talk-btn')
+        if (walkieBtn) {
+            let mediaRecorder = null
+            let mediaStream = null
+            let isTransmitting = false
+            // Fix race condition: if mouseup happens before start finishes
+            this.shouldStopWalkie = false
+
+            const startWalkie = async () => {
+                if (isTransmitting) return // Already running
+
+                this.shouldStopWalkie = false
+                try {
+                    // Visual feedback immediate with pulsing ring
+                    walkieBtn.classList.add('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110', 'ring-2', 'ring-emerald-400')
+                    walkieBtn.classList.remove('bg-white/10', 'text-white/60')
+
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    })
+
+                    // Race check
+                    if (this.shouldStopWalkie) {
+                        mediaStream.getTracks().forEach(t => t.stop())
+                        stopWalkie()
+                        return
+                    }
+
+                    // Use MediaRecorder with 200ms chunks
+                    mediaRecorder = new MediaRecorder(mediaStream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    })
+
+                    mediaRecorder.ondataavailable = async (e) => {
+                        if (e.data.size > 0 && isTransmitting) {
+                            const arrayBuffer = await e.data.arrayBuffer()
+                            const audioBytes = new Uint8Array(arrayBuffer)
+
+                            const key = await messageEncryption.loadOrCreateConversationKey(`room:${roomCode}`)
+                            const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(audioBytes, key)
+
+                            this.pushEvent("walkie_chunk", {
+                                encrypted_audio: btoa(String.fromCharCode(...encrypted)),
+                                nonce: btoa(String.fromCharCode(...nonce))
+                            })
+                        }
+                    }
+
+                    mediaRecorder.onstop = () => {
+                        mediaStream.getTracks().forEach(track => track.stop())
+                    }
+
+                    // Start recording with 200ms timeslice
+                    mediaRecorder.start(200)
+                    isTransmitting = true
+
+                    this.pushEvent("walkie_start", {})
+
+                } catch (err) {
+                    console.error('Walkie-talkie error:', err)
+                    stopWalkie()
+                }
+            }
+
+            const stopWalkie = () => {
+                this.shouldStopWalkie = true
+                isTransmitting = false
+
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop()
+                }
+                mediaRecorder = null
+
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop())
+                    mediaStream = null
+                }
+
+                this.pushEvent("walkie_stop", {})
+
+                // Reset button state
+                walkieBtn.classList.remove('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110', 'ring-2', 'ring-emerald-400')
+                walkieBtn.classList.add('bg-white/10', 'text-white/60')
+            }
+
+            // Touch events with touchmove prevention to keep recording during finger drift
+            walkieBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                startWalkie()
+            }, { passive: false })
+
+            walkieBtn.addEventListener('touchmove', (e) => {
+                // Prevent scroll and keep recording active during finger movement
+                e.preventDefault()
+            }, { passive: false })
+
+            walkieBtn.addEventListener('touchend', (e) => {
+                e.preventDefault()
+                stopWalkie()
+            })
+            walkieBtn.addEventListener('touchcancel', stopWalkie)
+
+            // Mouse events
+            walkieBtn.addEventListener('mousedown', startWalkie)
+            walkieBtn.addEventListener('mouseup', stopWalkie)
+            walkieBtn.addEventListener('mouseleave', stopWalkie)
+        }
     },
 
     destroyed() {
