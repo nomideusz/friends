@@ -374,26 +374,17 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
             </div>
           <% end %>
 
-          <%!-- 2. YOUR PEOPLE (Contacts) - ACTIVE FIRST --%>
-          <% 
-            sorted_contacts = Enum.sort_by(contacts, fn c ->
-              user = if Map.has_key?(c, :user), do: c.user, else: c
-              is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, user.id)
-              # Sort: Online (false) < Offline (true), then Alphabetical
-              {!is_online, String.downcase(user.username)}
-            end)
-          %>
-
+          <%!-- 2. YOUR PEOPLE (Contacts) - Sorted by activity --%>
           <div class="mb-6">
             <div class="flex items-center gap-2 mb-2">
               <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Your People ({length(sorted_contacts)})</span>
+              <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Your People ({length(contacts)})</span>
             </div>
-            <%= if Enum.any?(sorted_contacts) do %>
+            <%= if Enum.any?(contacts) do %>
               <div class="space-y-2">
-                <%= for contact <- sorted_contacts do %>
+                <%= for contact <- contacts do %>
                   <% user = if Map.has_key?(contact, :user), do: contact.user, else: contact %>
                   <.person_row 
                     user={user} 

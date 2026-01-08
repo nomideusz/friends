@@ -75,7 +75,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
           />
 
           <%!-- Suggested Contacts Dropdown (hidden by default) --%>
-          <div id="suggested-contacts-dropdown" class="hidden absolute bottom-full right-0 mb-2 w-64 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
+          <div id="suggested-contacts-dropdown" class="hidden absolute top-full right-0 mt-2 w-64 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-top-2 fade-in duration-200">
             <div class="p-3 border-b border-white/10">
               <div class="flex items-center gap-2">
                 <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
