@@ -8,7 +8,7 @@
     export let onSkip = null;
     // List of online user IDs (Set of integers)
     export let onlineUsers = new Set();
-    
+
     // Update online users list
     export function updateOnlineUsers(userIds) {
         onlineUsers = new Set(userIds);
@@ -16,6 +16,9 @@
         // simulation is running, so it will update naturally, but if paused we might need a kick
         // However, draw() is in animation loop, so just updating the set is enough for next frame
     }
+
+    // Current user ID for highlighting
+    export let currentUserId = null;
 
     // Titanium / iOS 18 inspired palette
     const COLORS = {
@@ -26,7 +29,7 @@
         friend: "#5E5CE6", // System Indigo
         aura: "rgba(10, 132, 255, 0.05)", // Extremely subtle - for self (blue-ish in original, but self is green?)
         // Self is actually green (#30D158). Let's use a green aura for online/self.
-        aura_green: "rgba(48, 209, 88, 0.2)", 
+        aura_green: "rgba(48, 209, 88, 0.2)",
         link: "rgba(120, 120, 128, 0.2)", // Static, subtle gray
         label: "rgba(255, 255, 255, 0.85)",
     };
@@ -365,7 +368,7 @@
         if (isSelf || isOnline) {
             // Use green aura for both self and online friends
             const auraColor = COLORS.aura_green;
-            
+
             const auraGradient = ctx.createRadialGradient(
                 d.x,
                 d.y,
@@ -396,7 +399,7 @@
                 ctx.restore();
 
                 // Border for avatar - Green for online, White for offline
-                ctx.strokeStyle = (isSelf || isOnline) ? "#4ade80" : "#FFFFFF"; // Green-400 or White
+                ctx.strokeStyle = isSelf || isOnline ? "#4ade80" : "#FFFFFF"; // Green-400 or White
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
                 return;
@@ -414,7 +417,8 @@
         ctx.fill();
 
         // Thicker, solid border
-        ctx.strokeStyle = (isSelf || isOnline) ? "#4ade80" : "rgba(255,255,255,0.8)";
+        ctx.strokeStyle =
+            isSelf || isOnline ? "#4ade80" : "rgba(255,255,255,0.8)";
         ctx.lineWidth = 2.5;
         ctx.stroke();
     }
