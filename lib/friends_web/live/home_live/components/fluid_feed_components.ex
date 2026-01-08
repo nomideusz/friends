@@ -46,6 +46,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
         <.fluid_feed_empty_state 
           welcome_graph_data={@welcome_graph_data} 
           current_user={@current_user}
+          online_friend_ids={@online_friend_ids}
         />
       </div>
 
@@ -167,6 +168,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
 
   attr :welcome_graph_data, :map, default: nil
   attr :current_user, :map, default: nil
+  attr :online_friend_ids, :any, default: nil
 
   def fluid_feed_empty_state(assigns) do
     ~H"""
