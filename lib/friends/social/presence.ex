@@ -16,7 +16,7 @@ defmodule Friends.Social.Presence do
   Track a user in a room.
   """
   def track_user(socket, room_code, user_id, user_color, user_name \\ nil) do
-    track(socket, room_code, user_id, %{
+    track(socket, "friends:presence:#{room_code}", user_id, %{
       user_id: user_id,
       user_color: user_color,
       user_name: user_name,
@@ -28,7 +28,7 @@ defmodule Friends.Social.Presence do
   Update user presence metadata.
   """
   def update_user(socket, room_code, user_id, user_color, user_name) do
-    update(socket, room_code, user_id, fn meta ->
+    update(socket, "friends:presence:#{room_code}", user_id, fn meta ->
       %{
         user_id: user_id,
         user_color: user_color,
@@ -39,10 +39,17 @@ defmodule Friends.Social.Presence do
   end
 
   @doc """
+  Untrack a user from a room.
+  """
+  def untrack_user(socket, room_code, user_id) do
+    untrack(socket, "friends:presence:#{room_code}", user_id)
+  end
+
+  @doc """
   Get all users in a room.
   """
   def list_users(room_code) do
-    list(room_code)
+    list("friends:presence:#{room_code}")
     |> Enum.map(fn {_user_id, %{metas: [meta | _]}} -> meta end)
   end
 

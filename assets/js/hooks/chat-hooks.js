@@ -253,6 +253,29 @@ export const RoomChatEncryptionHook = {
         // The element itself is a form now, or find form inside
         const form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
         const input = this.el.querySelector('input[name="message"]') || this.el.querySelector('[contenteditable]')
+        const sendBtn = this.el.querySelector('#send-unified-message-btn')
+        const walkieContainer = this.el.querySelector('#walkie-talkie-container')
+
+        // UI Update Helper
+        const updateUI = () => {
+            if (!input || !sendBtn || !walkieContainer) return
+            // Use value for inputs, textContent for contenteditable
+            const val = input.value !== undefined ? input.value : input.textContent
+            const hasText = val && val.trim().length > 0
+
+            if (hasText) {
+                walkieContainer.style.display = 'none'
+                sendBtn.style.display = 'flex'
+                sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+                sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+            } else {
+                walkieContainer.style.display = 'block'
+                sendBtn.style.display = 'none'
+            }
+        }
+
+        // Initial check
+        updateUI()
 
         // Broadcast typing with 5s delay
         const broadcastTyping = (text) => {
@@ -289,6 +312,13 @@ export const RoomChatEncryptionHook = {
                 } else {
                     stopTyping()
                 }
+                updateUI()
+            })
+
+            input.addEventListener('keyup', updateUI)
+
+            input.addEventListener('blur', () => {
+                stopTyping()
             })
 
             input.addEventListener('blur', () => {
@@ -322,6 +352,7 @@ export const RoomChatEncryptionHook = {
                 } else {
                     input.value = ''
                 }
+                updateUI()
             } catch (err) {
                 console.error('Failed to encrypt/send message:', err)
             }
@@ -1053,6 +1084,78 @@ export const DecryptedPreviewHook = {
         } catch (err) {
             console.error('Preview decryption error:', err)
             this.el.textContent = 'Error decrypting'
+        }
+    }
+}
+
+/**
+ * UnifiedChatUIHook
+ * Handles dynamic UI updates for the unified input area:
+ * 1. Toggles between Walkie Talkie and Send button based on input content
+ * 2. Handles Enter key on mobile/desktop to submit form reliably
+ */
+export const UnifiedChatUIHook = {
+    mounted() {
+        console.log('UnifiedChatUIHook mounted')
+        this.form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
+        if (!this.form) {
+            console.error('UnifiedChatUIHook: Form not found')
+            return
+        }
+
+        this.input = this.form.querySelector('#unified-message-input')
+        this.sendBtn = this.form.querySelector('#send-unified-message-btn')
+        this.walkieContainer = this.form.querySelector('#walkie-talkie-container')
+
+        console.log('UnifiedChatUIHook found elements:', { input: !!this.input, sendBtn: !!this.sendBtn, walkieContainer: !!this.walkieContainer })
+
+        // Initial state check
+        this.updateUI()
+
+        // Listen for input changes
+        if (this.input) {
+            this.input.addEventListener('input', () => this.updateUI())
+            this.input.addEventListener('keyup', () => this.updateUI())
+
+            // Handle Enter key (especially for mobile)
+            this.input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    // Force submit logic
+                    const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
+                    if (this.form.dispatchEvent(submitEvent)) {
+                        // If not prevented, try manual submission or let LiveView handle it via form submit
+                    }
+
+                    // For Phoenix LiveView, triggering submit on the form usually works if phx-submit is bound
+                    // But if it relies on a button click being the trigger:
+                    if (this.sendBtn) {
+                        this.sendBtn.click()
+                    }
+                }
+            })
+        }
+    },
+
+    updated() {
+        this.updateUI()
+    },
+
+    updateUI() {
+        if (!this.input || !this.sendBtn || !this.walkieContainer) return
+
+        const hasText = this.input.value && this.input.value.trim().length > 0
+
+        if (hasText) {
+            // Show Send, Hide Walkie
+            this.walkieContainer.style.display = 'none'
+            this.sendBtn.style.display = 'flex'
+            this.sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+            this.sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+        } else {
+            // Show Walkie, Hide Send
+            this.walkieContainer.style.display = 'block'
+            this.sendBtn.style.display = 'none'
         }
     }
 }

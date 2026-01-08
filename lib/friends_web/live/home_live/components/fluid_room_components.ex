@@ -982,7 +982,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       <div class="max-w-lg mx-auto">
         <form
           id="unified-input-area"
-          class="flex items-center gap-2"
+          class="flex items-center gap-2 p-2 relative"
+          phx-submit="send_chat_message"
+          phx-change="validate"
           phx-hook="RoomChatEncryption"
           data-room-code={@room.code}
         >

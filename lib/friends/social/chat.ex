@@ -325,14 +325,15 @@ defmodule Friends.Social.Chat do
   
   # --- Room Chat (Legacy/Simple Chat) ---
   
-  def list_room_messages(room_id, limit \\ 50) do
+  def list_room_messages(room_id, limit \\ 200) do
     Repo.all(
       from m in Message,
         where: m.room_id == ^room_id,
-        order_by: [asc: m.inserted_at],
+        order_by: [desc: m.inserted_at],
         limit: ^limit,
         preload: [:sender]
     )
+    |> Enum.reverse()
   end
 
   def send_room_message(

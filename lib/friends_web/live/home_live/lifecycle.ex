@@ -309,7 +309,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:room_tab, "content")
         |> assign(
           :room_messages,
-          if(room.is_private and can_access, do: Social.list_room_messages(room.id, 50), else: [])
+          if(room.is_private and can_access, do: Social.list_room_messages(room.id, 200), else: [])
         )
         |> assign(:new_chat_message, "")
         |> assign(:recording_voice, false)
@@ -438,7 +438,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       # Only cleanup subscriptions if coming from another room
       if old_room do
         if socket.assigns.user_id do
-          Presence.untrack(self(), old_room.code, socket.assigns.user_id)
+          Presence.untrack_user(self(), old_room.code, socket.assigns.user_id)
         end
 
         Social.unsubscribe(old_room.code)
@@ -509,7 +509,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
        |> assign(:chat_expanded, expand_chat)
        |> assign(
          :room_messages,
-         if(room.is_private and can_access, do: Social.list_room_messages(room.id, 50), else: [])
+         if(room.is_private and can_access, do: Social.list_room_messages(room.id, 200), else: [])
        )
        |> assign(:photo_order, if(can_access, do: photo_ids(items), else: []))
        |> assign(:user_rooms, private_rooms)
@@ -566,7 +566,7 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:presence:#{old_room.code}")
 
       if socket.assigns.user_id do
-        Presence.untrack(self(), old_room.code, socket.assigns.user_id)
+        Presence.untrack_user(self(), old_room.code, socket.assigns.user_id)
       end
     end
 
