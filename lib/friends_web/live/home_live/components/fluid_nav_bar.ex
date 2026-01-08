@@ -17,6 +17,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
   attr :pending_request_count, :integer, default: 0
   attr :unread_count, :integer, default: 0
   attr :online_friend_count, :integer, default: 0
+  attr :friends, :list, default: []
+  attr :online_friend_ids, :any, default: MapSet.new()
 
   def fluid_nav_bar(assigns) do
     ~H"""

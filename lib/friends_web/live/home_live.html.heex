@@ -531,11 +531,13 @@
     <%!-- Avatar Hub (Groups, People, Graph, Settings) --%>
     <%= if @live_action == :index do %>
       <%!-- REVOLUT-STYLE NAV BAR --%>
-      <.fluid_nav_bar 
-        current_user={@current_user} 
+      <.fluid_nav_bar
+        current_user={@current_user}
         pending_request_count={length(assigns[:pending_requests] || [])}
         unread_count={Map.get(assigns, :total_unread_count, 0)}
         online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
+        friends={assigns[:friends] || []}
+        online_friend_ids={assigns[:online_friend_ids] || MapSet.new()}
         notification={assigns[:persistent_notification]}
       />
     <% end %>

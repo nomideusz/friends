@@ -280,8 +280,13 @@ window.addEventListener("phx:trigger_file_input", (e) => {
 const offlineBanner = document.getElementById("offline-banner")
 const updateOfflineStatus = () => {
     if (!offlineBanner) return
-    
-    if (navigator.onLine) {
+
+    // Check both navigator.onLine and LiveView connection status
+    // If LiveView is connected, we're definitely online regardless of navigator.onLine
+    const isLiveViewConnected = liveSocket && liveSocket.isConnected && liveSocket.isConnected()
+    const isOnline = navigator.onLine || isLiveViewConnected
+
+    if (isOnline) {
         offlineBanner.classList.remove("offline-visible")
     } else {
         offlineBanner.classList.add("offline-visible")
@@ -290,6 +295,10 @@ const updateOfflineStatus = () => {
 
 window.addEventListener("online", updateOfflineStatus)
 window.addEventListener("offline", updateOfflineStatus)
+
+// Also update when LiveView connects/disconnects
+liveSocket.onError(() => updateOfflineStatus())
+liveSocket.onOpen(() => updateOfflineStatus())
 
 // Check initial status
 if (document.readyState === "complete") {
