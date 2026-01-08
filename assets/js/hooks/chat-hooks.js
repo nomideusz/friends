@@ -817,16 +817,16 @@ export const InlineChatInputHook = {
             })
         }
 
-        // Walkie-talkie (hold to talk)
+        // Walkie-talkie (hold to talk) - MediaRecorder implementation
         if (walkieBtn) {
-            let audioContext = null
+            let mediaRecorder = null
             let mediaStream = null
-            let processor = null
+            let isTransmitting = false
             // Fix race condition: if mouseup happens before start finishes
             this.shouldStopWalkie = false
 
             const startWalkie = async () => {
-                if (audioContext) return // Already running
+                if (isTransmitting) return // Already running
 
                 this.shouldStopWalkie = false
                 try {
@@ -834,7 +834,13 @@ export const InlineChatInputHook = {
                     walkieBtn.classList.add('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110', 'ring-2', 'ring-emerald-400')
                     walkieBtn.classList.remove('bg-white/10', 'text-white/60')
 
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    })
 
                     // Race check
                     if (this.shouldStopWalkie) {
@@ -843,29 +849,37 @@ export const InlineChatInputHook = {
                         return
                     }
 
-                    audioContext = new AudioContext()
-                    const source = audioContext.createMediaStreamSource(mediaStream)
-                    processor = audioContext.createScriptProcessor(4096, 1, 1)
-                    source.connect(processor)
-                    processor.connect(audioContext.destination)
+                    // Use MediaRecorder with 200ms chunks
+                    mediaRecorder = new MediaRecorder(mediaStream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    })
+
+                    mediaRecorder.ondataavailable = async (e) => {
+                        if (e.data.size > 0 && isTransmitting) {
+                            const arrayBuffer = await e.data.arrayBuffer()
+                            const audioBytes = new Uint8Array(arrayBuffer)
+
+                            const messageEncryption = await import('../message-encryption')
+                            const key = await messageEncryption.loadOrCreateConversationKey(`room:${roomId}`)
+                            const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(audioBytes, key)
+
+                            this.pushEvent("walkie_chunk", {
+                                encrypted_audio: btoa(String.fromCharCode(...encrypted)),
+                                nonce: btoa(String.fromCharCode(...nonce))
+                            })
+                        }
+                    }
+
+                    mediaRecorder.onstop = () => {
+                        mediaStream.getTracks().forEach(track => track.stop())
+                    }
+
+                    // Start recording with 200ms timeslice
+                    mediaRecorder.start(200)
+                    isTransmitting = true
 
                     this.pushEvent("walkie_start", {})
 
-                    processor.onaudioprocess = async (e) => {
-                        if (this.shouldStopWalkie) return
-
-                        const audioData = e.inputBuffer.getChannelData(0)
-                        const bytes = new Uint8Array(audioData.buffer)
-
-                        const messageEncryption = await import('../message-encryption')
-                        const key = await messageEncryption.loadOrCreateConversationKey(`room:${roomId}`)
-                        const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(bytes, key)
-
-                        this.pushEvent("walkie_chunk", {
-                            encrypted_audio: btoa(String.fromCharCode(...encrypted)),
-                            nonce: btoa(String.fromCharCode(...nonce))
-                        })
-                    }
                 } catch (err) {
                     console.error('Walkie-talkie error:', err)
                     stopWalkie()
@@ -874,10 +888,17 @@ export const InlineChatInputHook = {
 
             const stopWalkie = () => {
                 this.shouldStopWalkie = true
+                isTransmitting = false
 
-                if (processor) { processor.disconnect(); processor = null }
-                if (audioContext) { audioContext.close(); audioContext = null }
-                if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null }
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop()
+                }
+                mediaRecorder = null
+
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop())
+                    mediaStream = null
+                }
 
                 this.pushEvent("walkie_stop", {})
 
