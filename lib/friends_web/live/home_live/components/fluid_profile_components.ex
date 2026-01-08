@@ -293,6 +293,50 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                        </div>
                      </div>
                    </div>
+
+                   <%!-- Privacy Policy --%>
+                   <a
+                     href="/privacy"
+                     target="_blank"
+                     class="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                   >
+                     <div class="flex items-center gap-3">
+                       <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                         <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                         </svg>
+                       </div>
+                       <div class="text-left">
+                         <div class="text-sm font-medium text-white">Privacy Policy</div>
+                         <div class="text-xs text-white/40">How we handle your data</div>
+                       </div>
+                     </div>
+                     <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                     </svg>
+                   </a>
+
+                   <%!-- Terms of Service --%>
+                   <a
+                     href="/privacy#terms"
+                     target="_blank"
+                     class="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                   >
+                     <div class="flex items-center gap-3">
+                       <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                         <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                         </svg>
+                       </div>
+                       <div class="text-left">
+                         <div class="text-sm font-medium text-white">Terms of Service</div>
+                         <div class="text-xs text-white/40">Usage rules & EULA</div>
+                       </div>
+                     </div>
+                     <svg class="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                     </svg>
+                   </a>
                  </div>
                </div>
 

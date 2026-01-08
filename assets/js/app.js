@@ -276,4 +276,26 @@ window.addEventListener("phx:trigger_file_input", (e) => {
     }
 })
 
+// Offline detection
+const offlineBanner = document.getElementById("offline-banner")
+const updateOfflineStatus = () => {
+    if (!offlineBanner) return
+    
+    if (navigator.onLine) {
+        offlineBanner.classList.remove("offline-visible")
+    } else {
+        offlineBanner.classList.add("offline-visible")
+    }
+}
+
+window.addEventListener("online", updateOfflineStatus)
+window.addEventListener("offline", updateOfflineStatus)
+
+// Check initial status
+if (document.readyState === "complete") {
+    updateOfflineStatus()
+} else {
+    window.addEventListener("load", updateOfflineStatus)
+}
+
 window.liveSocket = liveSocket

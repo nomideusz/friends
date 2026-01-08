@@ -402,7 +402,7 @@ defmodule Friends.Social.Rooms do
       nil ->
         {:error, :not_a_member}
 
-      member when member.role in ["owner", "admin"] ->
+      member when member.role in ["owner", "admin", "member"] ->
         add_room_member(room_id, invitee_user_id, "member", inviter_user_id)
 
       _ ->

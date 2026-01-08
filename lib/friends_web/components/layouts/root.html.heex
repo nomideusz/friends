@@ -91,5 +91,12 @@
     </style>
   </head>
   
-  <body class="h-full text-neutral-100 antialiased overflow-x-hidden">{@inner_content}</body>
+  <body class="h-full text-neutral-100 antialiased overflow-x-hidden">
+    <div id="offline-banner" class="fixed top-0 left-0 right-0 z-50 transform -translate-y-full transition-transform duration-300 ease-in-out">
+      <div class="bg-red-500/90 backdrop-blur-md text-white text-center py-2 px-4 shadow-lg flex items-center justify-center gap-2 border-b border-red-400/30">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l22 22"></path><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        <span class="font-medium text-sm">You are currently offline</span>
+      </div>
+    </div>
+    {@inner_content}</body>
 </html>

@@ -58,7 +58,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       />
 
       <%!-- Content Area (scrollable, adjusts for chat) --%>
-      <div class={"flex-1 overflow-y-auto overflow-x-hidden pt-20 transition-all duration-300 #{if @chat_expanded, do: "pb-[50vh]", else: "pb-48"}"}>
+      <div class={"flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide pt-20 transition-all duration-300 #{if @chat_expanded, do: "pb-[50vh]", else: "pb-48"}"}>
         <%= if @item_count == 0 do %>
           <.fluid_empty_state />
         <% else %>
@@ -118,8 +118,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
     ~H"""
     <div class={"fixed bottom-0 inset-x-0 z-[150] transition-all duration-300 flex justify-center #{if @expanded, do: "h-[50vh]", else: "h-auto"}"}>
-      <%!-- Glassmorphic container --%>
-      <div class="h-full w-full max-w-3xl bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 flex flex-col">
+      <%!-- Glassmorphic container with enhanced design --%>
+      <div class="h-full w-full max-w-3xl bg-neutral-900/95 backdrop-blur-xl backdrop-saturate-150 border-t border-x border-white/10 rounded-t-2xl sm:rounded-t-3xl flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
         
         <%!-- Expand/Collapse Handle --%>
         <button
@@ -139,7 +139,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         <%= if @expanded do %>
           <div
             id="inline-chat-messages"
-            class="flex-1 overflow-y-auto px-4 pb-2 space-y-2"
+            class="flex-1 overflow-y-auto scrollbar-hide px-4 pb-2 space-y-2"
             phx-hook="RoomChatScroll"
             data-room-id={@room.id}
           >
@@ -379,8 +379,18 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :context_menu_member_id, :integer, default: nil
 
   def fluid_room_header(assigns) do
-    # Build set of online user IDs from presence
-    online_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
+    # Build set of member IDs
+    member_ids = MapSet.new(Enum.map(assigns.room_members, & &1.user_id))
+    # Build set of online user IDs from presence - only count members
+    all_viewer_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
+    # Always include current user if they're a member (presence may not have caught up yet)
+    current_user_id = assigns.current_user && assigns.current_user.id
+    all_viewer_ids = if current_user_id && MapSet.member?(member_ids, current_user_id) do
+      MapSet.put(all_viewer_ids, current_user_id)
+    else
+      all_viewer_ids
+    end
+    online_ids = MapSet.intersection(all_viewer_ids, member_ids)
     
     # Sort members: online first, then by username
     sorted_members = Enum.sort_by(assigns.room_members, fn m ->
@@ -392,7 +402,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
       |> assign(:sorted_members, sorted_members)
 
     ~H"""
-    <div class="absolute top-0 inset-x-0 z-50 pl-4 pr-4 py-3 flex items-center justify-between bg-neutral-900/80 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
+    <div class="absolute top-0 inset-x-0 z-50 pl-4 pr-4 pt-3 pb-6 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent backdrop-blur-sm transition-all duration-300">
       <%!-- Back + Room Name --%>
       <div class="flex items-center gap-3 min-w-0">
         <.link
@@ -407,10 +417,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         <%!-- Room info (C: clickable to open members) --%>
         <button
           phx-click="toggle_members_panel"
-          class="flex flex-col items-start truncate hover:opacity-80 transition-opacity cursor-pointer text-left min-w-0"
+          class="flex flex-col items-start truncate hover:opacity-80 transition-opacity cursor-pointer text-left flex-1 min-w-0"
         >
-          <div class="flex items-center gap-2 w-full">
-            <span class="text-base font-bold text-white truncate leading-tight">
+          <div class="flex items-center gap-2 max-w-full">
+            <span class="text-sm sm:text-base font-bold text-white truncate leading-tight max-w-[40vw] sm:max-w-none">
               {@room.name || @room.code}
             </span>
             <%!-- Lock icon for private room --%>
@@ -424,61 +434,28 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
         </button>
       </div>
 
-      <%!-- Inline Presence Avatars --%>
+
+      <%!-- Members Circle (like main page nav) --%>
       <div class="flex items-center gap-2 pl-2 shrink-0">
-        <div class="flex items-center -space-x-2">
-          <%!-- Show up to 4 members --%>
-          <%= for member <- Enum.take(@sorted_members, 4) do %>
-            <% is_online = MapSet.member?(@online_ids, member.user_id) %>
-            <div class="relative group z-0 hover:z-10 transition-all">
-              <button
-                phx-click="open_member_menu"
-                phx-value-member_id={member.user_id}
-                class={"relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2 ring-neutral-900 transition-transform hover:scale-105 cursor-pointer 
-                  #{if is_online, do: "shadow-[0_0_10px_rgba(16,185,129,0.3)]", else: "opacity-90"}"}
-                style={"background-color: #{member_color(member)};"}
-                title={"@#{member.user.username}#{if is_online, do: " (online)", else: ""}"}
-              >
-                {String.first(member.user.username) |> String.upcase()}
-                
-                <%!-- Online indicator dot --%>
-                <%= if is_online do %>
-                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-neutral-900"></span>
-                <% end %>
-              </button>
-
-              <%!-- Context Menu (if this member is selected) --%>
-              <%= if @context_menu_member_id == member.user_id do %>
-                <.member_context_menu 
-                  member={member} 
-                  room={@room} 
-                  current_user={@current_user}
-                  is_online={is_online}
-                />
-              <% end %>
-            </div>
-          <% end %>
-
-          <%!-- +N overflow --%>
-          <%= if length(@room_members) > 4 do %>
-            <div 
-              class="w-8 h-8 rounded-full bg-neutral-800 ring-2 ring-neutral-900 flex items-center justify-center text-[10px] font-bold text-white/50 cursor-pointer hover:bg-neutral-700 transition-colors z-0"
-              phx-click="toggle_members_panel"
-            >
-              +{length(@room_members) - 4}
-            </div>
-          <% end %>
-        </div>
-
-        <%!-- Settings/Menu Button --%>
         <button
           phx-click="toggle_members_panel"
-          class="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
-          title="Members & Settings"
+          class="group relative cursor-pointer"
+          title="View members"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-          </svg>
+          <%!-- Member count circle with glow when online --%>
+          <div class={"w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-lg
+            flex items-center justify-center text-sm font-bold transition-all duration-300
+            hover:bg-white/10 hover:border-white/20 hover:scale-105 active:scale-95
+            #{if MapSet.size(@online_ids) > 0, do: "avatar-online text-green-400", else: "text-white/80"}"}>
+            {length(@room_members)}
+          </div>
+          
+          <%!-- Live online count below (green, like main page) --%>
+          <%= if MapSet.size(@online_ids) > 0 do %>
+            <div class="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] font-medium text-green-400">
+              {MapSet.size(@online_ids)}
+            </div>
+          <% end %>
         </button>
       </div>
     </div>
@@ -540,6 +517,27 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             class="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
           >
             Remove from group
+          </button>
+        <% end %>
+
+        <%!-- Moderation (Not self) --%>
+        <%= unless @is_self do %>
+          <button
+            phx-click="report_user"
+            phx-value-user_id={@member.user_id}
+            data-confirm={"Report @#{@member.user.username} for abusive behavior?"}
+            class="w-full px-3 py-2 text-left text-xs text-yellow-400/80 hover:bg-yellow-500/10 transition-colors border-t border-white/5"
+          >
+            Report User
+          </button>
+          
+          <button
+            phx-click="block_user"
+            phx-value-user_id={@member.user_id}
+            data-confirm={"Block @#{@member.user.username}? You won't see their messages anymore."}
+            class="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            Block User
           </button>
         <% end %>
 
@@ -1132,11 +1130,19 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
   attr :viewers, :list, default: []
 
   def group_sheet(assigns) do
-    # Build online IDs set
-    online_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
-    
     # Build member IDs set
     member_ids = MapSet.new(Enum.map(assigns.room_members, & &1.user_id))
+    # Build online IDs set - only count members currently viewing
+    all_viewer_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
+    # Always include current user if they're a member (presence may not have caught up yet)
+    current_user_id = assigns.current_user && assigns.current_user.id
+    all_viewer_ids = if current_user_id && MapSet.member?(member_ids, current_user_id) do
+      MapSet.put(all_viewer_ids, current_user_id)
+    else
+      all_viewer_ids
+    end
+    online_ids = MapSet.intersection(all_viewer_ids, member_ids)
+
     
     # Filter members by search
     filtered_members = 
@@ -1240,10 +1246,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                     <% is_online = MapSet.member?(@online_ids, member.user_id) %>
                     <% is_self = member.user_id == @current_user.id %>
                     <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/5">
-                      <%!-- Avatar with presence --%>
+                      <%!-- Avatar with presence glow --%>
                       <div 
-                        class={"w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 #{if is_online, do: "border-green-400", else: "border-white/20 opacity-70"}"}
-                        style={"background-color: #{member_color(member)};"}
+                        class={"w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white #{if is_online, do: "", else: "opacity-70"}"}
+                        style={"background-color: #{member_color(member)}; #{if is_online, do: "box-shadow: 0 0 8px 3px rgba(74, 222, 128, 0.6); animation: presence-breathe 3s ease-in-out infinite;", else: ""}"}
                       >
                         {String.first(member.user.username) |> String.upcase()}
                       </div>
@@ -1259,7 +1265,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                             <span class="text-[9px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">Admin</span>
                           <% end %>
                           <%= if is_online do %>
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                            <span class="text-[9px] text-green-400">online</span>
                           <% end %>
                         </div>
                       </div>
@@ -1349,7 +1355,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                   <button
                     id="group-sheet-copy"
                     phx-hook="CopyToClipboard"
-                    data-copy={url(~p"/r/#{@room.code}")}
+                    data-copy-text={url(~p"/r/#{@room.code}")}
                     class="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
                   >
                     Copy

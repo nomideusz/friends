@@ -8,6 +8,10 @@
    Design: Deep Space, Layered Glass, Organic Springs
    ========================================================================================= */
 
+:root {
+  --ease-fluid: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @keyframes opal-flow {
   0% {
     background-position: 0% 50%;
@@ -795,9 +799,12 @@ img.loaded {
 }
 
 /* =========================================================================================
-   DESIGN TOKENS REFERENCE
-   ========================================================================================= 
-   
+   OFFLINE BANNER STATE
+   ========================================================================================= */
+
+/* #offline-banner.offline-visible {
+  transform: translateY(0);
+}
    COLOR SYSTEM (use via CSS variables or Tailwind classes):
    
    Backgrounds:
@@ -830,6 +837,4 @@ img.loaded {
    
    ANIMATION:
    - ease-spring:  cubic-bezier(0.3, 1.5, 0.6, 1)  Bouncy interactions
-   - ease-fluid:   cubic-bezier(0.4, 0, 0.2, 1)    Smooth transitions
-   
-   ========================================================================================= */
+   - ease-fluid:   cubic-bezier(0.4, 0, 0.2, 1)    Smooth transitions */

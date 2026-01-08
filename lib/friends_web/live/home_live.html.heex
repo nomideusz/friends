@@ -1,17 +1,18 @@
 <div id="main-app-container" phx-hook="PinchZoomOut" class="text-neutral-200 font-sans selection:bg-neutral-700 selection:text-white min-h-screen bg-black relative">
   <%
-    feed_entries = if @uploads && @uploads[:feed_photo], do: @uploads.feed_photo.entries, else: []
-    room_entries = if @uploads && @uploads[:photo], do: @uploads.photo.entries, else: []
+    uploads = assigns[:uploads]
+    feed_entries = if uploads && uploads[:feed_photo], do: uploads.feed_photo.entries, else: []
+    room_entries = if uploads && uploads[:photo], do: uploads.photo.entries, else: []
     all_entries = feed_entries ++ room_entries
     is_uploading = all_entries != []
   %>
   <%!-- Global Hidden Upload Form --%>
   <form id="global-upload-form" phx-change="validate" phx-submit="save" class="hidden">
-    <%= if @uploads[:photo] do %>
-      <.live_file_input upload={@uploads.photo} class="sr-only" />
+    <%= if uploads && uploads[:photo] do %>
+      <.live_file_input upload={uploads.photo} class="sr-only" />
     <% end %>
-    <%= if @uploads[:feed_photo] do %>
-      <.live_file_input upload={@uploads.feed_photo} class="sr-only" />
+    <%= if uploads && uploads[:feed_photo] do %>
+      <.live_file_input upload={uploads.feed_photo} class="sr-only" />
     <% end %>
   </form>
 
@@ -64,7 +65,7 @@
   <.fluid_create_menu
     show={assigns[:show_create_menu] || false}
     context={assigns[:toolbar_context] || :feed}
-    uploads={@uploads}
+    uploads={assigns[:uploads]}
   />
 
   <%!-- Fluid Upload Indicator --%>
@@ -649,16 +650,6 @@
         </div>
       </.fluid_modal_base>
     <% end %>
-    <.network_modal
-      show={assigns[:show_network_modal]}
-      tab={assigns[:network_tab] || "friends"}
-      current_user={@current_user}
-      friends={@friends}
-      pending_requests={assigns[:pending_requests] || []}
-      friend_search={assigns[:friend_search] || ""}
-      friend_search_results={assigns[:friend_search_results] || []}
-      trusted_friends={assigns[:trusted_friends] || []}
-    />
 
     <% else %>
       <%!-- Guests Landing --%>

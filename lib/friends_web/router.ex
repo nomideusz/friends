@@ -49,6 +49,7 @@ defmodule FriendsWeb.Router do
   scope "/", FriendsWeb do
     pipe_through :browser
 
+    get "/privacy", PrivacyController, :index
     get "/r/public-square", RedirectController, :public_square
     
     # Redirects from old auth URLs to unified /auth

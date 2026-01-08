@@ -155,18 +155,49 @@ export const RoomChatScrollHook = {
         requestAnimationFrame(() => {
             this.decryptVisibleMessages()
         })
+
+        // MutationObserver to detect new messages and force scroll
+        this.observer = new MutationObserver((mutations) => {
+            let hasNewMessages = false
+            for (const mutation of mutations) {
+                if (mutation.addedNodes.length > 0) {
+                    hasNewMessages = true
+                    break
+                }
+            }
+            if (hasNewMessages) {
+                // Small delay to ensure layout is complete
+                setTimeout(() => this.scrollToBottom(), 50)
+                this.decryptVisibleMessages()
+            }
+        })
+
+        this.observer.observe(this.el, { childList: true, subtree: true })
     },
 
     updated() {
-        const atBottom = this.el.scrollHeight - this.el.scrollTop - this.el.clientHeight < 100
-        if (atBottom) {
-            this.scrollToBottom()
-        }
+        // Always scroll on update, then check if we need to stay
+        const wasAtBottom = this.el.scrollHeight - this.el.scrollTop - this.el.clientHeight < 100
+
+        // Force scroll with delay for layout completion
+        setTimeout(() => {
+            if (wasAtBottom || this._shouldForceScroll) {
+                this.scrollToBottom()
+                this._shouldForceScroll = false
+            }
+        }, 50)
+
         this.decryptVisibleMessages()
     },
 
     scrollToBottom() {
         this.el.scrollTop = this.el.scrollHeight
+    },
+
+    destroyed() {
+        if (this.observer) {
+            this.observer.disconnect()
+        }
     },
 
     async decryptVisibleMessages() {
@@ -202,6 +233,7 @@ export const RoomChatScrollHook = {
         }
     }
 }
+
 
 export const RoomChatEncryptionHook = {
     async mounted() {
@@ -750,8 +782,8 @@ export const InlineChatInputHook = {
 
                 this.shouldStopWalkie = false
                 try {
-                    // Visual feedback immediate
-                    walkieBtn.classList.add('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110')
+                    // Visual feedback immediate with pulsing ring
+                    walkieBtn.classList.add('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110', 'ring-2', 'ring-emerald-400')
                     walkieBtn.classList.remove('bg-white/10', 'text-white/60')
 
                     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -802,17 +834,44 @@ export const InlineChatInputHook = {
                 this.pushEvent("walkie_stop", {})
 
                 // Reset button state
-                walkieBtn.classList.remove('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110')
+                walkieBtn.classList.remove('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110', 'ring-2', 'ring-emerald-400')
                 walkieBtn.classList.add('bg-white/10', 'text-white/60')
             }
 
-            walkieBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startWalkie() })
-            walkieBtn.addEventListener('touchend', stopWalkie)
+            // Touch events with touchmove prevention to keep recording during finger drift
+            walkieBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                startWalkie()
+            }, { passive: false })
+
+            walkieBtn.addEventListener('touchmove', (e) => {
+                // Prevent scroll and keep recording active during finger movement
+                e.preventDefault()
+            }, { passive: false })
+
+            walkieBtn.addEventListener('touchend', (e) => {
+                e.preventDefault()
+                stopWalkie()
+            })
             walkieBtn.addEventListener('touchcancel', stopWalkie)
+
+            // Mouse events
             walkieBtn.addEventListener('mousedown', startWalkie)
             walkieBtn.addEventListener('mouseup', stopWalkie)
             walkieBtn.addEventListener('mouseleave', stopWalkie)
+
+            // Unified pointer events for better cross-platform support
+            walkieBtn.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'touch') return // Already handled by touch events
+                startWalkie()
+            })
+            walkieBtn.addEventListener('pointerup', (e) => {
+                if (e.pointerType === 'touch') return
+                stopWalkie()
+            })
         }
+
 
         // Send message
         const sendMessage = async () => {

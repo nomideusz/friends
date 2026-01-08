@@ -4,7 +4,6 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social
 
   import FriendsWeb.HomeLive.Helpers
-  import FriendsWeb.HomeLive.Components.SettingsComponents
   import FriendsWeb.HomeLive.Components.DrawerComponents
   import FriendsWeb.HomeLive.Components.FluidRoomComponents
   import FriendsWeb.HomeLive.Components.FluidFeedComponents
@@ -636,6 +635,39 @@ defmodule FriendsWeb.HomeLive do
     {:noreply, assign(socket, :show_settings_modal, !socket.assigns.show_settings_modal)}
   end
 
+  def handle_event("block_user", %{"user_id" => user_id}, socket) do
+    current_user_id = socket.assigns.current_user.id
+    target_user_id = String.to_integer(user_id)
+    
+    case Social.block_user(current_user_id, target_user_id) do
+      {:ok, _} ->
+        # If we are in a room with them, maybe leave or refresh?
+        # For now just toast and refresh relationships
+        {:noreply,
+         socket
+         |> put_flash(:info, "User blocked")
+         |> push_event("close_member_menu", %{})}
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to block user")}
+    end
+  end
+
+  def handle_event("report_user", %{"user_id" => user_id}, socket) do
+    current_user_id = socket.assigns.current_user.id
+    target_user_id = String.to_integer(user_id)
+    
+    # We could ask for reason, but for MVP just default
+    case Social.report_user(current_user_id, target_user_id) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "User reported. Thank you.")
+         |> push_event("close_member_menu", %{})}
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to report user")}
+    end
+  end
+
   def handle_event("dismiss_notification", _params, socket) do
     # When user manually dismisses, we should clear it persistently
     # by marking that room as read, otherwise it reappears on refresh.
@@ -1241,7 +1273,8 @@ defmodule FriendsWeb.HomeLive do
     {:noreply,
      socket
      |> assign(:group_search_query, query)
-     |> assign(:group_search_results, results)}
+     |> assign(:group_search_results, results)
+     |> assign(:group_search, query)}
   end
 
 

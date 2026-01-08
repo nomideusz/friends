@@ -116,6 +116,26 @@ defmodule FriendsWeb.HomeLive.Events.SettingsEvents do
 
   # --- Sign Out ---
 
+  def handle_event("delete_account", _params, socket) do
+    user_id = socket.assigns.current_user.id
+    
+    # 1. Perform deletion (reusing admin logic for self-deletion)
+    case Friends.Social.admin_delete_user(user_id) do
+      {:ok, _deleted_user} ->
+        # 2. Force sign out flow
+        {:noreply,
+         socket
+         |> push_event("sign_out", %{})
+         |> put_flash(:info, "Your account has been deleted.")
+         |> push_navigate(to: "/")}
+         
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not delete account. Please try again.")}
+    end
+  end
+
+  # --- Sign Out ---
+
   def sign_out(socket) do
     # Push event to client to clear crypto identity
     # And redirect?

@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
     appId: 'com.friends.app',
-    appName: 'Friends',
+    appName: 'New Internet',
     webDir: 'www',
     server: {
         // Use production server for passkey RP ID validation

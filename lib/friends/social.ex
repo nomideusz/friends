@@ -738,7 +738,45 @@ defmodule Friends.Social do
     not Repo.exists?(from u in User, where: u.username == ^normalized)
   end
   
-  # --- Auth Crypto ---
+  # --- Moderation (Block/Report) ---
+
+  alias Friends.Social.Report
+  alias Friends.Social.Block
+
+  def report_user(reporter_id, reported_id, reason \\ "Abusive behavior") do
+    %Report{}
+    |> Report.changeset(%{
+      reporter_id: reporter_id,
+      reported_id: reported_id,
+      reason: reason,
+      status: "pending"
+    })
+    |> Repo.insert()
+  end
+
+  def block_user(blocker_id, blocked_id) do
+    # 1. Create block record
+    block_result = %Block{}
+    |> Block.changeset(%{blocker_id: blocker_id, blocked_id: blocked_id})
+    |> Repo.insert()
+
+    # 2. Side effects: Remove friendship if exists
+    Relationships.remove_friend(blocker_id, blocked_id)
+    # Remove from trusted?
+    Relationships.remove_trusted_friend(blocker_id, blocked_id)
+    
+    block_result
+  end
+
+  def is_blocked?(user_id, target_id) do
+    # Check if user_id has blocked target_id OR target_id has blocked user_id
+    query = from b in Block,
+      where: (b.blocker_id == ^user_id and b.blocked_id == ^target_id) or
+             (b.blocker_id == ^target_id and b.blocked_id == ^user_id)
+    
+    Repo.exists?(query)
+  end
+
   
   def generate_auth_challenge do
     :crypto.strong_rand_bytes(32) |> Base.encode64()

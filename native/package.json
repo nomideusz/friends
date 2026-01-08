@@ -9,7 +9,9 @@
     "cap:add:android": "npx cap add android",
     "cap:sync": "npx cap sync",
     "cap:open:ios": "npx cap open ios",
-    "cap:open:android": "npx cap open android"
+    "cap:open:android": "npx cap open android",
+    "assets:init": "node scripts/init_assets.js",
+    "assets:generate": "npx capacitor-assets generate"
   },
   "keywords": [
     "phoenix",
@@ -27,6 +29,7 @@
     "capacitor-webauthn": "^0.0.12"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "typescript": "^5.9.3"
   }
 }
