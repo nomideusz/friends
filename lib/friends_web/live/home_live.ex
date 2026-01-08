@@ -17,7 +17,7 @@ defmodule FriendsWeb.HomeLive do
   import FriendsWeb.HomeLive.Components.FluidOmnibox
   import FriendsWeb.HomeLive.Components.FluidUploadIndicator
   import FriendsWeb.HomeLive.Components.FluidNavBar
-  import FriendsWeb.HomeLive.Components.FluidSettingsModal
+
   import FriendsWeb.HomeLive.Components.FluidPeopleModal
   import FriendsWeb.HomeLive.Components.FluidGroupsModal
   alias FriendsWeb.HomeLive.Events.FeedEvents
@@ -52,8 +52,14 @@ defmodule FriendsWeb.HomeLive do
   end
 
 
-  def handle_event("open_contacts_sheet", _, socket) do
-    NetworkEvents.open_contacts_sheet(socket)
+  def handle_event("open_contacts_sheet", params, socket) do
+    socket
+    |> assign(:show_profile_sheet, false)
+    |> NetworkEvents.open_contacts_sheet(params["mode"] || :add_contact)
+  end
+
+  def handle_event("contact_search", %{"value" => query}, socket) do
+    NetworkEvents.contact_search(socket, query)
   end
 
 
@@ -94,6 +100,7 @@ defmodule FriendsWeb.HomeLive do
     {:noreply,
      socket
      |> assign(:show_avatar_menu, false)
+     |> assign(:show_profile_sheet, false)
      |> assign(:show_graph_drawer, true)}
   end
 
@@ -605,11 +612,15 @@ defmodule FriendsWeb.HomeLive do
   # --- New Revolut-Style Navigation Events ---
 
   def handle_event("toggle_people_modal", _params, socket) do
-    {:noreply, assign(socket, :show_people_modal, !socket.assigns.show_people_modal)}
+    if socket.assigns.show_people_modal do
+      NetworkEvents.close_people_modal(socket)
+    else
+      NetworkEvents.open_contacts_sheet(socket)
+    end
   end
 
   def handle_event("close_people_modal", _params, socket) do
-    {:noreply, assign(socket, :show_people_modal, false)}
+    NetworkEvents.close_people_modal(socket)
   end
 
   def handle_event("toggle_groups_modal", _params, socket) do
@@ -672,6 +683,7 @@ defmodule FriendsWeb.HomeLive do
     chord_data = FriendsWeb.HomeLive.GraphHelper.build_chord_data(socket.assigns.current_user)
     {:noreply,
      socket
+     |> assign(:show_profile_sheet, false)
      |> assign(:show_chord_modal, true)
      |> assign(:chord_data, chord_data)}
   end

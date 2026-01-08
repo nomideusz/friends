@@ -43,13 +43,13 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
     {:noreply,
      socket
      |> assign(:show_avatar_menu, false)
-     |> assign(:show_contact_sheet, true)
+     |> assign(:show_people_modal, true)
      |> assign(:contact_mode, mode_atom)
      |> assign(:contact_sheet_search, "")
      |> assign(:contact_search_results, [])}
   end
 
-  def close_contact_search(socket) do
+  def close_people_modal(socket) do
     # Unsubscribe from user-specific updates
     if socket.assigns.current_user do
       Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:user:#{socket.assigns.current_user.id}")
@@ -57,8 +57,8 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
     
     {:noreply,
      socket
-     |> assign(:show_contact_search, false)
-     |> assign(:contact_search_query, "")
+     |> assign(:show_people_modal, false)
+     |> assign(:contact_sheet_search, "")
      |> assign(:contact_search_results, [])}
   end
 
@@ -77,7 +77,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
 
     {:noreply,
      socket
-     |> assign(:contact_search_query, query)
+     |> assign(:contact_sheet_search, query)
      |> assign(:contact_search_results, results)}
   end
 
@@ -352,7 +352,7 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
                 # Close the contacts sheet and navigate to the room
                 socket =
                   socket
-                  |> assign(:show_contact_sheet, false)
+                  |> assign(:show_people_modal, false)
                   |> push_navigate(to: "/r/#{room.code}")
                   
                 {:noreply, socket}

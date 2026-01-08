@@ -27,14 +27,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
       <%!-- LEFT: Avatar (Settings) --%>
       <div class="pointer-events-auto relative z-20">
         <button
-          phx-click="toggle_settings_modal"
-          class="group relative"
+          phx-click="open_profile_sheet"
+          class="group relative cursor-pointer"
         >
           <%!-- Avatar Container --%>
           <div class="w-10 h-10 rounded-full p-[2px] bg-gradient-to-br from-white/20 to-white/5 border border-white/10 shadow-lg backdrop-blur-md overflow-hidden relative transition-transform duration-300 group-hover:scale-105 group-active:scale-95">
              <div class="w-full h-full rounded-full overflow-hidden relative bg-neutral-900">
                <%= if @current_user.avatar_url do %>
-                 <img src={@current_user.avatar_url} class="w-full h-full object-cover" />
+                 <img src={@current_user.avatar_url_thumb || @current_user.avatar_url} class="w-full h-full object-cover" />
                <% else %>
                   <div
                     class="w-full h-full flex items-center justify-center text-sm font-bold text-white mb-[1px]"
@@ -95,7 +95,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
     ~H"""
     <button
       phx-click={@event}
-      class="group relative w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 active:scale-95"
+      class="group relative w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 active:scale-95 cursor-pointer"
       aria-label={@label}
     >
       <%!-- Icon --%>
