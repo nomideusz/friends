@@ -980,11 +980,9 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
     ~H"""
     <div class="fixed bottom-16 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-t from-black via-black/95 to-transparent">
       <div class="max-w-lg mx-auto">
-        <form
+        <div
           id="unified-input-area"
           class="flex items-center gap-2 p-2 relative"
-          phx-submit="send_chat_message"
-          phx-change="validate"
           phx-hook="RoomChatEncryption"
           data-room-code={@room.code}
         >
@@ -1053,17 +1051,14 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           </div>
 
           <%!-- Text input --%>
-          <div id={"unified-input-ignore-#{@room.id}"} phx-update="ignore" class="flex-1 py-2">
+          <div id={"unified-input-ignore-v3-#{@room.id}"} phx-update="ignore" class="flex-1 py-2">
             <input
               type="text"
-              name="message"
+              id="unified-message-input"
               value={@new_chat_message}
-              phx-change="update_chat_message"
-              phx-debounce="500"
               placeholder="Message"
               style="font-size: 16px;"
               class="w-full bg-transparent text-white placeholder-white/40 focus:outline-none"
-              id="unified-message-input"
               autocomplete="off"
             />
           </div>
@@ -1104,7 +1099,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
 
           <%!-- Send button (submit form) --%>
           <button
-            type="submit"
+            type="button"
             id="send-unified-message-btn"
             class={"w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-white text-black scale-100", else: "bg-white/10 text-white/40 scale-90"}"}
           >
@@ -1112,7 +1107,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
-        </form>
+        </div>
 
         <%!-- Upload progress --%>
         <%= if @uploading do %>

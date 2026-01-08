@@ -252,7 +252,13 @@ export const RoomChatEncryptionHook = {
 
         // The element itself is a form now, or find form inside
         const form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
-        const input = this.el.querySelector('input[name="message"]') || this.el.querySelector('[contenteditable]')
+        // Robust input finding: name, id, or just input tag
+        const input = this.el.querySelector('input[name="message"]') ||
+            this.el.querySelector('#unified-message-input') ||
+            this.el.querySelector('input[type="text"]') ||
+            this.el.querySelector('[contenteditable]')
+
+        console.log('RoomChatEncryptionHook mounted', { roomCode, hasForm: !!form, hasInput: !!input })
         const sendBtn = this.el.querySelector('#send-unified-message-btn')
         const walkieContainer = this.el.querySelector('#walkie-talkie-container')
 
@@ -358,9 +364,17 @@ export const RoomChatEncryptionHook = {
             }
         }
 
-        // Handle form submit
+        // Handle form submit (if present)
         if (form) {
             form.addEventListener('submit', async (e) => {
+                e.preventDefault()
+                await sendMessage()
+            })
+        }
+
+        // Handle Send Button click explicitly (if no form or as backup)
+        if (sendBtn) {
+            sendBtn.addEventListener('click', async (e) => {
                 e.preventDefault()
                 await sendMessage()
             })
