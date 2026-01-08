@@ -340,6 +340,59 @@ defmodule Friends.Social.Relationships do
     |> Enum.uniq_by(fn %{user: u} -> u.id end)
   end
 
+  @doc """
+  List friends sorted by contact frequency (most contacted first).
+  Counts messages in rooms where both users are members.
+  """
+  def list_friends_by_activity(user_id) do
+    alias Friends.Social.{Message, Room, RoomMember}
+
+    # Get all friends first
+    friends = list_friends(user_id)
+
+    # Count messages per friend in shared rooms
+    friend_message_counts =
+      Enum.map(friends, fn friend_map ->
+        friend_id = friend_map.user.id
+
+        # Get shared room IDs where both users are members
+        shared_room_ids =
+          Repo.all(
+            from rm1 in RoomMember,
+              join: rm2 in RoomMember,
+                on: rm1.room_id == rm2.room_id,
+              join: r in Room,
+                on: rm1.room_id == r.id,
+              where: rm1.user_id == ^user_id and rm2.user_id == ^friend_id and r.is_private == true,
+              select: rm1.room_id,
+              distinct: true
+          )
+
+        # Count messages from friend in shared rooms (last 30 days for recency)
+        thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+
+        message_count =
+          Repo.one(
+            from m in Message,
+              where: m.room_id in ^shared_room_ids
+                and m.sender_id == ^friend_id
+                and m.inserted_at > ^thirty_days_ago,
+              select: count(m.id)
+          ) || 0
+
+        {friend_map, message_count}
+      end)
+
+    # Sort by message count (desc), then alphabetically by username
+    friend_message_counts
+    |> Enum.sort_by(
+      fn {friend_map, count} ->
+        {-count, String.downcase(friend_map.user.username)}
+      end
+    )
+    |> Enum.map(fn {friend_map, _count} -> friend_map end)
+  end
+
   def list_friend_requests(user_id) do
     Repo.all(
       from f in Friendship,

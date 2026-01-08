@@ -262,22 +262,25 @@ export const RoomChatEncryptionHook = {
         const sendBtn = this.el.querySelector('#send-unified-message-btn')
         const walkieContainer = this.el.querySelector('#walkie-talkie-container')
 
-        // UI Update Helper
+        // UI Update Helper - optimized to prevent flickering
         const updateUI = () => {
             if (!input || !sendBtn || !walkieContainer) return
             // Use value for inputs, textContent for contenteditable
             const val = input.value !== undefined ? input.value : input.textContent
             const hasText = val && val.trim().length > 0
 
-            if (hasText) {
-                walkieContainer.style.display = 'none'
-                sendBtn.style.display = 'flex'
-                sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
-                sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
-            } else {
-                walkieContainer.style.display = 'block'
-                sendBtn.style.display = 'none'
-            }
+            // Use requestAnimationFrame to batch DOM updates and prevent flickering
+            requestAnimationFrame(() => {
+                if (hasText) {
+                    walkieContainer.style.display = 'none'
+                    sendBtn.style.display = 'flex'
+                    sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+                    sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+                } else {
+                    walkieContainer.style.display = 'block'
+                    sendBtn.style.display = 'none'
+                }
+            })
         }
 
         // Initial check
@@ -311,22 +314,21 @@ export const RoomChatEncryptionHook = {
 
         // Listen for typing on input
         if (input) {
+            // Input event for immediate UI updates (higher priority)
             input.addEventListener('input', (e) => {
+                // Update UI first for instant feedback
+                updateUI()
+
+                // Then handle typing broadcast
                 const text = input.value || input.textContent || ''
                 if (text.trim()) {
                     broadcastTyping(text)
                 } else {
                     stopTyping()
                 }
-                updateUI()
             })
 
-            input.addEventListener('keyup', updateUI)
-
-            input.addEventListener('blur', () => {
-                stopTyping()
-            })
-
+            // Blur event to stop typing
             input.addEventListener('blur', () => {
                 stopTyping()
             })
@@ -352,12 +354,13 @@ export const RoomChatEncryptionHook = {
                     content_type: "text"
                 })
 
-                // Clear input
+                // Clear input and update UI immediately
                 if (input.textContent !== undefined) {
                     input.textContent = ''
                 } else {
                     input.value = ''
                 }
+                // Update UI to show walkie-talkie again
                 updateUI()
             } catch (err) {
                 console.error('Failed to encrypt/send message:', err)
@@ -814,16 +817,16 @@ export const InlineChatInputHook = {
             })
         }
 
-        // Walkie-talkie (hold to talk)
+        // Walkie-talkie (hold to talk) - MediaRecorder implementation
         if (walkieBtn) {
-            let audioContext = null
+            let mediaRecorder = null
             let mediaStream = null
-            let processor = null
+            let isTransmitting = false
             // Fix race condition: if mouseup happens before start finishes
             this.shouldStopWalkie = false
 
             const startWalkie = async () => {
-                if (audioContext) return // Already running
+                if (isTransmitting) return // Already running
 
                 this.shouldStopWalkie = false
                 try {
@@ -831,7 +834,13 @@ export const InlineChatInputHook = {
                     walkieBtn.classList.add('bg-emerald-500', 'text-white', 'animate-pulse', 'scale-110', 'ring-2', 'ring-emerald-400')
                     walkieBtn.classList.remove('bg-white/10', 'text-white/60')
 
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    })
 
                     // Race check
                     if (this.shouldStopWalkie) {
@@ -840,29 +849,37 @@ export const InlineChatInputHook = {
                         return
                     }
 
-                    audioContext = new AudioContext()
-                    const source = audioContext.createMediaStreamSource(mediaStream)
-                    processor = audioContext.createScriptProcessor(4096, 1, 1)
-                    source.connect(processor)
-                    processor.connect(audioContext.destination)
+                    // Use MediaRecorder with 200ms chunks
+                    mediaRecorder = new MediaRecorder(mediaStream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    })
+
+                    mediaRecorder.ondataavailable = async (e) => {
+                        if (e.data.size > 0 && isTransmitting) {
+                            const arrayBuffer = await e.data.arrayBuffer()
+                            const audioBytes = new Uint8Array(arrayBuffer)
+
+                            const messageEncryption = await import('../message-encryption')
+                            const key = await messageEncryption.loadOrCreateConversationKey(`room:${roomId}`)
+                            const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(audioBytes, key)
+
+                            this.pushEvent("walkie_chunk", {
+                                encrypted_audio: btoa(String.fromCharCode(...encrypted)),
+                                nonce: btoa(String.fromCharCode(...nonce))
+                            })
+                        }
+                    }
+
+                    mediaRecorder.onstop = () => {
+                        mediaStream.getTracks().forEach(track => track.stop())
+                    }
+
+                    // Start recording with 200ms timeslice
+                    mediaRecorder.start(200)
+                    isTransmitting = true
 
                     this.pushEvent("walkie_start", {})
 
-                    processor.onaudioprocess = async (e) => {
-                        if (this.shouldStopWalkie) return
-
-                        const audioData = e.inputBuffer.getChannelData(0)
-                        const bytes = new Uint8Array(audioData.buffer)
-
-                        const messageEncryption = await import('../message-encryption')
-                        const key = await messageEncryption.loadOrCreateConversationKey(`room:${roomId}`)
-                        const { encrypted, nonce } = await messageEncryption.encryptBytesWithKey(bytes, key)
-
-                        this.pushEvent("walkie_chunk", {
-                            encrypted_audio: btoa(String.fromCharCode(...encrypted)),
-                            nonce: btoa(String.fromCharCode(...nonce))
-                        })
-                    }
                 } catch (err) {
                     console.error('Walkie-talkie error:', err)
                     stopWalkie()
@@ -871,10 +888,17 @@ export const InlineChatInputHook = {
 
             const stopWalkie = () => {
                 this.shouldStopWalkie = true
+                isTransmitting = false
 
-                if (processor) { processor.disconnect(); processor = null }
-                if (audioContext) { audioContext.close(); audioContext = null }
-                if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null }
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop()
+                }
+                mediaRecorder = null
+
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop())
+                    mediaStream = null
+                }
 
                 this.pushEvent("walkie_stop", {})
 
@@ -1160,17 +1184,20 @@ export const UnifiedChatUIHook = {
 
         const hasText = this.input.value && this.input.value.trim().length > 0
 
-        if (hasText) {
-            // Show Send, Hide Walkie
-            this.walkieContainer.style.display = 'none'
-            this.sendBtn.style.display = 'flex'
-            this.sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
-            this.sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
-        } else {
-            // Show Walkie, Hide Send
-            this.walkieContainer.style.display = 'block'
-            this.sendBtn.style.display = 'none'
-        }
+        // Use requestAnimationFrame to batch DOM updates and prevent flickering
+        requestAnimationFrame(() => {
+            if (hasText) {
+                // Show Send, Hide Walkie
+                this.walkieContainer.style.display = 'none'
+                this.sendBtn.style.display = 'flex'
+                this.sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+                this.sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+            } else {
+                // Show Walkie, Hide Send
+                this.walkieContainer.style.display = 'block'
+                this.sendBtn.style.display = 'none'
+            }
+        })
     }
 }
 

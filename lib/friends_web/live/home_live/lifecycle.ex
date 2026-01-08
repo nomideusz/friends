@@ -62,7 +62,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       else
         Social.list_public_feed_items(session_user.id, 20)
       end
-      friends = Social.list_friends(session_user.id)
+      # Sort friends by activity (most contacted first)
+      friends = Social.list_friends_by_activity(session_user.id)
       trusted_friends = Social.list_trusted_friends(session_user.id)
       incoming_trust_requests = Social.list_pending_trust_requests(session_user.id)
       pending_requests = Social.list_friend_requests(session_user.id)
