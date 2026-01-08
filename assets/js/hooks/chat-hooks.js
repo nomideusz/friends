@@ -262,22 +262,25 @@ export const RoomChatEncryptionHook = {
         const sendBtn = this.el.querySelector('#send-unified-message-btn')
         const walkieContainer = this.el.querySelector('#walkie-talkie-container')
 
-        // UI Update Helper
+        // UI Update Helper - optimized to prevent flickering
         const updateUI = () => {
             if (!input || !sendBtn || !walkieContainer) return
             // Use value for inputs, textContent for contenteditable
             const val = input.value !== undefined ? input.value : input.textContent
             const hasText = val && val.trim().length > 0
 
-            if (hasText) {
-                walkieContainer.style.display = 'none'
-                sendBtn.style.display = 'flex'
-                sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
-                sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
-            } else {
-                walkieContainer.style.display = 'block'
-                sendBtn.style.display = 'none'
-            }
+            // Use requestAnimationFrame to batch DOM updates and prevent flickering
+            requestAnimationFrame(() => {
+                if (hasText) {
+                    walkieContainer.style.display = 'none'
+                    sendBtn.style.display = 'flex'
+                    sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+                    sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+                } else {
+                    walkieContainer.style.display = 'block'
+                    sendBtn.style.display = 'none'
+                }
+            })
         }
 
         // Initial check
@@ -311,22 +314,21 @@ export const RoomChatEncryptionHook = {
 
         // Listen for typing on input
         if (input) {
+            // Input event for immediate UI updates (higher priority)
             input.addEventListener('input', (e) => {
+                // Update UI first for instant feedback
+                updateUI()
+
+                // Then handle typing broadcast
                 const text = input.value || input.textContent || ''
                 if (text.trim()) {
                     broadcastTyping(text)
                 } else {
                     stopTyping()
                 }
-                updateUI()
             })
 
-            input.addEventListener('keyup', updateUI)
-
-            input.addEventListener('blur', () => {
-                stopTyping()
-            })
-
+            // Blur event to stop typing
             input.addEventListener('blur', () => {
                 stopTyping()
             })
@@ -352,12 +354,13 @@ export const RoomChatEncryptionHook = {
                     content_type: "text"
                 })
 
-                // Clear input
+                // Clear input and update UI immediately
                 if (input.textContent !== undefined) {
                     input.textContent = ''
                 } else {
                     input.value = ''
                 }
+                // Update UI to show walkie-talkie again
                 updateUI()
             } catch (err) {
                 console.error('Failed to encrypt/send message:', err)
@@ -1160,17 +1163,20 @@ export const UnifiedChatUIHook = {
 
         const hasText = this.input.value && this.input.value.trim().length > 0
 
-        if (hasText) {
-            // Show Send, Hide Walkie
-            this.walkieContainer.style.display = 'none'
-            this.sendBtn.style.display = 'flex'
-            this.sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
-            this.sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
-        } else {
-            // Show Walkie, Hide Send
-            this.walkieContainer.style.display = 'block'
-            this.sendBtn.style.display = 'none'
-        }
+        // Use requestAnimationFrame to batch DOM updates and prevent flickering
+        requestAnimationFrame(() => {
+            if (hasText) {
+                // Show Send, Hide Walkie
+                this.walkieContainer.style.display = 'none'
+                this.sendBtn.style.display = 'flex'
+                this.sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+                this.sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+            } else {
+                // Show Walkie, Hide Send
+                this.walkieContainer.style.display = 'block'
+                this.sendBtn.style.display = 'none'
+            }
+        })
     }
 }
 
