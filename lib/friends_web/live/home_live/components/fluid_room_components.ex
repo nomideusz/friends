@@ -1080,8 +1080,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
           <%!-- Walkie-Talkie button (hold to talk) --%>
           <div
             id="walkie-talkie-container"
-            phx-hook="WalkieTalkie"
-            data-room-id={@room.id}
             class="relative"
           >
             <button
