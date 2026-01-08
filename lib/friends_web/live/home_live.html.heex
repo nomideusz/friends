@@ -133,23 +133,23 @@
     current_user={@current_user}
     new_room_name={assigns[:new_room_name] || ""}
   />
-  
-  <.fluid_settings_modal
-    show={@show_settings_modal}
+
+  <%!-- Settings modal removed - now using profile_sheet directly --%>
+  <.profile_sheet
+    show={assigns[:show_profile_sheet] || false}
     current_user={@current_user}
     devices={assigns[:devices] || []}
     uploads={assigns[:uploads]}
+    trusted_friends={@trusted_friends}
+    trusted_friend_ids={@trusted_friend_ids}
+    online_friend_ids={@online_friend_ids}
+    incoming_trust_requests={@incoming_trust_requests}
+    outgoing_trust_requests={assigns[:outgoing_trust_requests] || []}
+    avatar_position="top-left"
   />
 
-  <%!-- Leftover settings modal logic removed --%>
 
 
-
-  <.devices_modal
-    show={assigns[:show_devices_modal]}
-    devices={assigns[:devices] || []}
-    current_device_id={assigns[:current_device_id]}
-  />
 
   <%!-- Device Pairing Modal (Fluid Design) --%>
   <%= if assigns[:show_pairing_modal] && assigns[:pairing_token] do %>
@@ -636,12 +636,6 @@
     <%!-- Settings & Profile Modals --%>
     <%!-- Settings Modal (Already included above as full screen modal) --%>
 
-    <.devices_modal
-      show={assigns[:show_devices_modal]}
-      current_user={@current_user}
-      current_session_token={@current_session_token}
-      devices={assigns[:devices] || []}
-    />
 
     <%= if @show_sign_out_modal do %>
       <.fluid_modal_base id="sign-out-modal" on_cancel="cancel_sign_out">

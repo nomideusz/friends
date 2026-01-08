@@ -129,7 +129,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
             </button>
 
             <button
-              phx-click={JS.push("toggle_user_menu") |> JS.push("open_devices_modal")}
+              phx-click={JS.push("toggle_user_menu") |> JS.push("open_profile_sheet")}
               class="w-full py-2.5 px-3 rounded-xl hover:bg-white/10 text-left text-sm text-white/80 hover:text-white flex items-center gap-3 transition-colors cursor-pointer group"
             >
               <div class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
@@ -137,7 +137,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidFeedComponents do
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              Devices
+              Devices & Settings
             </button>
 
             <div class="border-t border-white/10 my-1 mx-1"></div>

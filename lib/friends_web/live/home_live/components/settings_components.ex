@@ -78,7 +78,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                   <%!-- Devices Row --%>
                   <div class="border-t border-white/10"></div>
                   <button
-                    phx-click={JS.push("close_settings_modal") |> JS.push("open_devices_modal")}
+                    phx-click={JS.push("close_settings_modal") |> JS.push("open_profile_sheet")}
                     class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -87,7 +87,7 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
                       </svg>
                     </div>
                     <div class="flex-1 text-left">
-                      <div class="text-sm text-white/90">Devices</div>
+                      <div class="text-sm text-white/90">Devices & Settings</div>
                       <div class="text-xs text-white/50">{length(@devices)} connected</div>
                     </div>
                     <svg class="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,139 +357,6 @@ defmodule FriendsWeb.HomeLive.Components.SettingsComponents do
             </div>
           </div>
         </div>
-    <% end %>
-    """
-  end
-
-  # --- Devices Modal (Fluid Design) ---
-  attr :show, :boolean, default: false
-  attr :devices, :list, default: []
-  attr :current_device_id, :string, default: nil
-
-  def devices_modal(assigns) do
-    ~H"""
-    <%= if @show do %>
-      <div
-        id="devices-modal"
-        class="fixed inset-0 z-[250]"
-        phx-window-keydown="close_devices_modal"
-        phx-key="escape"
-      >
-        <%!-- Backdrop --%>
-        <div
-          class="absolute inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-200"
-          phx-click="close_devices_modal"
-        ></div>
-
-        <%!-- Modal Content - Bottom Sheet Style --%>
-        <div class="absolute inset-x-0 bottom-0 z-10 flex justify-center animate-in slide-in-from-bottom duration-300 pointer-events-none">
-          <div
-            id="devices-sheet-content"
-            class="w-full max-w-lg bg-neutral-900/95 backdrop-blur-xl border-t border-x border-white/10 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col pointer-events-auto"
-            phx-click-away="close_devices_modal"
-            phx-hook="SwipeableDrawer"
-            data-close-event="close_devices_modal"
-          >
-            <%!-- Handle --%>
-            <div class="py-3 flex justify-center cursor-pointer" phx-click="close_devices_modal">
-              <div class="w-10 h-1 rounded-full bg-white/20"></div>
-            </div>
-
-            <%!-- Header --%>
-            <div class="px-6 pb-4 border-b border-white/10">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="text-lg font-bold text-white">Devices</h2>
-                  <p class="text-xs text-white/40">{length(@devices)} connected</p>
-                </div>
-              </div>
-            </div>
-
-            <%!-- Content --%>
-            <div class="flex-1 overflow-y-auto px-4 py-4">
-              <%= if @devices == [] do %>
-                <div class="text-center py-12">
-                  <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <p class="text-white/40 text-sm">No devices found</p>
-                </div>
-              <% else %>
-                <div class="space-y-2">
-                  <%= for device <- @devices do %>
-                    <div class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.07] transition-colors">
-                      <div class="flex items-start gap-3">
-                        <%!-- Device Icon --%>
-                        <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                          <%= if device.device_name && String.contains?(String.downcase(device.device_name || ""), "iphone") do %>
-                            <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                          <% else %>
-                            <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                          <% end %>
-                        </div>
-
-                        <%!-- Device Info --%>
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 flex-wrap">
-                            <h4 class="text-sm font-medium text-white truncate">
-                              {device.device_name || "Unknown Device"}
-                            </h4>
-                            <%= if Map.get(device, :trusted) do %>
-                              <span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">
-                                Trusted
-                              </span>
-                            <% end %>
-                          </div>
-                          <p class="text-xs text-white/40 font-mono mt-1">
-                            {String.slice(device.device_fingerprint || "", 0, 12)}...
-                          </p>
-                          <p class="text-xs text-white/30 mt-1">
-                            Last seen: {Calendar.strftime(device.last_seen_at, "%b %d, %H:%M")}
-                          </p>
-                        </div>
-
-                        <%!-- Revoke Button --%>
-                        <button
-                          phx-click="revoke_device"
-                          phx-value-id={device.id}
-                          data-confirm="Revoke this device? It will be signed out."
-                          class="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
-            </div>
-
-            <%!-- Footer with Add Device --%>
-            <div class="px-4 py-4 border-t border-white/10 bg-black/20">
-              <button
-                phx-click={JS.push("close_devices_modal") |> JS.push("create_pairing_token")}
-                class="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 font-medium transition-colors cursor-pointer"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add New Device</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     <% end %>
     """
   end
