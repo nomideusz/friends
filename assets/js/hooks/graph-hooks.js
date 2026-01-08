@@ -22,6 +22,7 @@ export const WelcomeGraphHook = {
         const isNewUser = this.el.dataset.isNewUser === 'true'
         const hideControls = this.el.dataset.hideControls === 'true'
         const currentUserId = this.el.dataset.currentUserId || null
+        const onlineUsers = JSON.parse(this.el.dataset.onlineUsers || '[]')
 
         this.component = mount(WelcomeGraph, {
             target: this.el,
@@ -30,7 +31,8 @@ export const WelcomeGraphHook = {
                 live: this,
                 showOptOut: !isNewUser,
                 hideControls,
-                currentUserId
+                currentUserId,
+                onlineUsers: new Set(onlineUsers)
             }
         })
 
@@ -61,6 +63,12 @@ export const WelcomeGraphHook = {
         this.handleEvent("welcome_user_deleted", ({ user_id }) => {
             if (this.component && this.component.removeNode) {
                 this.component.removeNode(user_id)
+            }
+        })
+
+        this.handleEvent("online_users_update", ({ user_ids }) => {
+            if (this.component && this.component.updateOnlineUsers) {
+                this.component.updateOnlineUsers(user_ids)
             }
         })
     },

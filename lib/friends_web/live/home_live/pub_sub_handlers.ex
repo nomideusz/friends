@@ -283,6 +283,13 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       |> MapSet.union(joined_ids)
       |> MapSet.difference(left_ids)
 
+    # Push update to client for real-time graph glow
+    socket = if socket.assigns[:show_welcome_graph] do
+      push_event(socket, "online_users_update", %{user_ids: Enum.to_list(updated_online)})
+    else
+      socket
+    end
+
     {:noreply, assign(socket, :online_friend_ids, updated_online)}
   end
 
