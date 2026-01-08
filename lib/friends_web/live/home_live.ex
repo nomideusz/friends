@@ -433,6 +433,10 @@ defmodule FriendsWeb.HomeLive do
     RoomEvents.open_dm(socket, friend_user_id)
   end
 
+  def handle_event("open_dm_with_friend", %{"user-id" => friend_user_id}, socket) do
+    RoomEvents.open_dm(socket, friend_user_id)
+  end
+
   def handle_event("update_room_invite_username", %{"username" => username}, socket) do
     RoomEvents.update_room_invite_username(socket, username)
   end

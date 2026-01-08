@@ -62,14 +62,69 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
       <div class="pointer-events-auto flex items-center gap-3 relative z-20">
         
         <%!-- People Circle --%>
-        <.nav_circle_button 
-          icon="people" 
-          label="People" 
-          event="toggle_people_modal" 
-          badge={@pending_request_count}
-          info={@online_friend_count > 0 && "#{@online_friend_count}"}
-          info_color="text-green-400"
-        />
+        <div id="people-icon-container" phx-hook="PeopleLongPress" class="relative">
+          <.nav_circle_button
+            icon="people"
+            label="People"
+            event="toggle_people_modal"
+            badge={@pending_request_count}
+            info={@online_friend_count > 0 && "#{@online_friend_count}"}
+            info_color="text-green-400"
+          />
+
+          <%!-- Suggested Contacts Dropdown (hidden by default) --%>
+          <div id="suggested-contacts-dropdown" class="hidden absolute bottom-full right-0 mb-2 w-64 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
+            <div class="p-3 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span class="text-xs font-medium text-white/80">Quick Contacts</span>
+              </div>
+            </div>
+            <div class="p-2 space-y-1 max-h-80 overflow-y-auto scrollbar-hide">
+              <%= if @friends && Enum.any?(@friends) do %>
+                <%= for {friend, index} <- Enum.with_index(Enum.take(@friends, 5)) do %>
+                  <% user = if Map.has_key?(friend, :user), do: friend.user, else: friend %>
+                  <% is_online = @online_friend_ids && MapSet.member?(@online_friend_ids, user.id) %>
+                  <button
+                    phx-click="open_dm_with_friend"
+                    phx-value-user-id={user.id}
+                    class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
+                  >
+                    <%!-- Avatar --%>
+                    <div class="relative">
+                      <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                           style={"background-color: #{user.user_color};"}>
+                        {String.slice(user.username, 0, 2) |> String.upcase()}
+                      </div>
+                      <%= if is_online do %>
+                        <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-neutral-900"></div>
+                      <% end %>
+                    </div>
+
+                    <%!-- Name --%>
+                    <div class="flex-1 text-left">
+                      <div class="text-sm text-white/90 group-hover:text-white">{user.username}</div>
+                      <%= if index == 0 do %>
+                        <div class="text-[10px] text-blue-400">Most contacted</div>
+                      <% end %>
+                    </div>
+
+                    <%!-- Arrow --%>
+                    <svg class="w-4 h-4 text-white/30 group-hover:text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                <% end %>
+              <% else %>
+                <div class="text-center py-4 text-white/30 text-xs">
+                  No contacts yet
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
 
         <%!-- Groups Circle --%>
         <.nav_circle_button 

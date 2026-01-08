@@ -747,6 +747,90 @@ export const AutoDismissHook = {
     }
 }
 
+/**
+ * PeopleLongPress - Shows suggested contacts dropdown on long press
+ */
+export const PeopleLongPressHook = {
+    mounted() {
+        const peopleButton = this.el.querySelector('button')
+        const dropdown = this.el.querySelector('#suggested-contacts-dropdown')
+
+        if (!peopleButton || !dropdown) return
+
+        let pressTimer = null
+        let isLongPress = false
+
+        const startPress = (e) => {
+            isLongPress = false
+            pressTimer = setTimeout(() => {
+                isLongPress = true
+                if (navigator.vibrate) navigator.vibrate(10)
+                // Show dropdown
+                dropdown.classList.remove('hidden')
+            }, 600) // 600ms for long press
+        }
+
+        const endPress = (e) => {
+            if (pressTimer) {
+                clearTimeout(pressTimer)
+                pressTimer = null
+            }
+
+            // If it was a long press, prevent the normal click
+            if (isLongPress) {
+                e.preventDefault()
+                e.stopPropagation()
+                isLongPress = false
+            }
+        }
+
+        const hideDropdown = (e) => {
+            // Don't hide if clicking inside the dropdown
+            if (dropdown.contains(e.target)) return
+            dropdown.classList.add('hidden')
+        }
+
+        // Mouse events
+        peopleButton.addEventListener('mousedown', startPress)
+        peopleButton.addEventListener('mouseup', endPress)
+        peopleButton.addEventListener('mouseleave', () => {
+            if (pressTimer) {
+                clearTimeout(pressTimer)
+                pressTimer = null
+            }
+        })
+
+        // Touch events
+        peopleButton.addEventListener('touchstart', startPress, { passive: true })
+        peopleButton.addEventListener('touchend', endPress)
+        peopleButton.addEventListener('touchcancel', () => {
+            if (pressTimer) {
+                clearTimeout(pressTimer)
+                pressTimer = null
+            }
+        })
+
+        // Click outside to close
+        document.addEventListener('click', hideDropdown)
+
+        // Store handlers for cleanup
+        this._startPress = startPress
+        this._endPress = endPress
+        this._hideDropdown = hideDropdown
+        this._peopleButton = peopleButton
+    },
+
+    destroyed() {
+        if (this._peopleButton) {
+            this._peopleButton.removeEventListener('mousedown', this._startPress)
+            this._peopleButton.removeEventListener('mouseup', this._endPress)
+            this._peopleButton.removeEventListener('touchstart', this._startPress)
+            this._peopleButton.removeEventListener('touchend', this._endPress)
+        }
+        document.removeEventListener('click', this._hideDropdown)
+    }
+}
+
 export default {
     HomeOrb: HomeOrbHook,
     NavOrbLongPress: NavOrbLongPressHook,
@@ -760,5 +844,6 @@ export default {
     AutoFocus: AutoFocusHook,
     LongPressOrb: LongPressOrbHook,
     PinchZoomOut: PinchZoomOutHook,
-    AutoDismiss: AutoDismissHook
+    AutoDismiss: AutoDismissHook,
+    PeopleLongPress: PeopleLongPressHook
 }

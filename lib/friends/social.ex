@@ -165,6 +165,7 @@ defmodule Friends.Social do
   defdelegate remove_friend(user_id, friend_user_id), to: Relationships
   defdelegate get_friendship(user_id, friend_user_id), to: Relationships
   defdelegate list_friends(user_id), to: Relationships
+  defdelegate list_friends_by_activity(user_id), to: Relationships
   defdelegate list_friend_requests(user_id), to: Relationships
   defdelegate list_sent_friend_requests(user_id), to: Relationships
   defdelegate count_friends(user_id), to: Relationships
