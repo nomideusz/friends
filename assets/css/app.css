@@ -802,10 +802,11 @@ img.loaded {
    OFFLINE BANNER STATE
    ========================================================================================= */
 
-/* #offline-banner.offline-visible {
+#offline-banner.offline-visible {
   transform: translateY(0);
 }
-   COLOR SYSTEM (use via CSS variables or Tailwind classes):
+
+/* COLOR SYSTEM (use via CSS variables or Tailwind classes):
    
    Backgrounds:
    - void:       #000000    Pure black (OLED, main bg)
