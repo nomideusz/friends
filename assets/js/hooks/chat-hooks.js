@@ -248,7 +248,7 @@ export const RoomChatEncryptionHook = {
         this.isRecording = false
         this.typingTimer = null
         this.lastBroadcastText = ''
-        this.TYPING_DELAY = 5000 // 5 second delay before broadcast
+        this.TYPING_DELAY = 300 // 300ms delay for near-instant live typing
 
         // The element itself is a form now, or find form inside
         const form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
@@ -258,7 +258,6 @@ export const RoomChatEncryptionHook = {
             this.el.querySelector('input[type="text"]') ||
             this.el.querySelector('[contenteditable]')
 
-        console.log('RoomChatEncryptionHook mounted', { roomCode, hasForm: !!form, hasInput: !!input })
         const sendBtn = this.el.querySelector('#send-unified-message-btn')
         const walkieContainer = this.el.querySelector('#walkie-talkie-container')
 
@@ -286,7 +285,7 @@ export const RoomChatEncryptionHook = {
         // Initial check
         updateUI()
 
-        // Broadcast typing with 5s delay
+        // Broadcast typing with debounce (near-instant live typing)
         const broadcastTyping = (text) => {
             if (this.typingTimer) {
                 clearTimeout(this.typingTimer)
