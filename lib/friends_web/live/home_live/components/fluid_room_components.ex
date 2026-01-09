@@ -1077,34 +1077,38 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             </svg>
           </button>
 
-          <%!-- Walkie-Talkie button (hold to talk) --%>
-          <div
-            id="walkie-talkie-container"
-            class="relative"
-          >
+          <%!-- Action buttons (walkie + send) - JS controlled, ignore LiveView updates --%>
+          <div id={"action-buttons-ignore-#{@room.id}"} phx-update="ignore" class="flex items-center gap-2">
+            <%!-- Walkie-Talkie button (hold to talk) --%>
+            <div
+              id="walkie-talkie-container"
+              class="relative"
+            >
+              <button
+                type="button"
+                class="walkie-talk-btn w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/20 active:bg-purple-500/40 active:scale-110"
+                title="Hold to talk (walkie-talkie)"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+                </svg>
+              </button>
+              <%!-- Indicator when someone is talking --%>
+              <div class="walkie-indicator hidden absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-purple-300 bg-purple-900/80 px-2 py-1 rounded-full"></div>
+            </div>
+
+            <%!-- Send button (submit form) --%>
             <button
               type="button"
-              class="walkie-talk-btn w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/20 active:bg-purple-500/40 active:scale-110"
-              title="Hold to talk (walkie-talkie)"
+              id="send-unified-message-btn"
+              class="w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer bg-white/10 text-white/40 scale-90"
+              style="display: none;"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" />
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
-            <%!-- Indicator when someone is talking --%>
-            <div class="walkie-indicator hidden absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-purple-300 bg-purple-900/80 px-2 py-1 rounded-full"></div>
           </div>
-
-          <%!-- Send button (submit form) --%>
-          <button
-            type="button"
-            id="send-unified-message-btn"
-            class={"w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer #{if @new_chat_message != "", do: "bg-white text-black scale-100", else: "bg-white/10 text-white/40 scale-90"}"}
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
 
         <%!-- Upload progress --%>

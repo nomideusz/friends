@@ -258,7 +258,6 @@ export const RoomChatEncryptionHook = {
             this.el.querySelector('input[type="text"]') ||
             this.el.querySelector('[contenteditable]')
 
-        console.log('RoomChatEncryptionHook mounted', { roomCode, hasForm: !!form, hasInput: !!input })
         const sendBtn = this.el.querySelector('#send-unified-message-btn')
         const walkieContainer = this.el.querySelector('#walkie-talkie-container')
 
