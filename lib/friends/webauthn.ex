@@ -233,8 +233,8 @@ defmodule Friends.WebAuthn do
       String.starts_with?(actual_origin, expected) ->
         :ok
 
-      # Allow without port for flexibility
-      actual_origin == String.replace(expected, ~r/:4000$/, "") ->
+      # Allow without port for flexibility (e.g., http://localhost vs http://localhost:4001)
+      actual_origin == String.replace(expected, ~r/:\d+$/, "") ->
         :ok
 
       # Android APK key hash origin check
