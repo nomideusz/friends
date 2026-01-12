@@ -253,37 +253,43 @@ export const RoomChatEncryptionHook = {
         // The element itself is a form now, or find form inside
         const form = this.el.tagName === 'FORM' ? this.el : this.el.querySelector('form')
         // Robust input finding: name, id, or just input tag
-        const input = this.el.querySelector('input[name="message"]') ||
+        this.input = this.el.querySelector('input[name="message"]') ||
             this.el.querySelector('#unified-message-input') ||
             this.el.querySelector('input[type="text"]') ||
             this.el.querySelector('[contenteditable]')
 
-        const sendBtn = this.el.querySelector('#send-unified-message-btn')
-        const walkieContainer = this.el.querySelector('#walkie-talkie-container')
+        this.sendBtn = this.el.querySelector('#send-unified-message-btn')
+        this.walkieContainer = this.el.querySelector('#walkie-talkie-container')
+
+        // Store references for use in updated()
+        const input = this.input
+        const sendBtn = this.sendBtn
+        const walkieContainer = this.walkieContainer
 
         // UI Update Helper - optimized to prevent flickering
-        const updateUI = () => {
-            if (!input || !sendBtn || !walkieContainer) return
+        this.updateUI = (forceArrow = false) => {
+            if (!this.input || !this.sendBtn || !this.walkieContainer) return
             // Use value for inputs, textContent for contenteditable
-            const val = input.value !== undefined ? input.value : input.textContent
+            const val = this.input.value !== undefined ? this.input.value : this.input.textContent
             const hasText = val && val.trim().length > 0
+            const isFocused = document.activeElement === this.input
 
             // Use requestAnimationFrame to batch DOM updates and prevent flickering
             requestAnimationFrame(() => {
-                if (hasText) {
-                    walkieContainer.style.display = 'none'
-                    sendBtn.style.display = 'flex'
-                    sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
-                    sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
-                } else {
-                    walkieContainer.style.display = 'block'
-                    sendBtn.style.display = 'none'
+                if (hasText || forceArrow) {
+                    this.walkieContainer.style.display = 'none'
+                    this.sendBtn.style.display = 'flex'
+                    this.sendBtn.classList.remove('scale-90', 'bg-white/10', 'text-white/40')
+                    this.sendBtn.classList.add('scale-100', 'bg-white', 'text-black')
+                } else if (!isFocused) {
+                    this.walkieContainer.style.display = 'block'
+                    this.sendBtn.style.display = 'none'
                 }
             })
         }
 
         // Initial check
-        updateUI()
+        this.updateUI()
 
         // Broadcast typing with debounce (near-instant live typing)
         const broadcastTyping = (text) => {
@@ -313,10 +319,15 @@ export const RoomChatEncryptionHook = {
 
         // Listen for typing on input
         if (input) {
-            // Input event for immediate UI updates (higher priority)
+            // Focus event to show arrow immediately when user starts interacting
+            input.addEventListener('focus', () => {
+                this.updateUI(true) // Force arrow on focus
+            })
+
+            // Input event for UI updates and typing broadcast
             input.addEventListener('input', (e) => {
                 // Update UI first for instant feedback
-                updateUI()
+                this.updateUI()
 
                 // Then handle typing broadcast
                 const text = input.value || input.textContent || ''
@@ -327,9 +338,15 @@ export const RoomChatEncryptionHook = {
                 }
             })
 
-            // Blur event to stop typing
+            // Blur event to stop typing and reset UI
             input.addEventListener('blur', () => {
                 stopTyping()
+                // Small delay to allow for focus on send button
+                setTimeout(() => {
+                    if (document.activeElement !== sendBtn) {
+                        this.updateUI(false) // Don't force arrow on blur
+                    }
+                }, 100)
             })
         }
 
@@ -360,14 +377,14 @@ export const RoomChatEncryptionHook = {
                     input.value = ''
                 }
                 // Update UI to show walkie-talkie again
-                updateUI()
+                this.updateUI()
             } catch (err) {
                 console.error('Failed to encrypt/send message:', err)
             }
         }
 
-        // Handle form submit (if present)
-        if (form) {
+        // Handle form submit (if present and not using LiveView phx-submit)
+        if (form && !form.hasAttribute('phx-submit')) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault()
                 await sendMessage()
@@ -535,6 +552,26 @@ export const RoomChatEncryptionHook = {
             walkieBtn.addEventListener('mousedown', startWalkie)
             walkieBtn.addEventListener('mouseup', stopWalkie)
             walkieBtn.addEventListener('mouseleave', stopWalkie)
+        }
+    },
+
+    updated() {
+        // Re-find elements in case DOM changed
+        if (!this.input) {
+            this.input = this.el.querySelector('input[name="message"]') ||
+                this.el.querySelector('#unified-message-input') ||
+                this.el.querySelector('input[type="text"]') ||
+                this.el.querySelector('[contenteditable]')
+        }
+        if (!this.sendBtn) {
+            this.sendBtn = this.el.querySelector('#send-unified-message-btn')
+        }
+        if (!this.walkieContainer) {
+            this.walkieContainer = this.el.querySelector('#walkie-talkie-container')
+        }
+        // Update UI when LiveView updates the input value
+        if (this.updateUI) {
+            this.updateUI()
         }
     },
 
@@ -836,6 +873,47 @@ export const InlineChatInputHook = {
             if (chatInput) chatInput.focus()
         }, 100)
 
+        // UI Update Helper for instant icon morphing
+        this.updateUI = () => {
+            if (!chatInput || !walkieBtn || !sendBtn) return
+
+            const hasText = chatInput.value.trim().length > 0
+
+            // Batch DOM updates
+            requestAnimationFrame(() => {
+                if (hasText) {
+                    // Show Send, Hide Walkie
+                    walkieBtn.classList.add('opacity-0', 'scale-50', 'pointer-events-none')
+                    walkieBtn.classList.remove('opacity-100', 'scale-100')
+
+                    sendBtn.classList.add('opacity-100', 'scale-100', 'rotate-0')
+                    sendBtn.classList.remove('opacity-0', 'scale-50', '-rotate-90', 'pointer-events-none')
+                } else {
+                    // Show Walkie, Hide Send
+                    walkieBtn.classList.add('opacity-100', 'scale-100')
+                    walkieBtn.classList.remove('opacity-0', 'scale-50', 'pointer-events-none')
+
+                    sendBtn.classList.add('opacity-0', 'scale-50', '-rotate-90', 'pointer-events-none')
+                    sendBtn.classList.remove('opacity-100', 'scale-100', 'rotate-0')
+                }
+            })
+        }
+
+        // Initial check
+        this.updateUI()
+
+        // Throttled typing broadcast
+        this.broadcastTyping = (text) => {
+            if (this.typingThrottle) return
+
+            this.pushEvent("typing", { text: text })
+            this.typingThrottle = true
+
+            setTimeout(() => {
+                this.typingThrottle = false
+            }, 150) // 150ms throttle for very fluid typing
+        }
+
         // Click outside to collapse chat - listen on the content area above
         this.clickOutsideHandler = (e) => {
             const chatPanel = this.el.closest('[class*="fixed bottom-0"]')
@@ -1071,7 +1149,9 @@ export const InlineChatInputHook = {
                     content_type: "text"
                 })
 
+                this.pushEvent("stop_typing", {})
                 chatInput.value = ''
+                this.updateUI()
             } catch (err) {
                 console.error('Failed to send message:', err)
             }
@@ -1089,8 +1169,11 @@ export const InlineChatInputHook = {
                 }
             })
 
-            // Typing indicator + auto-expand chat on first input
+            // Typing indicator + auto-expand chat on first input + instant UI morphing
             chatInput.addEventListener('input', () => {
+                this.updateUI()
+                this.broadcastTyping(chatInput.value)
+
                 // Auto-expand chat when user starts typing (if not already expanded)
                 if (chatInput.value.length === 1) {
                     // Check if chat panel is collapsed by checking the container height
@@ -1098,6 +1181,13 @@ export const InlineChatInputHook = {
                     if (panel) {
                         this.pushEvent("expand_chat", {})
                     }
+                }
+            })
+
+            chatInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    this.updateUI()
+                    this.broadcastTyping(chatInput.value)
                 }
             })
         }

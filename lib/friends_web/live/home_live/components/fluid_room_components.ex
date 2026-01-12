@@ -329,8 +329,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
                 type="text"
                 name="message"
                 value={@new_chat_message}
-                phx-change="update_chat_message"
-                phx-debounce="300"
+                phx-change="update_chat_input"
+                phx-debounce="1000"
                 placeholder="Message..."
                 autocomplete="off"
                 style="font-size: 16px;"
@@ -340,7 +340,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
             
             <%!-- Walkie-Talkie Button (hold to talk) --%>
             <%!-- Morphing Send / Walkie Button --%>
-            <div class="relative w-10 h-10 flex items-center justify-center">
+            <div id="chat-button-container" phx-update="ignore" class="relative w-10 h-10 flex items-center justify-center transition-all">
               <%!-- Walkie-Talkie Button (Visible when empty) --%>
               <button
                 type="button"
@@ -386,7 +386,19 @@ defmodule FriendsWeb.HomeLive.Components.FluidRoomComponents do
     # Build set of member IDs
     member_ids = MapSet.new(Enum.map(assigns.room_members, & &1.user_id))
     # Build set of online user IDs from presence - only count members
-    all_viewer_ids = MapSet.new(Enum.map(assigns.viewers, fn v -> v.user_id end))
+    # Normalize IDs to integers (presence metadata often uses strings)
+    all_viewer_ids = 
+      assigns.viewers
+      |> Enum.map(fn v -> 
+        case v.user_id do
+          id when is_integer(id) -> id
+          "user-" <> id_str -> String.to_integer(id_str)
+          id when is_binary(id) -> String.to_integer(id)
+          _ -> nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
     # Always include current user if they're a member (presence may not have caught up yet)
     current_user_id = assigns.current_user && assigns.current_user.id
     all_viewer_ids = if current_user_id && MapSet.member?(member_ids, current_user_id) do

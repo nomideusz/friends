@@ -1913,11 +1913,12 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_note_deleted(socket, id)
   end
 
-  def handle_info(%{event: "presence_diff", payload: diff}, socket) do
-    # Handle room presence (viewers in room)
-    {:noreply, socket1} = PubSubHandlers.handle_presence_diff(socket, diff)
-    # Also handle global presence (online friend indicators)
-    PubSubHandlers.handle_global_presence_diff(socket1, diff)
+  def handle_info(%{event: "presence_diff", topic: "friends:presence:global", payload: diff}, socket) do
+    PubSubHandlers.handle_global_presence_diff(socket, diff)
+  end
+  
+  def handle_info(%{event: "presence_diff", topic: "friends:presence:" <> _room_code, payload: diff}, socket) do
+    PubSubHandlers.handle_presence_diff(socket, diff)
   end
 
   # Ignore task failure messages we don't explicitly handle

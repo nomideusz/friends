@@ -227,10 +227,9 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       |> MapSet.new()
 
     # Remove left users and add new users
-    # Note: presence metadata uses user_id and user_name, not id and username
     updated_viewers =
       current_viewers
-      |> Enum.reject(fn user -> MapSet.member?(left_user_ids, "user-#{user.user_id}") end)
+      |> Enum.reject(fn user -> MapSet.member?(left_user_ids, "#{user.user_id}") end)
       |> Kernel.++(new_users)
       |> Enum.uniq_by(& &1.user_id)
       |> Enum.sort_by(& &1.user_name)
