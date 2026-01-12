@@ -228,6 +228,8 @@ defmodule Friends.WebAuthn do
     # Get allowed Android APK key hashes from config
     allowed_android_origins = Application.get_env(:friends, :webauthn_android_origins, [])
 
+    Logger.info("[WebAuthn] verify_origin - actual: #{actual_origin}, expected: #{expected}, allowed_android: #{inspect(allowed_android_origins)}")
+
     cond do
       # Standard web origin check
       String.starts_with?(actual_origin, expected) ->
@@ -240,9 +242,10 @@ defmodule Friends.WebAuthn do
       # Android APK key hash origin check
       String.starts_with?(actual_origin, "android:apk-key-hash:") ->
         if actual_origin in allowed_android_origins do
+          Logger.info("[WebAuthn] Android origin accepted: #{actual_origin}")
           :ok
         else
-          Logger.warning("[WebAuthn] Unknown Android origin: #{actual_origin}")
+          Logger.warning("[WebAuthn] Unknown Android origin: #{actual_origin}, allowed: #{inspect(allowed_android_origins)}")
           {:error, {:origin_mismatch, actual_origin, expected}}
         end
 
