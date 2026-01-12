@@ -224,12 +224,30 @@ defmodule Friends.WebAuthn do
 
   defp verify_origin(actual_origin) do
     expected = origin()
-    # Allow both with and without port for flexibility
-    if String.starts_with?(actual_origin, expected) or
-         actual_origin == String.replace(expected, ~r/:4000$/, "") do
-      :ok
-    else
-      {:error, {:origin_mismatch, actual_origin, expected}}
+
+    # Get allowed Android APK key hashes from config
+    allowed_android_origins = Application.get_env(:friends, :webauthn_android_origins, [])
+
+    cond do
+      # Standard web origin check
+      String.starts_with?(actual_origin, expected) ->
+        :ok
+
+      # Allow without port for flexibility
+      actual_origin == String.replace(expected, ~r/:4000$/, "") ->
+        :ok
+
+      # Android APK key hash origin check
+      String.starts_with?(actual_origin, "android:apk-key-hash:") ->
+        if actual_origin in allowed_android_origins do
+          :ok
+        else
+          Logger.warning("[WebAuthn] Unknown Android origin: #{actual_origin}")
+          {:error, {:origin_mismatch, actual_origin, expected}}
+        end
+
+      true ->
+        {:error, {:origin_mismatch, actual_origin, expected}}
     end
   end
 

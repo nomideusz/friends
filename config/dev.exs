@@ -48,8 +48,15 @@ config :phoenix_live_view,
 # WebAuthn RPID for development
 config :friends, :webauthn_rp_id, "localhost"
 # WebAuthn origin for dev server (matches Bandit on port 4001)
-# WebAuthn origin for dev server (matches Bandit on port 4001)
 config :friends, :webauthn_origin, "http://localhost:4001"
+
+# Android APK key hash origins for passkey authentication
+# These are the SHA-256 fingerprints of the Android signing certificates
+config :friends, :webauthn_android_origins, [
+  # Android debug key (for local development with Android Studio)
+  "android:apk-key-hash:oFxUkId1AkIP1_IHBdfiyxkUtlLhDpBjhwyDsAS3hm4"
+  # Production key should be added to runtime.exs via environment variable
+]
 
 # Disable image processing on Windows (Image/vix doesn't support Windows)
 # On Linux production, this defaults to true

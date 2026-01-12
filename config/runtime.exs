@@ -89,6 +89,20 @@ if config_env() == :prod do
   config :friends, :webauthn_rp_id, webauthn_rp_id
   config :friends, :webauthn_origin, webauthn_origin
 
+  # Android APK key hash origins for passkey authentication
+  # Parse comma-separated list from env, or use debug key fallback for testing
+  android_origins_env = System.get_env("WEBAUTHN_ANDROID_ORIGINS")
+  android_origins = case android_origins_env do
+    nil -> 
+      # Default: include debug key for testing against production from Android Studio
+      ["android:apk-key-hash:oFxUkId1AkIP1_IHBdfiyxkUtlLhDpBjhwyDsAS3hm4"]
+    "" -> 
+      []
+    value -> 
+      value |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+  end
+  config :friends, :webauthn_android_origins, android_origins
+
 end
 
 # MinIO / S3 Configuration
