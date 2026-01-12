@@ -37,7 +37,7 @@ defmodule Friends.WebAuthn do
   Get the origin URL for WebAuthn verification.
   """
   def origin do
-    Application.get_env(:friends, :webauthn_origin, "http://localhost:4000")
+    Application.get_env(:friends, :webauthn_origin, "http://localhost:4001")
   end
 
   @doc """
