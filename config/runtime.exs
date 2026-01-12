@@ -95,7 +95,7 @@ if config_env() == :prod do
   android_origins = case android_origins_env do
     nil -> 
       # Default: include debug key for testing against production from Android Studio
-      ["android:apk-key-hash:oFxUkId1AkIP1_IHBdfiyxkUtlLhDpBjhwyDsAS3hm4"]
+      ["android:apk-key-hash:oFxUkld1AklP1_IHBdfiyxkUtILhDpBjhwyDsAS3hm4"]
     "" -> 
       []
     value -> 

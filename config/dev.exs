@@ -54,7 +54,7 @@ config :friends, :webauthn_origin, "http://localhost:4001"
 # These are the SHA-256 fingerprints of the Android signing certificates
 config :friends, :webauthn_android_origins, [
   # Android debug key (for local development with Android Studio)
-  "android:apk-key-hash:oFxUkId1AkIP1_IHBdfiyxkUtlLhDpBjhwyDsAS3hm4"
+  "android:apk-key-hash:oFxUkld1AklP1_IHBdfiyxkUtILhDpBjhwyDsAS3hm4"
   # Production key should be added to runtime.exs via environment variable
 ]
 
