@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-    appId: 'com.friends.app',
+    appId: 'online.newinternet.app',
     appName: 'New Internet',
     webDir: 'www',
     server: {

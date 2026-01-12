@@ -1,4 +1,4 @@
-package com.friends.app;
+package online.newinternet.app;
 
 import com.getcapacitor.BridgeActivity;
 
