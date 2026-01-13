@@ -140,7 +140,7 @@ if config_env() == :prod do
 
   if match?({:ok, _}, fcm_config) do
     {:ok, service_account_json} = fcm_config
-    config :pigeon, :fcm, service_account_json: service_account_json
+    config :friends, :fcm_service_account, service_account_json
   end
 end
 

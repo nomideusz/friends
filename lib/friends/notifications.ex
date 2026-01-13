@@ -37,8 +37,8 @@ defmodule Friends.Notifications do
       "body" => body
     }, data)
     
-    # Pigeon.FCM.push(n)
-    result = Pigeon.FCM.push(n)
+    # Friends.FCM.push(n)
+    result = Friends.FCM.push(n)
     Logger.info("Notifications: Sent FCM to token #{String.slice(token, 0, 10)}... Result: #{inspect(result)}")
     result
   end
