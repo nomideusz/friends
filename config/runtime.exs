@@ -92,15 +92,20 @@ if config_env() == :prod do
   # Android APK key hash origins for passkey authentication
   # Parse comma-separated list from env, or use debug key fallback for testing
   android_origins_env = System.get_env("WEBAUTHN_ANDROID_ORIGINS")
-  android_origins = case android_origins_env do
-    nil -> 
-      # Default: include debug key for testing against production from Android Studio
-      ["android:apk-key-hash:oFxUkld1AklP1_IHBdfiyxkUtILhDpBjhwyDsAS3hm4"]
-    "" -> 
-      []
-    value -> 
-      value |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
-  end
+
+  android_origins =
+    case android_origins_env do
+      nil ->
+        # Default: include debug key for testing against production from Android Studio
+        ["android:apk-key-hash:oFxUkld1AklP1_IHBdfiyxkUtILhDpBjhwyDsAS3hm4"]
+
+      "" ->
+        []
+
+      value ->
+        value |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+    end
+
   config :friends, :webauthn_android_origins, android_origins
 
   config :friends, :webauthn_android_origins, android_origins
@@ -109,22 +114,21 @@ if config_env() == :prod do
   if service_account_json_content = System.get_env("FCM_SERVICE_ACCOUNT_JSON") do
     # 1. Try loading from raw JSON content in env var
     service_account_json = Jason.decode!(service_account_json_content)
-    
-    config :pigeon, :fcm,
-      service_account_json: service_account_json
 
-  elif service_account_path = System.get_env("FCM_SERVICE_ACCOUNT_PATH") do
-     # 2. Fallback to file path
-    if File.exists?(service_account_path) do
-      service_account_json = 
-        service_account_path
-        |> File.read!()
-        |> Jason.decode!()
-      
-      config :pigeon, :fcm,
-        service_account_json: service_account_json
-    else
-      IO.warn("FCM Service Account file not found at: #{service_account_path}")
+    config :pigeon, :fcm, service_account_json: service_account_json
+  else
+    if service_account_path = System.get_env("FCM_SERVICE_ACCOUNT_PATH") do
+      # 2. Fallback to file path
+      if File.exists?(service_account_path) do
+        service_account_json =
+          service_account_path
+          |> File.read!()
+          |> Jason.decode!()
+
+        config :pigeon, :fcm, service_account_json: service_account_json
+      else
+        IO.warn("FCM Service Account file not found at: #{service_account_path}")
+      end
     end
   end
 end
@@ -133,7 +137,12 @@ end
 # MinIO / S3 Configuration
 if System.get_env("MINIO_ENDPOINT") do
   endpoint = System.get_env("MINIO_ENDPOINT")
-  scheme = if String.starts_with?(endpoint, "https://") or System.get_env("MINIO_PORT") == "443", do: "https://", else: "http://"
+
+  scheme =
+    if String.starts_with?(endpoint, "https://") or System.get_env("MINIO_PORT") == "443",
+      do: "https://",
+      else: "http://"
+
   host = endpoint |> String.replace("http://", "") |> String.replace("https://", "")
   port = String.to_integer(System.get_env("MINIO_PORT") || "9000")
 
