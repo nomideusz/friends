@@ -441,6 +441,28 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
        |> assign(:trusted_friends, trusted)
        |> assign(:trusted_friend_ids, trusted_ids)
        |> assign(:outgoing_trust_requests, outgoing)}
+      {:noreply, socket}
+    end
+  end
+
+  @doc """
+  Handle when a trust relationship is revoked/cancelled/declined.
+  Refreshes all trust-related lists to be safe.
+  """
+  def handle_trust_revoked(socket, _data) do
+    current_user = socket.assigns[:current_user]
+    if current_user do
+      trusted = Social.list_trusted_friends(current_user.id)
+      trusted_ids = Enum.map(trusted, & &1.trusted_user_id)
+      incoming = Social.list_pending_trust_requests(current_user.id)
+      outgoing = Social.list_sent_trust_requests(current_user.id)
+      
+      {:noreply,
+       socket
+       |> assign(:trusted_friends, trusted)
+       |> assign(:trusted_friend_ids, trusted_ids)
+       |> assign(:incoming_trust_requests, incoming)
+       |> assign(:outgoing_trust_requests, outgoing)}
     else
       {:noreply, socket}
     end

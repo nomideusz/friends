@@ -21,6 +21,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
   attr :online_friend_ids, :any, default: nil
   attr :incoming_trust_requests, :list, default: []
   attr :outgoing_trust_requests, :list, default: []
+  attr :friends, :list, default: []
+  attr :search_query, :string, default: ""
   attr :avatar_position, :string, default: "top-right"
   attr :active_tab, :string, default: "profile"
 
@@ -80,7 +82,11 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                    trusted_friend_ids={@trusted_friend_ids}
                    incoming_trust_requests={@incoming_trust_requests}
                    outgoing_trust_requests={@outgoing_trust_requests}
+                   incoming_trust_requests={@incoming_trust_requests}
+                   outgoing_trust_requests={@outgoing_trust_requests}
                    online_friend_ids={@online_friend_ids}
+                   friends={@friends}
+                   search_query={@search_query}
                 />
                 <.network_section />
                 <.about_section />
@@ -99,7 +105,10 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
                           trusted_friend_ids={@trusted_friend_ids}
                           incoming_trust_requests={@incoming_trust_requests}
                           outgoing_trust_requests={@outgoing_trust_requests}
+                          outgoing_trust_requests={@outgoing_trust_requests}
                           online_friend_ids={@online_friend_ids}
+                          friends={@friends}
+                          search_query={@search_query}
                        />
                     <% "network" -> %>
                        <.network_section />
@@ -155,41 +164,40 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
 
   def recovery_contact_row(assigns) do
     ~H"""
-    <div class="flex items-center gap-3 py-2 px-3 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/15 transition-colors group">
-      <%!-- Clickable Content Area --%>
-      <button
-        type="button"
-        phx-click="open_dm"
-        phx-value-user_id={@user.id}
-        class="flex items-center gap-3 flex-1 min-w-0 text-left bg-transparent border-0 p-0 cursor-pointer"
-      >
-        <%!-- Avatar --%>
-        <.avatar user={@user} online={@online} />
-
-        <%!-- Name with shield --%>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-white truncate">@{@user.username}</span>
+    <div class="group relative flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
+      <%!-- Left: User Info --%>
+      <div class="flex items-center gap-3 min-w-0">
+         <.avatar user={@user} online={@online} />
+         <div class="min-w-0">
+            <div class="flex items-center gap-2">
+               <span class="text-sm font-bold text-white truncate">@{@user.username}</span>
+               <svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                 <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd" />
+               </svg>
+            </div>
             <%= if @online do %>
-              <span class="text-[10px] text-green-400/70">Here now</span>
+               <div class="text-[10px] text-green-400/50 font-medium">Online</div>
+            <% else %>
+               <div class="text-[10px] text-white/30">Trusted</div>
             <% end %>
-            <svg class="w-3.5 h-3.5 text-green-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd" />
-            </svg>
-          </div>
-        </div>
-      </button>
+         </div>
+      </div>
 
-      <%!-- Remove button with confirmation --%>
-      <button
-        type="button"
-        phx-click="remove_trusted_friend"
-        phx-value-user_id={@user.id}
-        data-confirm="Remove this person from your recovery contacts?"
-        class="text-xs text-white/30 hover:text-red-400 transition-colors cursor-pointer px-2 shrink-0"
-      >
-        Remove
-      </button>
+      <%!-- Right: Actions --%>
+      <div class="flex items-center">
+         <button
+            type="button"
+            phx-click="remove_trusted_friend"
+            phx-value-user_id={@user.id}
+            data-confirm="Remove this person from your recovery contacts?"
+            class="p-2 rounded-lg bg-white/5 text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
+            title="Remove"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+      </div>
     </div>
     """
   end
@@ -428,6 +436,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
   attr :incoming_trust_requests, :list, default: []
   attr :outgoing_trust_requests, :list, default: []
   attr :online_friend_ids, :any, default: nil
+  attr :friends, :list, default: []
+  attr :search_query, :string, default: ""
   
   defp recovery_section(assigns) do
     ~H"""
@@ -487,14 +497,96 @@ defmodule FriendsWeb.HomeLive.Components.FluidProfileComponents do
              <% else %>
                <div class="p-6 rounded-xl bg-white/5 border border-white/5 text-center">
                  <p class="text-white/30 text-sm mb-4">You haven't added any recovery contacts yet.</p>
-                 <button
-                   phx-click="open_contacts_sheet"
-                   class="px-4 py-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 text-sm font-medium transition-colors cursor-pointer"
-                 >
-                   Select Contacts
-                 </button>
                </div>
              <% end %>
+           </div>
+           
+           <%!-- Add Recovery Contact Search --%>
+           <div class="pt-8 mt-2">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 class="text-base font-bold text-white">Add Recovery Contact</h3>
+                    <p class="text-xs text-white/50">Search your friends to add them.</p>
+                  </div>
+                </div>
+                
+                <div class="bg-white/5 rounded-2xl p-1 border border-white/5 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all">
+                  <form phx-change="recovery_search" phx-submit="noop" class="relative flex items-center">
+                    <div class="pl-3 text-white/40">
+                      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      name="value"
+                      value={@search_query}
+                      placeholder="Search by username..."
+                      class="block w-full px-3 py-3 bg-transparent border-0 text-white placeholder-white/20 focus:outline-none focus:ring-0 sm:text-sm"
+                      autocomplete="off"
+                    />
+                  </form>
+                </div>
+                
+                <%
+                   query = String.downcase(@search_query || "")
+                   search_active = String.length(query) > 0
+                   
+                   # Build exclusion sets
+                   trust_ids = MapSet.new(@trusted_friend_ids || [])
+                   outgoing_ids = MapSet.new(Enum.map(@outgoing_trust_requests || [], fn r -> r.trusted_user_id end))
+                   incoming_ids = MapSet.new(Enum.map(@incoming_trust_requests || [], fn r -> r.user_id end))
+                   
+                   # Filter friends
+                   filtered_friends = 
+                     if search_active do
+                       Enum.filter(@friends || [], fn f -> 
+                         user = f.user
+                         not MapSet.member?(trust_ids, user.id) and
+                         not MapSet.member?(outgoing_ids, user.id) and
+                         not MapSet.member?(incoming_ids, user.id) and
+                         (String.contains?(String.downcase(user.username), query) or 
+                          String.contains?(String.downcase(user.display_name || ""), query))
+                       end)
+                       |> Enum.take(5)
+                     else
+                       []
+                     end
+                %>
+                
+                <%= if search_active && length(filtered_friends) > 0 do %>
+                  <div class="mt-4 grid grid-cols-1 gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <%= for f <- filtered_friends do %>
+                      <div class="group flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-colors">
+                        <div class="flex items-center gap-3 min-w-0">
+                           <.avatar user={f.user} online={@online_friend_ids && MapSet.member?(@online_friend_ids, f.user.id)} />
+                           <div class="min-w-0">
+                             <div class="text-sm font-bold text-white truncate">@{f.user.username}</div>
+                             <div class="text-xs text-white/40 truncate">{if f.user.display_name != f.user.username, do: f.user.display_name}</div>
+                           </div>
+                        </div>
+                        <button
+                          phx-click="add_trusted_friend"
+                          phx-value-user_id={f.user.id}
+                          class="px-4 py-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border border-green-500/20 hover:border-green-500/40"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+                
+                <%= if search_active && length(filtered_friends) == 0 do %>
+                   <div class="mt-8 text-center">
+                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5 mb-3">
+                       <svg class="w-6 h-6 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                       </svg>
+                     </div>
+                     <p class="text-sm text-white/30">No matching friends found</p>
+                   </div>
+                <% end %>
            </div>
         </div>
       </div>

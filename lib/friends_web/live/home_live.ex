@@ -1994,6 +1994,17 @@ defmodule FriendsWeb.HomeLive do
     PubSubHandlers.handle_trust_confirmed(socket, by_user_id)
   end
 
+  # Handle when a trust relationship is revoked/cancelled/declined (live update)
+  def handle_info({:trust_revoked, _data}, socket) do
+    PubSubHandlers.handle_trust_revoked(socket, nil)
+  end
+  
+  # --- Recovery Search ---
+  
+  def handle_event("recovery_search", %{"value" => query}, socket) do
+    {:noreply, assign(socket, :recovery_search_query, query)}
+  end
+
   # Handle new message notifications for both rooms and conversations
   def handle_info({:new_message_notification, data}, socket) do
     PubSubHandlers.handle_new_message_notification(socket, data)

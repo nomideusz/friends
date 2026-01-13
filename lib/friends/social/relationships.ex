@@ -133,7 +133,10 @@ defmodule Friends.Social.Relationships do
       nil -> {:error, :not_found}
       tf -> 
         case Repo.delete(tf) do
-          {:ok, _} -> :ok
+          {:ok, deleted} -> 
+            deleted
+            |> broadcast_friend_update(:trust_revoked, [user_id, trusted_user_id])
+            
           error -> error
         end
     end
@@ -147,7 +150,13 @@ defmodule Friends.Social.Relationships do
       nil -> {:error, :not_found}
       tf -> 
         case Repo.delete(tf) do
-          {:ok, _} -> :ok
+          {:ok, deleted} ->
+             # Invalidate graph cache
+            Friends.GraphCache.invalidate_many([user_id, trusted_user_id])
+            
+            deleted
+            |> broadcast_friend_update(:trust_revoked, [user_id, trusted_user_id])
+
           error -> error
         end
     end
@@ -162,7 +171,10 @@ defmodule Friends.Social.Relationships do
       nil -> {:error, :not_found}
       tf -> 
         case Repo.delete(tf) do
-          {:ok, _} -> :ok
+          {:ok, deleted} ->
+            deleted
+            |> broadcast_friend_update(:trust_revoked, [user_id, requester_id])
+
           error -> error
         end
     end
@@ -223,6 +235,15 @@ defmodule Friends.Social.Relationships do
         case result do
           {:ok, _} ->
             Rooms.get_or_create_dm_room(user_id, requester_id)
+            
+            # Cleanup: Check if there's a reverse pending request (user -> requester)
+            # and delete it to avoid duplicates in the UI (since they are now friends)
+            case get_friendship(user_id, requester_id) do
+              %{status: "pending"} = reverse_pending ->
+                Repo.delete(reverse_pending)
+              _ ->
+                :ok
+            end
 
           _ ->
             :ok

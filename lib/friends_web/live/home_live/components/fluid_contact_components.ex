@@ -200,21 +200,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   </div>
                 </div>
               <% end %>
-              
-              <%= if Enum.any?(trust_requests) do %>
-                <div>
-                   <div class="flex items-center gap-2 mb-2">
-                    <.shield_icon class="w-3.5 h-3.5 text-yellow-500" />
-                    <span class="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider">Recovery Requests</span>
-                  </div>
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <%= for tr <- trust_requests do %>
-                      <% user = if Map.has_key?(tr, :user), do: tr.user, else: tr %>
-                      <.trust_request_row user={user} />
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
             </div>
           <% end %>
 
@@ -592,37 +577,6 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
             <% :self -> %>
               <span class="text-xs text-white/30">You</span>
             <% :connected -> %>
-              <%!-- Recovery promote/demote --%>
-              <%= if @is_recovery do %>
-                <button
-                  phx-click="remove_trusted_friend"
-                  phx-value-user_id={@user.id}
-                  data-confirm="Remove from recovery contacts?"
-                  class="p-1.5 rounded-lg bg-green-500 text-white hover:bg-green-400 transition-colors cursor-pointer shadow-lg shadow-green-500/20"
-                  title="Remove from Recovery"
-                >
-                  <.shield_icon class="w-4 h-4" />
-                </button>
-              <% else %>
-                <%= if @is_trust_pending do %>
-                  <button
-                    disabled
-                    class="p-1.5 rounded-lg text-yellow-500/50 cursor-not-allowed transition-colors"
-                    title="Request Pending"
-                  >
-                    <.shield_icon class="w-4 h-4" />
-                  </button>
-                <% else %>
-                  <button
-                    phx-click="add_trusted_friend"
-                    phx-value-user_id={@user.id}
-                    class="p-1.5 rounded-lg text-white/30 hover:text-green-400 hover:bg-green-400/10 transition-colors cursor-pointer"
-                    title="Add to Recovery"
-                  >
-                    <.shield_icon class="w-4 h-4" />
-                  </button>
-                <% end %>
-              <% end %>
               <%!-- Remove friend --%>
               <button
                 phx-click="remove_contact"

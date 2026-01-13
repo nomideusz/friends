@@ -35,10 +35,8 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
   def open_contacts_sheet(socket, mode \\ :add_contact) do
     mode_atom = if is_binary(mode), do: String.to_existing_atom(mode), else: mode
     
-    # Subscribe to user-specific updates for live changes
-    if socket.assigns.current_user do
-      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:user:#{socket.assigns.current_user.id}")
-    end
+    # Note: User is already subscribed to their personal channel at mount time
+    # No need to subscribe/unsubscribe when opening/closing the modal
     
     {:noreply,
      socket
@@ -50,10 +48,8 @@ defmodule FriendsWeb.HomeLive.Events.NetworkEvents do
   end
 
   def close_people_modal(socket) do
-    # Unsubscribe from user-specific updates
-    if socket.assigns.current_user do
-      Phoenix.PubSub.unsubscribe(Friends.PubSub, "friends:user:#{socket.assigns.current_user.id}")
-    end
+    # Note: Do NOT unsubscribe from user channel here - it was subscribed at mount
+    # and should persist to receive real-time updates (like connection acceptance)
     
     {:noreply,
      socket
