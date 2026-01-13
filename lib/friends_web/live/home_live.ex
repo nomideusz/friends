@@ -4,20 +4,20 @@ defmodule FriendsWeb.HomeLive do
   alias Friends.Social
 
   import FriendsWeb.HomeLive.Helpers
-  import FriendsWeb.HomeLive.Components.DrawerComponents
+  import FriendsWeb.HomeLive.Components.FluidGraphModal
   import FriendsWeb.HomeLive.Components.FluidRoomComponents
-  import FriendsWeb.HomeLive.Components.FluidFeedComponents
+  import FriendsWeb.HomeLive.Components.FluidRoomChatComponents
+  import FriendsWeb.HomeLive.Components.FluidRoomSheetComponents
+  import FriendsWeb.HomeLive.Components.FluidRoomContentComponents
+
   import FriendsWeb.HomeLive.Components.FluidModalComponents
   import FriendsWeb.HomeLive.Components.FluidContactComponents
   import FriendsWeb.HomeLive.Components.FluidGroupComponents
   import FriendsWeb.HomeLive.Components.FluidProfileComponents
-  import FriendsWeb.HomeLive.Components.FluidBottomToolbar
   import FriendsWeb.HomeLive.Components.FluidCreateMenu
-  import FriendsWeb.HomeLive.Components.FluidOmnibox
   import FriendsWeb.HomeLive.Components.FluidUploadIndicator
   import FriendsWeb.HomeLive.Components.FluidNavBar
 
-  import FriendsWeb.HomeLive.Components.FluidPeopleModal
   import FriendsWeb.HomeLive.Components.FluidGroupsModal
   alias FriendsWeb.HomeLive.Events.FeedEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
@@ -1161,7 +1161,16 @@ defmodule FriendsWeb.HomeLive do
 
   # --- Toolbar Search Handlers ---
 
-  def handle_event("toolbar_search", %{"query" => query}, socket) do
+  def handle_event("toolbar_search", params, socket) do
+    # Handle both direct value and nested %{"value" => query}
+    query = 
+      case params do
+        %{"value" => %{"value" => q}} -> q
+        %{"value" => q} when is_binary(q) -> q
+        q when is_binary(q) -> q
+        _ -> ""
+      end
+
     results = perform_search(socket, query)
     
     {:noreply,
@@ -1311,23 +1320,7 @@ defmodule FriendsWeb.HomeLive do
   end
 
   # Hidden feature: Long-press nav orb reveals fullscreen graph
-  def handle_event("show_fullscreen_graph", _params, socket) do
-    # Subscribe to network events for live graph updates
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:global")
-      Phoenix.PubSub.subscribe(Friends.PubSub, "friends:new_users")
-    end
-
-    graph_data = Friends.GraphCache.get_welcome_graph_data()
-    graph_data = FriendsWeb.HomeLive.GraphHelper.ensure_user_in_welcome_graph(
-      socket.assigns.current_user, 
-      graph_data
-    )
-    {:noreply,
-     socket
-     |> assign(:show_fullscreen_graph, true)
-     |> assign(:fullscreen_graph_data, graph_data)}
-  end
+  # (Duplicate handler removed - logic moved up/consolidated if necessary)
 
   def handle_event("close_fullscreen_graph", _params, socket) do
     # Unsubscribe from network events
@@ -1588,9 +1581,7 @@ defmodule FriendsWeb.HomeLive do
     end
   end
 
-  def handle_event("send_friend_request", %{"user_id" => user_id_str}, socket) do
-    NetworkEvents.send_friend_request(socket, user_id_str)
-  end
+  # (Duplicate handlers removed)
 
   def handle_event("accept_friend_request", %{"user_id" => user_id_str}, socket) do
     case Integer.parse(user_id_str) do
@@ -2167,12 +2158,18 @@ defmodule FriendsWeb.HomeLive do
       query == "" ->
         %{people: [], groups: [], actions: []}
         
+      query == "@" ->
+        %{people: :prefix_only, groups: [], actions: []}
+
       String.starts_with?(query, "@") ->
         # People search
         username_query = String.trim_leading(query, "@")
-        people = if username_query != "", do: Social.search_users(username_query, limit: 5), else: []
+        people = Social.search_users(username_query, limit: 5)
         %{people: people, groups: [], actions: []}
         
+      query == "#" ->
+        %{people: [], groups: :prefix_only, actions: []}
+
       String.starts_with?(query, "#") ->
         # Group search  
         group_query = String.trim_leading(query, "#")
@@ -2182,6 +2179,9 @@ defmodule FriendsWeb.HomeLive do
           []
         end
         %{people: [], groups: groups, actions: []}
+        
+      query == "/" ->
+        %{people: [], groups: [], actions: build_toolbar_actions(query)}
         
       String.starts_with?(query, "/") ->
         # Quick commands logic

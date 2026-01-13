@@ -278,18 +278,41 @@ window.addEventListener("phx:trigger_file_input", (e) => {
 
 // Offline detection
 const offlineBanner = document.getElementById("offline-banner")
+let offlineTimer = null
+
 const updateOfflineStatus = () => {
     if (!offlineBanner) return
 
-    // Check both navigator.onLine and LiveView connection status
-    // If LiveView is connected, we're definitely online regardless of navigator.onLine
+    // Check LiveView connection status FIRST as it's the source of truth for the app's functionality
     const isLiveViewConnected = liveSocket && liveSocket.isConnected && liveSocket.isConnected()
     const isOnline = navigator.onLine || isLiveViewConnected
 
     if (isOnline) {
+        if (offlineTimer) {
+            clearTimeout(offlineTimer)
+            offlineTimer = null
+        }
         offlineBanner.classList.remove("offline-visible")
+        // Add hidden after transition
+        setTimeout(() => {
+            if (!offlineBanner.classList.contains("offline-visible")) {
+                offlineBanner.classList.add("hidden")
+            }
+        }, 300)
     } else {
-        offlineBanner.classList.add("offline-visible")
+        // Add a small delay before showing offline banner to avoid flicker during rapid reconnections
+        if (!offlineTimer) {
+            offlineTimer = setTimeout(() => {
+                offlineBanner.classList.remove("hidden")
+                // Need a tiny delay for the browser to register 'hidden' removal before starting transform transition
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        offlineBanner.classList.add("offline-visible")
+                    })
+                })
+                offlineTimer = null
+            }, 2000)
+        }
     }
 }
 

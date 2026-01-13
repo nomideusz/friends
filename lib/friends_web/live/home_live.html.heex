@@ -16,48 +16,12 @@
     <% end %>
   </form>
 
-  <%!-- Graph Drawer --%>
-  <.bottom_drawer
-    id="graph-drawer"
+  <%!-- Graph Modal --%>
+  <.fluid_graph_modal
     show={assigns[:show_graph_drawer] || false}
-    z_index={60}
-    height="h-[85vh]"
-    close_event="toggle_graph_drawer"
-    title="Your Network"
-  >
-    <:header_actions>
-      <button
-        phx-click="open_contacts_sheet"
-        class="bg-blue-600/30 text-blue-200 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-blue-600/50 transition-colors"
-      >
-        Set up Network
-      </button>
-    </:header_actions>
-    <div class="p-4 h-full">
-      <%= if assigns[:graph_data] do %>
-        <div
-          id="drawer-network-graph"
-          phx-hook="FriendGraph"
-          phx-update="ignore"
-          data-graph={Jason.encode!(assigns[:graph_data])}
-          class="w-full h-full min-h-[400px]"
-        >
-        </div>
-      <% else %>
-        <div class="flex items-center justify-center h-full text-neutral-500">
-          <div class="text-center">
-            <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            <p class="text-sm">Add people to see your constellation</p>
-            <button phx-click="open_contacts_sheet" class="text-xs text-blue-400 hover:underline mt-2 inline-block">
-              Go to Network →
-            </button>
-          </div>
-        </div>
-      <% end %>
-    </div>
-  </.bottom_drawer>
+    graph_data={assigns[:graph_data]}
+  />
+
 
 
 
@@ -526,11 +490,9 @@
   <%!-- === UNIFIED LAYOUT === --%>
   <div class="w-full min-h-screen flex flex-col">
     <%= if @current_user do %>
-      <%!-- Feed-first layout, graph available via drawer --%>
 
-    <%!-- Avatar Hub (Groups, People, Graph, Settings) --%>
+    <%!-- Header Nav Bar (only on index) --%>
     <%= if @live_action == :index do %>
-      <%!-- REVOLUT-STYLE NAV BAR --%>
       <.fluid_nav_bar
         current_user={@current_user}
         pending_request_count={length(assigns[:pending_requests] || [])}
@@ -542,98 +504,210 @@
       />
     <% end %>
 
-  <%!-- === MAIN LAYOUT === --%>
-  <div class="w-full text-white flex flex-row gap-4 relative z-10 pointer-events-none">
+    <%!-- === MAIN CONTENT === --%>
+    <%= if @live_action == :index do %>
+      <%!-- HOME PAGE: Welcome Graph --%>
+      <%= if @welcome_graph_data do %>
+        <div
+          id="home-network-graph"
+          phx-hook="WelcomeGraph"
+          phx-update="ignore"
+          data-graph-data={Jason.encode!(@welcome_graph_data)}
+          data-online-users={Jason.encode!(MapSet.to_list(assigns[:online_friend_ids] || MapSet.new()))}
+          data-current-user-id={@current_user.id}
+          class="fixed inset-0 top-16 bottom-24 z-10"
+        >
+        </div>
+      <% else %>
+        <div class="fixed inset-0 top-16 bottom-24 flex items-center justify-center text-center text-white/40">
+          <div>
+            <svg class="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <p class="text-sm">Your network will appear here</p>
+            <button phx-click="open_contacts_sheet" class="mt-4 text-blue-400 text-xs hover:underline cursor-pointer">
+              Add people to get started →
+            </button>
+          </div>
+        </div>
+      <% end %>
 
-        <%!-- OLD LEFT SIDEBAR REMOVED: Was wrapped in `if false and ...` --%>
+    <% else %>
+      <%!-- ROOM PAGE --%>
+      <%= if @room.is_private and not @room_access_denied do %>
+        <.fluid_room
+          room={@room}
+          current_user={@current_user}
+          room_members={@room_members}
+          room_messages={@room_messages}
+          items={@streams.items}
+          item_count={@item_count}
+          new_chat_message={@new_chat_message}
+          uploads={assigns[:uploads]}
+          uploading={is_uploading}
+          recording_voice={@recording_voice}
+          no_more_items={@no_more_items}
+          show_members_panel={@show_members_panel}
+          chat_expanded={@chat_expanded}
+          show_chat={Map.get(assigns, :show_chat, true)}
+          show_add_menu={Map.get(assigns, :show_add_menu, false)}
+          typing_users={@typing_users}
+          friends={@friends}
+          viewers={@viewers}
+          context_menu_member_id={assigns[:context_menu_member_id]}
+          show_group_sheet={assigns[:show_group_sheet] || false}
+          group_search={assigns[:group_search] || ""}
+        />
+      <% else %>
+        <%!-- Access Denied --%>
+        <div
+          id="friends-app"
+          class="text-white relative pt-12 lg:pt-0"
+          phx-hook="FriendsApp"
+          phx-window-keydown="handle_keydown"
+        >
+          <.access_denied
+            room_access_denied={@room_access_denied}
+            room={@room}
+            current_user={@current_user}
+          />
+        </div>
+      <% end %>
+    <% end %>
 
+    <%!-- Bottom Search Bar (only show on home, not in rooms) --%>
+    <%= if assigns[:toolbar_context] != :room do %>
+      <div class="fixed bottom-0 inset-x-0 z-[100] flex justify-center pb-6 px-4 pointer-events-none">
+        <div class="w-full max-w-md pointer-events-auto">
+          <div class="relative bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2">
+            <%= if @toolbar_search_query != "" do %>
+              <div class="absolute bottom-full left-0 right-0 mb-4 bg-neutral-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200 pointer-events-auto">
+                <div class="p-3 max-h-[60vh] overflow-y-auto scrollbar-hide space-y-4">
+                  <%# People Results %>
+                  <%= if @toolbar_search_results.people == :prefix_only do %>
+                    <div class="py-4 px-2">
+                       <p class="text-xs text-white/40 italic">Type a username to find people...</p>
+                    </div>
+                  <% else %>
+                    <%= if is_list(@toolbar_search_results.people) && Enum.any?(@toolbar_search_results.people) do %>
+                      <div>
+                        <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-wider px-2 mb-2">People</h3>
+                        <div class="space-y-1">
+                          <%= for person <- @toolbar_search_results.people do %>
+                            <button
+                              phx-click="omnibox_select_person"
+                              phx-value-id={person.id}
+                              class="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors text-left group"
+                            >
+                              <div
+                                class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                                style={"background-color: #{FriendsWeb.HomeLive.Helpers.friend_color(person)};"}
+                              >
+                                <span class="text-white">{String.first(person.username) |> String.upcase()}</span>
+                              </div>
+                              <div class="flex-1 min-w-0">
+                                <span class="block text-sm text-white font-medium truncate">@{person.username}</span>
+                                <span class="block text-xs text-white/40 truncate">{person.display_name || "New Friend"}</span>
+                              </div>
+                            </button>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  <% end %>
 
+                  <%# Group Results %>
+                  <%= if @toolbar_search_results.groups == :prefix_only do %>
+                    <div class="py-4 px-2">
+                       <p class="text-xs text-white/40 italic">Type a group name or code...</p>
+                    </div>
+                  <% else %>
+                    <%= if is_list(@toolbar_search_results.groups) && Enum.any?(@toolbar_search_results.groups) do %>
+                      <div>
+                        <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-wider px-2 mb-2">Groups</h3>
+                        <div class="space-y-1">
+                          <%= for group <- @toolbar_search_results.groups do %>
+                            <button
+                              phx-click="omnibox_select_group"
+                              phx-value-code={group.code}
+                              class="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors text-left group"
+                            >
+                              <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
+                                <span class="text-lg">#</span>
+                              </div>
+                              <div class="flex-1 min-w-0">
+                                <span class="block text-sm text-white font-medium truncate">{group.name}</span>
+                                <span class="block text-xs text-white/40 truncate">{length(group.members)} members</span>
+                              </div>
+                            </button>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  <% end %>
 
-        <%!-- RIGHT: Main Content Area --%>
-        <div class="flex-1 min-w-0 relative pb-32 pointer-events-auto">
-          
-          <%= if @live_action == :index do %>
-            <%!-- === FLUID FEED (Dashboard) === --%>
-            <.fluid_feed
-              current_user={@current_user}
-              feed_items={@streams.feed_items}
-              feed_item_count={@feed_item_count}
-              uploads={assigns[:uploads]}
-              uploading={is_uploading}
-              recording_voice={@recording_voice}
-              no_more_items={@no_more_items}
-              user_private_rooms={@user_private_rooms}
-              friends={@friends}
-              show_user_menu={assigns[:show_user_menu] || false}
-              welcome_graph_data={@welcome_graph_data}
-              online_friend_ids={assigns[:online_friend_ids]}
-            />
+                  <%# Action Results (Commands) %>
+                  <%= if is_list(@toolbar_search_results.actions) && Enum.any?(@toolbar_search_results.actions) do %>
+                    <div>
+                      <h3 class="text-[10px] font-bold text-white/40 uppercase tracking-wider px-2 mb-2">Quick Commands</h3>
+                      <div class="space-y-1">
+                        <%= for action <- @toolbar_search_results.actions do %>
+                          <button
+                            phx-click="omnibox_action"
+                            phx-value-action={action.event}
+                            class="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors text-left group"
+                          >
+                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
+                              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <span class="block text-sm text-white font-medium truncate">{action.label}</span>
+                              <span class="block text-xs text-white/40 truncate">{action.command}</span>
+                            </div>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
 
-          <% else %>
-            <%!-- === ROOM CONTENT === --%>
-            <%= if @room.is_private and not @room_access_denied do %>
-              <%!-- FLUID PRIVATE ROOM --%>
-              <.fluid_room
-                room={@room}
-                current_user={@current_user}
-                room_members={@room_members}
-                room_messages={@room_messages}
-                items={@streams.items}
-                item_count={@item_count}
-                new_chat_message={@new_chat_message}
-                uploads={assigns[:uploads]}
-                uploading={is_uploading}
-                recording_voice={@recording_voice}
-                no_more_items={@no_more_items}
-                show_members_panel={@show_members_panel}
-                chat_expanded={@chat_expanded}
-                show_chat={Map.get(assigns, :show_chat, true)}
-                show_add_menu={Map.get(assigns, :show_add_menu, false)}
-                typing_users={@typing_users}
-                friends={@friends}
-                viewers={@viewers}
-                context_menu_member_id={assigns[:context_menu_member_id]}
-                show_group_sheet={assigns[:show_group_sheet] || false}
-                group_search={assigns[:group_search] || ""}
-              />
-            <% else %>
-              <%!-- Access Denied or Public Room (fallback to old design) --%>
-              <div
-                id="friends-app"
-                class="text-white relative pt-12 lg:pt-0"
-                phx-hook="FriendsApp"
-                phx-window-keydown="handle_keydown"
-              >
-                <%!-- Access Denied --%>
-                <.access_denied
-                  room_access_denied={@room_access_denied}
-                  room={@room}
-                  current_user={@current_user}
-                />
+                  <%# No Results %>
+                  <% show_empty = 
+                    @toolbar_search_results.people != :prefix_only && 
+                    @toolbar_search_results.groups != :prefix_only && 
+                    Enum.empty?(List.wrap(@toolbar_search_results.people)) && 
+                    Enum.empty?(List.wrap(@toolbar_search_results.groups)) && 
+                    Enum.empty?(List.wrap(@toolbar_search_results.actions))
+                  %>
+                  <%= if show_empty do %>
+                    <div class="py-12 text-center">
+                      <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5 mb-4 mb-3">
+                        <svg class="w-6 h-6 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <p class="text-sm text-white/40 font-medium">No matches found</p>
+                      <p class="text-xs text-white/20 mt-1">Try a different search term</p>
+                    </div>
+                  <% end %>
+                </div>
               </div>
             <% end %>
-          <% end %>
+
+            <input
+              type="text"
+              name="query"
+              placeholder="Search people, groups..."
+              phx-keyup="toolbar_search"
+              phx-debounce="300"
+              autocomplete="off"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/20 focus:outline-none text-center"
+              style="font-size: 16px;"
+            />
+          </div>
         </div>
-
-
-
-      
-    <%!-- End of main layout container --%>
-    </div>
-
-    <%!-- Bottom Toolbar (only show when NOT in a room - rooms have inline chat) --%>
-    <%= if assigns[:toolbar_context] != :room do %>
-      <.bottom_toolbar
-        context={assigns[:toolbar_context] || :feed}
-        current_user={@current_user}
-        room={@room}
-        show_chat={Map.get(assigns, :show_chat, true)}
-        unread_count={Map.get(assigns, :total_unread_count, 0)}
-        online_friend_count={MapSet.size(assigns[:online_friend_ids] || MapSet.new())}
-        pending_request_count={length(assigns[:pending_requests] || [])}
-        search_query={assigns[:toolbar_search_query] || ""}
-        search_results={assigns[:toolbar_search_results] || %{people: [], groups: [], actions: []}}
-      />
+      </div>
     <% end %>
 
     <%!-- Settings & Profile Modals --%>

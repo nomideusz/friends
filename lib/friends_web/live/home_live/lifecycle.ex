@@ -175,6 +175,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         # Live presence - friend IDs currently online
         |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
         |> assign(:photo_order, photo_ids(feed_items))
+        |> assign(:toolbar_search_query, "")
+        |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})
         |> stream(:feed_items, feed_items, dom_id: &"feed-item-#{&1.type}-#{&1.id}")
 
       # Allow uploads for the public feed
@@ -414,6 +416,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:pairing_url, nil)
         |> assign(:pairing_expires_at, nil)
         |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
+        |> assign(:toolbar_search_query, "")
+        |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})
         |> assign_persistent_notification(session_user.id)
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")
         |> maybe_allow_upload(can_access)

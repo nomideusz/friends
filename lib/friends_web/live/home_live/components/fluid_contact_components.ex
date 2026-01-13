@@ -7,230 +7,72 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   import FriendsWeb.HomeLive.Helpers
 
   # ============================================================================
-  # PEOPLE SHEET
-  # Simple bottom sheet matching New Group modal style
+  # PEOPLE MODAL
+  # Full-screen modal for People (Contacts)
   # ============================================================================
 
   attr :show, :boolean, default: false
-  attr :mode, :atom, default: :add_contact
+  attr :contact_mode, :string, default: "list"
+  attr :contacts, :list, default: []
   attr :search_query, :string, default: ""
   attr :search_results, :list, default: []
-  attr :current_user, :map, required: true
-  attr :online_friend_ids, :any, default: nil
-  attr :contacts, :list, default: []
-  attr :outgoing_requests, :list, default: []  # Pending sent requests
-  attr :incoming_requests, :list, default: []  # Requests from others to accept
-  attr :trusted_friend_ids, :list, default: []
+  attr :trusted_friend_ids, :any, default: MapSet.new()
   attr :trusted_friends, :list, default: []
   attr :incoming_trust_requests, :list, default: []
+  attr :outgoing_requests, :list, default: []
   attr :outgoing_trust_requests, :list, default: []
-  attr :pending_friend_requests, :list, default: []  # Actual friend requests to accept/decline
-  attr :room, :map, default: nil
+  attr :pending_friend_requests, :list, default: []
+  attr :room, :any, default: nil
   attr :room_members, :list, default: []
-  attr :avatar_position, :string, default: "top-right"
+  attr :current_user, :map, required: true
+  attr :online_friend_ids, :any, default: MapSet.new()
 
-  def contact_search_sheet(assigns) do
-    mode = assigns[:mode] || :add_contact
-    trusted_ids = assigns[:trusted_friend_ids] || []
-
-    # Check if current user is admin
-    is_admin = Friends.Social.is_admin?(assigns.current_user)
-
-    assigns = assigns
-      |> assign(:mode, mode)
-      |> assign(:trusted_ids, trusted_ids)
-      |> assign(:is_admin, is_admin)
-      
-    # Pre-calculate room member IDs for invite mode
-    member_ids = if mode == :invite and assigns[:room_members] do
-      Enum.map(assigns.room_members, & &1.user.id) |> MapSet.new()
-    else
-      MapSet.new()
-    end
-    
-    assigns = assign(assigns, :member_ids, member_ids)
-    
-    # Determine sheet position and animation based on avatar position
-    {container_classes, content_classes, animation} = sheet_position_classes(assigns[:avatar_position] || "top-right")
-    
-    assigns = assigns
-      |> assign(:container_classes, container_classes)
-      |> assign(:content_classes, content_classes)
-      |> assign(:animation, animation)
-
+  def fluid_people_modal(assigns) do
     ~H"""
     <%= if @show do %>
-      <div id="people-sheet" class="fixed inset-0 z-[201]" phx-hook="LockScroll">
+      <div 
+        id="fluid-people-modal" 
+        class="fixed inset-0 z-[200]"
+        phx-window-keydown="close_people_modal"
+        phx-key="escape"
+      >
         <%!-- Backdrop --%>
-        <div
-          class="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
-          phx-click="close_contact_search"
+        <div 
+          class="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300"
+          phx-click="close_people_modal"
         ></div>
 
-        <%!-- Modal - positioned based on avatar corner --%>
-        <div class={"absolute z-10 flex pointer-events-none " <> @container_classes <> " " <> @animation}>
-          <div
-            id="people-sheet-content"
-            class={"bg-neutral-900/95 backdrop-blur-xl border border-white/10 shadow-2xl max-h-[80vh] flex flex-col pointer-events-auto " <> @content_classes}
-            phx-click-away="close_contact_search"
-            phx-hook="SwipeableDrawer"
-            data-close-event="close_contact_search"
-          >
-            <%!-- Handle --%>
-            <div class="py-3 flex justify-center cursor-pointer" phx-click="close_contact_search">
-              <div class="w-10 h-1 rounded-full bg-white/20"></div>
-            </div>
+        <%!-- Modal Content --%>
+        <div class="absolute inset-0 bg-neutral-950 animate-in slide-in-from-bottom duration-300 flex flex-col sm:inset-4 sm:rounded-2xl sm:overflow-hidden sm:border sm:border-white/10 sm:max-w-2xl sm:mx-auto sm:shadow-2xl">
+          <%!-- Header --%>
+          <div class="p-6 border-b border-white/10 flex items-center justify-between bg-black/20 shrink-0">
+            <h2 class="text-2xl font-bold text-white tracking-tight">People</h2>
+            <button 
+              phx-click="close_people_modal"
+              class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors cursor-pointer"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
 
-            <%!-- Search --%>
-            <div class="px-4 pb-3">
-              <input
-                type="text"
-                name="contact_search"
-                value={@search_query}
-                placeholder="Search by username..."
-                phx-keyup="contact_search"
-                phx-debounce="200"
-                autocomplete="off"
-                autofocus={@mode == :add_contact}
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
-              />
-            </div>
-
-            <%!-- Results / People List --%>
-            <div class="flex-1 overflow-y-auto px-4 pb-8">
-              <% contacts = @contacts || [] %>
-              <% outgoing = @outgoing_requests || [] %>
-              <% outgoing_ids = Enum.map(outgoing, & &1.friend_user_id) %>
-              <% trusted_count = length(@trusted_friend_ids || []) %>
-
-              <%= if @search_query != "" do %>
-                <%!-- Search Results --%>
-                <%= if @search_results == [] do %>
-                  <p class="text-center py-8 text-white/30 text-sm">No results</p>
-                <% else %>
-                  <div class="space-y-2">
-                    <%= for user <- @search_results do %>
-                      <% 
-                        is_self = user.id == @current_user.id
-                        is_contact = Enum.any?(contacts, fn c -> 
-                          u = if Map.has_key?(c, :user), do: c.user, else: c
-                          u.id == user.id 
-                        end)
-                        is_pending = user.id in outgoing_ids
-                      %>
-                      <.person_row 
-                        user={user} 
-                        status={cond do
-                          is_self -> :self
-                          is_contact -> :connected
-                          is_pending -> :pending
-                          true -> :add
-                        end}
-                        online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
-                        is_recovery={user.id in @trusted_ids}
-                        mode={@mode}
-                        member_ids={@member_ids}
-                        is_admin={@is_admin}
-                      />
-                    <% end %>
-                  </div>
-                <% end %>
-              <% else %>
-                <%!-- Incoming Requests (Connections & Trust) --%>
-                <% friend_requests = @pending_friend_requests || [] %>
-                <% trust_requests = @incoming_trust_requests || [] %>
-                
-                <%= if Enum.any?(friend_requests) || Enum.any?(trust_requests) do %>
-                  <div class="mb-6 space-y-4">
-                    <%!-- Friend Requests --%>
-                    <%= if Enum.any?(friend_requests) do %>
-                      <div>
-                        <div class="flex items-center gap-2 mb-2">
-                          <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                          </svg>
-                          <span class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Connection Requests</span>
-                        </div>
-                        <div class="space-y-1">
-                          <%= for fr <- friend_requests do %>
-                            <% user = if Map.has_key?(fr, :user), do: fr.user, else: fr %>
-                            <.friend_request_row user={user} />
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-
-                    <%!-- Trust Requests --%>
-                    <%= if Enum.any?(trust_requests) do %>
-                      <div>
-                        <div class="flex items-center gap-2 mb-2">
-                          <.shield_icon class="w-3.5 h-3.5 text-yellow-500" />
-                          <span class="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider">Recovery Requests</span>
-                        </div>
-                        <div class="space-y-1">
-                          <%= for tr <- trust_requests do %>
-                            <% user = if Map.has_key?(tr, :user), do: tr.user, else: tr %>
-                            <.trust_request_row user={user} />
-                          <% end %>
-                        </div>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
-                
-                <%!-- Pending Connections (outgoing friend requests) --%>
-                <%= if Enum.any?(outgoing) do %>
-                  <div class="mb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Pending Connections</span>
-                    </div>
-                    <div class="space-y-1">
-                      <%= for req <- outgoing do %>
-                        <% user = if Map.has_key?(req, :friend_user), do: req.friend_user, else: req %>
-                        <.pending_connection_row user={user} />
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-                
-                <%!-- Your People (all contacts) --%>
-                <% non_recovery_contacts = contacts %>
-                <div class="flex items-center gap-2 mb-2">
-                  <svg class="w-3.5 h-3.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Your People</span>
-                </div>
-                <%= if Enum.any?(non_recovery_contacts) do %>
-                  <div class="space-y-2">
-                    <%= for contact <- non_recovery_contacts do %>
-                      <% user = if Map.has_key?(contact, :user), do: contact.user, else: contact %>
-                      <.person_row 
-                        user={user} 
-                        status={:connected}
-                        online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
-                        is_recovery={false}
-                        mode={@mode}
-                        member_ids={@member_ids}
-                        is_admin={@is_admin}
-                      />
-                    <% end %>
-                  </div>
-                <% else %>
-                  <div class="text-center py-8">
-                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-                      <svg class="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                    <p class="text-white/30 text-sm">Search to find and add people</p>
-                  </div>
-                <% end %>
-              <% end %>
-            </div>
+          <%!-- Content --%>
+          <div class="flex-1 overflow-y-auto p-4 scrollbar-hide">
+            <.people_drawer_content
+               mode={@contact_mode}
+               contacts={@contacts}
+               search_query={@search_query}
+               search_results={@search_results}
+               trusted_friend_ids={@trusted_friend_ids}
+               trusted_friends={@trusted_friends}
+               incoming_trust_requests={@incoming_trust_requests}
+               outgoing_requests={@outgoing_requests}
+               outgoing_trust_requests={@outgoing_trust_requests}
+               pending_friend_requests={@pending_friend_requests}
+               room={@room}
+               room_members={@room_members}
+               current_user={@current_user}
+               online_friend_ids={@online_friend_ids}
+            />
           </div>
         </div>
       </div>
@@ -798,43 +640,5 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
     """
   end
 
-  # ============================================================================
-  # SHEET POSITION HELPER
-  # Returns {container_classes, content_classes, animation} based on avatar position
-  # ============================================================================
 
-  defp sheet_position_classes(position) do
-    case position do
-      "top-left" ->
-        {
-          "top-16 left-4",
-          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
-          "animate-in fade-in zoom-in-95 slide-in-from-top-2 slide-in-from-left-2 duration-300"
-        }
-      "top-right" ->
-        {
-          "top-16 right-4",
-          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
-          "animate-in fade-in zoom-in-95 slide-in-from-top-2 slide-in-from-right-2 duration-300"
-        }
-      "bottom-left" ->
-        {
-          "bottom-24 left-4",
-          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
-          "animate-in fade-in zoom-in-95 slide-in-from-bottom-2 slide-in-from-left-2 duration-300"
-        }
-      "bottom-right" ->
-        {
-          "bottom-24 right-4",
-          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
-          "animate-in fade-in zoom-in-95 slide-in-from-bottom-2 slide-in-from-right-2 duration-300"
-        }
-      _ ->
-        {
-          "top-16 right-4",
-          "w-80 max-w-[calc(100vw-2rem)] rounded-2xl",
-          "animate-in fade-in zoom-in-95 slide-in-from-top-2 slide-in-from-right-2 duration-300"
-        }
-    end
-  end
 end
