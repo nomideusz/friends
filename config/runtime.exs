@@ -114,7 +114,17 @@ if config_env() == :prod do
   fcm_config =
     case {System.get_env("FCM_SERVICE_ACCOUNT_JSON"), System.get_env("FCM_SERVICE_ACCOUNT_PATH")} do
       {json, _} when is_binary(json) and json != "" ->
-        {:ok, Jason.decode!(json)}
+        case Jason.decode(json) do
+          {:ok, decoded} ->
+            {:ok, decoded}
+
+          {:error, _} ->
+            IO.warn(
+              "FCM_SERVICE_ACCOUNT_JSON usage: Expected JSON object, got invalid string. make sure to paste the entire contents of service-account.json"
+            )
+
+            :error
+        end
 
       {_, path} when is_binary(path) and path != "" ->
         if File.exists?(path) do
