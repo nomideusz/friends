@@ -1,12 +1,14 @@
 defmodule FriendsWeb.Live.Hooks.PushNotifications do
   import Phoenix.LiveView
   alias Friends.Accounts
+  require Logger
 
   def on_mount(:default, _params, _session, socket) do
     {:cont, attach_hook(socket, :push_notifications, :handle_event, &handle_event/3)}
   end
 
   def handle_event("register_device_token", %{"token" => token, "platform" => platform}, socket) do
+    Logger.info("PushNotifications hook: Registering device token for user #{socket.assigns.current_user.id}: #{String.slice(token, 0, 10)}... (platform: #{platform})")
     if socket.assigns.current_user do
       Accounts.register_device_token(socket.assigns.current_user, token, platform)
     end

@@ -10,6 +10,7 @@ defmodule FriendsWeb.HomeLive.Events.NotificationEvents do
   alias Friends.Social.Notifications
   alias Friends.Social.Presence
   alias Friends.Notifications, as: PushNotifications
+  require Logger
   use FriendsWeb, :verified_routes
 
   @doc """
@@ -364,7 +365,10 @@ defmodule FriendsWeb.HomeLive.Events.NotificationEvents do
 
   defp maybe_send_push_notification(user_id, notification_attrs) do
     # Only send push if user is not currently online (has no active presence)
-    unless Presence.online?(user_id) do
+    if Presence.online?(user_id) do
+      Logger.info("NotificationEvents: User #{user_id} is online, SKIPPING push notification.")
+    else
+      Logger.info("NotificationEvents: User #{user_id} is offline, sending push notification.")
       send_push_notification(user_id, notification_attrs)
     end
   end

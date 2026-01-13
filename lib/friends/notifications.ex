@@ -7,15 +7,18 @@ defmodule Friends.Notifications do
   alias Friends.Repo
   alias Friends.Accounts
   alias Friends.Accounts.DeviceToken
+  require Logger
   
   # Using Pigeon for APNS/FCM
   # Ensure you have configured Pigeon in config.exs
   
   def send_to_user(user_id, title, body, data \\ %{}) do
+    Logger.info("Notifications: Attempting to send push to user #{user_id} (title: #{title})")
     tokens = Accounts.list_user_device_tokens(user_id)
     
     # Check if we have valid tokens
     if Enum.empty?(tokens) do
+      Logger.info("Notifications: No device tokens found for user #{user_id}")
       {:error, :no_tokens}
     else
       results = Enum.map(tokens, fn token ->
@@ -36,7 +39,10 @@ defmodule Friends.Notifications do
       "data" => data
     })
     
-    Pigeon.FCM.push(n)
+    # Pigeon.FCM.push(n)
+    result = Pigeon.FCM.push(n)
+    Logger.info("Notifications: Sent FCM to token #{String.slice(token, 0, 10)}... Result: #{inspect(result)}")
+    result
   end
   
   defp send_to_token(%DeviceToken{platform: "ios", token: token}, title, body, data) do
