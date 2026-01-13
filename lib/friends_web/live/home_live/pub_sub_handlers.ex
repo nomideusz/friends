@@ -6,6 +6,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   import Phoenix.LiveView
   import FriendsWeb.HomeLive.Helpers
   alias Friends.Social
+  alias FriendsWeb.HomeLive.Events.NotificationEvents
   require Logger
 
   # --- Room Creation ---
@@ -357,13 +358,25 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
   @doc """
   Handle when someone sends you a connection request.
-  Refreshes the pending friend requests list.
+  Refreshes the pending friend requests list and adds notification.
   """
-  def handle_connection_request_received(socket, _from_user_id) do
+  def handle_connection_request_received(socket, from_user_id) do
     current_user = socket.assigns[:current_user]
     if current_user do
       pending = Social.list_friend_requests(current_user.id)
-      {:noreply, assign(socket, :pending_requests, pending)}
+      from_user = Social.get_user(from_user_id)
+
+      socket = assign(socket, :pending_requests, pending)
+
+      # Add to unified notifications if we found the user
+      socket = if from_user do
+        notification = NotificationEvents.build_notification(:friend_request, from_user)
+        NotificationEvents.add_notification(socket, notification, current_user.id)
+      else
+        socket
+      end
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -371,7 +384,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
   @doc """
   Handle when someone accepts your connection request.
-  Refreshes the friends list and outgoing requests.
+  Refreshes the friends list, outgoing requests, and adds notification.
   """
   def handle_connection_accepted(socket, by_user_id) do
     current_user = socket.assigns[:current_user]
@@ -379,13 +392,24 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       friends = Social.list_friends(current_user.id)
       pending = Social.list_friend_requests(current_user.id)
       outgoing = Social.list_sent_friend_requests(current_user.id)
-      
-      {:noreply,
-       socket
-       |> assign(:friends, friends)
-       |> assign(:pending_requests, pending)
-       |> assign(:outgoing_friend_requests, outgoing)
-       |> push_event("welcome_new_connection", %{from_id: current_user.id, to_id: by_user_id})}
+      by_user = Social.get_user(by_user_id)
+
+      socket =
+        socket
+        |> assign(:friends, friends)
+        |> assign(:pending_requests, pending)
+        |> assign(:outgoing_friend_requests, outgoing)
+        |> push_event("welcome_new_connection", %{from_id: current_user.id, to_id: by_user_id})
+
+      # Add to unified notifications if we found the user
+      socket = if by_user do
+        notification = NotificationEvents.build_notification(:connection_accepted, by_user)
+        NotificationEvents.add_notification(socket, notification, current_user.id)
+      else
+        socket
+      end
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -414,13 +438,25 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
   @doc """
   Handle when someone sends you a trust/recovery request.
-  Refreshes the incoming trust requests list.
+  Refreshes the incoming trust requests list and adds notification.
   """
-  def handle_trust_request_received(socket, _from_user_id) do
+  def handle_trust_request_received(socket, from_user_id) do
     current_user = socket.assigns[:current_user]
     if current_user do
       incoming = Social.list_pending_trust_requests(current_user.id)
-      {:noreply, assign(socket, :incoming_trust_requests, incoming)}
+      from_user = Social.get_user(from_user_id)
+
+      socket = assign(socket, :incoming_trust_requests, incoming)
+
+      # Add to unified notifications if we found the user
+      socket = if from_user do
+        notification = NotificationEvents.build_notification(:trust_request, from_user)
+        NotificationEvents.add_notification(socket, notification, current_user.id)
+      else
+        socket
+      end
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -428,19 +464,32 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
   @doc """
   Handle when someone confirms your trust request.
-  Refreshes the trusted friends list.
+  Refreshes the trusted friends list and adds notification.
   """
-  def handle_trust_confirmed(socket, _by_user_id) do
+  def handle_trust_confirmed(socket, by_user_id) do
     current_user = socket.assigns[:current_user]
     if current_user do
       trusted = Social.list_trusted_friends(current_user.id)
       trusted_ids = Enum.map(trusted, & &1.trusted_user_id)
       outgoing = Social.list_sent_trust_requests(current_user.id)
-      {:noreply,
-       socket
-       |> assign(:trusted_friends, trusted)
-       |> assign(:trusted_friend_ids, trusted_ids)
-       |> assign(:outgoing_trust_requests, outgoing)}
+      by_user = Social.get_user(by_user_id)
+
+      socket =
+        socket
+        |> assign(:trusted_friends, trusted)
+        |> assign(:trusted_friend_ids, trusted_ids)
+        |> assign(:outgoing_trust_requests, outgoing)
+
+      # Add to unified notifications if we found the user
+      socket = if by_user do
+        notification = NotificationEvents.build_notification(:trust_confirmed, by_user)
+        NotificationEvents.add_notification(socket, notification, current_user.id)
+      else
+        socket
+      end
+
+      {:noreply, socket}
+    else
       {:noreply, socket}
     end
   end
@@ -470,28 +519,31 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
 
   @doc """
   Handle when user is invited to a group.
-  Refreshes the groups list and shows a subtle notification.
+  Refreshes the groups list and adds notification.
   """
   def handle_group_invite_received(socket, invite_info) do
     current_user = socket.assigns[:current_user]
     if current_user do
       # Refresh the user's private rooms list
       private_rooms = Social.list_user_rooms(current_user.id)
-      
-      # Create notification info for subtle display
-      notification = %{
+
+      # Build unified notification
+      notification = NotificationEvents.build_notification(:group_invite, invite_info)
+
+      # Legacy notification for backward compat
+      legacy_notification = %{
         type: :group_invite,
         room_name: invite_info.room_name || "New Group",
         room_code: invite_info.room_code,
         inviter: invite_info.inviter_username,
         timestamp: DateTime.utc_now()
       }
-      
+
       {:noreply,
        socket
        |> assign(:user_private_rooms, private_rooms)
-       |> assign(:group_notification, notification)
-       |> put_flash(:info, "You've been invited to #{invite_info.room_name || "a group"} by @#{invite_info.inviter_username}")}
+       |> assign(:group_notification, legacy_notification)
+       |> NotificationEvents.add_notification(notification, current_user.id)}
     else
       {:noreply, socket}
     end
@@ -502,6 +554,8 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
   Shows a flash message if the user is not currently looking at the chat.
   """
   def handle_new_message_notification(socket, %{message: message} = data) do
+    current_user = socket.assigns[:current_user]
+
     # Check if we should alert.
     # We alert if:
     # 1. It's a room message and we are NOT in that room, OR we ARE in the room but chat is closed.
@@ -525,17 +579,17 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
         true
     end
 
-    if should_alert do
+    if should_alert && current_user do
+      # Get secure room code for navigation
+      room_id = data[:room_id] || message.room_id
+      room = Social.get_room!(room_id)
+
+      # Build unified notification
+      notification = NotificationEvents.build_notification(:message, message, room)
+
+      # Add to unified notifications and also keep legacy persistent_notification for backward compat
       sender = message.sender
       username = if sender, do: "@#{sender.username}", else: "Someone"
-      
-      # Determine context name
-      _context_name = cond do
-        data[:room_name] -> "in #{data.room_name}"
-        true -> ""
-      end
-
-      # Determine safe text to display (encrypted content is raw binary, can't be JSON encoded)
       display_text = case message.content_type do
         "text" -> "Sent a message"
         "voice" -> "Sent a voice message"
@@ -543,26 +597,21 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
         _ -> "Sent a message"
       end
 
-      # Get secure room code for navigation
-      room_id = data[:room_id] || message.room_id
-      room = Social.get_room!(room_id)
-      
-      # Create notification object
-      notification = %{
+      legacy_notification = %{
         id: "msg-#{message.id}",
         sender_username: username,
         room_id: room_id,
         conversation_id: data[:conversation_id] || message.conversation_id,
-        room_code: room.code,   # Critical for safe navigation
+        room_code: room.code,
         room_name: room.name,
         text: display_text,
         timestamp: DateTime.utc_now()
       }
 
-      {:noreply, 
+      {:noreply,
        socket
-       |> assign(:persistent_notification, notification)
-       |> put_flash(:info, "#{username}: #{display_text}")}
+       |> NotificationEvents.add_notification(notification, current_user.id)
+       |> assign(:persistent_notification, legacy_notification)}
     else
       {:noreply, socket}
     end

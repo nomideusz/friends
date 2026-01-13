@@ -504,6 +504,9 @@
         friends={assigns[:friends] || []}
         online_friend_ids={assigns[:online_friend_ids] || MapSet.new()}
         notification={assigns[:persistent_notification]}
+        notifications={assigns[:notifications] || []}
+        notifications_expanded={assigns[:notifications_expanded] || false}
+        notifications_unread_count={assigns[:notifications_unread_count] || 0}
       />
     <% end %>
 

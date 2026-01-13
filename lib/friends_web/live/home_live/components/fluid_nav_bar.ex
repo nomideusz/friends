@@ -1,18 +1,24 @@
 defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
   @moduledoc """
-  Revolut-style floating navigation bar.
-  
+  Revolut-style floating navigation bar with unified notification tray.
+
   Layout:
   [ Left: Avatar ] -------------------------------- [ Right: People | Groups ]
-  
+
   - Avatar: Opens full-screen Settings Modal
   - People: Opens full-screen People Modal (Contacts)
   - Groups: Opens full-screen Groups Modal (Chats)
+  - Center: Expandable notification tray (replaces single notification pill)
   """
   use FriendsWeb, :html
   import FriendsWeb.HomeLive.Helpers
 
+  # Legacy single notification (for backward compatibility during migration)
   attr :notification, :map, default: nil
+  # New unified notifications list
+  attr :notifications, :list, default: []
+  attr :notifications_expanded, :boolean, default: false
+  attr :notifications_unread_count, :integer, default: 0
   attr :current_user, :map, required: true
   attr :pending_request_count, :integer, default: 0
   attr :unread_count, :integer, default: 0
@@ -53,12 +59,17 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
         </button>
       </div>
 
-      <%!-- CENTER: Notification Pill (Integrated) --%>
-      <%= if @notification do %>
-        <div class="pointer-events-auto absolute z-10 top-3 flex justify-center left-[3.75rem] right-[7.5rem] sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-full sm:max-w-md">
-            <.notification_pill notification={@notification} />
-        </div>
-      <% end %>
+      <%!-- CENTER: Notification Tray (Unified) --%>
+      <div class="pointer-events-auto absolute z-10 top-3 flex justify-center left-[3.75rem] right-[7.5rem] sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-full sm:max-w-md">
+        <%= if @notifications_expanded do %>
+          <.notification_tray_expanded notifications={@notifications} />
+        <% else %>
+          <.notification_pill_collapsed
+            notifications={@notifications}
+            unread_count={@notifications_unread_count}
+          />
+        <% end %>
+      </div>
 
       <%!-- RIGHT: Action Circles --%>
       <div class="pointer-events-auto flex items-center gap-3 relative z-20">
@@ -69,7 +80,8 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
             icon="people"
             label="People"
             event="toggle_people_modal"
-            badge={@pending_request_count}
+            has_activity={@pending_request_count > 0}
+            glow_color="blue"
             info={@online_friend_count > 0 && "#{@online_friend_count}"}
             info_color="text-green-400"
           />
@@ -129,11 +141,12 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
         </div>
 
         <%!-- Groups Circle --%>
-        <.nav_circle_button 
-          icon="groups" 
-          label="Groups" 
-          event="toggle_groups_modal" 
-          badge={@unread_count}
+        <.nav_circle_button
+          icon="groups"
+          label="Groups"
+          event="toggle_groups_modal"
+          has_activity={@unread_count > 0}
+          glow_color="purple"
         />
         
       </div>
@@ -144,31 +157,30 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
   attr :icon, :string, required: true
   attr :label, :string, required: true
   attr :event, :string, required: true
-  attr :badge, :integer, default: 0
+  attr :has_activity, :boolean, default: false
+  attr :glow_color, :string, default: "blue"
   attr :info, :any, default: nil
   attr :info_color, :string, default: "text-white"
 
   defp nav_circle_button(assigns) do
+    glow_class = case assigns.glow_color do
+      "blue" -> "nav-activity-glow-blue"
+      "purple" -> "nav-activity-glow-purple"
+      "green" -> "nav-activity-glow-green"
+      _ -> "nav-activity-glow-blue"
+    end
+    assigns = assign(assigns, :glow_class, glow_class)
+
     ~H"""
     <button
       phx-click={@event}
-      class="group relative w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 active:scale-95 cursor-pointer"
+      class={"group relative w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-105 active:scale-95 cursor-pointer " <> if(@has_activity, do: @glow_class, else: "")}
       aria-label={@label}
     >
       <%!-- Icon --%>
       <div class="w-5 h-5 text-white/80 group-hover:text-white transition-colors">
         <.nav_icon name={@icon} />
       </div>
-
-      <%!-- Notification Badge (Red Dot) --%>
-      <%= if @badge > 0 do %>
-        <div class="absolute -top-1 -right-1 flex h-4 w-4">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-4 w-4 bg-red-500 border border-black items-center justify-center text-[9px] font-bold text-white">
-            {@badge}
-          </span>
-        </div>
-      <% end %>
 
       <%!-- Info Label (e.g. online count) - Positioning below looks cleaner --%>
       <%= if @info do %>
@@ -196,54 +208,166 @@ defmodule FriendsWeb.HomeLive.Components.FluidNavBar do
     """
   end
 
-  attr :notification, :map, required: true
-  
-  def notification_pill(assigns) do
-    ~H"""
-    <div 
-      class="w-full sm:w-auto animate-in slide-in-from-top fade-in duration-300"
-      role="alert"
-    >
-      <button
-        phx-click="view_notification"
-        class="group relative flex items-center gap-3 pl-2 pr-3 h-10 w-full sm:w-auto bg-neutral-950/90 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:bg-neutral-900 transition-all cursor-pointer overflow-hidden sm:max-w-md"
-      >
-        <%!-- Glow effect --%>
-        <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity"></div>
-        
-        <%!-- Icon / Avatar --%>
-        <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10 relative z-10">
-          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        </div>
-        
-        <%!-- Text Content (Single Line) --%>
-        <div class="flex items-center gap-2 min-w-0 relative z-10 text-xs">
-          <span class="font-bold text-white whitespace-nowrap">{@notification.sender_username}</span>
-          <span class="text-white/40 whitespace-nowrap hidden sm:inline">in {@notification.room_name}</span>
-          
-          <span class="text-white/30 whitespace-nowrap">
-            <%= format_time(@notification.timestamp) %>
-          </span>
+  # --- Unified Notification Tray Components ---
 
-          <span class="text-white/60 mx-0.5 hidden sm:inline">•</span>
-          <span class="text-white/80 truncate">{@notification.text}</span>
+  attr :notifications, :list, required: true
+  attr :unread_count, :integer, default: 0
+
+  defp notification_pill_collapsed(assigns) do
+    ~H"""
+    <button
+      phx-click="toggle_notifications_tray"
+      class={"group relative flex items-center gap-2 px-3 h-10 bg-neutral-950/90 backdrop-blur-xl border border-white/10 rounded-full shadow-lg hover:bg-neutral-900 transition-all cursor-pointer " <> if(@unread_count > 0, do: "notification-pulse-glow", else: "")}
+    >
+      <%!-- Bell Icon --%>
+      <div class="w-5 h-5 flex items-center justify-center relative z-10">
+        <svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+      </div>
+
+      <%!-- Latest notification preview --%>
+      <%= if length(@notifications) > 0 do %>
+        <% latest = List.first(@notifications) %>
+        <span class="text-xs text-white/80 truncate max-w-[120px] sm:max-w-[180px] relative z-10">
+          <span class="font-medium">@{latest.actor_username}</span>
+          <span class="text-white/50 ml-1">{latest.text}</span>
+        </span>
+      <% else %>
+        <span class="text-xs text-white/40 relative z-10">No notifications</span>
+      <% end %>
+
+      <%!-- Unread indicator dot --%>
+      <%= if @unread_count > 0 do %>
+        <div class="w-2 h-2 rounded-full bg-blue-400 notification-dot-pulse relative z-10"></div>
+      <% end %>
+    </button>
+    """
+  end
+
+  attr :notifications, :list, required: true
+
+  defp notification_tray_expanded(assigns) do
+    ~H"""
+    <div class="w-full max-w-md animate-in slide-in-from-top duration-200">
+      <div class="bg-neutral-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        <%!-- Header --%>
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <span class="text-sm font-medium text-white">Notifications</span>
+          <div class="flex items-center gap-2">
+            <%= if length(@notifications) > 0 do %>
+              <button phx-click="clear_all_notifications" class="text-xs text-white/40 hover:text-white/70 transition-colors cursor-pointer">
+                Clear all
+              </button>
+            <% end %>
+            <button phx-click="toggle_notifications_tray" class="p-1 hover:bg-white/10 rounded-full cursor-pointer">
+              <svg class="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-        
-        <%!-- Close Button --%>
-        <div 
-          role="button"
-          phx-click="dismiss_notification"
-          phx-click-stop
-          class="ml-1 p-1 rounded-full hover:bg-white/10 text-white/30 hover:text-white transition-colors relative z-10"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+
+        <%!-- Notification List --%>
+        <div class="max-h-[60vh] overflow-y-auto scrollbar-hide">
+          <%= if length(@notifications) > 0 do %>
+            <%= for notification <- @notifications do %>
+              <.notification_item notification={notification} />
+            <% end %>
+          <% else %>
+            <div class="py-12 text-center text-white/30 text-sm">
+              No notifications
+            </div>
+          <% end %>
         </div>
+      </div>
+    </div>
+    """
+  end
+
+  attr :notification, :map, required: true
+
+  defp notification_item(assigns) do
+    ~H"""
+    <div
+      class={"group flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors " <> if(@notification.read, do: "opacity-60", else: "")}
+      phx-click="view_notification_item"
+      phx-value-id={@notification.id}
+    >
+      <%!-- Avatar --%>
+      <div class="shrink-0">
+        <.notification_avatar notification={@notification} />
+      </div>
+
+      <%!-- Content --%>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-white">@{@notification.actor_username}</span>
+          <span class="text-xs text-white/30">{format_relative_time(@notification.timestamp)}</span>
+        </div>
+        <p class="text-xs text-white/60 truncate">{@notification.text}</p>
+        <%= if @notification.count > 1 do %>
+          <span class="text-[10px] text-blue-400">+{@notification.count - 1} more</span>
+        <% end %>
+      </div>
+
+      <%!-- Dismiss button --%>
+      <button
+        phx-click="dismiss_notification_item"
+        phx-value-id={@notification.id}
+        phx-click-stop
+        class="shrink-0 p-1 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded-full transition-opacity cursor-pointer"
+      >
+        <svg class="w-3 h-3 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
     </div>
     """
+  end
+
+  attr :notification, :map, required: true
+
+  defp notification_avatar(assigns) do
+    ring_class = notification_type_ring(assigns.notification.type)
+    assigns = assign(assigns, :ring_class, ring_class)
+
+    ~H"""
+    <div
+      class={"w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium overflow-hidden " <> @ring_class}
+      style={"background-color: #{@notification.actor_color};"}
+    >
+      <%= if @notification.actor_avatar_url do %>
+        <img src={@notification.actor_avatar_url} class="w-full h-full object-cover" />
+      <% else %>
+        {String.slice(@notification.actor_username || "", 0, 2) |> String.upcase()}
+      <% end %>
+    </div>
+    """
+  end
+
+  defp notification_type_ring(:message), do: ""
+  defp notification_type_ring(:friend_request), do: "ring-2 ring-blue-400/50"
+  defp notification_type_ring(:trust_request), do: "ring-2 ring-purple-400/50"
+  defp notification_type_ring(:group_invite), do: "ring-2 ring-green-400/50"
+  defp notification_type_ring(:connection_accepted), do: "ring-2 ring-emerald-400/50"
+  defp notification_type_ring(:trust_confirmed), do: "ring-2 ring-purple-400/50"
+  defp notification_type_ring(_), do: ""
+
+  defp format_relative_time(timestamp) when is_nil(timestamp), do: ""
+  defp format_relative_time(%NaiveDateTime{} = timestamp) do
+    # Convert NaiveDateTime to DateTime for comparison
+    {:ok, dt} = DateTime.from_naive(timestamp, "Etc/UTC")
+    format_relative_time(dt)
+  end
+  defp format_relative_time(%DateTime{} = timestamp) do
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, timestamp, :second)
+    cond do
+      diff < 60 -> "now"
+      diff < 3600 -> "#{div(diff, 60)}m"
+      diff < 86400 -> "#{div(diff, 3600)}h"
+      true -> "#{div(diff, 86400)}d"
+    end
   end
 end

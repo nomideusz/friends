@@ -27,6 +27,7 @@ defmodule FriendsWeb.HomeLive do
   alias FriendsWeb.HomeLive.Events.SettingsEvents
   alias FriendsWeb.HomeLive.Events.SessionEvents
   alias FriendsWeb.HomeLive.Events.ChatEvents
+  alias FriendsWeb.HomeLive.Events.NotificationEvents
   alias FriendsWeb.HomeLive.PubSubHandlers
   alias FriendsWeb.HomeLive.Lifecycle
 
@@ -689,7 +690,7 @@ defmodule FriendsWeb.HomeLive do
 
   def handle_event("view_notification", _params, socket) do
     notification = socket.assigns[:persistent_notification]
-    
+
     if notification do
       # When viewing, we also mark as read logic handles this in handle_params
       # but we can do it optimistically here too
@@ -697,9 +698,9 @@ defmodule FriendsWeb.HomeLive do
         if notification[:room_id], do: Social.mark_room_read(notification.room_id, socket.assigns.current_user.id)
         if notification[:conversation_id], do: Social.mark_conversation_read(notification.conversation_id, socket.assigns.current_user.id)
       end
-      
+
       socket = assign(socket, :persistent_notification, nil)
-      
+
       if notification.room_code do
          # Use push_navigate to room
          # We add a query param ?action=chat to signal we want chat open/expanded
@@ -710,6 +711,24 @@ defmodule FriendsWeb.HomeLive do
     else
       {:noreply, socket}
     end
+  end
+
+  # --- Unified Notifications Tray Events ---
+
+  def handle_event("toggle_notifications_tray", _params, socket) do
+    NotificationEvents.toggle_tray(socket)
+  end
+
+  def handle_event("view_notification_item", %{"id" => notification_id}, socket) do
+    NotificationEvents.view_notification(socket, notification_id)
+  end
+
+  def handle_event("dismiss_notification_item", %{"id" => notification_id}, socket) do
+    NotificationEvents.dismiss_notification(socket, notification_id)
+  end
+
+  def handle_event("clear_all_notifications", _params, socket) do
+    NotificationEvents.clear_all_notifications(socket)
   end
 
   def handle_event("sign_out", _params, socket) do

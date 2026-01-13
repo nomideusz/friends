@@ -10,8 +10,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
   import FriendsWeb.HomeLive.Helpers
   alias Friends.Social
   alias Friends.Social.Presence
+  alias Friends.Social.Notifications
   alias FriendsWeb.HomeLive.GraphHelper
-  
+
   # Event modules needed for initial setup/subscriptions
   alias FriendsWeb.HomeLive.Events.SessionEvents
   alias FriendsWeb.HomeLive.Events.PhotoEvents
@@ -87,6 +88,8 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:session_id, session_id)
         |> assign(:room, nil)
         |> assign_persistent_notification(session_user.id)
+        # Unified notifications system - load from database
+        |> assign_notifications_from_db(session_user.id)
         |> assign(:page_title, "New Internet")
         |> assign(:current_user, session_user)
         |> assign(:user_id, session_user_id)
@@ -421,7 +424,9 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
         |> assign(:online_friend_ids, MapSet.new(online_friend_ids))
         |> assign(:toolbar_search_query, "")
         |> assign(:toolbar_search_results, %{people: [], groups: [], actions: []})
-        |> assign_persistent_notification(session_user.id)
+        |> assign_persistent_notification(session_user && session_user.id)
+        # Unified notifications system - load from database
+        |> assign_notifications_from_db(session_user && session_user.id)
         |> stream(:items, items, dom_id: &"item-#{&1.unique_id}")
         |> maybe_allow_upload(can_access)
 
@@ -702,5 +707,22 @@ defmodule FriendsWeb.HomeLive.Lifecycle do
       end
 
     assign(socket, :persistent_notification, notification)
+  end
+
+  defp assign_notifications_from_db(socket, nil) do
+    socket
+    |> assign(:notifications, [])
+    |> assign(:notifications_expanded, false)
+    |> assign(:notifications_unread_count, 0)
+  end
+
+  defp assign_notifications_from_db(socket, user_id) do
+    notifications = Notifications.list_notifications(user_id)
+    unread_count = Notifications.count_unread(user_id)
+
+    socket
+    |> assign(:notifications, notifications)
+    |> assign(:notifications_expanded, false)
+    |> assign(:notifications_unread_count, unread_count)
   end
 end
