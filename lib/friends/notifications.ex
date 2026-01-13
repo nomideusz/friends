@@ -32,7 +32,7 @@ defmodule Friends.Notifications do
   defp send_to_token(%DeviceToken{platform: "android", token: token}, title, body, data) do
     # FCM
     # FCM
-    n = Pigeon.FCM.Notification.new(token)
+    n = Pigeon.FCM.Notification.new({:token, token})
     |> Pigeon.FCM.Notification.put_notification(%{
       "title" => title, 
       "body" => body
