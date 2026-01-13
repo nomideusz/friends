@@ -364,13 +364,13 @@ defmodule FriendsWeb.HomeLive.Events.NotificationEvents do
   # --- Push Notifications ---
 
   defp maybe_send_push_notification(user_id, notification_attrs) do
-    # Only send push if user is not currently online (has no active presence)
-    if Presence.online?(user_id) do
-      Logger.info("NotificationEvents: User #{user_id} is online, SKIPPING push notification.")
-    else
-      Logger.info("NotificationEvents: User #{user_id} is offline, sending push notification.")
+    # DEBUG: Force send push notification even if user is online
+    # if Presence.online?(user_id) do
+    #   Logger.info("NotificationEvents: User #{user_id} is online, SKIPPING push notification.")
+    # else
+      Logger.info("NotificationEvents: FORCING push notification for user #{user_id} (Debug mode enabled)")
       send_push_notification(user_id, notification_attrs)
-    end
+    # end
   end
 
   defp send_push_notification(user_id, notification_attrs) do
