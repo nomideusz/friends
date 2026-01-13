@@ -10,17 +10,17 @@ defmodule FriendsWeb.Live.Hooks.PushNotifications do
     if socket.assigns.current_user do
       Accounts.register_device_token(socket.assigns.current_user, token, platform)
     end
-    {:noreply, socket}
+    {:halt, socket}
   end
 
   def handle_event("push_notification_received", %{"title" => title, "body" => body}, socket) do
     # Trigger a flash message for foreground notifications
-    {:noreply, put_flash(socket, :info, "#{title}: #{body}")}
+    {:halt, put_flash(socket, :info, "#{title}: #{body}")}
   end
 
   def handle_event("push_notification_action", _payload, socket) do
     # Optional: Handle deep linking or specific actions
-    {:noreply, socket}
+    {:halt, socket}
   end
 
   def handle_event(_event, _params, socket), do: {:cont, socket}
