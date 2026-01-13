@@ -26,6 +26,7 @@
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@capacitor/ios": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
     "capacitor-webauthn": "^0.0.12"
   },
   "devDependencies": {

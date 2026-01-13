@@ -23,6 +23,7 @@ import ChordDiagram from "../svelte/ChordDiagram.svelte"
 
 // Modular hooks
 import ModularHooks from "./hooks"
+import PushNotifications from "./hooks/PushNotifications"
 
 // Image optimization utilities
 import { generateThumbnail, optimizeImage, generateFingerprint, getBrowserId } from "./utils"
@@ -201,7 +202,8 @@ const Hooks = {
     ...getHooks(Components),
     ...ModularHooks,
     FriendsApp: FriendsAppHook,
-    PhotoModal: PhotoModalHook
+    PhotoModal: PhotoModalHook,
+    PushNotifications: PushNotifications
 }
 
 // Precompute identity signals

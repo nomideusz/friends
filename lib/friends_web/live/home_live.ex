@@ -33,6 +33,7 @@ defmodule FriendsWeb.HomeLive do
   require Logger
 
   def mount(params, session, socket) do
+    {:cont, socket} = FriendsWeb.Live.Hooks.PushNotifications.on_mount(:default, params, session, socket) 
     Lifecycle.mount(params, session, socket)
   end
 
