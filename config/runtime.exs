@@ -111,25 +111,26 @@ if config_env() == :prod do
   config :friends, :webauthn_android_origins, android_origins
 
   # FCM Service Account for Push Notifications (HTTP v1 API)
-  if service_account_json_content = System.get_env("FCM_SERVICE_ACCOUNT_JSON") do
-    # 1. Try loading from raw JSON content in env var
-    service_account_json = Jason.decode!(service_account_json_content)
+  fcm_config =
+    case {System.get_env("FCM_SERVICE_ACCOUNT_JSON"), System.get_env("FCM_SERVICE_ACCOUNT_PATH")} do
+      {json, _} when is_binary(json) and json != "" ->
+        {:ok, Jason.decode!(json)}
 
-    config :pigeon, :fcm, service_account_json: service_account_json
-  else
-    if service_account_path = System.get_env("FCM_SERVICE_ACCOUNT_PATH") do
-      # 2. Fallback to file path
-      if File.exists?(service_account_path) do
-        service_account_json =
-          service_account_path
-          |> File.read!()
-          |> Jason.decode!()
+      {_, path} when is_binary(path) and path != "" ->
+        if File.exists?(path) do
+          {:ok, File.read!(path) |> Jason.decode!()}
+        else
+          IO.warn("FCM Service Account file not found at: #{path}")
+          :error
+        end
 
-        config :pigeon, :fcm, service_account_json: service_account_json
-      else
-        IO.warn("FCM Service Account file not found at: #{service_account_path}")
-      end
+      _ ->
+        :error
     end
+
+  if match?({:ok, _}, fcm_config) do
+    {:ok, service_account_json} = fcm_config
+    config :pigeon, :fcm, service_account_json: service_account_json
   end
 end
 
