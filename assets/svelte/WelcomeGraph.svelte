@@ -394,8 +394,22 @@
             if (img.complete && img.naturalWidth > 0) {
                 ctx.save();
                 ctx.clip();
-                // Draw image centered
-                ctx.drawImage(img, d.x - r, d.y - r, r * 2, r * 2);
+                // Draw image centered with object-fit: cover
+                const size = r * 2;
+                const aspect = img.naturalWidth / img.naturalHeight;
+                let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+
+                if (aspect > 1) {
+                    // Landscape: crop width
+                    sWidth = sHeight;
+                    sx = (img.naturalWidth - sWidth) / 2;
+                } else {
+                    // Portrait: crop height
+                    sHeight = sWidth;
+                    sy = (img.naturalHeight - sHeight) / 2;
+                }
+                
+                ctx.drawImage(img, sx, sy, sWidth, sHeight, d.x - r, d.y - r, size, size);
                 ctx.restore();
 
                 // Border for avatar - Green for online, White for offline
