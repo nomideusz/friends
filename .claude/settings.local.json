@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mix compile:*)",
+      "Bash(mix ecto.gen.migration:*)",
+      "Bash(mix ecto.migrate:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add persistent notification system with push support\n\n- Add friends_notifications database table for cross-session persistence\n- Create Notification schema and Notifications context module\n- Replace single notification pill with expandable tray UI\n- Support all notification types: messages, friend requests, trust requests,\n  group invites, connection accepted, trust confirmed\n- Add message grouping \\(same room within 30 min\\)\n- Connect to FCM/APNS push notifications for offline users\n- Replace red badge indicators with subtle glow/pulse animations\n- Fix DateTime/NaiveDateTime type mismatch in relative time formatting\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
+    ]
+  }
+}

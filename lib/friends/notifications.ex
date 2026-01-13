@@ -36,10 +36,7 @@ defmodule Friends.Notifications do
       "data" => data
     })
     
-    # Pigeon.FCM.push(n)
-    # Mocking for now as we don't have credentials configured
-    IO.puts("Would send FCM to #{token}: #{title}")
-    {:ok, :sent_mock}
+    Pigeon.FCM.push(n)
   end
   
   defp send_to_token(%DeviceToken{platform: "ios", token: token}, title, body, data) do

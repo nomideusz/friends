@@ -103,6 +103,22 @@ if config_env() == :prod do
   end
   config :friends, :webauthn_android_origins, android_origins
 
+  config :friends, :webauthn_android_origins, android_origins
+
+  # FCM Service Account for Push Notifications (HTTP v1 API)
+  if service_account_path = System.get_env("FCM_SERVICE_ACCOUNT_PATH") do
+    if File.exists?(service_account_path) do
+      service_account_json = 
+        service_account_path
+        |> File.read!()
+        |> Jason.decode!()
+      
+      config :pigeon, :fcm,
+        service_account_json: service_account_json
+    else
+      IO.warn("FCM Service Account file not found at: #{service_account_path}")
+    end
+  end
 end
 
 # MinIO / S3 Configuration

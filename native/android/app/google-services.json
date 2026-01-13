@@ -1,29 +1,29 @@
 {
-    "project_info": {
-        "project_number": "812352388534",
-        "project_id": "newinternet-2aacb",
-        "storage_bucket": "newinternet-2aacb.firebasestorage.app"
-    },
-    "client": [
-        {
-            "client_info": {
-                "mobilesdk_app_id": "1:812352388534:android:1957ff7333062c21a41517",
-                "android_client_info": {
-                    "package_name": "online.newinternet.app"
-                }
-            },
-            "oauth_client": [],
-            "api_key": [
-                {
-                    "current_key": "AIzaSyB74qYcY8yUuPmv2x4eGIfn2yZwoy3ZPUs"
-                }
-            ],
-            "services": {
-                "appinvite_service": {
-                    "other_platform_oauth_client": []
-                }
-            }
+  "project_info": {
+    "project_number": "812352388534",
+    "project_id": "newinternet-2aacb",
+    "storage_bucket": "newinternet-2aacb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:812352388534:android:1957ff7333062c21a41517",
+        "android_client_info": {
+          "package_name": "online.newinternet.app"
         }
-    ],
-    "configuration_version": "1"
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB74qYcY8yUuPmv2x4eGIfn2yZwoy3ZPUs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
 }
