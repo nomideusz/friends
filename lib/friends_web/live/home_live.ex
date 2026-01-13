@@ -118,6 +118,7 @@ defmodule FriendsWeb.HomeLive do
     {:noreply,
      socket
      |> assign(:show_avatar_menu, false)
+     |> assign(:settings_tab, "profile")
      |> assign(:show_profile_sheet, true)}
   end
 

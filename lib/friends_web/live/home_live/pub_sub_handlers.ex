@@ -508,7 +508,7 @@ defmodule FriendsWeb.HomeLive.PubSubHandlers do
       username = if sender, do: "@#{sender.username}", else: "Someone"
       
       # Determine context name
-      context_name = cond do
+      _context_name = cond do
         data[:room_name] -> "in #{data.room_name}"
         true -> ""
       end

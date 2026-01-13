@@ -27,7 +27,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupsModal do
         ></div>
 
         <%!-- Modal Content --%>
-        <div class="absolute inset-0 bg-neutral-950 animate-in slide-in-from-bottom duration-300 flex flex-col sm:inset-4 sm:rounded-2xl sm:overflow-hidden sm:border sm:border-white/10 sm:max-w-2xl sm:mx-auto sm:shadow-2xl">
+        <div class="absolute inset-0 bg-neutral-950 animate-in slide-in-from-bottom duration-300 flex flex-col sm:inset-4 sm:rounded-2xl sm:overflow-hidden sm:border sm:border-white/10 sm:max-w-2xl md:max-w-4xl lg:max-w-5xl sm:mx-auto sm:shadow-2xl">
           <%!-- Header --%>
           <div class="p-6 border-b border-white/10 flex items-center justify-between bg-black/20 shrink-0">
             <h2 class="text-2xl font-bold text-white tracking-tight">Groups</h2>

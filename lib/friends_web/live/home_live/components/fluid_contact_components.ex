@@ -43,7 +43,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         ></div>
 
         <%!-- Modal Content --%>
-        <div class="absolute inset-0 bg-neutral-950 animate-in slide-in-from-bottom duration-300 flex flex-col sm:inset-4 sm:rounded-2xl sm:overflow-hidden sm:border sm:border-white/10 sm:max-w-2xl sm:mx-auto sm:shadow-2xl">
+        <div class="absolute inset-0 bg-neutral-950 animate-in slide-in-from-bottom duration-300 flex flex-col sm:inset-4 sm:rounded-2xl sm:overflow-hidden sm:border sm:border-white/10 sm:max-w-2xl md:max-w-4xl lg:max-w-5xl sm:mx-auto sm:shadow-2xl">
           <%!-- Header --%>
           <div class="p-6 border-b border-white/10 flex items-center justify-between bg-black/20 shrink-0">
             <h2 class="text-2xl font-bold text-white tracking-tight">People</h2>
@@ -148,30 +148,32 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
           <%= if @search_results == [] do %>
             <p class="text-center py-8 text-white/30 text-sm">No results</p>
           <% else %>
-            <div class="space-y-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               <%= for user <- @search_results do %>
-                <% 
-                  is_self = user.id == @current_user.id
-                  is_contact = Enum.any?(contacts, fn c -> 
-                    u = if Map.has_key?(c, :user), do: c.user, else: c
-                    u.id == user.id 
-                  end)
-                  is_pending = user.id in outgoing_ids
-                %>
-                <.person_row 
-                  user={user} 
-                  status={cond do
-                    is_self -> :self
-                    is_contact -> :connected
-                    is_pending -> :pending
-                    true -> :add
-                  end}
-                  online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
-                  is_recovery={user.id in @trusted_ids}
-                  mode={@mode}
-                  member_ids={@member_ids}
-                  is_admin={@is_admin}
-                />
+                  <% 
+                    is_self = user.id == @current_user.id
+                    is_contact = Enum.any?(contacts, fn c -> 
+                      u = if Map.has_key?(c, :user), do: c.user, else: c
+                      u.id == user.id 
+                    end)
+                    is_pending = user.id in outgoing_ids
+                    outgoing_trust_ids = Enum.map(@outgoing_trust_requests || [], & &1.trusted_user_id)
+                  %>
+                  <.person_row 
+                    user={user} 
+                    status={cond do
+                      is_self -> :self
+                      is_contact -> :connected
+                      is_pending -> :pending
+                      true -> :add
+                    end}
+                    online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
+                    is_recovery={user.id in @trusted_ids}
+                    is_trust_pending={user.id in outgoing_trust_ids}
+                    mode={@mode}
+                    member_ids={@member_ids}
+                    is_admin={@is_admin}
+                  />
               <% end %>
             </div>
           <% end %>
@@ -190,7 +192,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                     </svg>
                     <span class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Incoming Requests</span>
                   </div>
-                  <div class="space-y-1">
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     <%= for fr <- friend_requests do %>
                       <% user = if Map.has_key?(fr, :user), do: fr.user, else: fr %>
                       <.friend_request_row user={user} />
@@ -205,7 +207,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                     <.shield_icon class="w-3.5 h-3.5 text-yellow-500" />
                     <span class="text-[10px] font-semibold text-yellow-500 uppercase tracking-wider">Recovery Requests</span>
                   </div>
-                  <div class="space-y-1">
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     <%= for tr <- trust_requests do %>
                       <% user = if Map.has_key?(tr, :user), do: tr.user, else: tr %>
                       <.trust_request_row user={user} />
@@ -225,14 +227,18 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
               <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Your People ({length(contacts)})</span>
             </div>
             <%= if Enum.any?(contacts) do %>
-              <div class="space-y-2">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <%= for contact <- contacts do %>
-                  <% user = if Map.has_key?(contact, :user), do: contact.user, else: contact %>
+                  <% 
+                    user = if Map.has_key?(contact, :user), do: contact.user, else: contact 
+                    outgoing_trust_ids = Enum.map(@outgoing_trust_requests || [], & &1.trusted_user_id)
+                  %>
                   <.person_row 
                     user={user} 
                     status={:connected}
                     online={@online_friend_ids && MapSet.member?(@online_friend_ids, user.id)}
                     is_recovery={false}
+                    is_trust_pending={user.id in outgoing_trust_ids}
                     mode={@mode}
                     member_ids={@member_ids}
                     is_admin={@is_admin}
@@ -260,7 +266,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                 </svg>
                 <span class="text-[10px] font-medium text-white/40 uppercase tracking-wider">Pending Sent Requests</span>
               </div>
-              <div class="space-y-1">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <%= for req <- outgoing do %>
                   <% user = if Map.has_key?(req, :friend_user), do: req.friend_user, else: req %>
                   <.pending_connection_row user={user} />
@@ -272,6 +278,42 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
       </div>
     </div>
     """
+  end
+
+  # ============================================================================
+  # AVATAR COMPONENT
+  # Handles image vs initials fallback
+  # ============================================================================
+
+  attr :user, :map, required: true
+  attr :class, :string, default: "w-10 h-10"
+  attr :online, :boolean, default: false
+
+  def avatar(assigns) do
+    ~H"""
+    <div
+      class={"#{@class} rounded-full flex items-center justify-center text-sm font-bold shrink-0 relative overflow-hidden #{if @online, do: "avatar-online", else: ""}"}
+      style={unless has_avatar?(@user), do: "background-color: #{friend_color(@user)};"}
+    >
+      <%= if has_avatar?(@user) do %>
+        <img
+          src={avatar_url(@user)}
+          class="w-full h-full object-cover"
+          alt={@user.username}
+        />
+      <% else %>
+        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
+      <% end %>
+    </div>
+    """
+  end
+
+  defp has_avatar?(user) do
+    user.avatar_url_thumb || user.avatar_url
+  end
+
+  defp avatar_url(user) do
+    user.avatar_url_thumb || user.avatar_url
   end
 
   # ============================================================================
@@ -316,12 +358,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
       phx-value-user_id={@user.id}
     >
       <%!-- Avatar --%>
-      <div
-        class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold #{if @online, do: "avatar-online", else: ""}"}
-        style={"background-color: #{friend_color(@user)};"}
-      >
-        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
-      </div>
+      <.avatar user={@user} online={@online} />
 
       <%!-- Name with shield --%>
       <div class="flex-1 min-w-0">
@@ -394,12 +431,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
     ~H"""
     <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
       <%!-- Avatar --%>
-      <div
-        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-        style={"background-color: #{friend_color(@user)};"}
-      >
-        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
-      </div>
+      <.avatar user={@user} />
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
@@ -439,12 +471,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
     ~H"""
     <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
       <%!-- Avatar --%>
-      <div
-        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-        style={"background-color: #{friend_color(@user)};"}
-      >
-        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
-      </div>
+      <.avatar user={@user} />
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
@@ -475,12 +502,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
     ~H"""
     <div class="flex items-center gap-3 py-2 px-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
       <%!-- Avatar --%>
-      <div
-        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-        style={"background-color: #{friend_color(@user)};"}
-      >
-        <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
-      </div>
+      <.avatar user={@user} />
 
       <%!-- Name --%>
       <div class="flex-1 min-w-0">
@@ -532,6 +554,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   attr :status, :atom, default: :add  # :add, :pending, :connected, :self
   attr :online, :boolean, default: false
   attr :is_recovery, :boolean, default: false
+  attr :is_trust_pending, :boolean, default: false
   attr :mode, :atom, default: :add_contact
   attr :member_ids, :any, default: %MapSet{}
   attr :is_admin, :boolean, default: false
@@ -539,7 +562,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
   def person_row(assigns) do
 
     ~H"""
-    <div class="flex items-center gap-3 py-2 group">
+    <div class="flex items-center gap-3 py-2 px-3 group md:bg-white/5 md:rounded-xl md:border md:border-white/5 md:hover:border-white/10 transition-all">
       <%!-- Avatar + Name (clickable to open DM) --%>
       <div
         class={"flex items-center gap-3 flex-1 min-w-0 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 #{if @status == :connected, do: "hover:bg-white/5 transition-colors", else: ""}"}
@@ -547,12 +570,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
         phx-value-user_id={@user.id}
       >
         <%!-- Avatar --%>
-        <div
-          class={"w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 #{if @online, do: "avatar-online", else: ""}"}
-          style={"background-color: #{friend_color(@user)};"}
-        >
-          <span class="text-white">{String.first(@user.username) |> String.upcase()}</span>
-        </div>
+        <.avatar user={@user} online={@online} />
 
         <%!-- Name and status stacked for better mobile layout --%>
         <div class="flex-1 min-w-0">
@@ -580,25 +598,36 @@ defmodule FriendsWeb.HomeLive.Components.FluidContactComponents do
                   phx-click="remove_trusted_friend"
                   phx-value-user_id={@user.id}
                   data-confirm="Remove from recovery contacts?"
-                  class="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors cursor-pointer"
+                  class="p-1.5 rounded-lg bg-green-500 text-white hover:bg-green-400 transition-colors cursor-pointer shadow-lg shadow-green-500/20"
                   title="Remove from Recovery"
                 >
                   <.shield_icon class="w-4 h-4" />
                 </button>
               <% else %>
-                <button
-                  phx-click="add_trusted_friend"
-                  phx-value-user_id={@user.id}
-                  class="p-1.5 rounded-lg text-white/30 hover:text-green-400 hover:bg-green-400/10 transition-colors cursor-pointer"
-                  title="Add to Recovery"
-                >
-                  <.shield_icon class="w-4 h-4" />
-                </button>
+                <%= if @is_trust_pending do %>
+                  <button
+                    disabled
+                    class="p-1.5 rounded-lg text-yellow-500/50 cursor-not-allowed transition-colors"
+                    title="Request Pending"
+                  >
+                    <.shield_icon class="w-4 h-4" />
+                  </button>
+                <% else %>
+                  <button
+                    phx-click="add_trusted_friend"
+                    phx-value-user_id={@user.id}
+                    class="p-1.5 rounded-lg text-white/30 hover:text-green-400 hover:bg-green-400/10 transition-colors cursor-pointer"
+                    title="Add to Recovery"
+                  >
+                    <.shield_icon class="w-4 h-4" />
+                  </button>
+                <% end %>
               <% end %>
               <%!-- Remove friend --%>
               <button
                 phx-click="remove_contact"
                 phx-value-user_id={@user.id}
+                data-confirm={"Are you sure you want to remove @#{@user.username} from your contacts?"}
                 class="text-xs text-red-400/60 hover:text-red-400 transition-colors cursor-pointer px-1"
               >
                 Remove

@@ -192,7 +192,7 @@ defmodule FriendsWeb.HomeLive.Components.FluidGroupComponents do
             <p class="text-white/30 text-xs">Create your first group above</p>
           </div>
         <% else %>
-          <div class="space-y-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <%= for group <- multi_member_groups do %>
               <.group_row group={group} is_admin={@is_admin} />
             <% end %>
