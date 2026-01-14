@@ -29,22 +29,10 @@ defmodule Friends.Notifications do
     end
   end
   
-  defp send_to_token(%DeviceToken{platform: "android", token: token}, title, body, data) do
-    # FCM
-    # FCM
-    n = Pigeon.FCM.Notification.new({:token, token}, %{
-      "title" => title, 
-      "body" => body
-    }, data)
-    
-    # Friends.FCM.push(n)
-    handler = fn
-      %{response: :success} -> Logger.info("Notifications: Push SUCCESS for user #{String.slice(token, 0, 10)}...")
-      %{response: response} = n -> Logger.error("Notifications: Push FAILED. Response: #{inspect(response)}. Details: #{inspect(n)}")
-    end
-    
-    Friends.FCM.push(n, on_response: handler)
-    :ok
+    # Friends.FCM.Client.push(token, title, body, data)
+    result = Friends.FCM.Client.push(token, title, body, data)
+    Logger.info("Notifications: FCM Client result: #{inspect(result)}")
+    result
   end
   
   defp send_to_token(%DeviceToken{platform: "ios", token: token}, title, body, data) do

@@ -26,12 +26,7 @@ defmodule Friends.Application do
         []
       creds ->
         [
-          {Goth, name: Friends.FCM.Goth, source: {:service_account, creds}},
-          {Friends.FCM, [
-             adapter: Pigeon.FCM,
-             auth: Friends.FCM.Goth,
-             project_id: creds["project_id"]
-           ]}
+          {Goth, name: Friends.FCM.Goth, source: {:service_account, creds}}
         ]
     end
   end
