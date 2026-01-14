@@ -38,9 +38,13 @@ defmodule Friends.Notifications do
     }, data)
     
     # Friends.FCM.push(n)
-    result = Friends.FCM.push(n)
-    Logger.info("Notifications: Sent FCM to token #{String.slice(token, 0, 10)}... Result: #{inspect(result)}")
-    result
+    handler = fn
+      %{response: :success} -> Logger.info("Notifications: Push SUCCESS for user #{String.slice(token, 0, 10)}...")
+      %{response: response} = n -> Logger.error("Notifications: Push FAILED. Response: #{inspect(response)}. Details: #{inspect(n)}")
+    end
+    
+    Friends.FCM.push(n, on_response: handler)
+    :ok
   end
   
   defp send_to_token(%DeviceToken{platform: "ios", token: token}, title, body, data) do
