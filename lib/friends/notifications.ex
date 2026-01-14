@@ -29,6 +29,7 @@ defmodule Friends.Notifications do
     end
   end
   
+  defp send_to_token(%DeviceToken{platform: "android", token: token}, title, body, data) do
     # Friends.FCM.Client.push(token, title, body, data)
     result = Friends.FCM.Client.push(token, title, body, data)
     Logger.info("Notifications: FCM Client result: #{inspect(result)}")
